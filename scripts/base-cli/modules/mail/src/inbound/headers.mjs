@@ -19,11 +19,12 @@ export function parseHeaders(value) {
       if (!previous) fail('invalid_inbound_headers');
       map.set(previous, `${map.get(previous)} ${headerText(line.trim())}`); continue;
     }
-    const match = /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):[ \t]*(.*)$/.exec(line);
-    if (!match) fail('invalid_inbound_headers');
-    previous = match[1].toLowerCase();
+    const colon = line.indexOf(':');
+    const rest = colon < 0 ? '' : line.slice(colon + 1);
+    if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(line.slice(0, colon < 0 ? 0 : colon)) || /[\r\n\u2028\u2029]/.test(rest)) fail('invalid_inbound_headers');
+    previous = line.slice(0, colon).toLowerCase();
     if (map.has(previous) && singleton.has(previous)) fail('duplicate_inbound_header');
-    const text = headerText(match[2].trim());
+    const text = headerText(rest.trim());
     map.set(previous, map.has(previous) ? `${map.get(previous)}, ${text}` : text);
   }
   return map;
@@ -129,8 +130,10 @@ export function addresses(value) {
 }
 export function messageIds(value) {
   if (value == null || value === '') return [];
-  const source = unfold(value); const ids = source.match(/<[^<>\s]+>/g) ?? [];
-  if (!ids.length || source.replace(/<[^<>\s]+>/g, '').trim()) fail('invalid_inbound_thread');
+  // Only message ids and whitespace may appear, so scan them in order instead of stripping and re-checking.
+  const source = unfold(value); const ids = []; const next = /\s*(<[^<>\s]+>)/y; let end = 0, found;
+  while ((found = next.exec(source))) { ids.push(found[1]); end = next.lastIndex; }
+  if (!ids.length || source.slice(end).trim()) fail('invalid_inbound_thread');
   return ids;
 }
 export function metadata(headers, from, to, subject) {

@@ -17,7 +17,7 @@ def email_userinfo(match):
     if not match['scheme'] and host.lower().split(':', 1)[0] not in REPOSITORY_HOSTS:
         return match.group()
     # Keep actual email-valued userinfo, including a decoded %40, while
-    # excluding the host delimiter in an ordinary transport username@host.
+    # excluding the host delimiter in an ordinary transport user and host pair.
     return userinfo
 
 
@@ -25,7 +25,7 @@ def private_emails(text, config):
     # URL paths, queries and fragments remain visible to email inspection.
     email_text = URI_AUTHORITY.sub(email_userinfo, without_required_notices(text))
     email_text = re.sub(r'(?i)\b(?a:git@github\.com:)(?=[A-Za-z0-9])', '', email_text)
-    # A package manager's patch file is named name@version.patch.
+    # A package manager's patch file is named after the package, an at sign and the version.
     version = r'(?:v?[0-9]+(?:\.[0-9]+)*(?:-[A-Za-z0-9-]+)?|[a-f0-9]{40})(?:\.patch)?(?![A-Za-z0-9_.-])'
     email_text = re.sub(r'(?m)^\s*-?\s*uses:\s*[\"\']?[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[^\s\"\']+', '', email_text)
     email_text = re.sub(r'(?<![A-Za-z0-9])(?:@[A-Za-z0-9_.-]+/)?[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)?@' + version, '', email_text)
