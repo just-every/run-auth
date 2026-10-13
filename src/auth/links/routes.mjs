@@ -6,10 +6,12 @@ import {requireLocalEmail,authority,requireAuthority} from '../local-email.mjs';
 import {INTERFACE,callbacksFor,pullApp,firstSeen,punycode,sameKey,storedKey,readBody} from './app.mjs';
 import {link,redeem,REDEEM} from './handshake.mjs';
 import {report,REPORT,approveVersion,versionsOf} from './versions.mjs';
+import {rerApproval} from './rer-approval.mjs';
+import {withdrawBySignature,WITHDRAW} from './rer-trust.mjs';
 
 const INITIATE='/oidc/link/initiate',DEREGISTER='/oidc/link/deregister';
 const TOKEN_LIFETIME=3600000,REQUEST_LIFETIME=3600000;
-export const LINK_PATHS=['/.well-known/rer-provider','/.well-known/rer-dependencies',INITIATE,REDEEM,DEREGISTER,REPORT];
+export const LINK_PATHS=['/.well-known/rer-provider','/.well-known/rer-dependencies',INITIATE,REDEEM,DEREGISTER,REPORT,WITHDRAW];
 
 // Auth provides oidc-provider@1 and depends on nothing, so its own graph node is a leaf.
 async function dependencies(ctx) {
@@ -29,14 +31,16 @@ export async function linkRoute(ctx,request,path) {
  if(path===REPORT)return report(ctx,request);
  if(path===DEREGISTER)return deregister(ctx,request);
  if(path===INITIATE)return initiate(ctx,request);
+ if(path===WITHDRAW)return withdrawBySignature(ctx,request);
  fail('not_found',404);
 }
 
-// From `rer setup` with a link token.
+// From `rer setup` with a link token, or from RER Managed with a signed link approval.
 async function initiate(ctx,request) {
  const data=await readBody(request);
  if(data.interface!==INTERFACE||typeof data.origin!=='string')fail('invalid_request');
  const origin=validateClientOrigin(ctx,data.origin);
+ if(typeof data.approval==='string')return json({linked:true,...await rerApproval(ctx,origin,data.approval)});
  if(typeof data.token!=='string'||!data.token||data.token.length>200)fail('invalid_request');
  // Single use: the first request consumes it, whatever happens next.
  const token=await one(ctx,'UPDATE auth_link_tokens SET consumed_at=? WHERE token_hash=? AND consumed_at IS NULL AND expires_at>? RETURNING *',ctx.now(),await hash(data.token),ctx.now());

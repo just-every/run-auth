@@ -6,6 +6,7 @@ import {moveInModel} from './move-in/routes.mjs';
 import {agentsModel} from './agents/routes.mjs';
 import {appsModel} from './links/routes.mjs';
 import {fencePerson} from './links/logout.mjs';
+import {rerTrustModel} from './links/rer-trust.mjs';
 export async function model(ctx,request,page='account') {
  const s=await session(ctx,request);if(!s)return {page,issuer:ctx.origin,user:null,me:null,isAdmin:false};
  const amr=JSON.parse(s.amr),isAdmin=['owner','admin'].includes(s.role)&&amr.includes('hwk');
@@ -26,6 +27,7 @@ export async function model(ctx,request,page='account') {
    all(ctx,'SELECT domain,provider_id FROM oa_domain_rules ORDER BY domain'),
   ]);
   Object.assign(result,apps);
+  result.rerTrust=await rerTrustModel(ctx);
   result.policyProviders=(ctx.upstreamProviders||[]).map(p=>({id:p.id,label:p.label||p.preset}));
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));

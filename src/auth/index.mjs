@@ -13,6 +13,7 @@ import {linkRoute,LINK_PATHS,isAppAction,appAction} from './links/routes.mjs';
 import {signOutEverywhere} from './links/logout.mjs';
 import {endSession,END_SESSION} from './links/end-session.mjs';
 import {rememberIssuer} from './links/grant-map.mjs';
+import {isTrustAction,trustAction} from './links/rer-trust.mjs';
 export {stageSigningKey,retireSigningKey,ensureSigningKey} from './keys.mjs';
 export {maintainAuth} from './maintenance.mjs';
 export {installRecoveryToken} from './recovery.mjs';
@@ -64,6 +65,7 @@ export function createAuthRuntime(options) {
      if(action.startsWith('/agents/'))return await agentsAction(ctx,request,action,data);
      if(action==='/signout-everywhere')return await signOutEverywhere(ctx,request);
      if(isAppAction(action))return await appAction(ctx,request,action,data);
+     if(isTrustAction(action))return await trustAction(ctx,request,action,data);
      return await adminAction(ctx,request,action,data);
     }
    }

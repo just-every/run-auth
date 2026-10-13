@@ -168,6 +168,13 @@ export interface AuthRecovery {
   approvedBy?: string | null
 }
 
+export interface RerTrustKey {
+  kid: string
+  source: 'provisioned' | 'owner'
+  added_at?: number | null
+  withdrawn_at?: number | null
+}
+
 export interface AuthPageModel {
   page: AuthPage | string
   issuer?: string
@@ -181,6 +188,7 @@ export interface AuthPageModel {
   domainRules?: { domain: string; provider_id: string; available: boolean }[]
   policyProviders?: { id: string; label: string }[]
   apps?: AuthApp[]
+  rerTrust?: RerTrustKey[]
   pendingApps?: AuthApp[]
   methods?: AuthPasskey[]
   passkeys?: AuthPasskey[]

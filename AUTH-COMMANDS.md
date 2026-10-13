@@ -4,7 +4,7 @@ This edition guide describes Auth's behavior where the copied Base command docum
 
 Auth's host owns its issuer and passkeys. Choose it before linking; changing it is a provider move requiring the apps' owners to approve re-linking. Fresh local setup defaults to `localhost`; an explicit host or saved issuer is retained. Existing IP issuers require an explicit move before browser passkeys can be enrolled. The saved port is reused, otherwise 8787. An explicitly busy port fails.
 
-Privacy: Auth shares email and name with apps each person uses. Under RER Managed, RER can sign as the account's Auth install. Managed operation is outside this implementation.
+Privacy: Auth shares email and name with apps each person uses. Under RER Managed, RER can sign link approvals for the account's Auth install; it receives people's data only as an ordinary linked app (README.md, RER trust).
 
 ```sh
 node scripts/rer.mjs install

@@ -4,7 +4,9 @@ Auth is an owner-run identity provider for email-link and passkey sign-in. It in
 
 The host owns the issuer and passkeys: choose it before linking apps. Changing that host is a provider move requiring the apps' owners to approve re-linking. It does not silently preserve an issuer or passkey origin.
 
-Privacy: Auth shares each person's email and name with the apps they use. Under RER Managed, RER can sign as the account's Auth install. Managed installation, adoption, default linking and platform sign-in are outside this implementation.
+Privacy: Auth shares each person's email and name with the apps they use. Under RER Managed, RER can sign link approvals for the account's Auth install: Auth then links the account's newly admitted apps without anyone typing, marks each one RER-made and tells its administrators. RER never receives people's data from Auth except as an ordinary linked app, for the people who sign in to RER through it.
+
+RER trust: an Auth install RER provisioned carries RER's per-account public key in its `RER_LINK_APPROVAL_KEYS` setting and its first owner is claimed through RER's signed owner claim (`/auth/owner-claim`). An owner who runs Auth themselves can adopt it into Managed by adding RER's key on **Sign-in methods** (passkey plus a fresh email proof in this browser). Withdraw it there at any time: the key ends for good, later approvals signed with it are refused, and links already made stay until you remove them on **Apps**. Leaving Managed withdraws it too. An install that trusts no RER key never contacts RER.
 
 ## Start locally
 

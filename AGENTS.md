@@ -2,7 +2,7 @@
 
 Auth is an owner-run MIT identity provider, declaring `oidc-provider@1` and never depending on that interface itself. Its host owns the issuer and passkeys: choose it before linking. Changing that host is a provider move requiring the apps' owners to approve re-linking, not an automatic identity migration.
 
-Privacy: Auth shares each person's email and name with the apps they use. Under RER Managed, RER can sign as the account's Auth install. Managed installation, adoption, default links and platform sign-in are outside this implementation.
+Privacy: Auth shares each person's email and name with the apps they use. Under RER Managed, RER can sign link approvals for the account's Auth install; it receives people's data only as an ordinary linked app (README.md, RER trust).
 
 The foundation is Base main `4336124fe52f0d11a9d27093bcf852ae36fd3a90`, including its operator authentication, the local-listener protections and the dependency link protocol (refreshed 13 Oct 2026; Base schema added since the original composition is migrations 0018 to 0023, and 0001_owner.sql stays as applied). Preserve copied source ownership in composition.lock.json: src/modules, src/base and scripts/base-cli/base-onboarding are maintained Base copies. The lock records the original composition, including the family authoring commit at editions/auth. Subsequent edition changes belong to this runnable repository; that original lock does not attest their current bytes. Edition-owned protocol is src/auth, UI is src/ui and public/auth-assets, and the runtime/CLI adapters connect them. The copied Base command documents describe generic behavior; AUTH-COMMANDS.md records Auth's exceptions.
 

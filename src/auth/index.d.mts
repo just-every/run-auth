@@ -4,6 +4,10 @@ export interface AuthRuntimeOptions {
  waitUntil?: (work: Promise<unknown>) => void;
  upstreamProviders?: import('../modules/operator-auth/index.mjs').IdentityProviderConfig[];
  upstreamFetch?: typeof fetch;
+ /** Outbound requests to linked apps (pull, callback, logout); defaults to fetch. */
+ linkFetch?: typeof fetch;
+ /** RER Managed: JSON object of trusted link-approval public keys (kid -> JWK). */
+ rerTrustKeys?: string;
  allowDevSession?: (request: Request) => boolean | Promise<boolean>;
 }
 export interface AuthRuntime { context: AuthRuntimeOptions & {now: () => number}; fetch(request:Request):Promise<Response|null>; upstreamProviders():Promise<any[]>; model(request:Request,page?:string):Promise<any> }

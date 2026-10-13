@@ -4,6 +4,7 @@ import { dispatch } from './base/dispatch'
 import { staticAssetResponse } from './base/static-assets'
 import { deploymentHealth } from './base/deployment-health'
 import { authResponse, identityAuth, runtimeBindings, type Bindings } from './auth.server'
+import { ownerClaimResponse } from './owner-claim.server'
 import { isPrivatePath } from './private-paths'
 
 import { maintainAuth } from './auth/index.mjs'
@@ -26,6 +27,8 @@ export function createWorker(options: { allowDevSession?: (request: Request, env
     if (state) return state
     const lobby = await lobbyResponse(request, bindings, identity)
     if (lobby) return lobby
+    const claim = await ownerClaimResponse(request, env)
+    if (claim) return claim
     const auth = await authResponse(request, env, execution, options.allowDevSession ? r => options.allowDevSession!(r, env) : undefined)
     if (auth) return auth
     return dispatch(request, () => api.fetch(request, env, execution), () => start.fetch(request))
