@@ -1,5 +1,5 @@
 import type { AgentEffect, AgentKey, AgentProposal, AuthPageModel } from '../model.js'
-import { asArray, csrfField, emptyState, escape, noticeBox, timeElement } from '../helpers.js'
+import { asArray, csrfField, emptyState, escape, noticeBox, replacementText, timeElement } from '../helpers.js'
 
 const kindNames: Record<string, string> = {
   suspend_person: 'Suspend a person', restore_person: 'Restore a person', invite_person: 'Invite a person',
@@ -63,7 +63,7 @@ const effectRows = (effect: AgentEffect): string => {
     rows.push(['App origin', effect.app.origin])
     if (effect.app.name) rows.push(['App', effect.app.name])
     rows.push(['Change', effect.after === 'removed' ? 'Remove this app: it can no longer sign people in' : 'Link this app: people can sign in to it with Auth'])
-    const notes = [effect.app.punycode ? 'Punycode origin' : '', effect.app.firstSeen ? 'First time Auth has seen this origin' : '', effect.app.replaces ? 'Replaces an existing link' : ''].filter(Boolean)
+    const notes = [effect.app.punycode ? 'Punycode origin' : '', effect.app.firstSeen ? 'First time Auth has seen this origin' : '', effect.app.relinks ? 'Re-links an existing app' : '', ...asArray(effect.app.replaces).map(replacementText)].filter(Boolean)
     if (notes.length) rows.push(['Check', notes.join('; ')])
   }
   return `<dl class="effect-list">${rows.map(([name, value]) => `<div><dt>${escape(name)}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl>`

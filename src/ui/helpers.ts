@@ -1,4 +1,4 @@
-import type { AuthUser } from './model.js'
+import type { AppReplacement, AuthUser } from './model.js'
 
 export const escape = (input: unknown): string => String(input ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -6,6 +6,11 @@ export const escape = (input: unknown): string => String(input ?? '').replace(/[
 
 export const icon = (name: string, label?: string): string =>
   `<svg${label ? ` role="img" aria-label="${escape(label)}"` : ' aria-hidden="true"'} viewBox="0 0 24 24"><use href="#${escape(name)}"></use></svg>`
+
+// What a link replaces, in the words an approver reads before approving it.
+export const replacementText = (r: AppReplacement): string => r.change === 'moves'
+  ? `Takes over the link of ${r.name} (${r.origin}): it can no longer sign people in, and this app receives the identifiers people had there`
+  : `Replaces ${r.name}, linked at this origin as another app: people's identifiers at this app change`
 
 export const asArray = <T>(value: T[] | undefined | null): T[] => Array.isArray(value) ? value : []
 

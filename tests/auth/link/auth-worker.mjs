@@ -4,7 +4,14 @@ import {createAuthRuntime,maintainAuth} from '../../../src/auth/index.mjs';
 import {AUTH_ORIGIN,APP_ORIGIN} from './origins.mjs';
 function runtime(env,background) {
  return createAuthRuntime({db:env.DB,origin:AUTH_ORIGIN,secret:'1a'.repeat(32),local:false,waitUntil:work=>background.push(work),
-  linkFetch:(input,init)=>{const url=new URL(input instanceof Request?input.url:input);if(url.origin!==APP_ORIGIN)throw new TypeError('network unreachable');return env.APP.fetch(new Request(input,init));},
+  linkFetch:async(input,init)=>{
+   const request=new Request(input,init),url=new URL(request.url);
+   if(url.origin===APP_ORIGIN)return env.APP.fetch(request);
+   // Scripted apps answer from the test process; 599 is its "no such app".
+   const response=env.SCRIPTED?await env.SCRIPTED.fetch(request):null;
+   if(!response||response.status===599)throw new TypeError('network unreachable');
+   return response;
+  },
   mail:async message=>{await env.DB.prepare('INSERT INTO test_mail(message) VALUES(?)').bind(JSON.stringify(message)).run();}});
 }
 export default {

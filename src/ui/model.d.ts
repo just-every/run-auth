@@ -43,6 +43,14 @@ export interface AuthApp {
   punycode?: boolean
   replacesClient?: string | null
   keyChanged?: boolean
+  replaces?: AppReplacement[]
+}
+
+// A client a link takes over from another origin ('moves') or removes at this origin ('identifiers').
+export interface AppReplacement {
+  name: string
+  origin: string
+  change: 'moves' | 'identifiers'
 }
 
 export interface AuthPasskey {
@@ -116,7 +124,7 @@ export interface AgentEffect {
   domain?: string
   provider?: { id: string; label: string } | null
   people?: { email: string; status: string }[]
-  app?: { origin: string; name?: string; firstSeen?: boolean; punycode?: boolean; replaces?: string | null } | null
+  app?: { origin: string; name?: string; firstSeen?: boolean; punycode?: boolean; relinks?: boolean; replaces?: AppReplacement[] } | null
 }
 
 export interface AgentProposal {

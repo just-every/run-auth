@@ -1,5 +1,5 @@
 import type { AuthApp, AuthPageModel } from '../model.js'
-import { asArray, csrfField, emptyState, escape, timeElement } from '../helpers.js'
+import { asArray, csrfField, emptyState, escape, replacementText, timeElement } from '../helpers.js'
 
 const appOrigin = (value: string): { host: string; punycode: boolean } => {
   try {
@@ -18,6 +18,7 @@ const flags = (app: AuthApp, punycode: boolean): string => [
   punycode ? '<span class="pill">Punycode origin</span>' : '',
   app.firstSeen ? '<span class="pill">First time Auth has seen this origin</span>' : '',
   app.replacesClient ? `<span class="pill">${app.keyChanged ? 'Replaces an existing link with a new key' : 'Re-links an existing app'}</span>` : '',
+  ...asArray(app.replaces).map(replaced => `<span class="pill">${escape(replacementText(replaced))}</span>`),
   app.source === 'rer' ? '<span class="pill">RER link</span>' : '',
   app.source === 'token' ? '<span class="pill">Link token</span>' : '',
 ].join('')

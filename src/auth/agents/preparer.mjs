@@ -48,7 +48,7 @@ async function file(ctx,request,key) {
  if(Object.hasOwn(UNAVAILABLE,kindName))fail(UNAVAILABLE[kindName],409);
  const kind=Object.hasOwn(KINDS,kindName)?KINDS[kindName]:fail('unknown_kind');
  const reason=reasonOf(data.reason),{target,params}=await kind.target(ctx,data);
- const state=await kind.state(ctx,target),refusal=await kind.check(state,ctx,params);
+ const state=await kind.state(ctx,target,params),refusal=await kind.check(state,ctx,params);
  if(refusal)fail(refusal,409);
  const id=random().slice(0,22),now=ctx.now(),effect=await kind.effect(ctx,state,params);
  await ctx.db.prepare('INSERT INTO auth_agent_proposals(id,key_id,kind,target,params,reason,effect,target_state,state_digest,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')

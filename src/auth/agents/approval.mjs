@@ -57,7 +57,7 @@ export async function approve(ctx,request,data) {
   const changed=changes(JSON.parse(p.target_state),state);
   await close(ctx,s,guard,p,'rejected',{reason:'stale',changed});return json({error:'proposal_stale',changed},409);
  };
- const state=await kind.state(ctx,p.target),changed=await stale(state);
+ const state=await kind.state(ctx,p.target,params),changed=await stale(state);
  if(changed)return changed;
  const refusal=await kind.check(state,ctx,params);
  if(refusal){await close(ctx,s,guard,p,'failed',{reason:refusal});fail(refusal,409);}
@@ -88,7 +88,7 @@ export async function approve(ctx,request,data) {
   if((await one(ctx,'SELECT status FROM auth_agent_proposals WHERE id=?',p.id)).status!=='pending')fail('proposal_decided',409);
   await requireAuthority(ctx,s,guard);
   if(p.expires_at<=now){await close(ctx,s,guard,p,'rejected',{reason:'expired'});fail('proposal_expired',409);}
-  const moved=await stale(await kind.state(ctx,p.target));if(moved)return moved;
+  const moved=await stale(await kind.state(ctx,p.target,params));if(moved)return moved;
   const blocked=kind.requires?'last_administrator':'proposal_unavailable';
   await close(ctx,s,guard,p,'failed',{reason:blocked});fail(blocked,409);
  }

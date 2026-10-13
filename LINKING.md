@@ -21,10 +21,14 @@ Auth sends a code.
 1. **On the Apps page.** An administrator enters the app's address under "Add
    an app". Auth reads the app's `/.well-known/rer-dependencies` and link JWKS
    at that exact origin and lists the request, headlined by its origin. It flags
-   punycode origins, origins Auth has never seen, and a request that would
-   replace an existing link with a new key. The app's owner must also approve
-   in the app, within ten minutes. "Approve app" re-reads the app and links only
-   what was shown.
+   punycode origins, origins Auth has never seen, a request that would
+   replace an existing link with a new key, and every app the link would
+   replace: one at another origin that holds the app's sector (its link moves
+   here, with the identifiers people had there) or one at this origin with
+   another sector (people's identifiers at this app change). The app's owner
+   must also approve in the app, within ten minutes. "Approve app" re-reads the
+   app and links only what was shown, and is refused if what it replaces
+   changed since the request.
 2. **With a link token, for `rer setup --non-interactive`.** "Create link token"
    returns, once, the JSON that `rer setup` reads from `RER_LINK_TOKEN_FILE`. It
    covers one exact origin and its callback set (the fixed link callback plus
@@ -32,7 +36,8 @@ Auth sends a code.
    lasts an hour. Auth keeps only its digest.
 3. **From an agent proposal.** A preparer key can file `approve_app_link` (target:
    the app's origin) or `remove_app_link`. A person approves with a passkey, as
-   for the other kinds.
+   for the other kinds. The proposal names every app the link would replace,
+   as on the Apps page, and goes stale if that changes.
 
 Links made with a token or by RER are flagged on the Apps page, and every
 administrator is emailed about them. A failed link is recorded in Activity with
@@ -53,7 +58,9 @@ the app has accepted the callback.
 and sector for life. If the app signs with its unchanged key, the answer carries
 `continuity: "previous-key"`. A new key counts only when an administrator
 approved the request with the existing link shown (`"provider-owner"`). A token
-or RER approval with a new key is refused (`link_continuity_required`).
+or RER approval with a new key is refused (`link_continuity_required`). A link
+that would replace an app its approval did not name is refused
+(`replacement_not_approved`).
 
 **Origins.** A production install refuses loopback and plain-http app origins.
 A local (dev) install serves only loopback apps, and every token it issues
@@ -66,7 +73,8 @@ Apps report the interface version they run with `POST /oidc/link/report`
 the report URL). Linking records the version from the app's document too. Auth
 keeps every version a live client reports. A report below the highest accepted
 version is held (`409 downgrade_requires_owner`) until the owner accepts it on
-the Apps page.
+the Apps page. A re-link whose document reports a lower version is held the same
+way, unless the owner approved that link.
 
 ## Sign-out and fences
 
@@ -88,7 +96,9 @@ app has it.
 ## Removal
 
 "Remove app" (or an approved `remove_app_link`) disables the client: Auth
-issues it no more codes or tokens. An app that unlinks itself calls
+issues it no more codes or tokens, and sends a back-channel logout for everyone
+it had signed in, since no later sign-out or fence reaches it. Deliveries
+queued before the removal still go. An app that unlinks itself calls
 `/oidc/link/deregister`, signed with its key, and Auth disables the client.
 Re-linking later with a new key needs an administrator's approval.
 
@@ -103,7 +113,8 @@ The archive carries people, emails, passkey public keys, clients, grants,
 subjects, interface versions and the audit log. It leaves out sessions and
 one-time state, signing keys, the pairwise key, recovery and preparer secrets,
 move-in staging rows, link tokens, codes and requests, logout deliveries and
-RER's trust.
+the RER keys an owner trusted. Withdrawn RER keys are carried, so a restored
+install keeps them withdrawn.
 
 `rer import` restores into an empty checkout. Before restoring, it refuses any
 app origin the destination could not serve: a checkout configured as hosted

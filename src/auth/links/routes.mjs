@@ -4,9 +4,10 @@ import {createLocalJWKSet,jwtVerify} from 'jose';
 import {random,hash,one,all,run,fail,json,requireSession,auditDetail,validateClientOrigin} from '../core.mjs';
 import {requireLocalEmail,authority,requireAuthority} from '../local-email.mjs';
 import {INTERFACE,callbacksFor,pullApp,firstSeen,punycode,sameKey,storedKey,readBody} from './app.mjs';
-import {link,redeem,REDEEM} from './handshake.mjs';
+import {link,redeem,replacements,REDEEM} from './handshake.mjs';
 import {report,REPORT,approveVersion,versionsOf} from './versions.mjs';
 import {rerApproval} from './rer-approval.mjs';
+import {signOutRemovedApp} from './logout.mjs';
 import {withdrawBySignature,WITHDRAW} from './rer-trust.mjs';
 
 const INITIATE='/oidc/link/initiate',DEREGISTER='/oidc/link/deregister';
@@ -70,9 +71,13 @@ export async function appsModel(ctx) {
  const versions=await versionsOf(ctx,clients.map(c=>c.id));
  return {
   apps:clients.map(c=>({...c,status:c.disabled_at?'removed':'active',versions:versions[c.id].versions,heldVersions:versions[c.id].held,punycode:punycode(c.origin)})),
-  pendingApps:requests.map(r=>{const app=JSON.parse(r.app);return {id:r.id,name:app.name,origin:r.origin,status:'pending',source:'owner',created_at:r.created_at,firstSeen:Boolean(r.first_seen),punycode:Boolean(r.punycode),replacesClient:r.client_id,keyChanged:Boolean(r.key_changed),versions:[app.version]};}),
+  pendingApps:requests.map(r=>{const app=JSON.parse(r.app);return {id:r.id,name:app.name,origin:r.origin,status:'pending',source:'owner',created_at:r.created_at,firstSeen:Boolean(r.first_seen),punycode:Boolean(r.punycode),replacesClient:r.client_id,keyChanged:Boolean(r.key_changed),replaces:JSON.parse(r.replaces).map(shownReplacement),versions:[app.version]};}),
  };
 }
+
+// What the Apps page shows of a replacement; the client id stays server side.
+const shownReplacement=({name,origin,change})=>({name,origin,change});
+const replacedIds=list=>list.map(r=>r.client).sort();
 
 const ACTIONS=['/apps/request','/apps/approve','/apps/remove','/apps/link-token','/apps/version'];
 export const isAppAction=path=>ACTIONS.includes(path);
@@ -89,21 +94,22 @@ export async function appAction(ctx,request,path,data) {
  }
  if(path==='/apps/request') {
   const app=await pullApp(ctx,String(data.origin||''));
-  const existing=await one(ctx,'SELECT * FROM auth_clients WHERE sector_id=?',app.sector);
+  const existing=await one(ctx,'SELECT * FROM auth_clients WHERE sector_id=?',app.sector),replaced=await replacements(ctx,app);
   const id=random(),seen=await firstSeen(ctx,app.origin);
-  const stored=await run(ctx,`INSERT INTO auth_link_requests(id,origin,interface,app,client_id,key_changed,first_seen,punycode,requested_by,created_at,expires_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE ${guard.clause}`,id,app.origin,INTERFACE,JSON.stringify(app),existing?.id??null,existing&&!sameKey(storedKey(existing),app.key)?1:0,seen?1:0,punycode(app.origin)?1:0,s.person_id,ctx.now(),ctx.now()+REQUEST_LIFETIME,...guard.args);
+  const stored=await run(ctx,`INSERT INTO auth_link_requests(id,origin,interface,app,client_id,key_changed,first_seen,punycode,replaces,requested_by,created_at,expires_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard.clause}`,id,app.origin,INTERFACE,JSON.stringify(app),existing?.id??null,existing&&!sameKey(storedKey(existing),app.key)?1:0,seen?1:0,punycode(app.origin)?1:0,JSON.stringify(replaced),s.person_id,ctx.now(),ctx.now()+REQUEST_LIFETIME,...guard.args);
   if(!stored.meta.changes){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}
   await run(ctx,'INSERT OR IGNORE INTO auth_origins_seen(origin,first_seen_at) VALUES(?,?)',app.origin,ctx.now());
-  return json({id,origin:app.origin,name:app.name,firstSeen:seen,punycode:punycode(app.origin),replacesClient:existing?.id??null},201);
+  return json({id,origin:app.origin,name:app.name,firstSeen:seen,punycode:punycode(app.origin),replacesClient:existing?.id??null,replaces:replaced.map(shownReplacement)},201);
  }
  if(path==='/apps/approve') {
   const r=await one(ctx,'SELECT * FROM auth_link_requests WHERE id=? AND decided_at IS NULL AND expires_at>?',String(data.id||''),ctx.now())||fail('link_request_not_found',404);
-  const shown=JSON.parse(r.app),app=await pullApp(ctx,r.origin);
+  const shown=JSON.parse(r.app),shownReplaced=JSON.parse(r.replaces),app=await pullApp(ctx,r.origin);
   // Approval covers what the administrator was shown, not what the app serves later.
   if(app.sector!==shown.sector||!sameKey(app.key,shown.key)||JSON.stringify(app.callbacks)!==JSON.stringify(shown.callbacks))fail('app_changed_since_request',409);
+  if(JSON.stringify(replacedIds(await replacements(ctx,app)))!==JSON.stringify(replacedIds(shownReplaced)))fail('app_changed_since_request',409);
   const decided=await run(ctx,`UPDATE auth_link_requests SET decided_by=?,decided_at=? WHERE id=? AND decided_at IS NULL AND ${guard.clause}`,s.person_id,ctx.now(),r.id,...guard.args);
   if(!decided.meta.changes){await requireAuthority(ctx,s,guard);fail('link_request_decided',409);}
-  const result=await link(ctx,{app,source:'owner',approvedBy:s.person_id,versionApproved:true});
+  const result=await link(ctx,{app,source:'owner',approvedBy:s.person_id,replacing:replacedIds(shownReplaced)});
   await run(ctx,'UPDATE auth_link_requests SET outcome=? WHERE id=?','linked',r.id);
   return json({linked:true,...result});
  }
@@ -112,6 +118,7 @@ export async function appAction(ctx,request,path,data) {
   const removed=await run(ctx,`UPDATE auth_clients SET disabled_at=? WHERE id=? AND disabled_at IS NULL AND ${guard.clause}`,ctx.now(),client.id,...guard.args);
   if(!removed.meta.changes){await requireAuthority(ctx,s,guard);fail('app_not_found',404);}
   await auditDetail(ctx,s.person_id,'app_removed',client.id,{origin:client.origin});
+  await signOutRemovedApp(ctx,client.id);
   return json({removed:true});
  }
  // '/apps/version': an owner accepts a held lower interface version.

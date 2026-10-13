@@ -5,26 +5,46 @@ import {createLocalJWKSet,jwtVerify} from 'jose';
 import {random,hash,one,run,fail,json,auditDetail,email as emailOf} from '../core.mjs';
 import {signToken,pairwiseSubject} from '../keys.mjs';
 import {CALLBACK,fetcherOf,sameKey,storedKey,punycode,readBody} from './app.mjs';
-import {recordVersion,downgrade} from './versions.mjs';
+import {recordVersion,downgrade,holdVersion} from './versions.mjs';
 
 export const REDEEM='/oidc/link/redeem';
 const JWT_BEARER='urn:ietf:params:oauth:client-assertion-type:jwt-bearer';
 const shownToPerson=source=>['owner','proposal'].includes(source);
 const SOURCES={owner:'Approved by an administrator',token:'Created with a link token',rer:'Created by RER',proposal:'Approved from an agent proposal'};
 
+// What linking this app replaces besides its own client at its own origin: the
+// client holding its sector at another origin, which moves here with its people's
+// identifiers, and an active client at this origin with another sector, which is
+// removed so its people's identifiers at this app change.
+export async function replacements(ctx,app) {
+ const [moved,other]=await Promise.all([
+  one(ctx,'SELECT id,name,origin FROM auth_clients WHERE sector_id=? AND origin!=?',app.sector,app.origin),
+  one(ctx,'SELECT id,name,origin FROM auth_clients WHERE origin=? AND sector_id!=? AND disabled_at IS NULL',app.origin,app.sector),
+ ]);
+ return [moved&&{client:moved.id,name:moved.name,origin:moved.origin,change:'moves'},other&&{client:other.id,name:other.name,origin:other.origin,change:'identifiers'}].filter(Boolean);
+}
+
 // Continuity: a client is found by its sector. Its own unchanged key proves it
 // ("previous-key"); a new key only counts when an administrator approved with
-// the existing client shown ("provider-owner"). A key alone never counts.
-async function continuity(ctx,app,source) {
+// the existing client shown ("provider-owner"). A key alone never counts, and an
+// approval covers only the replacements the person was shown (`approved`).
+async function continuity(ctx,app,source,approved) {
  const shown=shownToPerson(source);
  const existing=await one(ctx,'SELECT * FROM auth_clients WHERE sector_id=?',app.sector);
- const other=await one(ctx,'SELECT id FROM auth_clients WHERE origin=? AND sector_id!=? AND disabled_at IS NULL',app.origin,app.sector);
+ const replaced=await replacements(ctx,app),other=replaced.find(r=>r.change==='identifiers')?.client??null;
  if(other&&!shown)fail('origin_linked_to_another_install',409);
- if(!existing)return {existing:null,continuity:null,replaces:other?.id??null};
- if(existing.origin!==app.origin&&!shown)fail('origin_changed_requires_owner',409);
- if(sameKey(storedKey(existing),app.key))return {existing,continuity:'previous-key',replaces:other?.id??null};
+ if(existing&&existing.origin!==app.origin&&!shown)fail('origin_changed_requires_owner',409);
+ if(replaced.some(r=>!approved.includes(r.client)))fail('replacement_not_approved',409);
+ if(!existing)return {existing:null,continuity:null,replaces:other};
+ if(sameKey(storedKey(existing),app.key))return {existing,continuity:'previous-key',replaces:other};
  if(!shown)fail('link_continuity_required',409);
- return {existing,continuity:'provider-owner',replaces:other?.id??null};
+ return {existing,continuity:'provider-owner',replaces:other};
+}
+
+// A lower interface version waits for the owner: only an owner's own approval
+// of the link accepts it at once.
+async function ownerApproved(ctx,source,approvedBy) {
+ return shownToPerson(source)&&Boolean(await one(ctx,"SELECT 1 FROM oa_operators WHERE id=? AND role='owner' AND status='active'",approvedBy));
 }
 
 async function postCallback(ctx,origin,body) {
@@ -34,10 +54,10 @@ async function postCallback(ctx,origin,body) {
  return {status:response.status,answer};
 }
 
-// link: {app, source, approvedBy, claimPerson?, ownerApproved?}
-export async function link(ctx,{app,source,approvedBy,claimPerson=null,versionApproved=false}) {
- const {existing,continuity:kept,replaces}=await continuity(ctx,app,source);
- if(existing&&!versionApproved&&await downgrade(ctx,existing.id,app.version))fail('downgrade_requires_owner',409);
+// link: {app, source, approvedBy, claimPerson?, replacing?: client ids the approver was shown replaced}
+export async function link(ctx,{app,source,approvedBy,claimPerson=null,replacing=[]}) {
+ const {existing,continuity:kept,replaces}=await continuity(ctx,app,source,replacing);
+ if(existing&&await downgrade(ctx,existing.id,app.version)&&!await ownerApproved(ctx,source,approvedBy)){await holdVersion(ctx,existing.id,app.version);fail('downgrade_requires_owner',409);}
  const code=random(),now=ctx.now();
  const grant={name:app.name,key:app.key,callbacks:app.callbacks,version:app.version,source,approvedBy,claimPerson,continuity:kept,clientId:existing?.id??null,replaces};
  await run(ctx,'INSERT INTO auth_link_codes(code_hash,origin,interface,callback,sector_id,link,expires_at) VALUES(?,?,?,?,?,?,?)',await hash(code),app.origin,app.interface,app.origin+CALLBACK,app.sector,JSON.stringify(grant),now+60000);

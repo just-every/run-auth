@@ -17,6 +17,11 @@ export async function downgrade(ctx,clientId,version) {
  // Lower than the highest version already accepted for this interface.
  return known.length>0&&!known.includes(version)&&compare(version,known.reduce((a,b)=>compare(a,b)>=0?a:b))<0;
 }
+// A lower version is kept, unapproved, for the owner to accept on the Apps page.
+export async function holdVersion(ctx,clientId,version) {
+ await run(ctx,'INSERT INTO auth_client_versions(client_id,version,reported_at) VALUES(?,?,?) ON CONFLICT(client_id,version) DO UPDATE SET reported_at=excluded.reported_at',clientId,version,ctx.now());
+ await audit(ctx,null,'app_downgrade_held',clientId);
+}
 export async function recordVersion(ctx,clientId,version,approvedBy=null) {
  await run(ctx,'INSERT INTO auth_client_versions(client_id,version,reported_at,approved_by,approved_at) VALUES(?,?,?,?,?) ON CONFLICT(client_id,version) DO UPDATE SET reported_at=excluded.reported_at,approved_by=COALESCE(auth_client_versions.approved_by,excluded.approved_by),approved_at=COALESCE(auth_client_versions.approved_at,excluded.approved_at)',clientId,version,ctx.now(),approvedBy,ctx.now());
 }
@@ -31,8 +36,7 @@ export async function report(ctx,request) {
  if(claims.exp-claims.iat>60||claims.version!==data.version)fail('invalid_client',401);
  try{await run(ctx,'INSERT INTO auth_assertions(client_id,jti,expires_at) VALUES(?,?,?)',client.id,claims.jti,claims.exp*1000);}catch{fail('invalid_client',401);}
  if(await downgrade(ctx,client.id,data.version)) {
-  await run(ctx,'INSERT INTO auth_client_versions(client_id,version,reported_at) VALUES(?,?,?) ON CONFLICT(client_id,version) DO UPDATE SET reported_at=excluded.reported_at',client.id,data.version,ctx.now());
-  await audit(ctx,null,'app_downgrade_held',client.id);
+  await holdVersion(ctx,client.id,data.version);
   return json({error:'downgrade_requires_owner',version:data.version},409);
  }
  await recordVersion(ctx,client.id,data.version);

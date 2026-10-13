@@ -27,9 +27,9 @@ export async function agentsModel(ctx,request) {
  const p=id?await one(ctx,`${PROPOSALS} WHERE p.id=?`,id):null;
  let proposal=null;
  if(p) {
-  const kind=KINDS[p.kind],state=await kind.state(ctx,p.target);
+  const kind=KINDS[p.kind],params=JSON.parse(p.params),state=await kind.state(ctx,p.target,params);
   const unchanged=await digest(state)===p.state_digest;
-  proposal={...view(ctx,p),fresh:await kind.effect(ctx,state,JSON.parse(p.params)),unchanged,changed:unchanged?[]:changes(JSON.parse(p.target_state),state)};
+  proposal={...view(ctx,p),fresh:await kind.effect(ctx,state,params),unchanged,changed:unchanged?[]:changes(JSON.parse(p.target_state),state)};
  }
  return {agents:{now:ctx.now(),keys,proposals:proposals.map(row=>view(ctx,row)),proposal}};
 }
