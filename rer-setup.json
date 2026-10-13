@@ -88,5 +88,8 @@
       "emailField": "OWNER_EMAIL",
       "tokenField": "SETUP_TOKEN"
     }
+  ],
+  "provides": [
+    "oidc-provider@1"
   ]
 }

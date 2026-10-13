@@ -1,3 +1,5 @@
+import { approveSetupDependencies } from './dependency-approval.mjs';
+import { appFetch } from './app-fetch.mjs';
 import { createHmac } from 'node:crypto';
 import {commandFailure,installationFailure} from './failures.mjs';
 import { labels } from './adapter-labels.mjs';
@@ -9,10 +11,10 @@ const outboxPath = '/__dev/outbox'; // modules/mail/src/development default path
 // that is not in local mode ignores the header. The proof comes from the
 // setting the seed's adapter declares as its session secret (sessionSecretKey,
 // default SESSION_SECRET).
-const localCliProof = secret => createHmac('sha256', secret).update('local-cli\0sign-in').digest('hex');
+export const localCliProof = secret => createHmac('sha256', secret).update('local-cli\0sign-in').digest('hex');
 const post = (context, path, body) => {
  const secret = context.vars[context.sessionSecretKey ?? 'SESSION_SECRET'];
- return fetch(new URL(path, context.origin), {
+ return appFetch(new URL(path, context.origin), {
   method: 'POST', redirect: 'manual', signal: context.signal,
   headers: { Origin: context.origin, 'Content-Type': 'application/json', ...(typeof secret === 'string' && secret ? { 'x-rer-local-cli': localCliProof(secret) } : {}) }, body: JSON.stringify(body),
  });
@@ -25,6 +27,8 @@ const errorCode = async response => { try { const code = (await response.json())
 export async function owner(context, hook) {
  const { store } = context;
  await store.step(labels.owner);
+ await approveSetupDependencies(context, post, outboxMessages);
+ if(context.ownerClaim?.mode==='idp'){context.ownerClaimed='pending-idp';await store.step('The linked provider must grant the designated installation owner');return;}
  const { path = '/auth/bootstrap', tokenKey = context.ownerClaim?.tokenField ?? 'SETUP_TOKEN', displayName = input => input.displayName || input.name || 'Owner', returnTo = '/' } = hook;
  const token = context.vars[tokenKey];
  if (!token && hook.existingOwnerViaSignIn) { await store.step('Checking the existing owner through ordinary sign-in'); return; }
@@ -47,6 +51,7 @@ export async function owner(context, hook) {
 // needs no mail provider and no email is sent.
 export async function signIn(context, hook) {
  const { store } = context;
+ if(context.ownerClaim?.mode==='idp' && context.ownerClaimed==='pending-idp')return;
  await store.step(labels.signIn);
  if (typeof hook === 'function') { context.appUrl = await hook(context); return; }
  const { magicLink = '/auth/magic-link', outbox = outboxPath, email = input => context.ownerClaim ? (context.vars[context.ownerClaim.emailField] ?? input[context.ownerClaim.emailField]) : input.email ?? input.ownerEmail, emailKey, returnTo = '/', attempts = 50 } = hook;
@@ -71,7 +76,7 @@ export async function signIn(context, hook) {
 async function outboxMessages(context, path, address, required = false) {
  let response;
  // A dev-identity seed gates its outbox with the checkout's key; present it.
- try { response = await fetch(new URL(path, context.origin), { signal: context.signal, headers: context.devKey ? { 'x-rer-dev-key': context.devKey } : {} }); } catch (error) {
+ try { response = await appFetch(new URL(path, context.origin), { signal: context.signal, headers: context.devKey ? { 'x-rer-dev-key': context.devKey } : {} }); } catch (error) {
   if (context.signal?.aborted) throw error;
   if(required){context.store.report?.('Local development outbox is unavailable. Run rer setup before requesting sign-in.');throw context.fail('setup');}
   return [];

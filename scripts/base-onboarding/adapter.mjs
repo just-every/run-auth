@@ -10,7 +10,10 @@ import { credentialValues } from './redaction.mjs';
 import { labels } from './adapter-labels.mjs';
 import { chooseOrigin, prepareSettings, readSettings } from './adapter-settings.mjs';
 import {listenerPorts} from './process-diagnostics.mjs';
+import { appFetch } from './app-fetch.mjs';
 import { owner, signIn } from './adapter-auth.mjs';
+import { installerDevKey } from './dev-identity.mjs';
+import { assertArchiveFree } from './archive-output.mjs';
 export { ownerAccountHosting } from './adapter-hosting.mjs';
 
 // The adapter kit for an existing seed. A seed's scripts/installer/local.mjs
@@ -84,7 +87,11 @@ export function localInstaller(hooks = {}) {
   try {
    let operation;
    if(store.ownCleanup){operation=await recoverInterrupted(root)??await localOperation(root);let released=false;release=async()=>{if(!released){released=true;await operation.release();}};store.ownCleanup(signal,release);}
-   await run(root, input, store, child => { app = child; onApp(child); }, signal, { operationToken:operation?.token,onContext(value) { context = value; } });
+   // A devIdentity seed's outbox is behind the dev key: the temporary app gets it and the installer page offers the key exchange (RER_OPEN) once setup completes.
+   const devKey = await installerDevKey(root);
+   if (devKey) store.addSecrets?.([devKey]);
+   await run(root, input, store, child => { app = child; onApp(child); }, signal, { operationToken:operation?.token,devKey:devKey??undefined,onContext(value) { context = value; } });
+   if (devKey && store.state.phase === 'complete' && !store.state.hostedUrl) store.state.devOpen = true;
    if(!app)await release?.();
   } catch (error) {
    // Keep the attempt active until its owned processes and captured pipes
@@ -96,7 +103,7 @@ export function localInstaller(hooks = {}) {
   }
  }
  // export and import read files the seed generates (its Worker config, for one); `prepareData` regenerates them, so a copy that never ran setup or build still completes.
- async function prepareData(root, store, signal) { if (hooks.prepareData) await hooks.prepareData(createContext(root, {}, store, () => {}, signal, hooks.guard)); }
+ async function prepareData(root, store, signal) { if (hooks.prepareData) await phase(createContext(root, {}, store, () => {}, signal, hooks.guard), hooks, 'prepareData', hooks.prepareData); }
  return { install, prepareData, features, settings:hooks.secrets, supplied:hooks.secrets?.supplied??[], ownerBootstrap:Boolean(hooks.owner&&typeof hooks.owner==='object'&&!Array.isArray(hooks.owner)), run, hooks: { dependencies: ['pnpm', ['install', '--frozen-lockfile']], health: defaultHealth, ...hooks } };
 }
 
@@ -138,7 +145,7 @@ async function onPath(tool) {
  return false;
 }
 
-const steps = { dependencies: 'dependencies', build: 'build', migrate: 'setup', start: 'start', owner: 'setup', signIn: 'setup', hosting: 'deploy' };
+const steps = { prepareData: 'setup', dependencies: 'dependencies', build: 'build', migrate: 'setup', start: 'start', owner: 'setup', signIn: 'setup', hosting: 'deploy' };
 
 async function commandsFor(context, hook) {
  const value = typeof hook === 'function' ? await hook(context) : hook;
@@ -168,12 +175,13 @@ async function build(context, hooks) {
   }
  }, { settings: [...(context.privateSettings ?? ['.dev.vars', '.dev.vars.previous']), hooks.secrets?.file ?? '.dev.vars'], nested: context.operationToken ?? null, report: message => { restoreFailure = message; store.report?.(message); } });
  if (restoreFailure) throw installationFailure('command_failed', { step: 'build' });
+ await assertArchiveFree(join(root, 'dist'));
 }
 
 // Health is the application's own /health: HTTP 200 with JSON status "ok"
 // unless the seed supplies another check. Each probe honours its signal.
 export async function defaultHealth(url, signal) {
- const response = await fetch(url, { signal });
+ const response = await appFetch(url, { signal });
  if (!response.ok) {
   await response.body?.cancel();
   return { ready: false, message: `HTTP ${response.status}` };

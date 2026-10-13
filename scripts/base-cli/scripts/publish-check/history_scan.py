@@ -57,7 +57,7 @@ def scan(repo, ref='HEAD', public_base=None, env_file=None, project=None, reposi
             for rule in license_rules(history.blob(license_oid) if license_oid else None, recorded):
                 bucket = 'warnings' if rule == 'license.missing' and public_base and scope == 'newly-public' and release_license_good else None
                 add(rule, 'LICENSE', commit, license_oid, scope, bucket)
-            signature = (config_tree['declaredSources'], config_tree['projectIdentity'])
+            signature = (config_tree['declaredSources'], config_tree['projectIdentity'], frozenset(config_tree['trustBundles'].items()))
             for entry in entries:
                 path, oid = entry['path'], entry['oid']
                 seen_blobs.add(oid)

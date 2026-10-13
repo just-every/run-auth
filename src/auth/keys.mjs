@@ -25,8 +25,11 @@ export async function retireSigningKey(ctx,kid,guard=null) {
  return (await run(ctx,`UPDATE auth_signing_keys SET retire_at=? WHERE kid=? AND retire_at IS NULL AND ${guard?guard.clause:'1'}`,ctx.now()+TOKEN_SECONDS*1000,kid,...(guard?guard.args:[]))).meta.changes;
 }
 export async function jwks(ctx) {await run(ctx,'DELETE FROM auth_signing_keys WHERE retire_at IS NOT NULL AND retire_at<=?',ctx.now());return {keys:(await all(ctx,'SELECT public_jwk FROM auth_signing_keys WHERE retire_at IS NULL OR retire_at>?',ctx.now())).map(r=>JSON.parse(r.public_jwk))};}
-export async function signToken(ctx,claims,{alg='ES256',typ='JWT',expiresAt=Math.floor(ctx.now()/1000)+TOKEN_SECONDS}={}) {
- const row=await activeSigningKey(ctx,alg),key=await importJWK(await decrypt(ctx,row),alg);
+// published: sign with the newest key already in the JWKS, even before its cache
+// lifetime has passed. Only for documents verified long after signing (grant maps).
+export async function signToken(ctx,claims,{alg='ES256',typ='JWT',expiresAt=Math.floor(ctx.now()/1000)+TOKEN_SECONDS,published=false}={}) {
+ const row=published?await one(ctx,"SELECT * FROM auth_signing_keys WHERE json_extract(public_jwk,'$.alg')=? AND retire_at IS NULL ORDER BY published_at DESC,kid DESC LIMIT 1",alg)||fail('signing_key_not_ready',503):await activeSigningKey(ctx,alg);
+ const key=await importJWK(await decrypt(ctx,row),alg);
  return new SignJWT(claims).setProtectedHeader({alg,kid:row.kid,typ}).setIssuer(ctx.origin).setIssuedAt(Math.floor(ctx.now()/1000)).setExpirationTime(expiresAt).sign(key);
 }
 export async function pairwiseSubject(ctx,sector,person) {

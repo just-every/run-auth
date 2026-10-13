@@ -1,6 +1,6 @@
 import http from 'node:http';
 import net from 'node:net';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { posix } from 'node:path';
 import { refuse } from './errors.mjs';
 import { fontResponseHeaders } from './font-cache.mjs';
@@ -8,11 +8,16 @@ import { fontResponseHeaders } from './font-cache.mjs';
 // The public listener observes transport lifetime without buffering or replacing
 // application responses. Preserve Host, Origin, cookies, status and streaming.
 // Each request opens its own loopback connection: a pooled keep-alive socket
-// that the runtime has already dropped would otherwise surface as a 502.
-export async function trafficProxy({host,port,target,activity}) {
+// that the runtime has already dropped would otherwise fail a fresh request.
+// In door mode (`door`: {host, header, secret}) it answers only requests whose
+// Host is its own `<name>.localhost:<port>` (or a subdomain) and that carry the
+// per-start secret the front door adds; cookies are not scoped by port, so
+// anything else could bring another site's cookies here.
+export async function trafficProxy({host,port,target,activity,door}) {
  const probe=randomUUID(),sockets=new Set();
  const server=http.createServer((req,res)=>{
-  if(!publicPath(req.url)){req.resume();res.writeHead(404,{'content-type':'text/plain; charset=utf-8'});res.end('Not found');return;}
+  if(door&&!doorAdmits(req,door)){req.resume();res.writeHead(403,{'content-type':'text/plain; charset=utf-8'});res.end('This checkout answers only through its front door.');return;}
+  if(!publicPath(req.url)){req.resume();notFound(res);return;}
   const internal=req.headers['x-rer-probe']===probe;delete req.headers['x-rer-probe'];
   const finish=internal?()=>{}:activity.begin();
   let requestEnded=req.complete,responseEnded=false;
@@ -23,10 +28,11 @@ export async function trafficProxy({host,port,target,activity}) {
    res.writeHead(reply.statusCode,fontResponseHeaders(req.url,reply.statusCode,reply.rawHeaders,req.headers));reply.pipe(res);
   });
   req.once('aborted',()=>upstream.destroy());res.once('close',()=>upstream.destroy());
-  upstream.on('error',()=>{if(!res.headersSent)res.writeHead(502);res.end();});req.pipe(upstream);
+  upstream.on('error',()=>{if(!res.headersSent)notFound(res);else res.destroy();});req.pipe(upstream);
  });
  server.on('connection',socket=>{sockets.add(socket);socket.on('close',()=>sockets.delete(socket));});
  server.on('upgrade',(req,socket,head)=>{
+  if(door&&!doorAdmits(req,door)){socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');return;}
   if(!publicPath(req.url)){socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');return;}
   const hmr=String(req.headers['sec-websocket-protocol']??'').split(',').map(s=>s.trim()).includes('vite-hmr');
   const upstream=net.connect(target,'127.0.0.1',()=>{
@@ -55,6 +61,14 @@ export async function trafficProxy({host,port,target,activity}) {
  }
  return {probe,port:server.address().port,async close(){for(const socket of sockets)socket.destroy();await new Promise(resolve=>server.close(resolve));}};
 }
+function doorAdmits(req,door){
+ const host=String(req.headers.host??'').toLowerCase(),given=Buffer.from(String(req.headers[door.header]??'')),secret=Buffer.from(door.secret);
+ // The secret never reaches the application.
+ delete req.headers[door.header];
+ for(let i=req.rawHeaders.length-2;i>=0;i-=2)if(req.rawHeaders[i].toLowerCase()===door.header)req.rawHeaders.splice(i,2);
+ return (host===door.host||host.endsWith('.'+door.host))&&given.length===secret.length&&timingSafeEqual(given,secret);
+}
+function notFound(res){res.writeHead(404,{'content-type':'text/plain; charset=utf-8'});res.end('Not found');}
 // The runtime's built-in routes (/cdn-cgi/*: Local Explorer, trigger handlers,
 // R2 and platform proxies), the checkout's private files and export archives
 // (*.rer and their in-progress .partial files) never answer on the public
@@ -63,14 +77,14 @@ export async function trafficProxy({host,port,target,activity}) {
 // spellings of either are refused too (APFS ignores case). The documented
 // exports/ folder is refused where Vite serves the checkout (the root and its
 // /@fs, /@id prefixes), so an app's own /api/.../exports routes still answer.
-const privateSegment=/^(?:cdn-cgi|\.seed|\.wrangler|\.git|\.dev\.vars.*|\.env.*|.*\.rer(?:\.[\w-]+\.partial)?)$/i;
+const privateSegment=/^(?:cdn-cgi|\.rer|\.seed|\.wrangler|\.git|\.dev\.vars.*|\.env.*|.*\.rer(?:\.[\w-]+\.partial)?)$/i;
 export function publicPath(url){
  let path=String(url).split(/[?#]/)[0];
  for(let round=0;round<4;round++){let decoded;try{decoded=decodeURIComponent(path);}catch{return false;}if(decoded===path)break;path=decoded;}
  const segments=path.replace(/\\/g,'/').split('/').map(segment=>segment.trim());
  if(segments.some(segment=>privateSegment.test(segment)))return false;
  const served=posix.normalize('/'+segments.join('/')).split('/').filter(Boolean),exports=segment=>/^exports$/i.test(segment);
- return !(served.length>1&&exports(served[0]))&&!(served[0]?.startsWith('@')&&served.some(exports));
+ return !exports(served[0])&&!(served[0]?.startsWith('@')&&served.some(exports));
 }
 // Count application data frames, not protocol ping/pong or an open control
 // socket. Parse lengths incrementally without retaining application payloads.

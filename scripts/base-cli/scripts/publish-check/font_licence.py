@@ -5,7 +5,9 @@ import re
 # line followed by sections only the full text carries.
 TITLE = re.compile(r'(?im)^[ \t]*SIL OPEN FONT LICENSE[ \t]+Version[ \t]+1\.1\b.*$')
 BODY = ('PERMISSION & CONDITIONS', 'Reserved Font Name', 'Font Software')
-NOTICE = re.compile(r'(?im)^[ \t]*Copyright\b.*$')
+# An attribution line names a year after the word: "Copyright (c) 2014 Holder".
+# Other prose that starts with Copyright, such as a contact line, stays scanned.
+NOTICE = re.compile(r'(?im)^[ \t]*Copyright[ \t]+(?:(?:\(c\)|©)[ \t]*)?\d{4}\b.*$')
 
 
 def without_required_notices(text):

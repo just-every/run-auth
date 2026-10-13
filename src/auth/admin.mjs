@@ -4,6 +4,8 @@ import {stageSigningKey,retireSigningKey} from './keys.mjs';
 import {random,email,one,all,run,requireSession,session,audit,json,fail,cookie,cookieName} from './core.mjs';
 import {moveInModel} from './move-in/routes.mjs';
 import {agentsModel} from './agents/routes.mjs';
+import {appsModel} from './links/routes.mjs';
+import {fencePerson} from './links/logout.mjs';
 export async function model(ctx,request,page='account') {
  const s=await session(ctx,request);if(!s)return {page,issuer:ctx.origin,user:null,me:null,isAdmin:false};
  const amr=JSON.parse(s.amr),isAdmin=['owner','admin'].includes(s.role)&&amr.includes('hwk');
@@ -13,15 +15,17 @@ export async function model(ctx,request,page='account') {
   all(ctx,'SELECT id,recovery_id,message,created_at FROM auth_notices WHERE session_id=? ORDER BY created_at DESC',s.id),
   all(ctx,isAdmin?'SELECT r.*,p.email FROM auth_recoveries r JOIN oa_operators p ON p.id=r.person_id WHERE r.cancelled_at IS NULL AND r.completed_at IS NULL':'SELECT * FROM auth_recoveries WHERE person_id=? AND cancelled_at IS NULL AND completed_at IS NULL',...(isAdmin?[]:[s.person_id])),
  ]);
- const result={page,issuer:ctx.origin,user,me:{...user,admin:isAdmin,method:amr.includes('hwk')?'passkey':'email'},isAdmin,localEmailConfirmed:freshLocalEmail(ctx,s),csrf:'',methods,passkeys:methods,notices,recoveries,people:[],domains:[],domainRules:[],policyProviders:[],apps:[],activity:[],unavailableActions:['apps.approve','apps.remove','account.signout-everywhere'],notice:null};
+ const result={page,issuer:ctx.origin,user,me:{...user,admin:isAdmin,method:amr.includes('hwk')?'passkey':'email'},isAdmin,localEmailConfirmed:freshLocalEmail(ctx,s),csrf:'',methods,passkeys:methods,notices,recoveries,people:[],domains:[],domainRules:[],policyProviders:[],apps:[],activity:[],unavailableActions:[],notice:null};
  if(isAdmin) {
-  [result.people,result.domains,result.apps,result.activity,result.domainRules]=await Promise.all([
+  let apps;
+  [result.people,result.domains,apps,result.activity,result.domainRules]=await Promise.all([
    all(ctx,'SELECT id,email,display_name AS name,role,status,created_at FROM oa_operators ORDER BY email'),
    all(ctx,'SELECT domain,created_at FROM auth_domains ORDER BY domain'),
-   all(ctx,'SELECT id,name,origin,sector_id,source,created_at,disabled_at FROM auth_clients ORDER BY name'),
+   appsModel(ctx),
    all(ctx,'SELECT a.*,p.email AS actor_email,d.detail FROM auth_activity a LEFT JOIN oa_operators p ON p.id=a.actor_id LEFT JOIN auth_activity_details d ON d.activity_id=a.id ORDER BY a.id DESC LIMIT 100'),
    all(ctx,'SELECT domain,provider_id FROM oa_domain_rules ORDER BY domain'),
   ]);
+  Object.assign(result,apps);
   result.policyProviders=(ctx.upstreamProviders||[]).map(p=>({id:p.id,label:p.label||p.preset}));
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
@@ -83,7 +87,7 @@ export async function adminAction(ctx,request,path,data) {
   // Base's version trigger also revokes all previously issued Base sessions.
   const changed=await run(ctx,`UPDATE oa_operators SET status='inactive' WHERE id=? AND role!='owner' AND ${g}`,id,...ga);
   if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('person_unavailable',409);}
-  await audit(ctx,s.person_id,'person_suspended',id);return json({ok:true});
+  await audit(ctx,s.person_id,'person_suspended',id);await fencePerson(ctx,id);return json({ok:true});
  }
  if(path==='/keys/stage') {
   const staged=await stageSigningKey(ctx,data.alg,guard);if(!staged){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}

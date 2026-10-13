@@ -253,6 +253,26 @@
       if (submitter) submitter.disabled = false
       return
     }
+    const linkToken = event.target.closest('form[data-link-token]')
+    if (linkToken) {
+      event.preventDefault()
+      const submitter = event.submitter
+      if (submitter) submitter.disabled = true
+      try {
+        const result = await requestJSON(linkToken.action, { origin: new FormData(linkToken).get('origin') })
+        // The envelope rer setup reads; shown here once.
+        const panel = document.querySelector('[data-link-token-output]'), field = document.querySelector('[data-link-token-value]')
+        field.value = JSON.stringify(result, null, 2)
+        panel.hidden = false
+        field.focus()
+        field.select()
+        showStatus(`Link token for ${result.origin} created. Copy it now: it is not shown again.`, 'success')
+      } catch (error) {
+        showStatus(error instanceof Error ? error.message : 'Auth could not create a link token.', 'error')
+      }
+      if (submitter) submitter.disabled = false
+      return
+    }
     const form = event.target.closest('form[data-auth-action]')
     if (!form) return
     event.preventDefault()

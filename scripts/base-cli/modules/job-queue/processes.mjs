@@ -33,9 +33,11 @@ export function signalGroup(pgid, signal) {
 async function groupLive(pgid) {
   if (process.platform === 'darwin') {
     const { stdout } = await execute('/bin/ps', ['-A', '-o', 'pgid=', '-o', 'stat=']);
+    // A member already exiting (stat flag E) cannot be signalled and is ending,
+    // like a zombie; killpg answers EPERM for a group of only such members.
     return stdout.trim().split('\n').some(line => {
       const [group, state] = line.trim().split(/\s+/);
-      return Number(group) === pgid && !state.startsWith('Z');
+      return Number(group) === pgid && !state.startsWith('Z') && !state.includes('E');
     });
   }
   for (const name of (await readdir('/proc')).filter(name => /^\d+$/.test(name))) {

@@ -42,7 +42,7 @@ export async function main(args) {
       }else if(record.kind==='part')await get('imports/'+id+'/parts/'+record.index,'PUT',record);
       else closing=record;
     }
-    const result=await get('imports/'+id+'/finalize','POST',{contentHash:closing.contentHash});
+    const result=await get('imports/'+id+'/finalize','POST',{contentHash:closing.contentHash,archiveHash:closing.archiveHash});
     process.stdout.write('Import '+result.phase+'.\nRequired configuration: '+result.requiredConfiguration.join(', ')+'\n');return;
   }
   let collection='exports';

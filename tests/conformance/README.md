@@ -10,8 +10,8 @@ node tests/conformance/run-auth.mjs conformance-current-results
 
 This starts actual Auth protocol routes in Workerd with disposable D1,
 provisions two independent ES256 private-key client fixtures selecting RS256 ID/access tokens, and proves a real
-bound-email identity through a fake mail edge. Fixture provisioning does not
-establish owner-approved app linking. That operation still requires Base's app-linking APIs.
+bound-email identity through a fake mail edge. Fixture provisioning registers the clients directly. App
+linking is proven separately (LINKING.md, tests/auth/linking.test.mjs).
 The fixture waits for the actual advertised signing-key publication interval.
 
 The actual plan attempts use Auth's code/PKCE, private_key_jwt, scoped access
@@ -24,7 +24,10 @@ Config reads actual Auth discovery. The native suite configuration declares
 `rer_interfaces` through `server.allow_unexpected_metadata_fields`, because
 Base requires that legitimate extension for version negotiation. An unannotated
 run reports a schema WARNING for it; no failed protocol
-condition, module or structural validation is suppressed. No refresh token, logout endpoint, alternate
+condition, module or structural validation is suppressed. The fixture clients register the suite's back-channel logout and post-logout
+redirect URIs. Browser automation answers Auth's authorization and logout
+pages. The listener binds 127.0.0.1 only. An optional second argument lists the
+plans. No refresh token, alternate
 client authentication method or certification claim is added. Terminal module results, warnings, reviews,
 and literal plan refusals must be reported individually.
 

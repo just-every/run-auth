@@ -14,6 +14,7 @@ export const DEV_KEY_HEADER = 'x-rer-dev-key';
 // modules/operator-auth/dev/index.mjs DEV_LAYER_MARKER: present in any output
 // that bundles the local-only dev layer.
 export const DEV_LAYER_MARKER = 'rer-dev-layer:local-only-never-deploy';
+export const DEV_AI_MARKER = 'rer-ai-dev:local-only-never-deploy';
 const KEY = /^RER_DEV_KEY=([A-Za-z0-9_-]{43,256})\n?$/;
 
 export async function ensureDevKey(root) {
@@ -57,7 +58,8 @@ export function refuseManagedInstallation(...sources) {
 
 // The persona list the running app declares, read with the key header.
 export async function resolvePersona(url, key, as, signal) {
- const response = await fetch(url + '/__dev/personas', { headers: { [DEV_KEY_HEADER]: key }, signal: AbortSignal.any([signal, AbortSignal.timeout(10000)].filter(Boolean)) });
+ const { appFetch } = await shared('app-fetch.mjs');
+ const response = await appFetch(url + '/__dev/personas', { headers: { [DEV_KEY_HEADER]: key }, signal: AbortSignal.any([signal, AbortSignal.timeout(10000)].filter(Boolean)) });
  if (!response.ok) { await response.body?.cancel(); throw refuse(`The application did not serve dev identity (HTTP ${response.status}). Check its local-only entry.`); }
  const personas = await response.json(), persona = personas.find(entry => entry.as === as);
  if (!persona) throw invalid(`Unknown dev persona ${as}. This app declares: ${personas.map(entry => entry.as).join(', ')}.`);
@@ -66,15 +68,14 @@ export async function resolvePersona(url, key, as, signal) {
 
 // rer build refuses output that bundles the dev layer, naming the file.
 export async function refuseDevLayerOutput(root, devIdentity) {
- if (!devIdentity) return;
- const marker = Buffer.from(DEV_LAYER_MARKER);
+ const markers = [DEV_LAYER_MARKER, DEV_AI_MARKER].map(value => Buffer.from(value));
  async function walk(path) {
   let status; try { status = await lstat(path); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
   if (status.isDirectory()) { for (const entry of (await readdir(path)).sort()) await walk(join(path, entry)); return; }
   if (!status.isFile()) return;
   const file = await open(path, 'r');
-  try { if ((await file.readFile()).includes(marker)) throw refuse(`The build output contains the local-only dev layer: ${relative(root, path)}. Import modules/operator-auth/dev only from the local entry ${devIdentity.entry}.`); }
+  try { const bytes = await file.readFile(); if (markers.some(marker => bytes.includes(marker))) throw refuse(`The build output contains the local-only dev layer: ${relative(root, path)}. Import dev modules only from the local entry ${devIdentity?.entry ?? 'server.dev'}.`); }
   finally { await file.close(); }
  }
- for (const output of devIdentity.output ?? ['dist']) await walk(await contained(root, output, { optional: true }));
+ for (const output of devIdentity?.output ?? ['dist']) await walk(await contained(root, output, { optional: true }));
 }

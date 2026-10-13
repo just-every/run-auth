@@ -92,6 +92,11 @@ export async function approve(ctx,request,data) {
   const blocked=kind.requires?'last_administrator':'proposal_unavailable';
   await close(ctx,s,guard,p,'failed',{reason:blocked});fail(blocked,409);
  }
+ // Work that reaches outside the database runs once, after the claim committed.
+ if(kind.after) {
+  try {await kind.after(ctx,state,params,s.person_id);}
+  catch(error) {await auditDetail(ctx,s.person_id,'agent_proposal_followup_failed',p.id,{target:targetName(p),reason:String(error?.message||'failed').slice(0,120)});return json({id:p.id,status:'done',followUp:'failed'});}
+ }
  if(kind.mail) {
   try {await sendInvitation(ctx,p.target);}
   catch {await auditDetail(ctx,s.person_id,'agent_invitation_mail_failed',p.id,{target:p.target});}

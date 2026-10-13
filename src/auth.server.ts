@@ -9,6 +9,10 @@ import branding from './branding.json'
 
 const theme = { href: '/rer-theme.css', productName: branding.name, accentColor: branding.primaryColor }
 export interface Bindings {
+ ASSETS?: Fetcher
+ RER_DEPLOY_SOURCE?: string
+ RER_DEPLOY_FINGERPRINT?: string
+ RER_VERSION?: { id: string }
  DB: D1Database
  AUTH_ORIGIN: string
  AUTH_LOCAL?: string
@@ -60,7 +64,7 @@ export async function authResponse(request: Request, original: Bindings, executi
  }
  // Base claims the owner, but never authorizes Auth administration or enrollment.
  if (['/auth/bootstrap', '/auth/session', '/auth/signout'].includes(path)) return fontDocumentResponse(await createAuthHandler(operatorAuth(env))(request))
- const ownsIdentity = path.startsWith('/auth/') || path.startsWith('/oidc/') || path.startsWith('/api/auth/') || path === '/.well-known/openid-configuration'
+ const ownsIdentity = path.startsWith('/auth/') || path.startsWith('/oidc/') || path.startsWith('/api/auth/') || ['/.well-known/openid-configuration', '/.well-known/rer-provider', '/.well-known/rer-dependencies'].includes(path)
  const ownsPage = path === '/' || path === '/signin' || path === '/setup' || path === '/app' || path.startsWith('/app/')
  if (!ownsIdentity && !ownsPage) return null
  if (url.origin !== env.AUTH_ORIGIN || (request.headers.has('host') && request.headers.get('host')?.toLowerCase() !== url.host.toLowerCase())) return new Response(null, { status: 403, headers: privateHeaders })

@@ -3,7 +3,7 @@ import { fontHead } from './font-head'
 // Native auth documents bypass the route renderer. Append after their own
 // styles so the shared body font also applies, preserving the auth module's
 // hashed styles, private headers and form/Origin behavior.
-export function fontDocumentResponse(response: Response | null): Response | null {
+export async function fontDocumentResponse(response: Response | null): Promise<Response | null> {
   if (!response?.headers.get('content-type')?.startsWith('text/html')) return response
   const headers = new Headers(response.headers)
   const policy = headers.get('content-security-policy')
@@ -16,7 +16,10 @@ export function fontDocumentResponse(response: Response | null): Response | null
     }
     headers.set('content-security-policy', directives.join('; '))
   }
-  return new HTMLRewriter().on('head', {
-    element(element) { element.append(fontHead, { html: true }) },
-  }).transform(new Response(response.body, { status: response.status, statusText: response.statusText, headers }))
+  // These are bounded native auth documents, not streaming route renders.
+  const html = await response.text()
+  headers.delete('content-length')
+  return new Response(html.replace(/<\/head\s*>/i, `${fontHead}</head>`), {
+    status: response.status, statusText: response.statusText, headers,
+  })
 }

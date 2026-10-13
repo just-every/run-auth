@@ -106,8 +106,10 @@ forward-only, so a rollback keeps the newer schema).
 
 ### Backups and what they exclude
 
-`rer export` refuses (`auth_transfer_pending`) until Base's transfer APIs arrive, so Auth has
-no supported backup-and-restore of its own. Cloudflare D1 Time Travel restores
+`rer export` writes a portable archive of a stopped local install (LINKING.md:
+it carries a signed grant map and omits sessions, keys and the pairwise key), and
+`rer import` restores it into an empty checkout. Hosted installs have no
+export route yet. Cloudflare D1 Time Travel restores
 the live database in place within the account and holds everything, including
 session digests and encrypted keys. Any copy taken out of the account must
 leave out sessions, private keys and secrets: export only the directory and

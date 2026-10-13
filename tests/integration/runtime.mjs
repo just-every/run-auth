@@ -6,7 +6,14 @@ import {mkdtemp, rm, writeFile, symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {productionRuntime} from '../../scripts/base-onboarding/production-options.mjs';
+import {productionPlan,projectMiniflare} from '../../scripts/base-onboarding/production-options.mjs';
+
+// The emitted Worker under the same Miniflare plan rer preview serves, in this process.
+async function productionRuntime(directory,origin,port,host) {
+ const {Miniflare,convertV4MiniflareOptions}=await projectMiniflare(directory);
+ const runtime=new Miniflare({...convertV4MiniflareOptions(await productionPlan(directory,origin,port,host)),resourcePersistencePath:join(directory,'.wrangler/state/v3')});
+ return {ready:runtime.ready,dispose:()=>runtime.dispose()};
+}
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 export async function openApp({upstreamProviders}={}) {

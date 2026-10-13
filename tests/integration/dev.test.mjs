@@ -85,7 +85,10 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  for(const path of privatePaths)assert.equal((await fetch(previewReady.url+path,{redirect:'manual'})).status,404,`preview ${path}`);
  const previewStop=command(['preview','--stop','--non-interactive']);assert.equal(await new Promise(resolve=>previewStop.child.once('exit',resolve)),0);await new Promise(resolve=>preview.child.exitCode!==null?resolve():preview.child.once('exit',resolve));
  const recovery=command(['recovery','--local']);assert.equal(await new Promise(resolve=>recovery.child.once('exit',resolve)),0);const tokenFile=join(directory,'.rer/local/recovery-token');assert.equal((await stat(tokenFile)).mode&0o777,0o600);const token=(await readFile(tokenFile,'utf8')).trim();assert.ok(!recovery.output().includes(token),'recovery wrapper never prints the token');
- const transfer=command(['export','--output','exports/refused.rer','--non-interactive','--json']);assert.equal(await new Promise(resolve=>transfer.child.once('exit',resolve)),1);
- const refusal=transfer.output().split('\n').flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}}).find(event=>event.event==='error');assert.equal(refusal?.code,'auth_transfer_pending');await assert.rejects(access(join(directory,'exports/refused.rer')));
- console.log('Real rer setup/dev: localhost owner claim, key-gated Auth session bridge, no passkey admin privilege, key removal, persona signout and private path refusals');
+ // Export carries people and the signed grant map, never sessions, signing keys or the pairwise key.
+ const transfer=command(['export','--output','exports/auth.rer','--non-interactive','--json']);assert.equal(await new Promise(resolve=>transfer.child.once('exit',resolve)),0,transfer.output());
+ const archived=(await readFile(join(directory,'exports/auth.rer'),'utf8')).split('\n').filter(Boolean).map(line=>JSON.parse(line)),tables=archived[0].tables.map(table=>table.name);
+ for(const kept of ['oa_operators','auth_emails','auth_passkeys','auth_clients','auth_grants','auth_subjects','auth_activity','auth_grant_maps'])assert.ok(tables.includes(kept),kept);
+ for(const left of ['auth_sessions','oa_sessions','auth_signing_keys','auth_settings','auth_recovery_tokens','auth_agent_keys','auth_link_tokens'])assert.ok(!tables.includes(left),left);
+ console.log('Real rer setup/dev: localhost owner claim, key-gated Auth session bridge, no passkey admin privilege, key removal, persona signout, private path refusals and a policy export');
 });

@@ -59,6 +59,12 @@ const effectRows = (effect: AgentEffect): string => {
     rows.push(['Domain', effect.domain])
     rows.push(['Required provider', `${effect.provider?.label ?? 'None'} → ${typeof effect.after === 'object' && effect.after ? effect.after.label : 'None'}`])
     rows.push(['People at this domain', effect.people?.length ? effect.people.map(p => p.email).join(', ') : 'None'])
+  } else if (effect.app) {
+    rows.push(['App origin', effect.app.origin])
+    if (effect.app.name) rows.push(['App', effect.app.name])
+    rows.push(['Change', effect.after === 'removed' ? 'Remove this app: it can no longer sign people in' : 'Link this app: people can sign in to it with Auth'])
+    const notes = [effect.app.punycode ? 'Punycode origin' : '', effect.app.firstSeen ? 'First time Auth has seen this origin' : '', effect.app.replaces ? 'Replaces an existing link' : ''].filter(Boolean)
+    if (notes.length) rows.push(['Check', notes.join('; ')])
   }
   return `<dl class="effect-list">${rows.map(([name, value]) => `<div><dt>${escape(name)}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl>`
 }

@@ -2,8 +2,8 @@
 
 First-party seeds expose public operations through the RER dispatcher. From a
 runnable seed checkout, the supported local sequence begins with
-`node scripts/rer.mjs install`, `node scripts/rer.mjs setup` and
-`node scripts/rer.mjs dev`; owner sign-in uses the printed local outbox. The
+`rer install`, `rer setup` and
+`rer dev`; owner sign-in uses the printed local outbox. The
 command contract and flags are documented in the runnable checkout's root
 `RUN-LOCALLY.md`.
 
@@ -20,7 +20,7 @@ A first-party adapter in `scripts/installer/local.mjs` exports `commandAdapter`
 and its setup hooks. The command adapter selects one root `rer-setup.json`
 manifest and declares real targets and policy for dependencies, build,
 migrations, development, preview, verification, deployment and portability.
-Package scripts for public verbs dispatch to `node scripts/rer.mjs VERB`;
+Package scripts for public verbs run the vendored `scripts/rer.mjs` with the verb;
 internal targets use different names so the CLI cannot call its own alias
 recursively.
 
@@ -38,6 +38,20 @@ adapter owns real migrations, resource names, auth hooks, settings names, data
 policy and deployment effects. The CLI owns parsing, public flags, pins,
 containment, locking, capture, cancellation, output, exit mapping and
 sequencing.
+
+For `rer setup`, `dev` and `preview`, a custom `start` hook must bind its app
+to `127.0.0.1:context.runtimePort`. rer's traffic proxy owns the port in
+`context.origin`; use `context.origin` for public URLs and cookies, rather
+than as the app's listening address.
+
+A seed that declares `devIdentity` on its command adapter gets the key-gated way
+in from the installer without declaring anything more: before setup the installer
+creates the checkout's dev key (as `rer setup` does) and passes it to the hooks as
+`context.devKey`. The `start` hook must give it to the temporary app (an
+`RER_DEV_KEY` binding), because the `signIn` request reaches the key-gated outbox
+with it. When setup completes, the installer page offers the outbox through the
+key exchange (`RER_OPEN`); the key never enters saved state or logs. A seed
+without `devIdentity` gets no key and its installer is unchanged.
 
 `rer-setup.json` is the only setup schema. Its fields, groups, defaults,
 conditional requirements and ordered steps define which answers are accepted.
@@ -90,9 +104,10 @@ Declare the theme in two places that name the same file:
   and `firstRunResponse(request, bindings, auth, { theme: { href:
   '/rer-theme.css', productName, accentColor? } })` from `src/base/setup` for
   `/setup`; the foundation sign-in uses `themeFrame` from
-  `src/base/theme-frame` the same way. `accentColor` colours buttons when the
-  theme declares no accent. A seed's own pages may read the same tokens by
-  linking the file.
+  `src/base/theme-frame` the same way, and the development outbox takes
+  `createDevelopmentOutboxHandler({ ..., theme: '/rer-theme.css' })`.
+  `accentColor` colours buttons when the theme declares no accent. A seed's own
+  pages may read the same tokens by linking the file.
 
 Without a theme every page is unchanged. `default-seed/public/rer-theme.css`
 and the foundation template's `public/rer-theme.css` are worked examples.

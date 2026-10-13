@@ -7,7 +7,9 @@ from publication_config import intended_public_repositories
 # Match the username itself so a bare home, including one with spaces, counts.
 LOCAL_PATH = re.compile(r'''(?x)(?<![^\s("'`=:\[<>{|])(?:[*_]|~~)*(?:(?:(?i:(?a:file://)))?(?<!/[A-Z]:)/(?:Users|home)/|(?i:(?:(?a:file:///))?[A-Z]:[\\/]+Users[\\/]+))[^/\\\s"'<>`]+''')
 CONFIG = '.publish-check/config.json'
-EMAIL = re.compile(r"(?<![A-Za-z0-9_.+%-])[A-Za-z0-9_][A-Za-z0-9_.+%'-]{0,63}@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.[A-Za-z][A-Za-z0-9-]{1,62}(?![A-Za-z0-9.-])|(?<![A-Za-z0-9_.+%-])[A-Za-z0-9_][A-Za-z0-9_.+%'-]{0,63}@(?:example|test|invalid)(?![A-Za-z0-9.-])", re.I)
+# An alphabetic top-level label ends before a following digit, such as the DER
+# tag after a certificate's email value; other labels keep the full extent.
+EMAIL = re.compile(r"(?<![A-Za-z0-9_.+%-])[A-Za-z0-9_][A-Za-z0-9_.+%'-]{0,63}@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.(?:[A-Za-z]{2,63}(?![A-Za-z.-])|[A-Za-z][A-Za-z0-9-]{1,62}(?![A-Za-z0-9.-]))|(?<![A-Za-z0-9_.+%-])[A-Za-z0-9_][A-Za-z0-9_.+%'-]{0,63}@(?:example|test|invalid)(?![A-Za-z0-9.-])", re.I)
 RULES = {'hygiene.local-path', 'hygiene.github-private', 'hygiene.github-missing',
          'hygiene.email', 'hygiene.internal-reference'}
 

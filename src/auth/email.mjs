@@ -49,4 +49,17 @@ export async function confirmEmail(ctx,request,data) {
  if((request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded'))return new Response(null,{status:303,headers:{location:returnTo,'set-cookie':s.header,'cache-control':'no-store'}});
  return json({ok:true,returnTo},200,{'set-cookie':s.header});
 }
-export function confirmationPage() { return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Confirm your Auth email</title><h1>Confirm your email</h1><form method="post"><button>Continue to Auth</button></form></html>`,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'strict-origin','content-security-policy':"default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"}}); }
+// Confirming continues a pending app sign-in by redirect: browsers hold a form's
+// whole redirect chain to its form-action, so that one app's origin is allowed too.
+async function continuingClient(ctx,token) {
+ const proof=token&&await one(ctx,'SELECT payload FROM auth_challenges WHERE id=? AND purpose=? AND expires_at>?',await hash(token),'email',ctx.now());
+ const next=proof&&new URL(JSON.parse(proof.payload).returnTo,ctx.origin),transaction=next?.pathname==='/oidc/authorize/resume'&&next.searchParams.get('transaction');
+ const login=transaction&&await one(ctx,'SELECT payload FROM auth_challenges WHERE id=? AND purpose=? AND expires_at>?',await hash(transaction),'authorize-login',ctx.now());
+ const clientId=login&&new URL(JSON.parse(login.payload).path,ctx.origin).searchParams.get('client_id');
+ const client=clientId&&await one(ctx,'SELECT origin FROM auth_clients WHERE id=? AND disabled_at IS NULL',clientId);
+ return client?.origin??null;
+}
+export async function confirmationPage(ctx,request) {
+ const app=await continuingClient(ctx,new URL(request.url).searchParams.get('token'));
+ return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Confirm your Auth email</title><h1>Confirm your email</h1><form method="post"><button>Continue to Auth</button></form></html>`,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'strict-origin','content-security-policy':`default-src 'none'; form-action 'self'${app?' '+app:''}; frame-ancestors 'none'; base-uri 'none'`}});
+}

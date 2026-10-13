@@ -9,8 +9,8 @@ export interface Frame { htmlClass: string; head: string; brand: string; policy:
 
 const FRAME_STYLE = '.rer-themed body{box-sizing:border-box;margin:0;min-height:100vh;padding:48px 20px;background:var(--rer-page,#f3f5f8);color:var(--rer-text,#172033);font-family:var(--rer-font-body,inherit);line-height:1.6}'
   + '.rer-themed main{box-sizing:border-box;max-width:480px;margin:0 auto;padding:36px;background:var(--rer-surface,#fff);border-radius:var(--rer-radius,20px);box-shadow:0 1px 2px #0000000d,0 14px 36px #00000014;overflow-wrap:anywhere}'
-  + '.rer-themed h1{font-family:var(--rer-font-heading,var(--rer-font-body,inherit));font-size:30px;line-height:1.25;letter-spacing:-.01em;margin:0 0 16px}'
-  + '.rer-themed p,.rer-themed dt{color:var(--rer-muted,#475569)}.rer-themed p{margin:0 0 20px}'
+  + '.rer-themed h1{font-family:var(--rer-font-heading,var(--rer-font-body,inherit));font-size:30px;line-height:1.25;letter-spacing:-.01em;margin:0 0 16px;text-wrap:balance}'
+  + '.rer-themed p,.rer-themed dt{color:var(--rer-muted,#475569)}.rer-themed p{margin:0 0 20px;text-wrap:pretty}'
   + '.rer-themed dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;margin:0 0 24px}.rer-themed dd{margin:0;color:var(--rer-text,#172033)}'
   + '.rer-themed form{display:grid;gap:16px;margin:0}.rer-themed form p{margin:0}'
   + '.rer-themed label{display:grid;gap:6px;color:var(--rer-text,#172033);font-weight:500}.rer-themed label:has(input[type=checkbox]){display:flex;gap:10px;align-items:flex-start;font-weight:400}'
@@ -26,7 +26,7 @@ const FRAME_STYLE = '.rer-themed body{box-sizing:border-box;margin:0;min-height:
 const escape = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!))
 const hashes = new Map<string, Promise<string>>()
 // WCAG relative luminance picks readable button text for the branding accent.
-const ink = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0) > 0.179 ? '#000000' : '#ffffff'
+export const ink = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0) > 0.179 ? '#000000' : '#ffffff'
 const digest = async (text: string) => btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))))
 
 /** `policy` is the document's style/font/image CSP: the hashed frame style plus same-origin theme files. */

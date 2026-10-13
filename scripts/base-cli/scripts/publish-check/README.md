@@ -54,3 +54,19 @@ value with no file-name key keeps the native finding. Historical matches use onl
 that commit's blobs and working-tree preimages reject linked paths. There is no
 path, filename, hash-value or repository exemption. `hit_location.py` resolves
 the native match's exact bytes for both proofs.
+
+`trust_bundle.py` classifies an email match as public CA certificate metadata
+only when all of these hold: the file's path is an artifact listed by a committed
+`trust-bundle.json` in its directory and its bytes hash to the SHA-256 pinned
+there; that manifest's webpki-roots release and checksum are exactly the one the
+same directory's `Cargo.lock` locks from crates.io; and the match lies entirely
+inside an attribute value of a subject Name parsed (`der.py`, strict DER) from
+those bytes, where the anchor's subject Name and SubjectPublicKeyInfo DER both
+occur in the file and hash to one anchor entry of the manifest. With the verified
+subject values blanked, no email may remain, and every match must be one found
+inside them; otherwise the file keeps `hygiene.email`. Historical blobs use their
+own commit's manifest and lock; working-tree files use the selected commit's.
+The build that produces the artifacts (`modules/egress-service/tls/build.mjs`)
+regenerates the manifest, and its `--check` mode rejects a stale one. An
+alphabetic top-level domain label ends before a following digit, so a match
+ends at the DER string's boundary rather than absorbing the next tag byte.

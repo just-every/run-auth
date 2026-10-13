@@ -6,6 +6,8 @@
 // every effect statement runs only under that claim.
 import {email,one,all,fail,hash} from '../core.mjs';
 import {configuredProvider} from '../domain-policy.mjs';
+import {fencePerson} from '../links/logout.mjs';
+import {APP_KINDS} from './app-kinds.mjs';
 
 const domainOf=value=>{const domain=String(value||'').trim().toLowerCase();if(!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)||domain.length>253)fail('invalid_domain');return domain;};
 const ADMINISTRATORS="status='active' AND role IN ('owner','admin')";
@@ -55,7 +57,8 @@ export const KINDS={
   run:(ctx,state,claim)=>[
    ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE id=? AND role!='owner' AND ${claim.sql}`).bind(state.id,...claim.args),
    ctx.db.prepare(`UPDATE auth_sessions SET revoked_at=? WHERE person_id=? AND revoked_at IS NULL AND ${claim.sql}`).bind(ctx.now(),state.id,...claim.args),
-  ]},
+  ],
+  after:(ctx,state)=>fencePerson(ctx,state.id)},
  restore_person:{
   target:personTarget,state:personState,same:samePerson,
   check:async(state,ctx)=>!state?'person_not_found':state.status!=='inactive'?'person_not_suspended':await one(ctx,'SELECT 1 FROM oa_invitation_cancellations WHERE operator_id=?',state.id)?'invitation_was_removed':null,
@@ -89,8 +92,8 @@ export const KINDS={
   effect:(ctx,state)=>domainEffect(ctx,state,null),
   run:(ctx,state,claim)=>[ctx.db.prepare(`DELETE FROM oa_domain_rules WHERE domain=? AND ${claim.sql}`).bind(state.domain,...claim.args)]},
 };
-// App link approval and removal wait for Base's app-linking APIs, as on the Apps page.
-export const UNAVAILABLE={approve_app_link:'awaits_link_service',remove_app_link:'awaits_link_service'};
+Object.assign(KINDS,APP_KINDS);
+export const UNAVAILABLE={};
 
 export const digest=state=>hash(JSON.stringify(state));
 // Plain words for what moved between filing and now.

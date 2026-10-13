@@ -22,15 +22,26 @@ export async function fixture(directory,origin,suiteOrigin) {
   // The native suite schema predates RER's required interface negotiation field.
   // Declare that known extension using upstream's supported configuration;
   // structural metadata validation and all protocol conditions still run.
-  const config={alias:'auth-current',description:'Actual Auth disposable D1 profile',server:{discoveryUrl:origin+'/.well-known/openid-configuration',allow_unexpected_metadata_fields:['rer_interfaces']},browser:[]};
+  const base=suiteOrigin+'/test/a/auth-current';
+  // Browser automation for the logout plan: authorization ends at Auth's own page
+  // (the person cannot sign in by email inside the suite's browser), and
+  // end-session either returns to the suite or shows Auth's signed-out page.
+  const browser=[
+   {match:origin+'/oidc/authorize*',tasks:[{task:'Auth answers the authorization request',match:origin+'/*',commands:[['wait','xpath','//h1',10]]}]},
+   {match:origin+'/oidc/logout*',tasks:[
+    {task:'Confirm sign-out when Auth asks',optional:true,match:origin+'/oidc/logout*',commands:[['click','xpath','//button[@type="submit"]','optional']]},
+    {task:'Return to the suite',optional:true,match:'*/test/*/post*'},
+   ]},
+  ];
+  const config={alias:'auth-current',description:'Actual Auth disposable D1 profile',server:{discoveryUrl:origin+'/.well-known/openid-configuration',allow_unexpected_metadata_fields:['rer_interfaces']},browser};
   const keys=[];
   for(const name of ['client','client2']) {
    const pair=await generateKeyPair('ES256',{extractable:true});
    const publicKey={...await exportJWK(pair.publicKey),kid:name,alg:'ES256',use:'sig'};
    const privateKey={...await exportJWK(pair.privateKey),kid:name,alg:'ES256',use:'sig'};
-   const id='auth-current-'+name,redirect=suiteOrigin+'/test/a/auth-current/callback';
+   const id='auth-current-'+name,redirect=base+'/callback';
    config[name]={client_id:id,scope:'openid email profile',token_endpoint_auth_method:'private_key_jwt',token_endpoint_auth_signing_alg:'ES256',id_token_signed_response_alg:'RS256',jwks:{keys:[privateKey]}};
-   await runtime.db.prepare('INSERT INTO auth_clients(id,name,origin,sector_id,redirect_uris,jwks,owner_person_id,source,created_at,id_token_signed_response_alg) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,name,suiteOrigin,'conformance-'+name,JSON.stringify([redirect]),JSON.stringify({keys:[publicKey]}),'conformance-owner','owner',Date.now(),'RS256').run();
+   await runtime.db.prepare('INSERT INTO auth_clients(id,name,origin,sector_id,redirect_uris,jwks,owner_person_id,source,created_at,id_token_signed_response_alg,logout_uri,post_logout_redirect_uris) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,name,suiteOrigin,'conformance-'+name,JSON.stringify([redirect]),JSON.stringify({keys:[publicKey]}),'conformance-owner','owner',Date.now(),'RS256',base+'/backchannel_logout',JSON.stringify([base+'/post_logout_redirect'])).run();
    keys.push(pair);
   }
   await writeFile(join(directory,'config.json'),JSON.stringify(config),{mode:0o600});

@@ -16,6 +16,8 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createState } from './state.mjs';
 import { metadata } from './metadata.mjs';
 import { loadSeedTheme } from './theme-files.mjs';
+// A browser keeps a connection open; close waits this long for in-flight replies.
+const connectionGraceMs=1000;
 export async function startInstaller(root,{seed,port=0,answers,secretInput,noPrefill=false,resume=false,agent=false}={}){
  root=resolve(root);
  seed=await loadInstallerSeed(root,seed);
@@ -56,7 +58,7 @@ export async function startInstaller(root,{seed,port=0,answers,secretInput,noPre
  if(secretInput){vault.set(secretInput,store.state.draft);if(Object.keys(secretInput).length)store.activity.secrets();secretInput=undefined;}
  await workspaceArt?.request();
  store.state.known.providers=noPrefill||(!seed.features?.hosting&&!seed.features?.github)?{}:(await discoverProviders(root,{signal:abort.signal})).providers;
- const assets={'/setup-manifest.mjs':['../setup-manifest.mjs','text/javascript'],'/installer-inputs.mjs':['../installer-inputs.mjs','text/javascript'],'/schema/setup-validation.mjs':['../schema/setup-validation.mjs','text/javascript'],'/schema/json-schema.mjs':['../schema/json-schema.mjs','text/javascript'],'/ui/model-core.mjs':['model-core.mjs','text/javascript'],'/seed.mjs':[seed.browserModule,'text/javascript'],'/model-core.mjs':['model-core.mjs','text/javascript'],'/workspace-art.js':['workspace-art.js','text/javascript'],'/activity.js':['activity.js','text/javascript'], '/':['index.html','text/html'], '/app.js':['app.js','text/javascript'], '/address-client.mjs':['address-client.mjs','text/javascript'], '/model.mjs':['model.mjs','text/javascript'], '/style.css':['style.css','text/css'], '/theme.css':['theme.css','text/css'], '/ocean.png':[null,seed.background?.endsWith('.svg')?'image/svg+xml':'image/png']};
+ const assets={'/setup-manifest.mjs':['../setup-manifest.mjs','text/javascript'],'/installer-inputs.mjs':['../installer-inputs.mjs','text/javascript'],'/schema/setup-validation.mjs':['../schema/setup-validation.mjs','text/javascript'],'/schema/dependencies.mjs':['../schema/dependencies.mjs','text/javascript'],'/schema/json-schema.mjs':['../schema/json-schema.mjs','text/javascript'],'/ui/model-core.mjs':['model-core.mjs','text/javascript'],'/seed.mjs':[seed.browserModule,'text/javascript'],'/model-core.mjs':['model-core.mjs','text/javascript'],'/workspace-art.js':['workspace-art.js','text/javascript'],'/activity.js':['activity.js','text/javascript'], '/':['index.html','text/html'], '/app.js':['app.js','text/javascript'], '/address-client.mjs':['address-client.mjs','text/javascript'], '/model.mjs':['model.mjs','text/javascript'], '/style.css':['style.css','text/css'], '/theme.css':['theme.css','text/css'], '/ocean.png':[null,seed.background?.endsWith('.svg')?'image/svg+xml':'image/png']};
  for(const path of theme?.files.keys()??[])if(assets[path])throw Error(`Seed theme file ${path} collides with an installer path; serve it at another path.`);
  const equal=(a,b)=>typeof a==='string'&&a.length===b.length&&timingSafeEqual(Buffer.from(a),Buffer.from(b));
  const server=createServer(async(req,res)=>{
@@ -182,5 +184,5 @@ export async function startInstaller(root,{seed,port=0,answers,secretInput,noPre
   }catch{json(500,{error:'The installer could not complete this request.'})}finally{if(mutation)mutations--;}
  });
  await new Promise(resolve=>server.listen(port,'127.0.0.1',resolve));origin=`http://127.0.0.1:${server.address().port}`;
- return {origin,state:store.state,close:async()=>{artworkBridge?.close();vault.clear();abort.abort();const stopped=apps.stop();await work;await stopped;await apps.stop();await connection;await store.closeCommands();await new Promise(resolve=>server.close(resolve))}};
+ return {origin,state:store.state,close:async()=>{artworkBridge?.close();vault.clear();abort.abort();const stopped=apps.stop();await work;await stopped;await apps.stop();await connection;await store.closeCommands();await new Promise(resolve=>{server.close(resolve);server.closeIdleConnections();setTimeout(()=>server.closeAllConnections(),connectionGraceMs).unref();})}};
 }

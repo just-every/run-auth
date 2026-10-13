@@ -4,6 +4,8 @@ import { localInstaller } from './adapter.mjs';
 import { selectLocalState, LocalStateSafetyError } from './local/state.mjs';
 import {operatorPrerequisites} from './operator-prerequisites.mjs';
 import { installOperator } from './operator-install.mjs';
+import { projectViteBinary } from './project-vite.mjs';
+import { join, delimiter } from 'node:path';
 
 export function operatorInstaller({ database, features, prepare, prepareData }) {
  const lifecycle=localInstaller({
@@ -18,8 +20,7 @@ export function operatorInstaller({ database, features, prepare, prepareData }) 
   },
   build: ['pnpm', ['run', 'build:app']],
   migrate: ['pnpm', ['exec', 'wrangler', 'd1', 'migrations', 'apply', database, '--local', '--persist-to', '.wrangler/state', '--config', 'dist/server/wrangler.json']],
-  // Setup's temporary app is the fixed production runtime preview uses: it has
-  // no trigger handlers or Local Explorer for a person or proxy to reach.
+  // Setup uses preview's production runtime behind the same public proxy.
   start: previewTarget,
   owner: { existingOwnerViaSignIn: true, displayName: input => input.displayName || 'Owner' },
   signIn: { emailKey: 'OWNER_EMAIL', returnTo: '/setup' },
@@ -31,8 +32,8 @@ export function operatorInstaller({ database, features, prepare, prepareData }) 
 // No runtime rer starts serves the Local Explorer: it reads and writes the store
 // without the key. trafficProxy also refuses /cdn-cgi/* on the public listener.
 const devBindings = (devKey, devLogin) => devKey ? { RER_DEV_KEY: devKey, RER_DEV_IDENTITY: devLogin ? 'off' : 'on' } : {};
-const hostname = origin => new URL(origin).hostname.replace(/^\[|\]$/g, '');
-export const developmentTarget = ({ origin, runtimePort, devKey, devLogin }) => ['pnpm', ['exec', 'vite', 'dev', '--host', runtimePort ? '127.0.0.1' : hostname(origin), '--port', String(runtimePort ?? new URL(origin).port), '--strictPort'], { env: { ...process.env, RER_DEV_ORIGIN: origin, WRANGLER_SEND_METRICS: 'false', X_LOCAL_EXPLORER: 'false', ...devBindings(devKey, devLogin) } }];
+const internalPort = port => { if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('A local runtime requires the traffic proxy internal port.'); return String(port); };
+const developmentEnvironment = () => { const { RER_MODELS_SERVICE, RER_MODELS_KEY, ...env } = process.env; return env; };
+export const developmentTarget = ({ root, origin, runtimePort, devKey, devLogin, modelsLive }) => [process.execPath, [projectViteBinary(root), 'dev', '--host', '127.0.0.1', '--port', internalPort(runtimePort), '--strictPort'], { env: { ...developmentEnvironment(), PATH: join(root, 'node_modules', '.bin') + delimiter + (process.env.PATH ?? ''), RER_DEV_ORIGIN: origin, WRANGLER_SEND_METRICS: 'false', X_LOCAL_EXPLORER: 'false', ...devBindings(devKey, devLogin), ...(modelsLive ? { RER_MODELS_SERVICE: modelsLive.baseUrl, RER_MODELS_KEY: modelsLive.apiKey } : {}) } }];
 
-// Behind rer's proxy (dev, preview) on the internal port; for setup's temporary app, on the origin itself.
-export const previewTarget = ({ origin, runtimePort, devKey }) => [process.execPath, [fileURLToPath(new URL('./production-runtime.mjs', import.meta.url))], { env: { ...process.env, RER_DEV_ORIGIN: origin, RER_RUNTIME_HOST: runtimePort ? '127.0.0.1' : hostname(origin), RER_RUNTIME_PORT: String(runtimePort ?? new URL(origin).port), WRANGLER_SEND_METRICS: 'false', CLOUDFLARE_INCLUDE_PROCESS_ENV: 'false', X_LOCAL_EXPLORER: 'false', ...(devKey ? { RER_DEV_KEY: devKey } : {}) } }];
+export const previewTarget = ({ origin, runtimePort, devKey, scheduled }) => [process.execPath, [fileURLToPath(new URL('./production-runtime.mjs', import.meta.url))], { env: { ...process.env, RER_DEV_ORIGIN: origin, RER_RUNTIME_HOST: '127.0.0.1', RER_RUNTIME_PORT: internalPort(runtimePort), WRANGLER_SEND_METRICS: 'false', CLOUDFLARE_INCLUDE_PROCESS_ENV: 'false', X_LOCAL_EXPLORER: 'false', RER_RUNTIME_TRIGGERS: scheduled ? '1' : '0', ...(devKey ? { RER_DEV_KEY: devKey } : {}) } }];

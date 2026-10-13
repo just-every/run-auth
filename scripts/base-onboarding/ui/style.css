@@ -59,3 +59,5 @@ textarea.input{resize:vertical;min-height:100px}
 .target-choice .help{color:#42546b}
 
 #known-summary .known-group{border:0;border-radius:13px;background:#f2f5fc;overflow:hidden;margin-bottom:16px}#known-summary .known-group.workspace{background:#eef7fc}#known-summary .known-group.hosting,#known-summary .known-group.email{background:#eaf8f6}#known-summary .known-label,#known-summary .known-source{color:#42546b}#known-summary .known-group-title,#known-summary .known-value{color:#173753}#known-summary .known-group .edit{color:#4d2e87}.help-link{color:#4d2e87;font-weight:600;text-decoration:underline}.failure-log-path{margin:12px 0 0;color:#42546b;font-size:12px;overflow-wrap:anywhere}#retry-installation{margin-top:14px}
+
+h1,h2,h3,legend{text-wrap:balance}p,.help,.status,.known-source,.agent-activity-message,.choice-copy{text-wrap:pretty}

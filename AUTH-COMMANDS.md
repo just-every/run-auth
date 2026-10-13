@@ -31,7 +31,7 @@ node scripts/rer.mjs recovery --local
 
 Recovery invokes local wrangler D1, invalidates unused prior token digests and installs a new digest. The raw token is saved to `.rer/local/recovery-token` with mode 0600; the command prints only that path. An authenticated owner redeems it through `POST /api/auth/recovery/token` with a same-origin JSON body containing `token`. The normal delayed recovery controls are on My account. This edition extension accepts no arguments or `--local`; it does not inherit the generic verb flags or perform a remote operation.
 
-`export` and `import` retain their command names but refuse with the pending-transfer dependency reason. Generic archives would include unsafe identity material and cannot preserve grant continuity. Do not use the copied generic transfer instructions as an Auth backup guarantee. `reset --yes` destructively removes the declared local installation state and private settings; safe Auth transfer is still unavailable.
+`export` first writes a signed grant map, then exports Auth's data by policy: people, emails, passkey public keys, clients, grants, subjects and history, with no sessions, keys or pairwise key. `import` restores into an empty checkout and refuses app origins that checkout cannot serve and active dev personas. See LINKING.md. `reset --yes` destructively removes the declared local installation state and private settings; export first to keep it.
 
 `build`, `doctor`, `describe`, `check`, `outbox`, `deploy` and `release` remain on the shared dispatcher. Deploying a hosted issuer, upstream account registration and public release are separate owner operations. Local tests do not establish hosted acceptance or OpenID certification.
 

@@ -3,6 +3,7 @@ import {readFile,mkdtemp,rm,readdir,realpath} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {apply} from './link/schema.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const require=createRequire(await realpath(join(root,'node_modules/wrangler/package.json')));
 const {Miniflare,convertV4MiniflareOptions}=require('miniflare');
@@ -17,6 +18,7 @@ export async function openRuntime() {
  const own=await readFile(new URL('../../migrations/core/0010_auth.sql',import.meta.url),'utf8');
  for(const sql of (base+'\n'+oidc+'\n'+own).replace(/^--.*$/gm,'').match(/CREATE TRIGGER[\s\S]*?END;|CREATE (?:UNIQUE )?(?:TABLE|INDEX)[\s\S]*?;/g))await db.prepare(sql).run();
  for(const name of ['0011_auth_upstream_proofs.sql','0012_auth_local_email.sql','0013_auth_token_algorithms.sql','0014_auth_move_in.sql','0015_auth_move_in_restage.sql','0016_auth_agents.sql','0017_auth_agent_key_owner_version.sql'])for(const sql of (await readFile(new URL('../../migrations/core/'+name,import.meta.url),'utf8')).replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).run();
+ await apply(db,new URL('../../migrations/core/',import.meta.url),['0021_dependencies.sql','0022_dependency_approval.sql','0023_owner_claim.sql','0024_auth_links.sql']);
  await db.exec('CREATE TABLE test_mail(id INTEGER PRIMARY KEY AUTOINCREMENT,message TEXT NOT NULL);');
  const api={db,now:1800000000000,origin:'https://auth.example.com',local:false,async call(path,{method='GET',data,cookie,headers={},form,action,...extra}={}) {
   const body=form?new URLSearchParams(form).toString():data===undefined?undefined:JSON.stringify(data);

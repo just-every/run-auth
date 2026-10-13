@@ -37,6 +37,12 @@ export interface AuthApp {
   disabledAt?: number | string | null
   status?: string
   versions?: string[]
+  heldVersions?: string[]
+  linked_at?: number | string | null
+  firstSeen?: boolean
+  punycode?: boolean
+  replacesClient?: string | null
+  keyChanged?: boolean
 }
 
 export interface AuthPasskey {
@@ -110,6 +116,7 @@ export interface AgentEffect {
   domain?: string
   provider?: { id: string; label: string } | null
   people?: { email: string; status: string }[]
+  app?: { origin: string; name?: string; firstSeen?: boolean; punycode?: boolean; replaces?: string | null } | null
 }
 
 export interface AgentProposal {

@@ -9,6 +9,7 @@ from provenance import MANIFESTS, declared_keys
 from project_identity import tree_identity
 from licenses import license_rules
 from git_history import InspectionError
+from trust_bundle import bundles
 
 DEPENDENCY_DIRS = {'.git', 'node_modules'}
 
@@ -30,7 +31,10 @@ def context(history, commit, config):
         if entry['path'] in MANIFESTS and entry['kind'] == 'blob':
             declared.update(declared_keys(history.blob(entry['oid'])))
     identity, invalid = tree_identity(history, history.root_entries(commit))
-    return {**config, 'localPaths': frozenset(local), 'declaredSources': frozenset(declared), 'projectIdentity': identity}, invalid
+    blobs = {entry['path']: entry['oid'] for entry in entries if entry['kind'] == 'blob'}
+    trust = bundles(blobs, lambda path: history.blob(blobs[path]))
+    return {**config, 'localPaths': frozenset(local), 'declaredSources': frozenset(declared), 'projectIdentity': identity,
+            'trustBundles': trust}, invalid
 
 
 def text_rules(data, path, config, resolver, env_hashes):

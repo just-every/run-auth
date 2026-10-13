@@ -11,6 +11,7 @@ const here=dirname(fileURLToPath(import.meta.url));
 const out=resolve(process.argv[2]||'conformance-current-results');
 await mkdir(out,{recursive:true,mode:0o700});
 const scratch=await mkdtemp(join(tmpdir(),'auth-conformance-'));
+// The fixture listens on loopback only; the suite's containers reach it as auth.localhost through the host gateway.
 const origin='https://auth.localhost:19443',suiteOrigin='https://localhost:8443';
 let provider,server,child,result=1;
 const interrupted=()=>{child?.kill('SIGTERM');};
@@ -29,11 +30,13 @@ try {
    res.end(Buffer.from(await response.arrayBuffer()));
   }catch {res.writeHead(500);res.end();}
  });
- await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(19443,'0.0.0.0',resolve);});
+ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(19443,'127.0.0.1',resolve);});
  const discovery=await new Promise((resolve,reject)=>get('https://localhost:19443/.well-known/openid-configuration',{rejectUnauthorized:false},response=>{let body='';response.on('data',data=>body+=data);response.on('end',()=>resolve({status:response.statusCode,metadata:JSON.parse(body)}));}).on('error',reject));
  assert.equal(discovery.status,200);assert.equal(discovery.metadata.issuer,origin);
  await writeFile(join(out,'https-preflight.json'),JSON.stringify({status:discovery.status,issuer:discovery.metadata.issuer,listener:'19443',tls:'local self-signed development certificate'})+'\n',{mode:0o600});
- const planSpecs=[
+ // Optional third argument: a comma-separated plan list (for example Config OP and the
+ // Back-Channel Logout plan's own fixed variant); the default is the three profile attempts.
+ const planSpecs=process.argv[3]?process.argv[3].split(',').map(v=>v.trim()).filter(Boolean):[
   'oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=static_client][client_auth_type=private_key_jwt]',
   'oidcc-config-certification-test-plan',
   'oidcc-backchannel-rp-initiated-logout-certification-test-plan[response_type=code][client_registration=static_client][client_auth_type=private_key_jwt]'

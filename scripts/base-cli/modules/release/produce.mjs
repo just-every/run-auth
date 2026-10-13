@@ -8,6 +8,9 @@ import { publicationScan, validatePublicationDestination } from './publication-s
 import { publicDestination, requirePublicDestination, remotePublicHead, publicChild, assertPublicTree } from './public-child.mjs';
 import { writePublishHandoff } from './publish-handoff.mjs';
 
+// Failure output belongs to the private receipt, not the site preview.
+const withoutOutput = gates => JSON.parse(JSON.stringify(gates, (key, value) => key === 'output' ? undefined : value));
+
 export async function release({ repo, ref = 'HEAD', output, project, repository, dryRun = false, tag = false, cleanHistory: clean = false, envFile, onto }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(project ?? '')) throw Error('--project must be publisher/name');
   if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?$/i.test(repository ?? '')) throw Error('--repository must be a credential-free GitHub repository URL');
@@ -37,7 +40,7 @@ export async function release({ repo, ref = 'HEAD', output, project, repository,
     // Honour the seed's committed install policy. Base's native-build settings
     // are not interchangeable with pnpm 8's locked onlyBuiltDependencies.
     const install = await command('pnpm', ['install', '--frozen-lockfile'], checkout);
-    const verify = install.status === 'PASS' ? await command('pnpm', ['run', 'verify'], checkout) : { status: 'FAIL', reason: 'frozen-install-failed', tests: 0, passed: 0, failed: 0 };
+    const verify = install.status === 'PASS' ? await command('pnpm', ['run', 'verify'], checkout) : { status: 'FAIL', reason: 'frozen-install-failed', tests: 0, passed: 0, failed: 0, output: install.output };
     // Release-only scale and capacity cases stay outside routine CI. The
     // committed seed script is an additional gate in previews and releases.
     if (verify.status === 'PASS' && JSON.parse(source.bytes('package.json')).scripts['verify:release']) {
@@ -58,12 +61,16 @@ export async function release({ repo, ref = 'HEAD', output, project, repository,
     const scanRef = exported?.commit ?? source.commit;
     let report = publicationScan(scanRepo, scanRef, envFile, project, repository, destination?.spec);
     if (!exported && tag && report.status === 'PASS') {
-      // Stage the exact final annotation in the disposable clone before any
-      // source tag or distributable artifact exists. Source history was scanned
-      // above, including refs not transferred by a normal checkout clone.
-      const staged = git(checkout, 'tag', '--list', source.tag).toString().trim();
-      annotate(checkout, source, source.commit, staged ? `${source.tag}-publication-candidate` : source.tag);
-      const annotations = publicationScan(checkout, source.commit, envFile, project, repository);
+      // Stage the exact final annotation before any source tag or distributable
+      // artifact exists, in a fresh clone of the selected commit: verification
+      // left build output in its checkout, which is not release source. Source
+      // history was scanned above, including refs a checkout clone leaves out.
+      const candidate = resolve(temporary, 'annotation');
+      git(source.repo, 'clone', '--no-hardlinks', '--no-checkout', '--', source.repo, candidate);
+      git(candidate, 'checkout', '--detach', source.commit);
+      const staged = git(candidate, 'tag', '--list', source.tag).toString().trim();
+      annotate(candidate, source, source.commit, staged ? `${source.tag}-publication-candidate` : source.tag);
+      const annotations = publicationScan(candidate, source.commit, envFile, project, repository);
       report.annotationInspection = annotations;
       if (annotations.status !== 'PASS') {
         report.status = annotations.status;
@@ -97,7 +104,7 @@ export async function release({ repo, ref = 'HEAD', output, project, repository,
     // A blocked preview may prepare the site metadata/docs for local review.
     // Its provenance explicitly records blocked gates; it is never a release.
     const publicSource = exported ? { ...source, commit: exported.commit, publicTagStaged: Boolean(destination && tag) } : source;
-    if (passed || preview) receipt.siteRelease = writeCatalogue(publicSource, output, catalogue(publicSource, project, repository, gates, preview));
+    if (passed || preview) receipt.siteRelease = writeCatalogue(publicSource, output, catalogue(publicSource, project, repository, withoutOutput(gates), preview));
     if (passed) {
       if (tag) {
         receipt.publicExport = publicExport(source, temporary, output);

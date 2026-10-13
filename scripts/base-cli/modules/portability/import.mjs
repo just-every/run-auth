@@ -1,32 +1,40 @@
-import { all, statement, state, guard, job, save, partStatements, parts, cleanCopies, quote, stream, insist, run } from './storage.mjs';
+import { all, statement, state, guard, job, save, partStatements, parts, readPart, cleanCopies, quote, stream, insist, run } from './storage.mjs';
+import { refuseProviderData } from './provider-data.mjs';
 import { refuseDevData } from './dev-data.mjs';
 import { catalogue, validateRow, bindCell, writableColumns } from './catalogue.mjs';
 import { canonicalJson, unbase64 } from './hash.mjs';
-import { checkManifest, checkPart, ContentVerifier } from './format.mjs';
+import { checkManifest, checkPart, ContentVerifier, ArchiveVerifier } from './format.mjs';
 import { fence, mergeJournal, tombstone } from './journal.mjs';
 import { writeObject } from './payloads.mjs';
 import { createCopy,sidecar,readCopy,restoreCopy } from './copies.mjs';
 import { excludedDependentGuards } from './restore-safety.mjs';
-export async function createImport(context,manifest,actor='direct') {
+import { additiveBridge, sameSchemaMigrations } from './bridge.mjs';
+import { legacyEmptyGuards, legacyAuditStatements, requireLegacyEmpty } from './legacy-safety.mjs';
+export async function createImport(context,manifest,actor='direct',legacyRecovery) {
   const {db,config,buckets}=context;await checkManifest(manifest);await state(db);
   insist(manifest.product===config.product,'wrong_product');
   const cat=await catalogue(db,config),upgrade=config.acceptedSchemas[manifest.schema];
-  insist(manifest.schema===cat.identity || upgrade,'schema_mismatch');
-  insist(canonicalJson(manifest.tables.map(x=>x.name))===canonicalJson(cat.tables.map(x=>x.name)),'table_inventory');
-  if(!upgrade)for(const table of manifest.tables) {
+  const same=manifest.schema===cat.identity;
+  const bridge=same || upgrade?undefined:await additiveBridge(db,manifest,cat,context.migrations);
+  if(same && !upgrade)await sameSchemaMigrations(db,manifest,cat,context.migrations);
+  if(!bridge)insist(canonicalJson(manifest.tables.map(x=>x.name))===canonicalJson(cat.tables.map(x=>x.name)),'table_inventory');
+  if(!upgrade && !bridge)for(const table of manifest.tables) {
     const target=cat.tables.find(t=>t.name===table.name);
     insist(canonicalJson(table.columns)===canonicalJson(target.columns) && canonicalJson(table.dependencies)===canonicalJson(target.dependencies),'column_inventory');
   }
+  // Bridged tables stage and restore only the archived columns; the destination
+  // supplies defaults for later columns and leaves later tables empty.
+  const targets=cat.tables.map(t=>bridge?.columns[t.name]?{...t,columns:manifest.tables.find(x=>x.name===t.name).columns,added:bridge.columns[t.name]}:t);
   insist(canonicalJson(manifest.excludedColumns)===canonicalJson(config.secretColumns),'secret_inventory');
   insist(canonicalJson(manifest.requiredConfiguration)===canonicalJson(config.requiredConfiguration),'configuration_inventory');
   for(const o of manifest.objects) insist(buckets[o.bucket] && config.buckets[o.bucket] && o.key.startsWith(config.buckets[o.bucket].prefix??''),'bucket_inventory');
   insist(canonicalJson(manifest.payloads.map(x=>x.name))===canonicalJson(Object.keys(config.extraPayloads).sort()),'payload_inventory');
-  const id=crypto.randomUUID(),copies=Object.fromEntries(cat.tables.map((t,i)=>[t.name,'rer_portability_stage_'+id.replaceAll('-','')+'_'+i]));
-  const row={id,kind:'import',actor,phase:'staging',completed:0,metadata:{manifest,copies,targets:cat.tables,triggers:cat.triggers}};
+  const id=crypto.randomUUID(),copies=Object.fromEntries(targets.map((t,i)=>[t.name,'rer_portability_stage_'+id.replaceAll('-','')+'_'+i]));
+  const row={id,kind:'import',actor,phase:'staging',completed:0,metadata:{manifest,copies,targets,triggers:cat.triggers,...(bridge?{bridge}:{}),...(legacyRecovery?{legacyRecovery}: {})}};
   try {
     await db.batch([guard(db,'(SELECT import_job FROM rer_portability_state WHERE id=1) IS NULL'),
       statement(db,'UPDATE rer_portability_state SET import_job=? WHERE id=1',id),
-      ...cat.tables.flatMap(t=>createCopy(db,t,copies[t.name])),
+      ...targets.flatMap(t=>createCopy(db,t,copies[t.name])),
       statement(db,'INSERT INTO rer_portability_jobs(id,kind,actor,phase,metadata) VALUES(?,?,?,?,?)',id,'import',actor,row.phase,canonicalJson(row.metadata)),db.prepare('DELETE FROM rer_portability_guard')]);
   }catch(e){if((await state(db)).import_job)throw new (await import('./storage.mjs')).PortabilityError('import_running',409);throw e;}
   return id;
@@ -76,10 +84,11 @@ export async function uploadPart(context,id,index,part) {
   catch(e){const duplicate=await statement(db,'SELECT sha256 FROM rer_portability_parts WHERE job=? AND idx=?',id,index).first();if(!duplicate || duplicate.sha256!==part.sha256)throw e;}
   return importStatus(context,id);
 }
-export async function binaryStream(context,id,entry) {
-  const row=await job(context.db,id,'import');
+const binaryKey=entry=>canonicalJson(entry.bucket===undefined?['payload',entry.name]:['object',entry.bucket,entry.key]);
+function binaryStream(context,id,entry,indexes) {
+  const selected=indexes.get(binaryKey(entry));insist(selected,'binary_inventory');
   return stream((async function*(){
-    for await(const part of parts(context.db,id,row.completed))for(const item of part.items) {
+    for(const index of selected)for(const item of (await readPart(context.db,id,index)).items) {
       if(entry.bucket===undefined?item.kind==='payload' && item.name===entry.name:item.kind==='object' && item.bucket===entry.bucket && item.key===entry.key)yield unbase64(item.data);
     }
   })());
@@ -102,21 +111,37 @@ async function removeOwned(context,id) {
   for(const o of owned)await context.buckets[o.bucket].delete(o.key);
   await run(context.db,'DELETE FROM rer_portability_owned WHERE job=?',id);
 }
-export async function finalizeImport(context,id,{contentHash,laterJournal}={}) {
+export async function finalizeImport(context,id,{contentHash,archiveHash,laterJournal}={}) {
   const {db,config}=context,row=await job(db,id,'import');
   if(row.phase==='complete')return importStatus(context,id);
   insist(['staging','applying'].includes(row.phase),'import_phase',409);
   const manifest=row.metadata.manifest;insist(row.completed===manifest.partCount,'parts_missing');
-  const verifier=new ContentVerifier(manifest);
-  for await(const part of parts(db,id,row.completed))for(const item of part.items)verifier.add(item);
+  const verifier=new ContentVerifier(manifest),archive=new ArchiveVerifier(manifest),binaryIndexes=new Map();let index=0;
+  // Rebuild from the fully verified parts on every finalize, including resume.
+  // Keep only part positions: object reads must not rescan unrelated bytes.
+  for await(const part of parts(db,id,row.completed)){
+    await checkPart(part,index,config.partBytes);archive.add(part);
+    for(const item of part.items){
+      verifier.add(item);
+      if(item.kind==='object'||item.kind==='payload'){
+        const key=binaryKey(item),selected=binaryIndexes.get(key)??[];
+        if(selected.at(-1)!==index)selected.push(index);
+        binaryIndexes.set(key,selected);
+      }
+    }
+    index++;
+  }
   const digest=verifier.digest();if(contentHash!==undefined)insist(contentHash===digest,'content_checksum');
+  insist(archiveHash===archive.digest(),'archive_checksum',409);
+  const checked=await fence(db,manifest,row.metadata.copies,laterJournal);
+  if(row.metadata.legacyRecovery)await requireLegacyEmpty(context,row.metadata.legacyRecovery);
   for(const table of row.metadata.targets) if(!config.replaceableTables.includes(table.name))insist(!(await statement(db,`SELECT 1 FROM ${quote(table.name)} LIMIT 1`).first()),'target_not_empty:'+table.name,409);
   const dependentGuards=await excludedDependentGuards(db,row.metadata.targets,config.replaceableTables);
   await bucketsEmpty(context,row);
-  const checked=await fence(db,manifest,row.metadata.copies,laterJournal);
   await refuseDevData(db,row.metadata.copies,row.metadata.targets);
+  await refuseProviderData(db,row.metadata.copies,row.metadata.targets);
   if(config.validateStaged) {
-    const read=async table=>{insist(row.metadata.copies[table],'staged_table');const target=row.metadata.targets.find(t=>t.name===table);return (await readCopy(db,target,row.metadata.copies[table],0,row.metadata.manifest.tables.find(t=>t.name===table).count)).map(x=>x.row);};
+    const read=async table=>{insist(row.metadata.copies[table],'staged_table');const target=row.metadata.targets.find(t=>t.name===table);return (await readCopy(db,target,row.metadata.copies[table],0,row.metadata.manifest.tables.find(t=>t.name===table)?.count??0)).map(x=>x.row);};
     insist(await config.validateStaged({db,tables:{...row.metadata.copies},read,manifest})!==false,'staged_validation');
   }
   row.phase='applying';
@@ -124,22 +149,22 @@ export async function finalizeImport(context,id,{contentHash,laterJournal}={}) {
   try {
     for(const object of manifest.objects) {
       await run(db,'INSERT OR IGNORE INTO rer_portability_owned VALUES(?,?,?)',id,object.bucket,object.key);
-      await writeObject(context.buckets[object.bucket],object,await binaryStream(context,id,object));
+      await writeObject(context.buckets[object.bucket],object,binaryStream(context,id,object,binaryIndexes));
       const stored=await context.buckets[object.bucket].get(object.key);insist(stored,'object_write_failed');
       // Read back independently, including multipart results, before the commit.
       const hash=new (await import('./hash.mjs')).StreamHash();const reader=stored.body.getReader();
       for(;;){const {value,done}=await reader.read();if(done)break;hash.update(value);}reader.releaseLock();
       insist(hash.digest()===object.sha256,'object_write_checksum');
     }
-    for(const payload of manifest.payloads)await config.extraPayloads[payload.name].consume(await binaryStream(context,id,payload),payload);
+    for(const payload of manifest.payloads)await config.extraPayloads[payload.name].consume(binaryStream(context,id,payload,binaryIndexes),payload);
     row.phase='complete';row.metadata.contentHash=digest;
-    await db.batch([db.prepare('PRAGMA defer_foreign_keys=ON'),...emptyGuards(context,row),...dependentGuards,
+    await db.batch([db.prepare('PRAGMA defer_foreign_keys=ON'),...emptyGuards(context,row),...dependentGuards,...legacyEmptyGuards(db,row),
       guard(db,'NOT EXISTS(SELECT 1 FROM rer_portability_epochs WHERE source=? AND epoch>?) AND NOT EXISTS(SELECT 1 FROM rer_portability_state WHERE source_identity=? AND epoch>?)',manifest.sourceIdentity,checked.epoch,manifest.sourceIdentity,checked.epoch),
       ...row.metadata.targets.map(t=>guard(db,`NOT EXISTS(SELECT 1 FROM ${quote(sidecar(row.metadata.copies[t.name]))} s JOIN rer_portability_journal j ON j.source=? AND j.tombstone=s.rer_portability_tombstone)`,manifest.sourceIdentity)),
       ...row.metadata.triggers.map(t=>db.prepare(`DROP TRIGGER ${quote(t.name)}`)),
       ...config.replaceableTables.map(t=>db.prepare(`DELETE FROM ${quote(t)}`)),
       ...row.metadata.targets.flatMap(t=>restoreCopy(db,t,row.metadata.copies[t.name])),
-      ...row.metadata.triggers.map(t=>db.prepare(t.sql)),...mergeJournal(db,manifest,checked),save(db,row),
+      ...row.metadata.triggers.map(t=>db.prepare(t.sql)),...mergeJournal(db,manifest,checked),...legacyAuditStatements(db,row),save(db,row),
       db.prepare('UPDATE rer_portability_state SET import_job=NULL,applying=0 WHERE id=1'),db.prepare('DELETE FROM rer_portability_guard')]);
   }catch(e){
     // D1 may have committed even when its acknowledgement failed.
@@ -150,7 +175,7 @@ export async function finalizeImport(context,id,{contentHash,laterJournal}={}) {
 }
 export async function importStatus(context,id) {
   const row=await job(context.db,id,'import');return {id,kind:'import',phase:row.phase,completed:row.completed,total:row.metadata.manifest.partCount,
-    contentHash:row.metadata.contentHash??null,requiredConfiguration:row.phase==='complete'?row.metadata.manifest.requiredConfiguration:[]};
+    contentHash:row.metadata.contentHash??null,requiredConfiguration:row.phase==='complete'?row.metadata.manifest.requiredConfiguration:[],...(row.metadata.bridge?{bridged:row.metadata.bridge}:{})};
 }
 export async function abortImport(context,id) {
   const row=await job(context.db,id,'import');insist(row.phase!=='complete','import_complete',409);

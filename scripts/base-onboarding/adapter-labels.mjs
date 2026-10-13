@@ -1,4 +1,5 @@
 export const labels = Object.freeze({
+ prepareData: 'Preparing generated files (prepareData)',
  dependencies: 'Installing locked dependencies',
  secrets: 'Saving private local settings',
  build: 'Building your application',

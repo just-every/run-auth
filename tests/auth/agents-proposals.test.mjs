@@ -78,6 +78,8 @@ const KINDS=[
  ['add_domain_rule',{target:'northwind.example.com',providerId:'company'},async({r},effect)=>{assert.deepEqual(effect.people.map(p=>p.email),[ADA,IVY]);assert.equal(effect.after.label,'Company Google');
   return async()=>assert.equal((await r.db.prepare("SELECT provider_id FROM oa_domain_rules WHERE domain='northwind.example.com'").first()).provider_id,'company');}],
  ['remove_domain_rule',{target:'contractors.example.com'},async({r})=>async()=>assert.equal(await r.db.prepare("SELECT 1 FROM oa_domain_rules WHERE domain='contractors.example.com'").first(),null)],
+ ['remove_app_link',{target:'policy-app'},async({r},effect)=>{assert.deepEqual([effect.app.name,effect.after],['Policy app','removed']);
+  return async()=>assert.ok((await r.db.prepare("SELECT disabled_at FROM auth_clients WHERE id='policy-app'").first()).disabled_at,'the app is unlinked');}],
 ];
 for(const [kind,data,expect] of KINDS) test(`${kind.replace(/_/g,' ')}: filing changes nothing but the proposal; one passkey approval runs exactly it and Activity names the key, the approver and the result`,async t=>{
  const setup=await install(t),{r,owner,key}=setup;

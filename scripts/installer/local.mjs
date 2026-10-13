@@ -6,9 +6,9 @@ import { selectLocalState } from '../base-onboarding/local/state.mjs';
 import { commandAdapter as createCommandAdapter } from '../base-cli/cli/adapter.mjs';
 import { ownerDeploy } from '../base-cli/cli/deploy.mjs';
 import { localInstaller } from '../base-onboarding/adapter.mjs';
-import { RerError } from '../base-cli/cli/errors.mjs';
 import { browserInstaller, browserSignIn } from './auth-signin.mjs';
 import * as model from './ui/seed.mjs';
+import { portability } from './transfer.mjs';
 
 export { selectLocalState };
 const foundation = operatorInstaller({
@@ -32,7 +32,7 @@ export const adapter = lifecycle;
 export const { install } = lifecycle;
 export const commandAdapter = createCommandAdapter(lifecycle, {
  dev: developmentTarget, preview: previewTarget, verify: ['pnpm', ['run', 'verify:app']], deploy: ownerDeploy('deploy.json', lifecycle),
- portability: { export: refuseTransfer, import: refuseTransfer },
+ portability,
  setup: { manifestFile: 'rer-setup.json' }, browserModule: 'scripts/installer/ui/seed.mjs',
  // Local dev identity: the local-only Worker entry, the build output rer build
  // scans for the dev layer, and the kept end-to-end email-link test.
@@ -40,7 +40,3 @@ export const commandAdapter = createCommandAdapter(lifecycle, {
  localOnlyKeys: ['RER_DEV_ORIGIN', 'RER_DEV_IDENTITY'],
  product: model.product.name, input: { names: { email: 'OWNER_EMAIL', name: 'displayName' }, async defaults(root) { const { readFile } = await import('node:fs/promises'); const branding = JSON.parse(await readFile(join(root, 'src/branding.json'), 'utf8')); return { APP_NAME: branding.name, PRIMARY_COLOR: branding.primaryColor }; } },
 });
-
-function refuseTransfer() {
- throw new RerError('auth_transfer_pending', 'Auth export and import await the merged Base linking and signed grant-map support. Generic archives would expose sessions and signing keys and cannot safely restore identities.', 1);
-}

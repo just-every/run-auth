@@ -7,10 +7,16 @@ import { contained } from './project.mjs';
 // bytes of the Base revision it pinned. A seed records its copies in
 // base-copies.json (edition authoring) or composition.lock.json /
 // foundation.lock.json (composed foundations); each records the SHA-256 of the
-// Base bytes it copied. One revision pins every copy, and each drifted, missing
-// or unrecorded file is named. A seed that imports Base in place has no copy.
+// Base bytes it copied. Two groups are checked on their own: the application,
+// runtime and schema copies (one revision pins them all, since they are coupled)
+// and the CLI's bundled tooling under scripts/base-cli (one revision of its
+// own, which a CLI refresh moves without touching the application's auth). Each
+// drifted, missing or unrecorded file in either group is named. A seed that
+// imports Base in place has no copy.
 const ORIGIN = 'modules/operator-auth';
+const CLI_ROOT = 'scripts/base-cli';
 const within = (path, prefix) => path === prefix || path.startsWith(`${prefix}/`);
+const groupOf = path => typeof path === 'string' && within(path, CLI_ROOT) ? 'cli' : 'application';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 async function json(root, path) { try { return JSON.parse(await readFile(await contained(root, path), 'utf8')); } catch { return null; } }
 
@@ -24,21 +30,23 @@ async function walk(root, path) {
  return files;
 }
 
-// [{ path, revision, files: { local path: sha256 } }] for every recorded auth copy.
+// [{ group, path, revision, files: { local path: sha256 } }] for every recorded auth copy.
 async function recordedCopies(root) {
  const copies = [];
  const record = await json(root, 'base-copies.json');
  for (const copy of record?.copies ?? []) {
-  if (typeof copy?.originPath === 'string' && within(copy.originPath, ORIGIN) && copy.files && typeof copy.files === 'object') copies.push({ path: copy.path, revision: copy.revision, files: copy.files, directory: copy.originPath === ORIGIN });
+  if (typeof copy?.originPath === 'string' && within(copy.originPath, ORIGIN) && copy.files && typeof copy.files === 'object') copies.push({ path: copy.path, revision: copy.revision, files: copy.files, directory: copy.originPath === ORIGIN, group: groupOf(copy.path) });
  }
  for (const name of ['composition.lock.json', 'foundation.lock.json']) {
   const lock = await json(root, name);
   if (!lock?.files) continue;
   const revision = lock.repositories?.base?.commit ?? lock.base?.commit;
-  const files = Object.fromEntries(Object.entries(lock.files).filter(([, file]) => typeof file?.source === 'string' && within(file.source, ORIGIN) && typeof file.sha256 === 'string').map(([path, file]) => [path, file.sha256]));
-  const directories = [...new Set(Object.entries(lock.files).filter(([, file]) => typeof file?.source === 'string' && within(file.source, ORIGIN) && !file.source.endsWith('.sql'))
-   .map(([path, file]) => path.slice(0, path.length - (file.source.length - ORIGIN.length))))];
-  if (Object.keys(files).length) copies.push({ path: directories[0] ?? null, revision, files, directory: directories.length === 1 });
+  for (const group of ['application', 'cli']) {
+   const entries = Object.entries(lock.files).filter(([path, file]) => groupOf(path) === group && typeof file?.source === 'string' && within(file.source, ORIGIN));
+   const files = Object.fromEntries(entries.filter(([, file]) => typeof file.sha256 === 'string').map(([path, file]) => [path, file.sha256]));
+   const directories = [...new Set(entries.filter(([, file]) => !file.source.endsWith('.sql')).map(([path, file]) => path.slice(0, path.length - (file.source.length - ORIGIN.length))))];
+   if (Object.keys(files).length) copies.push({ path: directories[0] ?? null, revision, files, directory: directories.length === 1, group });
+  }
  }
  return copies;
 }
@@ -47,8 +55,12 @@ export async function authCopyClauses(root) {
  const copies = await recordedCopies(root);
  if (!copies.length) return [];
  const clauses = [];
- const revisions = [...new Set(copies.map(copy => copy.revision))];
- clauses.push(['SC-05.auth-copy.pin', revisions.length === 1 && /^[a-f0-9]{40}$/.test(revisions[0] ?? ''), `Copy every operator-auth layer from one pinned Base revision; the seed records ${revisions.join(', ') || 'none'}.`]);
+ for (const [group, id, scope] of [['application', 'SC-05.auth-copy.pin', 'the application, runtime and schema copies'], ['cli', 'SC-05.auth-copy.cli-pin', `the CLI's bundled copy under ${CLI_ROOT}`]]) {
+  const grouped = copies.filter(copy => copy.group === group);
+  if (!grouped.length) continue;
+  const revisions = [...new Set(grouped.map(copy => copy.revision))];
+  clauses.push([id, revisions.length === 1 && /^[a-f0-9]{40}$/.test(revisions[0] ?? ''), `Copy ${scope} of operator-auth from one pinned Base revision; the seed records ${revisions.join(', ') || 'none'}.`]);
+ }
  for (const copy of copies) {
   for (const [path, expected] of Object.entries(copy.files)) {
    let actual = null; try { actual = sha256(await readFile(await contained(root, path))); } catch {}

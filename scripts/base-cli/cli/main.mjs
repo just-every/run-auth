@@ -14,6 +14,7 @@ export async function main(argv = process.argv.slice(2)) {
  try {
   options = parse(argv,process.cwd(),{deferTail:true}); out = output(options);
   if (options.help) return showHelp(options,out);
+  if (options.verb === 'archive') return (await import('./archive.mjs')).archiveCommand(options.archiveArgs,out);
   if (options.verb === 'release') return (await import('./release.mjs')).dispatchRelease(options.releaseArgs);
   const independent = await parsingProfile(options.cwd)==='independent'&&!['describe','check','doctor'].includes(options.verb);
   options=parse(argv,process.cwd(),{independent});out=output(options);
@@ -37,8 +38,11 @@ export async function main(argv = process.argv.slice(2)) {
    if (!options.json) out.human(JSON.stringify(result, null, 2));
    out.result(result.ok, result.ok ? 0 : 3, { diagnostics: result }); return result.ok ? 0 : 3;
   }
+  // A checkout without a declared run site refuses --site before any effect.
+  if (options.site) (await import('./site.mjs')).declaredSite(project);
   const bounded=await (await import('./bounded.mjs')).boundedCommand(project,options,argv,out);
   if(bounded)return bounded.exitCode;
+  if(options.platform==='container' && !['export','import'].includes(options.verb)) { const result = await (await import('./container.mjs')).containerCommand(project,options,out); out.result(true,0,result); return 0; }
   let result;
   if (options.verb === 'reset' && project.profile === 'first-party') result = await (await import('./local.mjs')).reset(project, options, out);
   else result = await (await import('./lifecycle.mjs')).runCommand(project, options, out);
