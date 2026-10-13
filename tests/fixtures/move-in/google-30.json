@@ -1,0 +1,392 @@
+[
+ {
+  "id": "104550000000000000001",
+  "primaryEmail": "amara.okafor@northwind.example.com",
+  "name": {
+   "givenName": "Amara",
+   "familyName": "Okafor",
+   "fullName": "Amara Okafor"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000002",
+  "primaryEmail": "bilal.haddad@northwind.example.com",
+  "name": {
+   "givenName": "Bilal",
+   "familyName": "Haddad",
+   "fullName": "Bilal Haddad"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Sales",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000003",
+  "primaryEmail": "chen.wei@northwind.example.com",
+  "name": {
+   "givenName": "Chen",
+   "familyName": "Wei",
+   "fullName": "Chen Wei"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Engineering",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000004",
+  "primaryEmail": "dara.byrne@northwind.example.com",
+  "name": {
+   "givenName": "Dara",
+   "familyName": "Byrne",
+   "fullName": "Dara Byrne"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Operations",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000005",
+  "primaryEmail": "elif.yilmaz@northwind.example.com",
+  "name": {
+   "givenName": "Elif",
+   "familyName": "Yilmaz",
+   "fullName": "Elif Yilmaz"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000006",
+  "primaryEmail": "farah.nasser@northwind.example.com",
+  "name": {
+   "givenName": "Farah",
+   "familyName": "Nasser",
+   "fullName": "Farah Nasser"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Sales",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000007",
+  "primaryEmail": "goran.petrov@northwind.example.com",
+  "name": {
+   "givenName": "Goran",
+   "familyName": "Petrov",
+   "fullName": "Goran Petrov"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Engineering",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000008",
+  "primaryEmail": "hana.sato@northwind.example.com",
+  "name": {
+   "givenName": "Hana",
+   "familyName": "Sato",
+   "fullName": "Hana Sato"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Operations",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000009",
+  "primaryEmail": "iker.etxeberria@northwind.example.com",
+  "name": {
+   "givenName": "Iker",
+   "familyName": "Etxeberria",
+   "fullName": "Iker Etxeberria"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000010",
+  "primaryEmail": "jonas.berg@northwind.example.com",
+  "name": {
+   "givenName": "Jonas",
+   "familyName": "Berg",
+   "fullName": "Jonas Berg"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Sales",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000011",
+  "primaryEmail": "kemi.adeyemi@northwind.example.com",
+  "name": {
+   "givenName": "Kemi",
+   "familyName": "Adeyemi",
+   "fullName": "Kemi Adeyemi"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Engineering",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000012",
+  "primaryEmail": "lena.fischer@northwind.example.com",
+  "name": {
+   "givenName": "Lena",
+   "familyName": "Fischer",
+   "fullName": "Lena Fischer"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Operations",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000013",
+  "primaryEmail": "mateo.rossi@northwind.example.com",
+  "name": {
+   "givenName": "Mateo",
+   "familyName": "Rossi",
+   "fullName": "Mateo Rossi"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000014",
+  "primaryEmail": "nia.mensah@northwind.example.com",
+  "name": {
+   "givenName": "Nia",
+   "familyName": "Mensah",
+   "fullName": "Nia Mensah"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Sales",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000015",
+  "primaryEmail": "omar.khalil@northwind.example.com",
+  "name": {
+   "givenName": "Omar",
+   "familyName": "Khalil",
+   "fullName": "Omar Khalil"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Engineering",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000016",
+  "primaryEmail": "priya.raman@northwind.example.com",
+  "name": {
+   "givenName": "Priya",
+   "familyName": "Raman",
+   "fullName": "Priya Raman"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Operations",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000017",
+  "primaryEmail": "quinn.doyle@northwind.example.com",
+  "name": {
+   "givenName": "Quinn",
+   "familyName": "Doyle",
+   "fullName": "Quinn Doyle"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000018",
+  "primaryEmail": "rosa.ortega@northwind.example.com",
+  "name": {
+   "givenName": "Rosa",
+   "familyName": "Ortega",
+   "fullName": "Rosa Ortega"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Sales",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000019",
+  "primaryEmail": "sven.lund@northwind.example.com",
+  "name": {
+   "givenName": "Sven",
+   "familyName": "Lund",
+   "fullName": "Sven Lund"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Engineering",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000020",
+  "primaryEmail": "tariq.aziz@northwind.example.com",
+  "name": {
+   "givenName": "Tariq",
+   "familyName": "Aziz",
+   "fullName": "Tariq Aziz"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Operations",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000021",
+  "primaryEmail": "uma.iyer@northwind.example.com",
+  "name": {
+   "givenName": "Uma",
+   "familyName": "Iyer",
+   "fullName": "Uma Iyer"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000022",
+  "primaryEmail": "viktor.novak@northwind.example.com",
+  "name": {
+   "givenName": "Viktor",
+   "familyName": "Novak",
+   "fullName": "Viktor Novak"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Sales",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000023",
+  "primaryEmail": "owner@example.com",
+  "name": {
+   "givenName": "Owen",
+   "familyName": "Owner",
+   "fullName": "Owen Owner"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000024",
+  "primaryEmail": "existing@northwind.example.com",
+  "name": {
+   "givenName": "Esme",
+   "familyName": "Existing",
+   "fullName": "Esme Existing"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000025",
+  "primaryEmail": "sam.lee@northwind.example.com",
+  "name": {
+   "givenName": "Sam",
+   "familyName": "Lee",
+   "fullName": "Sam Lee"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000026",
+  "primaryEmail": "Sam.Lee@Northwind.example.com",
+  "name": {
+   "givenName": "Samuel",
+   "familyName": "Lee",
+   "fullName": "Samuel Lee"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000027",
+  "primaryEmail": "left.company@northwind.example.com",
+  "name": {
+   "givenName": "Lee",
+   "familyName": "Left",
+   "fullName": "Lee Left"
+  },
+  "suspended": true,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000028",
+  "primaryEmail": "archived.person@northwind.example.com",
+  "name": {
+   "givenName": "Ari",
+   "familyName": "Archived",
+   "fullName": "Ari Archived"
+  },
+  "suspended": false,
+  "archived": true,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000029",
+  "primaryEmail": "pat@nоrthwind.example.com",
+  "name": {
+   "givenName": "Pat",
+   "familyName": "Lookalike",
+   "fullName": "Pat Lookalike"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false
+ },
+ {
+  "id": "104550000000000000030",
+  "name": {
+   "givenName": "No",
+   "familyName": "Address",
+   "fullName": "No Address"
+  },
+  "suspended": false,
+  "archived": false,
+  "orgUnitPath": "/Staff",
+  "isAdmin": false,
+  "primaryEmail": ""
+ }
+]

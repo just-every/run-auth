@@ -1,0 +1,44 @@
+{
+  "description": "TEMPLATE ONLY: run generate-static.py for fresh keys, register both clients, replace client IDs, and supply browser tasks before use",
+  "alias": "REPLACE_WITH_STABLE_SUITE_ALIAS",
+  "server": {
+    "discoveryUrl": "https://REPLACE_WITH_ISSUER/.well-known/openid-configuration"
+  },
+  "client": {
+    "client_id": "REPLACE_WITH_REGISTERED_CLIENT",
+    "scope": "openid profile email",
+    "token_endpoint_auth_method": "private_key_jwt",
+    "token_endpoint_auth_signing_alg": "ES256",
+    "jwks": {
+      "keys": [{
+        "kty": "EC",
+        "crv": "P-256",
+        "use": "sig",
+        "alg": "ES256",
+        "kid": "GENERATE_FRESH_CLIENT_KID",
+        "x": "GENERATE_FRESH_CLIENT_PUBLIC_X",
+        "y": "GENERATE_FRESH_CLIENT_PUBLIC_Y",
+        "d": "GENERATE_FRESH_CLIENT_PRIVATE_D"
+      }]
+    }
+  },
+  "client2": {
+    "client_id": "REPLACE_WITH_REGISTERED_CLIENT2",
+    "scope": "openid profile email",
+    "token_endpoint_auth_method": "private_key_jwt",
+    "token_endpoint_auth_signing_alg": "ES256",
+    "jwks": {
+      "keys": [{
+        "kty": "EC",
+        "crv": "P-256",
+        "use": "sig",
+        "alg": "ES256",
+        "kid": "GENERATE_FRESH_CLIENT2_KID",
+        "x": "GENERATE_FRESH_CLIENT2_PUBLIC_X",
+        "y": "GENERATE_FRESH_CLIENT2_PUBLIC_Y",
+        "d": "GENERATE_FRESH_CLIENT2_PRIVATE_D"
+      }]
+    }
+  },
+  "browser": []
+}

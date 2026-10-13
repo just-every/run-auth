@@ -1,0 +1,68 @@
+{
+  "SUITE_IMAGE": {
+    "tag": "registry.gitlab.com/openid/conformance-suite:release-v5.3.2",
+    "pin": "registry.gitlab.com/openid/conformance-suite@sha256:c795df1b151e0c2f2e40f17a2470991cc38bc91628449e9bb090e2372fe8b822",
+    "platforms": [
+      {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    ]
+  },
+  "NGINX_IMAGE": {
+    "tag": "registry.gitlab.com/openid/conformance-suite/nginx:release-v5.3.2",
+    "pin": "registry.gitlab.com/openid/conformance-suite/nginx@sha256:607458218abb58204201e4d283af90177d6b542535a99a21041d399a1505a6a0",
+    "platforms": [
+      {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      {
+        "architecture": "arm64",
+        "os": "linux"
+      }
+    ]
+  },
+  "MONGO_IMAGE": {
+    "tag": "mongo:6.0.13",
+    "pin": "mongo@sha256:b415b12f638e2685d06c58ab7fb5943577c50fadec6d9340ef67d21aeac72070",
+    "platforms": [
+      {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      {
+        "architecture": "unknown",
+        "os": "unknown"
+      },
+      {
+        "architecture": "arm64",
+        "os": "linux",
+        "variant": "v8"
+      },
+      {
+        "architecture": "unknown",
+        "os": "unknown"
+      },
+      {
+        "architecture": "amd64",
+        "os": "windows",
+        "os.version": "10.0.20348.2322"
+      },
+      {
+        "architecture": "amd64",
+        "os": "windows",
+        "os.version": "10.0.17763.5458"
+      }
+    ]
+  },
+  "PROVIDER_IMAGE": {
+    "tag": "panvafs/oidc-provider-oidc-core-sample:latest",
+    "pin": "panvafs/oidc-provider-oidc-core-sample@sha256:12b5adaf69c7c3ce054521ae9f06ffc4005d3ed25113d438f142d18391353823",
+    "platforms": []
+  }
+}

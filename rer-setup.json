@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "title": "Auth",
+  "groups": [
+    {
+      "id": "application",
+      "label": "Your application"
+    },
+    {
+      "id": "owner",
+      "label": "First owner"
+    }
+  ],
+  "fields": [
+    {
+      "name": "APP_NAME",
+      "label": "Application name",
+      "help": "The name shown in your Auth installation.",
+      "kind": "text",
+      "required": true,
+      "default": "Auth",
+      "group": "application"
+    },
+    {
+      "name": "PRIMARY_COLOR",
+      "label": "Brand colour",
+      "kind": "colour",
+      "required": true,
+      "default": "#356c60",
+      "group": "application"
+    },
+    {
+      "name": "OWNER_EMAIL",
+      "label": "Owner email",
+      "help": "Sign-in links for this address appear in the local development outbox; no email is sent.",
+      "kind": "email",
+      "required": true,
+      "prefill": "account-email",
+      "group": "owner"
+    },
+    {
+      "name": "SESSION_SECRET",
+      "label": "Session secret",
+      "kind": "secret",
+      "required": true,
+      "ownerVisible": false,
+      "input": "managed",
+      "generate": "hex",
+      "group": "owner"
+    },
+    {
+      "name": "SETUP_TOKEN",
+      "label": "Setup token",
+      "kind": "secret",
+      "required": true,
+      "ownerVisible": true,
+      "generate": "hex",
+      "group": "owner"
+    },
+    {
+      "name": "AUTH_ENCRYPTION_KEY",
+      "label": "Signing-key wrapping secret",
+      "kind": "secret",
+      "required": true,
+      "ownerVisible": false,
+      "input": "managed",
+      "group": "owner"
+    },
+    {
+      "name": "AUTH_UPSTREAM_PROVIDERS",
+      "label": "Optional upstream provider configuration",
+      "help": "Private JSON array of Google, Microsoft or Okta provider configuration. Keep client credentials here, never in a browser configuration.",
+      "kind": "secret",
+      "required": false,
+      "ownerVisible": true,
+      "group": "owner",
+      "input": "entered"
+    }
+  ],
+  "steps": [
+    {
+      "type": "extension",
+      "id": "branding"
+    },
+    {
+      "type": "owner-claim",
+      "mode": "setup-token",
+      "emailField": "OWNER_EMAIL",
+      "tokenField": "SETUP_TOKEN"
+    }
+  ]
+}

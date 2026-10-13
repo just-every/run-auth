@@ -1,0 +1,5 @@
+{"totalCount":3,"results":[
+ {"_id":"5f0000000000000000000a01","username":"ada","email":"ada@northwind.example.com","firstname":"Ada","lastname":"Lovelace","displayname":"Ada Lovelace","state":"ACTIVATED","suspended":false,"activated":true,"department":"Engineering"},
+ {"_id":"5f0000000000000000000a02","username":"grace","email":"grace@northwind.example.com","firstname":"Grace","lastname":"Hopper","state":"SUSPENDED","suspended":true,"activated":true},
+ {"_id":"5f0000000000000000000a03","username":"molly","email":"molly@northwind.example.com","firstname":"Mary","lastname":"Jackson","state":"STAGED","suspended":false,"activated":false,"department":"Sales"}
+]}

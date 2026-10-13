@@ -1,0 +1,21 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,writeFile,readFile,stat,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {createHash} from 'node:crypto';
+import {recovery} from '../../scripts/auth-recovery.mjs';
+const exec=promisify(execFile),wrangler=fileURLToPath(new URL('../../node_modules/wrangler/bin/wrangler.js',import.meta.url));
+test('local recovery command writes only token digest through wrangler and protects saved token',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'auth-recovery-cli-'));t.after(()=>rm(root,{recursive:true,force:true}));
+ await writeFile(join(root,'wrangler.jsonc'),JSON.stringify({name:'auth-recovery-proof',compatibility_date:'2026-09-08',d1_databases:[{binding:'DB',database_name:'auth',database_id:'recovery-proof-local'}]}));
+ const command=sql=>exec(process.execPath,[wrangler,'d1','execute','auth','--local','--persist-to','.wrangler/state','--config','wrangler.jsonc','--command',sql,'--json'],{cwd:root,env:{...process.env,WRANGLER_SEND_METRICS:'false',CI:'true'}});
+ await command('CREATE TABLE auth_recovery_tokens(token_hash TEXT PRIMARY KEY,created_at INTEGER NOT NULL,consumed_at INTEGER,consumption_marker TEXT);');
+ const installed=await recovery([],{root}),token=(await readFile(installed.path,'utf8')).trim();assert.ok(token.length>=43);assert.equal((await stat(installed.path)).mode&0o777,0o600);
+ const query=JSON.parse((await command('SELECT token_hash FROM auth_recovery_tokens')).stdout);assert.equal(query[0].results[0].token_hash,createHash('sha256').update(token).digest('base64url'));assert.equal(JSON.stringify(query).includes(token),false);
+ await assert.rejects(()=>recovery(['--remote'],{root}),/local only/);
+ await recovery(['--local'],{root});const replaced=(await readFile(installed.path,'utf8')).trim();assert.notEqual(replaced,token);const remaining=JSON.parse((await command('SELECT COUNT(*) AS n FROM auth_recovery_tokens')).stdout);assert.equal(remaining[0].results[0].n,1);
+});

@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.output/
+.wrangler/
+.tanstack/
+.env*
+.dev.vars*
+.seed/
+.cache/
+*.tsbuildinfo
+
+.rer/
+
+# Private archives and generated browser evidence
+exports/
+*.rer
+test-results/
+playwright-report/
+
+# Restricted local OpenID conformance evidence.
+/conformance-current-results/

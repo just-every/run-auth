@@ -1,0 +1,4 @@
+﻿userPrincipalName,displayName,surname,mail,givenName,objectId,userType,jobTitle,department,accountEnabled,usageLocation
+ada@northwind.example.com,Ada Lovelace,Lovelace,ada@northwind.example.com,Ada,6f1e0d6a-0000-4000-8000-000000000001,Member,Engineer,Engineering,True,GB
+grace_old@legacy.northwind.example.com,Grace Hopper,Hopper,grace@northwind.example.com,Grace,6f1e0d6a-0000-4000-8000-000000000002,Member,Admiral,Engineering,False,US
+molly@northwind.example.com,,Jackson,,Mary,6f1e0d6a-0000-4000-8000-000000000003,Member,Analyst,Sales,True,US

@@ -1,0 +1,5 @@
+[
+ {"id":"104550000000000000001","primaryEmail":"ada@northwind.example.com","name":{"givenName":"Ada","familyName":"Lovelace","fullName":"Ada Lovelace"},"suspended":false,"archived":false,"orgUnitPath":"/Engineering","isAdmin":false},
+ {"id":"104550000000000000002","primaryEmail":"grace@northwind.example.com","name":{"givenName":"Grace","familyName":"Hopper","fullName":"Grace Hopper"},"suspended":true,"archived":false,"orgUnitPath":"/Engineering","isAdmin":false},
+ {"id":"104550000000000000003","primaryEmail":"Molly@Northwind.example.com","name":{"givenName":"Mary","familyName":"Jackson"},"suspended":false,"archived":true,"orgUnitPath":"/Sales","isAdmin":false}
+]

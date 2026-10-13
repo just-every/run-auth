@@ -1,0 +1,21 @@
+-- Auth-specific security state; directory identity remains Base's real oa_operators.
+CREATE TABLE auth_emails (person_id TEXT PRIMARY KEY REFERENCES oa_operators(id), verified_at INTEGER NOT NULL);
+CREATE TABLE auth_sessions (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, person_id TEXT NOT NULL REFERENCES oa_operators(id), person_version INTEGER NOT NULL, amr TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, revoked_at INTEGER);
+CREATE INDEX auth_sessions_person ON auth_sessions(person_id);
+CREATE TABLE auth_challenges (id TEXT PRIMARY KEY, purpose TEXT NOT NULL, person_id TEXT, binding_hash TEXT NOT NULL, payload TEXT NOT NULL, expires_at INTEGER NOT NULL);
+CREATE TABLE auth_limits (bucket TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+CREATE TABLE auth_passkeys (id TEXT PRIMARY KEY, person_id TEXT NOT NULL REFERENCES oa_operators(id), public_key TEXT NOT NULL, counter INTEGER NOT NULL, transports TEXT NOT NULL, created_at INTEGER NOT NULL, last_used_at INTEGER);
+CREATE INDEX auth_passkeys_person ON auth_passkeys(person_id);
+CREATE TABLE auth_recoveries (id TEXT PRIMARY KEY, person_id TEXT NOT NULL REFERENCES oa_operators(id), session_id TEXT NOT NULL, created_at INTEGER NOT NULL, ready_at INTEGER NOT NULL, approved_by TEXT REFERENCES oa_operators(id), cancelled_at INTEGER, completed_at INTEGER, completion_marker TEXT);
+CREATE UNIQUE INDEX auth_recovery_pending ON auth_recoveries(person_id) WHERE cancelled_at IS NULL AND completed_at IS NULL;
+CREATE TABLE auth_notices (id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES auth_sessions(id), recovery_id TEXT REFERENCES auth_recoveries(id), message TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE auth_recovery_tokens (token_hash TEXT PRIMARY KEY, created_at INTEGER NOT NULL, consumed_at INTEGER, consumption_marker TEXT);
+CREATE TABLE auth_domains (domain TEXT PRIMARY KEY, created_by TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE auth_activity (id INTEGER PRIMARY KEY AUTOINCREMENT, actor_id TEXT, event TEXT NOT NULL, subject_id TEXT, created_at INTEGER NOT NULL);
+CREATE TABLE auth_clients (id TEXT PRIMARY KEY, name TEXT NOT NULL, origin TEXT NOT NULL, sector_id TEXT NOT NULL UNIQUE, redirect_uris TEXT NOT NULL, jwks TEXT NOT NULL, owner_person_id TEXT REFERENCES oa_operators(id), owner_claimed_at INTEGER, source TEXT NOT NULL, created_at INTEGER NOT NULL, disabled_at INTEGER);
+CREATE TABLE auth_grants (client_id TEXT NOT NULL REFERENCES auth_clients(id), person_id TEXT NOT NULL REFERENCES oa_operators(id), created_at INTEGER NOT NULL, PRIMARY KEY(client_id,person_id));
+CREATE TABLE auth_codes (code_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES auth_clients(id), person_id TEXT NOT NULL REFERENCES oa_operators(id), session_id TEXT NOT NULL REFERENCES auth_sessions(id), redirect_uri TEXT NOT NULL, challenge TEXT NOT NULL, nonce TEXT NOT NULL, scopes TEXT NOT NULL, expires_at INTEGER NOT NULL, consumed_at INTEGER);
+CREATE TABLE auth_assertions (client_id TEXT NOT NULL, jti TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(client_id,jti));
+CREATE TABLE auth_signing_keys (kid TEXT PRIMARY KEY, public_jwk TEXT NOT NULL, encrypted_private TEXT NOT NULL, published_at INTEGER NOT NULL, use_after INTEGER NOT NULL, retire_at INTEGER);
+CREATE TABLE auth_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE auth_subjects (sector_id TEXT NOT NULL, person_id TEXT NOT NULL REFERENCES oa_operators(id), subject TEXT NOT NULL UNIQUE, PRIMARY KEY(sector_id,person_id));

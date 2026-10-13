@@ -1,0 +1,9 @@
+userPrincipalName,displayName,surname,mail,givenName,objectId,department,accountEnabled
+eve@northwind.example.com,"=HYPERLINK(""https://evil.example"",""Open"")",,eve@northwind.example.com,,7a000000-0000-4000-8000-000000000001,=1+1,True
+plus@northwind.example.com,@SUM(A1),,+cmd@northwind.example.com,,7a000000-0000-4000-8000-000000000002,,True
+minus@northwind.example.com,-Dee,,-dee@northwind.example.com,,7a000000-0000-4000-8000-000000000003,,True
+nobody,No Address,,not-an-email,,7a000000-0000-4000-8000-000000000004,,True
+bob.a@northwind.example.com,Bob A,,Bob@Northwind.Example.com,,7a000000-0000-4000-8000-000000000005,,True
+bob.b@northwind.example.com,Bob B,,bob@northwind.example.com,,7a000000-0000-4000-8000-000000000006,,True
+bob.c@northwind.example.com,Bob Sales,,bob+sales@northwind.example.com,,7a000000-0000-4000-8000-000000000007,,True
+carol@northwind.example.com,Carol Lookalike,,carol@nоrthwind.example.com,,7a000000-0000-4000-8000-000000000008,,True

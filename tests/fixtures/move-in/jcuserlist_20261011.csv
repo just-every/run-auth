@@ -1,0 +1,4 @@
+_id,username,email,firstname,lastname,displayname,state,suspended,department
+5f0000000000000000000a01,ada,ada@northwind.example.com,Ada,Lovelace,Ada Lovelace,ACTIVATED,false,Engineering
+5f0000000000000000000a02,grace,grace@northwind.example.com,Grace,Hopper,,SUSPENDED,true,Engineering
+5f0000000000000000000a03,molly,molly@northwind.example.com,Mary,Jackson,,STAGED,false,Sales

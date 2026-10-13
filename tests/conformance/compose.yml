@@ -1,0 +1,39 @@
+services:
+  mongodb:
+    image: ${MONGO_IMAGE:?source versions.env}
+    volumes:
+      - database:/data/db
+  nginx:
+    image: ${NGINX_IMAGE:?source versions.env}
+    ports:
+      - "127.0.0.1:8443:8443"
+      - "127.0.0.1:8444:8444"
+    networks:
+      default:
+        aliases: [server]
+  server:
+    image: ${SUITE_IMAGE:?source versions.env}
+    network_mode: service:nginx
+    depends_on: [mongodb, nginx]
+    environment:
+      BASE_URL: ${BASE_URL:-https://localhost:8443}
+      BASE_MTLS_URL: ${BASE_MTLS_URL:-https://localhost:8444}
+      MONGODB_HOST: mongodb
+      SPRING_PROFILES_ACTIVE: dev
+      # Match the pinned prebuilt image's development registration defaults.
+      OIDC_GOOGLE_CLIENTID: ${OIDC_GOOGLE_CLIENTID:-google-client}
+      OIDC_GOOGLE_SECRET: ${OIDC_GOOGLE_SECRET:-google-secret}
+      OIDC_GITLAB_CLIENTID: ${OIDC_GITLAB_CLIENTID:-gitlab-client}
+      OIDC_GITLAB_SECRET: ${OIDC_GITLAB_SECRET:-gitlab-secret}
+      JAVA_EXTRA_ARGS: "-Dfintechlabs.devmode=true -Dfintechlabs.startredir=false"
+  oidcc-provider:
+    image: ${PROVIDER_IMAGE:?source versions.env}
+    platform: linux/amd64
+    profiles: [reference]
+    network_mode: service:nginx
+    depends_on: [nginx]
+    # Upstream's local configuration, key and certificate are mounted into the
+    # image's working directory by lib/runtime.py after the image is pulled.
+    entrypoint: [docker-entrypoint.sh, server]
+volumes:
+  database:

@@ -1,0 +1,4 @@
+user_id,email,name,given_name,family_name,blocked,created_at
+"'auth0|64f0000000000000000000a1","'ada@northwind.example.com","'Ada Lovelace","'Ada","'Lovelace",false,2024-02-01T10:00:00.000Z
+"'google-oauth2|10000000000000000002","'grace@northwind.example.com","'Grace Hopper","'Grace","'Hopper",true,2024-02-02T10:00:00.000Z
+"'auth0|64f0000000000000000000a3","'molly@northwind.example.com","","'Mary","'Jackson",false,2024-02-03T10:00:00.000Z

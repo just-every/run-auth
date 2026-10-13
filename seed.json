@@ -1,0 +1,79 @@
+{
+  "id": "auth",
+  "name": "Auth",
+  "version": "0.1.0",
+  "maturity": "development",
+  "category": "identity",
+  "spine": {
+    "id": "foundation",
+    "record": "No domain record selected"
+  },
+  "description": "Owner-run OpenID Connect identity provider with email links, passkeys, people and apps.",
+  "capabilities": [
+    {
+      "id": "http-dispatch",
+      "clauses": [
+        "HTTP-001"
+      ]
+    }
+  ],
+  "nonGoals": [
+    "RER Managed installation and trust provisioning",
+    "Role synchronization and SCIM"
+  ],
+  "externals": [
+    {
+      "id": "cloudflare",
+      "required": true,
+      "why": "Worker hosting",
+      "data": [
+        "HTTP requests"
+      ],
+      "adapters": []
+    }
+  ],
+  "env": [],
+  "deploy": {
+    "healthPath": "/health",
+    "publicPaths": [
+      "/health",
+      "/signin",
+      "/.well-known/openid-configuration",
+      "/oidc/jwks"
+    ],
+    "notes": "Auth sessions protect private pages and APIs; administrator mutations require passkey proof. Base bootstrap does not grant Auth authority. Pure development sessions and the outbox require the local checkout key; the dev bridge is excluded from production. Linking and transfer remain pending Base's app-linking and transfer APIs."
+  },
+  "extensionPoints": {
+    "contributions": [],
+    "policies": [],
+    "events": [],
+    "slots": [],
+    "adapters": []
+  },
+  "limits": {
+    "status": "unmeasured"
+  },
+  "accessibility": {
+    "level": "WCAG 2.2 AA",
+    "status": "Scoped Chromium axe checks require zero serious/critical findings on sign-in and five Auth pages at1440/390 in light/dark; see ACCEPTANCE.md for run evidence. Full WCAG conformance is not certified."
+  },
+  "operatingCost": {
+    "status": "unmeasured"
+  },
+  "composition": {
+    "base": "base",
+    "family": "identity",
+    "edition": "auth",
+    "modules": [
+      "job-queue",
+      "release",
+      "deploy-kit",
+      "mail",
+      "operator-auth",
+      "portability"
+    ]
+  },
+  "provides": [
+    "oidc-provider@1"
+  ]
+}
