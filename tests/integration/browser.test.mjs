@@ -72,7 +72,9 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
    }
 
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${section} fits ${width}px`);
-   if(width===390 && ['people','apps','activity'].includes(section)){
+   // Apps with nothing linked shows its empty state (the door, message and hint) instead of a table.
+   if(section==='apps' && !await page.locator('.table-scroll').count())await expect(page.locator('.empty-state.featured')).toBeVisible();
+   else if(width===390 && ['people','apps','activity'].includes(section)){
     const region=page.locator('.table-scroll');
     const overflowing=await region.evaluate(element=>element.scrollWidth>element.clientWidth);
     {
