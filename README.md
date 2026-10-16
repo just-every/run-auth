@@ -8,9 +8,21 @@ Privacy: Auth shares each person's email and name with the apps they use. Under 
 
 RER trust: an Auth install RER provisioned carries RER's per-account public key in its `RER_LINK_APPROVAL_KEYS` setting and its first owner is claimed through RER's signed owner claim (`/auth/owner-claim`). An owner who runs Auth themselves can adopt it into Managed by adding RER's key on **Sign-in methods** (passkey plus a fresh email proof in this browser). Withdraw it there at any time: the key ends for good, later approvals signed with it are refused, and links already made stay until you remove them on **Apps**. Leaving Managed withdraws it too. An install that trusts no RER key never contacts RER.
 
-## Start locally
+## Run Auth
 
-The source lives at [just-every/run-auth](https://github.com/just-every/run-auth).
+Sign in with a touch: passkeys and email links for your team, and one sign-in across the apps you link. The run site, [run-auth.com/run](https://run-auth.com/run), gives the two steps; the guides are at [run-auth.com/docs](https://run-auth.com/docs) and in [docs/](docs/).
+
+```sh
+curl -fsSL https://runeditrun.com/install.sh | sh
+git clone https://github.com/just-every/run-auth.git
+cd run-auth && rer dev
+```
+
+`rer dev` installs everything, makes you the owner and prints a link that opens Auth signed in. Needs Node 22 or later and pnpm 10.12.4, on macOS, Linux or Windows with WSL2.
+
+## Start locally without installing rer
+
+The source lives at [just-every/run-auth](https://github.com/just-every/run-auth). The checkout carries its own copy of rer, so the same steps work without installing it:
 
 ```sh
 git clone https://github.com/just-every/run-auth.git
@@ -34,6 +46,6 @@ Auth is an `oidc-provider@1` link provider: the Apps page approves and removes a
 
 ## Moving people in
 
-People, **Move people in** stages a user list exported from Google Workspace, Microsoft Entra, Auth0, Okta or JumpCloud, shows what needs a decision, admits chosen rows as ordinary invitations and can undo the batch. Nothing but email, name, disabled state and the provider's id moves: no passwords, factors, roles, groups, sessions or apps. Staged rows that were never admitted would be left out of Auth's export when that arrives; today `rer export` still refuses. Read [MOVE-IN.md](MOVE-IN.md) before using it, including who should keep their current provider.
+People, **Move people in** stages a user list exported from Google Workspace, Microsoft Entra, Auth0, Okta or JumpCloud, shows what needs a decision, admits chosen rows as ordinary invitations and can undo the batch. Nothing but email, name, disabled state and the provider's id moves: no passwords, factors, roles, groups, sessions or apps. `rer export` leaves out staged rows that were never admitted. Read [MOVE-IN.md](MOVE-IN.md) before using it, including who should keep their current provider.
 
 See [Auth commands](AUTH-COMMANDS.md) for browser sign-in, recovery, private settings and the exceptions to the copied [Base command contract](SEED-COMMAND-CONTRACT.md). [Acceptance](ACCEPTANCE.md) names the real checks and remaining dependencies.

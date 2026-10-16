@@ -17,7 +17,7 @@ const detailText = (detail?: string | null): string => {
 const actor = (event: AuthActivity): string => event.actor_email ?? event.actorEmail
   ?? (typeof parsed(event.detail).key === 'string' ? `Agent key ${parsed(event.detail).key}` : 'Actor unavailable')
 const activityRows = (events: AuthActivity[]): string => events.length
-  ? events.map(event => `<tr><td><span class="activity-event">${escape(activityName(event.event))}</span>${detailText(event.detail) ? `<span class="activity-subject" data-activity-detail>${escape(detailText(event.detail))}</span>` : ''}</td><td>${escape(actor(event))}</td><td>${timeElement(event.created_at ?? event.createdAt)}</td></tr>`).join('')
+  ? events.map(event => `<tr class="activity-row"><td><span class="activity-event">${escape(activityName(event.event))}</span>${detailText(event.detail) ? `<span class="activity-subject" data-activity-detail>${escape(detailText(event.detail))}</span>` : ''}</td><td><span class="mobile-label">Person</span>${escape(actor(event))}</td><td><span class="mobile-label">Time</span>${timeElement(event.created_at ?? event.createdAt)}</td></tr>`).join('')
   : '<tr><td colspan="3">No activity has been recorded.</td></tr>'
 
 export function renderActivityPage(model: AuthPageModel): string {

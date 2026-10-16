@@ -18,7 +18,7 @@ const personRows = (people: AuthPerson[], model: AuthPageModel): string => {
       : ''
     const search = `${name} ${person.email} ${person.role ?? ''} ${person.status ?? ''}`.toLocaleLowerCase()
     const controls = [roleControl, suspend].filter(Boolean).join('')
-    return `<tr class="person-row" data-person-row data-search="${escape(search)}"><td><span class="initials">${escape(initials(person.name) || '•')}</span></td><td><div class="person"><strong class="person-name">${escape(name)}</strong></div><span class="mobile-label">Role</span><span>${escape(safeRole(person.role))}</span></td><td><span class="mobile-label">Email</span><span class="email-text">${escape(person.email)}</span></td><td><span class="mobile-label">Status</span>${badge(person.status)}</td><td class="actions-cell">${controls}</td></tr>`
+    return `<tr class="person-row" data-person-row data-search="${escape(search)}"><td><span class="initials">${escape(initials(person.name) || '•')}</span></td><td><div class="person"><strong class="person-name">${escape(name)}</strong><span class="person-role">${escape(safeRole(person.role))}</span></div></td><td><span class="mobile-label">Email</span><span class="email-text">${escape(person.email)}</span></td><td><span class="mobile-label">Status</span>${badge(person.status)}</td><td class="actions-cell">${controls}</td></tr>`
   }).join('')
 }
 
@@ -29,7 +29,7 @@ export function renderPeoplePage(model: AuthPageModel): string {
   const people = asArray<AuthPerson>(model.people)
   const domains = asArray(model.domains)
   const domainList = domains.length
-    ? `<div class="domain-list">${domains.map(item => `<span class="domain-chip">${icon('lock')}<span>${escape(item.domain)}</span></span>`).join('')}</div>`
+    ? `<div class="domain-list">${domains.map(item => `<span class="domain-chip">${escape(item.domain)}</span>`).join('')}</div>`
     : emptyState('No sign-in domains have been allowed.')
   const inviteFields = `<label for="invite-name">Name</label><input id="invite-name" name="name" autocomplete="name" maxlength="160" required><label for="invite-email">Email</label><input id="invite-email" name="email" type="email" autocomplete="email" maxlength="254" required>`
   const domainFields = `<label for="allow-domain">Domain</label><input id="allow-domain" name="domain" type="text" inputmode="url" autocomplete="off" maxlength="253" placeholder="company.example" required>`

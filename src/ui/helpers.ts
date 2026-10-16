@@ -66,15 +66,19 @@ export const badge = (status: unknown): string => {
   const raw = typeof status === 'string' ? status.toLowerCase() : ''
   const state = raw === 'active' ? 'active' : raw === 'invited' ? 'invited' : raw === 'inactive' || raw === 'suspended' ? 'suspended' : 'unknown'
   const label = state === 'active' ? 'Active' : state === 'invited' ? 'Invited' : state === 'suspended' ? 'Suspended' : 'Status unavailable'
-  return `<span class="status-pill ${state === 'unknown' ? '' : state}"><i class="status-dot"></i>${label}</span>`
+  return `<span class="status-pill ${state === 'unknown' ? '' : state}">${label}</span>`
 }
 
-export const emptyState = (message: string): string => `<div class="empty-state"><p>${escape(message)}</p></div>`
+// A quiet line inside a panel; with a hint, the page-level empty state: the door, the message and what to do next.
+export const emptyState = (message: string, hint?: string): string => hint
+  ? `<div class="empty-state featured"><img class="empty-door" src="/brand/door-small.webp" alt="" width="82" height="120"><p class="empty-message">${escape(message)}</p><p class="empty-hint">${escape(hint)}</p></div>`
+  : `<div class="empty-state"><p>${escape(message)}</p></div>`
 
 export const noticeBox = (message: string, kind = 'info'): string =>
   `<div class="notice-panel" data-kind="${escape(kind)}" role="${kind === 'error' ? 'alert' : 'status'}">${escape(message)}</div>`
 
-export const safeRole = (role?: string): string => role ? role.replace(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase()) : 'Role unavailable'
+const ROLES: Record<string, string> = { owner: 'Owner', admin: 'Administrator', member: 'Member' }
+export const safeRole = (role?: string): string => role ? ROLES[role] ?? role.replace(/[_-]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase()) : 'Role unavailable'
 
 export const hasAdminRole = (user: AuthUser): boolean => ['owner', 'admin'].includes(user.role ?? '')
 

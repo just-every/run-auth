@@ -17,9 +17,9 @@ const endedReasons: Record<NonNullable<AgentKey['ended_reason']>, string> = {
   owner_changed: 'its owner’s role or status changed after it was minted',
 }
 const keyState = (key: AgentKey, now: number): string => key.revoked_at
-  ? '<span class="status-pill suspended"><i class="status-dot"></i>Revoked</span>'
-  : key.ended_reason ? '<span class="status-pill suspended"><i class="status-dot"></i>Ended</span>'
-  : key.expires_at <= now ? '<span class="status-pill invited"><i class="status-dot"></i>Expired</span>' : '<span class="status-pill"><i class="status-dot"></i>Active</span>'
+  ? '<span class="status-pill suspended">Revoked</span>'
+  : key.ended_reason ? '<span class="status-pill suspended">Ended</span>'
+  : key.expires_at <= now ? '<span class="status-pill invited">Expired</span>' : '<span class="status-pill">Active</span>'
 
 const keyForm = (action: string, key: AgentKey, label: string, kind: string, csrf?: string, confirm?: string): string =>
   `<form method="post" action="${action}" data-auth-action data-reload="true"${confirm ? ` data-confirm="${escape(confirm)}"` : ''}><input type="hidden" name="keyId" value="${escape(key.id)}">${csrfField(csrf)}<button class="${kind}" type="submit">${label}<span class="visually-hidden"> ${escape(key.label)}</span></button></form>`
@@ -34,10 +34,10 @@ const keyRows = (keys: AgentKey[], model: AuthPageModel, now: number): string =>
 
 const proposalState = (proposal: AgentProposal): string => {
   const reason = proposal.outcome?.reason ? outcomeReasons[proposal.outcome.reason] ?? proposal.outcome.reason.replace(/_/g, ' ') : ''
-  if (proposal.status === 'pending') return `<span class="status-pill invited" data-proposal-status="pending"><i class="status-dot"></i>Waiting for a person</span>`
-  if (proposal.status === 'expired') return '<span class="status-pill suspended" data-proposal-status="expired"><i class="status-dot"></i>Expired</span>'
-  if (proposal.status === 'done') return `<span class="status-pill" data-proposal-status="done"><i class="status-dot"></i>Done</span>`
-  return `<span class="status-pill suspended" data-proposal-status="${escape(proposal.status)}"><i class="status-dot"></i>${proposal.status === 'failed' ? 'Failed' : 'Rejected'}${reason ? `: ${escape(reason)}` : ''}</span>`
+  if (proposal.status === 'pending') return `<span class="status-pill invited" data-proposal-status="pending">Waiting for a person</span>`
+  if (proposal.status === 'expired') return '<span class="status-pill suspended" data-proposal-status="expired">Expired</span>'
+  if (proposal.status === 'done') return `<span class="status-pill" data-proposal-status="done">Done</span>`
+  return `<span class="status-pill suspended" data-proposal-status="${escape(proposal.status)}">${proposal.status === 'failed' ? 'Failed' : 'Rejected'}${reason ? `: ${escape(reason)}` : ''}</span>`
 }
 
 const proposalRows = (proposals: AgentProposal[]): string => proposals.length

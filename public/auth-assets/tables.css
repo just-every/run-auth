@@ -1,0 +1,95 @@
+/* Tables (People, Apps, Activity, Move people in): 13px muted headers, 64px rows
+   with hairline dividers. Below 1024px People, Apps, Activity and staged
+   move-in rows stack into cards, each field named by its mobile-label. */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.search { position: relative; flex: 1 1 320px; display: flex; align-items: center; min-width: 0; font-weight: 400; }
+.search svg { position: absolute; left: 18px; width: 20px; height: 20px; color: var(--rer-muted); pointer-events: none; }
+.search input { min-height: 48px; padding-left: 50px; border-radius: 999px; }
+.toolbar .action svg { width: 18px; height: 18px; }
+
+.table-panel { min-width: 0; border-top: 1px solid var(--rer-border); }
+.table-scroll { overflow-x: auto; }
+.table-scroll:focus-visible { outline-offset: -2px; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th {
+  padding: 14px 16px; text-align: left; vertical-align: bottom; white-space: nowrap;
+  font-size: 13px; font-weight: 600; color: var(--rer-muted); border-bottom: 1px solid var(--rer-border);
+}
+td { padding: 12px 16px; height: 64px; vertical-align: middle; border-bottom: 1px solid var(--rer-border); overflow-wrap: anywhere; }
+th:first-child, td:first-child { padding-left: 4px; }
+th:last-child, td:last-child { padding-right: 4px; }
+.actions-cell { text-align: right; }
+.actions-cell .button-row { justify-content: flex-end; }
+.table-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 4px 0; font-size: 13px; color: var(--rer-muted); }
+.mobile-label { display: none; }
+
+/* People */
+.people-initials { width: 64px; }
+.people-name { width: 26%; }
+.people-email { width: 30%; }
+.people-status { width: 14%; }
+.person { display: grid; gap: 2px; }
+.person-name { font-size: 16px; font-weight: 600; }
+.person-role { font-size: 14px; color: var(--rer-muted); }
+.people-table .actions-cell { white-space: nowrap; }
+.people-table .actions-cell > form { display: inline-flex; vertical-align: middle; margin: 4px 0 4px 8px; }
+.people-table .actions-cell > .muted { padding-right: 12px; }
+.role-control { display: flex; align-items: center; gap: 8px; }
+.role-control select { width: auto; min-height: 40px; padding: 6px 10px; border-radius: 999px; }
+.role-control .secondary-button, .people-table .danger-button { min-height: 40px; padding: 0 18px; }
+.domain-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.domain-chip { min-height: 36px; padding: 0 18px; font-size: 15px; font-weight: 500; }
+
+/* Apps and Activity */
+.app-origin { display: block; font-size: 16px; font-weight: 700; }
+.flag-list { margin-top: 8px; }
+.app-table .actions-cell .button-row + .data-meta { margin-top: 6px; text-align: right; }
+.activity-event { display: block; font-weight: 600; }
+.activity-subject { display: block; margin-top: 2px; font-size: 13px; color: var(--rer-muted); }
+
+@media (max-width: 1023px) {
+  .page-content > .toolbar { padding: 16px; border: 1px solid var(--rer-border); border-radius: 16px; background: var(--rer-surface); }
+  .table-panel { border: 1px solid var(--rer-border); border-radius: 16px; background: var(--rer-surface); overflow: hidden; }
+  .table-footer { padding: 14px 16px; }
+  .move-in-batches th, .move-in-batches td { padding-inline: 12px; }
+
+  .people-table table, .people-table tbody, .app-table table, .app-table tbody, .activity-table table, .activity-table tbody,
+  .move-in-table table, .move-in-table tbody { display: block; }
+  .people-table colgroup, .people-table thead, .app-table thead, .activity-table thead, .move-in-table colgroup, .move-in-table thead { display: none; }
+  .person-row, .app-row, .activity-row, .move-in-row {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px 14px; padding: 16px; border-bottom: 1px solid var(--rer-border);
+  }
+  .person-row td, .app-row td, .activity-row td, .move-in-row td { display: block; height: auto; padding: 0; border: 0; grid-column: 1 / -1; }
+  .mobile-label { display: block; margin-bottom: 2px; font-size: 12px; font-weight: 600; color: var(--rer-muted); }
+  /* People: initials, name and role, status pill on one line; email under the name; actions full width. */
+  .person-row td:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; }
+  .person-row td:nth-child(2) { grid-column: 2; grid-row: 1; align-self: center; }
+  .person-row td:nth-child(3) { grid-column: 2 / -1; grid-row: 2; }
+  .person-row td:nth-child(4) { grid-column: 3; grid-row: 1; align-self: start; }
+  .person-row td:nth-child(3) .mobile-label, .person-row td:nth-child(4) .mobile-label { display: none; }
+  .person-row .actions-cell { grid-column: 1 / -1; white-space: normal; text-align: left; }
+  .person-row .actions-cell > .muted { display: none; }
+  .people-table .actions-cell > form { display: flex; margin: 8px 0 0; }
+  .people-table .actions-cell > form.button-row > button { width: 100%; }
+  .role-control { gap: 8px; }
+  .role-control select { flex: 1 1 auto; min-width: 0; }
+  .move-in-row td:first-child { grid-column: 1; grid-row: 1; }
+  .move-in-row td:nth-child(2) { grid-column: 2 / -1; grid-row: 1; align-self: center; }
+  .app-row td:nth-child(1) { grid-column: 1 / 3; grid-row: 1; }
+  .app-row td:nth-child(3) { grid-column: 3; grid-row: 1; }
+  .app-row td:nth-child(3) .mobile-label { display: none; }
+  .activity-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .activity-row td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .activity-row td:nth-child(3) { grid-column: 2; grid-row: 1; font-size: 13px; color: var(--rer-muted); white-space: nowrap; text-align: right; }
+  .activity-row td:nth-child(3) .mobile-label { display: none; }
+  .activity-row td:nth-child(2) { grid-row: 2; }
+  .app-row .actions-cell { margin-top: 4px; }
+  .app-row .actions-cell form, .app-row .actions-cell button { width: 100%; }
+  .page-content > .toolbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+  .page-content > .toolbar .search { grid-column: 1 / -1; }
+  .page-content > .toolbar .action { min-width: 0; padding: 0 6px; font-size: 14px; white-space: normal; text-align: center; }
+  .page-content > .toolbar .action svg { display: none; }
+  [data-auth-page=move-in] .page-content > .toolbar { display: flex; }
+  .empty-row td, [data-search-empty] td { display: block; padding: 16px; height: auto; }
+  .email-text { display: block; }
+}

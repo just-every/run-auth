@@ -34,6 +34,8 @@ export const commandAdapter = createCommandAdapter(lifecycle, {
  dev: developmentTarget, preview: previewTarget, verify: ['pnpm', ['run', 'verify:app']], deploy: ownerDeploy('deploy.json', lifecycle),
  portability,
  setup: { manifestFile: 'rer-setup.json' }, browserModule: 'scripts/installer/ui/seed.mjs',
+ // The run site (run-auth.com): the approved homepage, /run and the docs, built by rer build --site.
+ site: { entry: 'src/site/pages.tsx', output: 'dist/site', declaration: 'deploy-site.json', config: 'vite.site.config.mjs' },
  // Local dev identity: the local-only Worker entry, the build output rer build
  // scans for the dev layer, and the kept end-to-end email-link test.
  devIdentity: { entry: 'src/server.dev.ts', output: ['dist'], emailLinkTest: 'tests/email-link.mjs' },
