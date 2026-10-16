@@ -5,7 +5,7 @@ import pkg from '../../package.json'
 export const run: RunData = {
   name: 'Auth',
   repository: pkg.repository,
-  clone: `git clone ${pkg.repository}.git`,
+  clone: 'npx -y @runeditrun/rer dev just-every/run-auth',
   folder: 'run-auth',
   requirements: 'Needs Node 22 or later and pnpm 10.12.4, on macOS, Linux or Windows with WSL2.',
   licence: 'MIT',

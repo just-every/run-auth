@@ -1,5 +1,4 @@
 import type { JSX } from 'react'
-import { run } from '../run'
 import { Icon } from './icons'
 
 // The small product drawing beside each section: real labels from Auth's own
@@ -50,11 +49,7 @@ const Licence = () => (
 )
 
 const commands = [
-  `git clone ${run.repository}.git`,
-  `cd ${run.folder}`,
-  'node scripts/rer.mjs install',
-  'node scripts/rer.mjs setup --owner-email you@example.com',
-  'node scripts/rer.mjs dev',
+  'npx -y @runeditrun/rer dev just-every/run-auth',
 ]
 const Terminal = () => (
   <pre className="draw-terminal" aria-label="Start Auth on your computer"><code>{commands.map(line => <span key={line}><span className="prompt" aria-hidden="true">$ </span>{line}{'\n'}</span>)}</code></pre>

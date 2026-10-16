@@ -4,24 +4,15 @@ These guides are also published at https://run-auth.com/docs, and the run page i
 
 The pages on https://run-auth.com are built from this repository's `docs/` folder and `src/site/`, so a fix to these guides goes live with the next change merged to `main`.
 
-## Install rer
-
-`rer` is the Run Edit Run command. Install it once per computer:
-
-```sh
-curl -fsSL https://runeditrun.com/install.sh | sh
-```
-
-or `npm install -g @runeditrun/rer`. Auth needs Node 22 and pnpm 10.12.4, on macOS, Linux or Windows with WSL2.
-
 ## Get Auth and start it
 
 ```sh
-git clone https://github.com/just-every/run-auth.git
-cd run-auth && rer dev
+npx -y @runeditrun/rer dev just-every/run-auth
 ```
 
-The first `rer dev` installs everything, sets up a local database, makes you the owner and prints two lines:
+That one line installs `rer`, the Run Edit Run command, clones Auth into `run-auth`, installs everything and starts it. Auth needs Node 22 and pnpm 10.12.4, on macOS, Linux or Windows with WSL2. To start it again later, run `cd run-auth && rer dev`.
+
+The first start installs everything, sets up a local database, makes you the owner and prints two lines:
 
 - `RER_READY` is the address Auth answers on, `http://localhost:` and a port.
 - `RER_OPEN` opens Auth in your browser, already signed in as you. It carries this checkout's private key, so open it only on this computer.

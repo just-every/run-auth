@@ -13,12 +13,10 @@ RER trust: an Auth install RER provisioned carries RER's per-account public key 
 Sign in with a touch: passkeys and email links for your team, and one sign-in across the apps you link. Visit [run-auth.com](https://run-auth.com) for Auth and [run-auth.com/run](https://run-auth.com/run) for the two steps; the guides are at [run-auth.com/docs](https://run-auth.com/docs) and in [docs/](docs/).
 
 ```sh
-curl -fsSL https://runeditrun.com/install.sh | sh
-git clone https://github.com/just-every/run-auth.git
-cd run-auth && rer dev
+npx -y @runeditrun/rer dev just-every/run-auth
 ```
 
-`rer dev` installs everything, makes you the owner and prints a link that opens Auth signed in. Needs Node 22 or later and pnpm 10.12.4, on macOS, Linux or Windows with WSL2.
+That one line clones Auth, installs everything, makes you the owner and prints a link that opens Auth signed in. To start it again later, run `cd run-auth && rer dev`. Needs Node 22 or later and pnpm 10.12.4, on macOS, Linux or Windows with WSL2.
 
 ## Start locally without installing rer
 
