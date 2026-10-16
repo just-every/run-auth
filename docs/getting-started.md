@@ -2,6 +2,8 @@ Auth runs on your own computer with one command. This page takes you from nothin
 
 These guides are also published at https://run-auth.com/docs, and the run page is at https://run-auth.com/run.
 
+The pages on https://run-auth.com are built from this repository's `docs/` folder and `src/site/`, so a fix to these guides goes live with the next change merged to `main`.
+
 ## Install rer
 
 `rer` is the Run Edit Run command. Install it once per computer:
