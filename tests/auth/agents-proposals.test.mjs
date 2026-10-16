@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {emailSession} from './runtime.mjs';
+import {authenticator} from './webauthn.mjs';
 import {issueClient} from './policy-helpers.mjs';
 import {ownerInstall,passkeyPerson,mint,preparer,file,approve,approvalProof,reject,post,table,proposal,person,activity,signInAgain} from './agents-helpers.mjs';
 
@@ -148,7 +149,9 @@ test('approval is one exact passkey approval by an administrator, rechecked at e
 
 test('concurrent approvals run once: two administrators together, and one administrator double-clicking',async t=>{
  const {r,owner,key}=await install(t),ann=await passkeyPerson(r,'ann','ann@example.com','admin');
- for(const [label,first,second,target] of [['two administrators',owner,ann,ADA],['double click',owner,owner,IVY]]) {
+ // A counting passkey refuses a second concurrent use of itself (clone detection) before the claim; a counterless one, as synced passkeys are, reaches it.
+ const bea=await passkeyPerson(r,'bea','bea@example.com','admin',authenticator(r.origin,{counting:false}));
+ for(const [label,first,second,target] of [['two administrators',owner,ann,ADA],['double click',bea,bea,IVY]]) {
   const id=await file(r,key,{kind:target===ADA?'suspend_person':'remove_invitation',target,reason:'Left'});
   const version=(await person(r,target)).version;
   const proofs=[await approvalProof(r,first,id),await approvalProof(r,second,id)],barrier={name:label,size:2};

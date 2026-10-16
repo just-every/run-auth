@@ -9,9 +9,9 @@ export const proposal=(r,id)=>r.db.prepare('SELECT * FROM auth_agent_proposals W
 export const person=(r,email)=>r.db.prepare('SELECT * FROM oa_operators WHERE email=?').bind(email).first();
 
 // A person signed in with a hardware passkey and a fresh local email proof.
-export async function passkeyPerson(r,id,email,role) {
+export async function passkeyPerson(r,id,email,role,key) {
  await r.person(id,email,role);
- return register(r,await emailSession(r,email));
+ return register(r,await emailSession(r,email),key);
 }
 export async function ownerInstall(t) {
  const r=await openRuntime();t.after(()=>r.close());

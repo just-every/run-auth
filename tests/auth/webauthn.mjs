@@ -10,7 +10,8 @@ function cbor(value) {
 }
 // A real software authenticator at the hardware boundary: genuine EC signatures,
 // COSE public key and WebAuthn attestation, verified by the production library.
-export function authenticator(origin='https://auth.example.com') {
+// `counting:false` is an authenticator that reports signature counter 0, as synced passkeys do.
+export function authenticator(origin='https://auth.example.com',{counting=true}={}) {
  const {publicKey,privateKey}=generateKeyPairSync('ec',{namedCurve:'prime256v1'}),jwk=publicKey.export({format:'jwk'}),id=randomBytes(32),rp=digest(new URL(origin).hostname);let count=0;
  return {id:enc(id),register(options,override={}) {
   const client=Buffer.from(JSON.stringify({type:'webauthn.create',challenge:options.challenge,origin,...override}));
@@ -18,7 +19,7 @@ export function authenticator(origin='https://auth.example.com') {
   const auth=Buffer.concat([rp,Buffer.from([0x45]),Buffer.alloc(4),Buffer.alloc(16),Buffer.from([0,id.length]),id,key]);
   return {id:enc(id),rawId:enc(id),type:'public-key',response:{clientDataJSON:enc(client),attestationObject:enc(cbor(new Map([['fmt','none'],['attStmt',new Map()],['authData',auth]]))),transports:['internal']},clientExtensionResults:{}};
  },authenticate(options,override={}) {
-  count++;const client=Buffer.from(JSON.stringify({type:'webauthn.get',challenge:options.challenge,origin,...override})),counter=Buffer.alloc(4);counter.writeUInt32BE(count);
+  if(counting)count++;const client=Buffer.from(JSON.stringify({type:'webauthn.get',challenge:options.challenge,origin,...override})),counter=Buffer.alloc(4);counter.writeUInt32BE(count);
   const auth=Buffer.concat([rp,Buffer.from([0x05]),counter]);
   return {id:enc(id),rawId:enc(id),type:'public-key',response:{clientDataJSON:enc(client),authenticatorData:enc(auth),signature:enc(sign('sha256',Buffer.concat([auth,digest(client)]),privateKey))},clientExtensionResults:{}};
  }};
