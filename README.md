@@ -10,7 +10,7 @@ RER trust: an Auth install RER provisioned carries RER's per-account public key 
 
 ## Run Auth
 
-Sign in with a touch: passkeys and email links for your team, and one sign-in across the apps you link. The run site, [run-auth.com/run](https://run-auth.com/run), gives the two steps; the guides are at [run-auth.com/docs](https://run-auth.com/docs) and in [docs/](docs/).
+Sign in with a touch: passkeys and email links for your team, and one sign-in across the apps you link. Visit [run-auth.com](https://run-auth.com) for Auth and [run-auth.com/run](https://run-auth.com/run) for the two steps; the guides are at [run-auth.com/docs](https://run-auth.com/docs) and in [docs/](docs/).
 
 ```sh
 curl -fsSL https://runeditrun.com/install.sh | sh
