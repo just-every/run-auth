@@ -25,7 +25,10 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
         env:
           COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
-      - run: node scripts/rer.mjs deploy --site
+      # The site deploy runs on the published rer's deploy kit (www 301 in the site
+      # Worker, ownership read from the provider); the app keeps its vendored rer.
+      - run: npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/rer" @runeditrun/rer@0.2.31
+      - run: node "$RUNNER_TEMP/rer/node_modules/@runeditrun/rer/bin/rer.mjs" deploy --site
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
