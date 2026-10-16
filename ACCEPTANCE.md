@@ -104,6 +104,10 @@ Existing evidence and limits: No implementing product path or acceptance test ye
 
 Existing evidence and limits: src/ui/pages/signin.ts; src/ui/pages/account.ts; tests/integration/browser.test.mjs — hosted responsive pages exist; branding controls, embedded components and journey orchestration are missing.
 
+**AUTH-LOCALE-001 — End-user display languages (missing).** Set a person's language to Spanish and complete activation, sign-in, push approval with number matching, password reset, the launcher, an extension fill and the Mac login window entirely in Spanish; receive the new-device and password-changed notices in Spanish. On the sign-in page switch to Arabic and complete sign-in at 390 in right-to-left layout. Leave an employer notification template in English only and see the English fallback used and flagged in preview. A build check fails when any end-user string key is missing from a supported language.
+
+Existing evidence and limits: src/ui/shell.ts; src/ui/pages/signin.ts — every page renders English only (`lang="en"`); language selection, translations and per-language employer text are missing.
+
 **AUTH-LAUNCHER-001 — Employee app launcher (missing).** As an employee with Google Workspace, Slack, AWS, a password-only app and a RER app assigned, launch each into its proper account. Request an unassigned app, remove an assignment and expire a temporary grant; the dashboard, the extension and direct launch all enforce the changed access. Assign a bookmark tile to a group and see it only for members.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
@@ -137,6 +141,10 @@ Existing evidence and limits: No implementing product path or acceptance test ye
 **AUTH-NOTIFY-001 — Employee security notifications and suspicious-activity reports (partial).** Sign in from a new browser and receive the new-device email with its stated context. Enroll a factor, have help desk reset a factor and change a password, and receive each notification. From the new-device email, while signed out, click "Report suspicious activity": see the security owner's escalation in Slack and, under the end-sessions policy, the person's sessions ended and a linked app's back-channel logout delivered. Refuse the report link's reuse and use after expiry. Turn off new-device notices and receive none; try to turn off recovery notices and be refused.
 
 Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs — a cancellable recovery-requested notice is posted to each of the person's active sessions; email/push notifications for the other named events and the suspicious-activity report are missing.
+
+**AUTH-LOGOUT-002 — Universal logout from connected SaaS for a compromised account (partial).** In authorized Google Workspace, Microsoft 365, Slack Enterprise Grid, Zoom and Salesforce test tenants, sign a person in to each through Auth on the web and in each vendor's desktop or mobile client. From a new-device notice, report suspicious activity under the end-sessions policy: within 60 seconds the person's Auth sessions and a linked app's session end; within 5 minutes each vendor's API shows the sessions or tokens revoked, and each web and client session is refused at its next request, while the person stays active and signs in again with a passkey. Repeat from help desk's End all sessions action and be refused outside the holder's scope. An app with no revocation API is shown as unsupported with its manual step, and a vendor failure stays an open obligation.
+
+Existing evidence and limits: src/auth/links/logout.mjs; src/auth/index.mjs; tests/auth/linking.test.mjs — Sign out everywhere ends the person's own Auth sessions and signs them out of linked RER apps by back-channel logout; ending another person's sessions, report and risk triggers, and vendor-API revocation in SaaS apps are missing.
 
 **AUTH-SAML-001 — SAML 2.0 workforce identity provider (missing).** Configure a generic SAML SP through the admin door, launch as an assigned employee over each binding, validate mapped role/NameID in each of the four formats, sign the response, the assertion and both with SHA-256 and SHA-512, decrypt an encrypted assertion with each named algorithm at the SP, and roll certificates with overlap. Complete SP- and IdP-initiated logout over both bindings. Refuse a forged request, altered ACS, wrong audience, SHA-1 without an exception, stale/replayed assertion and unassigned user.
 
@@ -250,13 +258,21 @@ Existing evidence and limits: No implementing product path or acceptance test ye
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-**AUTH-AUDIT-001 — Identity investigation and reporting (partial).** Investigate an employee’s failed sign-in through its policy decision and provisioning history, filter reports by employer and export a review period to each named sink/Evidence. Query an event 12 months old through the log API on a default installation. Reconcile event counts across pages, detect tampering/gaps, deny an auditor’s write attempt and prove erased subjects no longer disclose personal identifiers.
+**AUTH-AUDIT-001 — Identity investigation and reporting (partial).** Investigate an employee’s failed sign-in through its policy decision and provisioning history, export a review period to each named sink/Evidence, and reconcile the AUTH-REPORTS-001 MFA-enrollment export for one employer row by row with its directory, with every person who has no factor present and marked non-compliant. Query an event 12 months old through the log API on a default installation. Reconcile event counts across pages, detect tampering/gaps, deny an auditor’s write attempt and prove erased subjects no longer disclose personal identifiers.
 
 Existing evidence and limits: src/auth/core.mjs; src/auth/admin.mjs; scripts/installer/transfer.mjs; tests/auth/agents-proposals.test.mjs; tests/integration/browser.test.mjs — Activity and portable history exist; reporting, streams, tamper evidence and anonymization are missing.
 
+**AUTH-REPORTS-001 — Named per-person identity reports (partial).** With 20 people (15 with a passkey or push, 3 with only a password, 2 with no factor), export the MFA-enrollment report and reconcile it row by row with the directory: all 20 rows are present and the 5 non-compliant people are marked. Terminate two people, one while a connector is held down, export the terminated-people report and reconcile each row's local-denial and full-deprovision times with the AUTH-TIMING-001 audit; the held app is named. Grant and revoke a custom administrator role and see the administrators report follow; age a person past 90 days without sign-in and see them on the dormant report. Refuse export to a role without export rights. Each export's row count equals the directory count for its filter at its as-of time.
+
+Existing evidence and limits: src/auth/admin.mjs; src/ui/pages/people.ts; tests/integration/browser.test.mjs — People lists every person with role (owner, admin, member) and status for administrators; per-person factor, termination-time and dormant reports, filters, schedules and export are missing.
+
+**AUTH-COMPLIANCE-001 — Identity-provider connectors for compliance platforms (missing).** In an authorized Vanta test tenant, connect Auth through the private integration: Vanta's accounts page shows every Auth person in scope with the correct status, MFA status and factor types, and a custom MFA test passes. Remove one person's last factor and see the test fail within one sync; offboard another and see them in Vanta's offboarding queue within one sync. Scope by an Auth group and see Vanta's scope follow a membership change. Repeat in a Drata test tenant and see "MFA on Identity Provider" pass and then fail the same way. Configure the Secureframe and Thoropass recipes in authorized test accounts and see each person's MFA status. Revoke the Vanta credential and see the connector unhealthy, with a follow-up raised, within two hours.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
+
 ## Migration, integration and operations
 
-**AUTH-MIGRATION-001 — Switch from Okta, Entra ID or JumpCloud (partial).** For Okta Workforce Identity, Microsoft Entra ID and JumpCloud separately, migrate a populated authorized test tenant with groups, apps, a collision, suspended worker and privileged assignment. Pilot a cohort, re-enroll factors through the AUTH-MIGRATION-003 campaign, compare counts/permissions, roll back and cut over; prove old subjects cannot act as credentials and no app is silently omitted.
+**AUTH-MIGRATION-001 — Switch from Okta, Entra ID or JumpCloud (partial).** For Okta Workforce Identity, Microsoft Entra ID and JumpCloud separately, migrate a populated authorized test tenant with groups, apps, a collision, suspended worker and privileged assignment. Pilot a cohort, re-enroll factors through the AUTH-MIGRATION-003 campaign, compare counts/permissions, roll back and cut over; prove old subjects cannot act as credentials and no app is silently omitted. With Vanta and Drata connected to the incumbent, see both listed with AUTH-COMPLIANCE-001 as their replacement, and cutover held until each replacement's first sync succeeds.
 
 Existing evidence and limits: src/auth/move-in/sources.mjs; src/auth/move-in/routes.mjs; tests/auth/move-in-staging.test.mjs; tests/auth/move-in-admission.test.mjs — user-export staging/admission exists for all three; full configuration/group/app migration and live cutover are missing.
 
@@ -344,7 +360,7 @@ Existing evidence and limits: src/auth/agents/keys.mjs; src/auth/agents/approval
 
 Existing evidence and limits: src/auth/links/logout.mjs; src/auth/agents/keys.mjs; tests/auth/linking.test.mjs; tests/auth/agents-keys.test.mjs — local key revocation and RER fences exist; app-wide delegated-credential inventory and verified remote reconciliation are missing.
 
-81 clauses: **13 done / 37 partial / 31 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgement or local queue success alone is insufficient.
+85 clauses: **13 done / 39 partial / 33 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgement or local queue success alone is insufficient.
 
 ## Retained implementation checks and historical outcomes
 
