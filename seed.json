@@ -19,7 +19,7 @@
   ],
   "nonGoals": [
     "RER Managed installation and trust provisioning",
-    "Role synchronization and SCIM"
+    "Device trust and conditional access (SAML, OpenID Connect and SCIM for company apps: see COMPANY-APPS.md)"
   ],
   "externals": [
     {

@@ -6,10 +6,10 @@ This guide is for an owner whose people already sign in through Google Workspace
 
 Keep your current provider if it already handles the applications, devices and offboarding you need. Auth is for a small business running a few compatible RER apps that wants one sign-in it runs itself, with permissions kept inside each app. It is not a replacement for a workforce identity suite.
 
+Auth connects company apps over SAML, OpenID Connect and SCIM (see [COMPANY-APPS.md](COMPANY-APPS.md)), but an export carries none of those connections, so you set each app up again after people are in.
+
 **Do not move** if your business depends on any of these. Auth does not provide them, and an export cannot carry them:
 
-- SAML sign-in for third-party apps (Auth only speaks OpenID Connect to compatible apps)
-- SCIM provisioning, or role and group sync into apps
 - device management, device trust or conditional access
 - your provider's own policies, password rules or multi-factor settings
 
@@ -25,7 +25,7 @@ Auth reads the user list your provider exports, stages it for your review, and l
 - the provider's id for that person (the "source id")
 - one context label, such as a Google org unit or a department, shown for your review only
 
-**Nothing else moves.** Not passwords or password hashes, not multi-factor factors or passkeys, not app roles or group permissions, not sessions, devices, SAML or SCIM applications, and not policy. Every person admitted from a file must open an email link in their own browser before they can sign in, exactly like someone you invite by hand. A matching email address is never treated as proof that the person owns it. Group and department labels never become permissions.
+**Nothing else moves.** Not passwords or password hashes, not multi-factor factors or passkeys, not app roles or group permissions, not sessions, devices, or the SAML, OpenID Connect and SCIM apps you connected at the provider (set those up again on Apps, as described in [COMPANY-APPS.md](COMPANY-APPS.md)), and not policy. Every person admitted from a file must open an email link in their own browser before they can sign in, exactly like someone you invite by hand. A matching email address is never treated as proof that the person owns it. Group and department labels never become permissions.
 
 ## Export routes, per provider
 

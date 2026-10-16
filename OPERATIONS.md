@@ -183,17 +183,19 @@ from public pages, not legal clearance for any reuse plan.
 
 | Project | Licence (read 11 Oct 2026) | What it covers beyond Auth |
 |---|---|---|
-| authentik | MIT core, separate enterprise terms | OIDC, SAML, LDAP and RADIUS flows for existing apps |
+| authentik | MIT core, separate enterprise terms | LDAP and RADIUS flows, and wider enterprise federation, for existing apps |
 | Keycloak | Apache-2.0 | Broad self-hosted federation and administration |
 | Ory Kratos | Apache-2.0 | Headless registration, verification and recovery; not by itself an OIDC server |
 | ZITADEL | AGPL-3.0 from v3 (Apache-2.0 before), commercial licence available | Mature multi-tenant identity platform |
 | Better Auth | MIT | TypeScript authentication framework, not a workforce directory |
 
 Auth stays native and small because its job is narrow: one owner's people,
-passkeys, email proof and code-flow OIDC for that owner's RER apps, deployed by
+passkeys, email proof, and sign-in and provisioning for that owner's RER apps and
+company apps over OpenID Connect, SAML and SCIM (see COMPANY-APPS.md), deployed by
 `rer` on the owner's own Cloudflare account and changed by the owner's agents
 in a codebase they can read whole. Wrapping a large product would not give that
 small seed, and its upgrades and incidents would become the owner's to carry. A
-business that needs general SAML, SCIM provisioning, device trust or
-conditional access should choose a larger product, such as one of the above or a
-commercial directory, instead of waiting for Auth to grow into one.
+business that needs device trust, conditional access or a full workforce
+directory should choose a larger product, such as one of the above or a
+commercial directory, instead of waiting for Auth to grow into one. For SAML,
+OpenID Connect and SCIM, see COMPANY-APPS.md.
