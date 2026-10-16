@@ -17,6 +17,7 @@ import {rememberIssuer} from './links/grant-map.mjs';
 import {isTrustAction,trustAction} from './links/rer-trust.mjs';
 import {samlRoute,isSamlPath} from './saml/routes.mjs';
 import {isWorkforceAction,workforceAction,workforceRead,WORKFORCE_READS} from './workforce/routes.mjs';
+import {isEventsAction,eventsAction,eventsRead,EVENTS_READ} from './events/routes.mjs';
 export {stageSigningKey,retireSigningKey,ensureSigningKey} from './keys.mjs';
 export {maintainAuth} from './maintenance.mjs';
 export {installRecoveryToken} from './recovery.mjs';
@@ -46,6 +47,8 @@ export function createAuthRuntime(options) {
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
+    // The event cursor reads its own read key, never a cookie.
+    if(path===EVENTS_READ)return await eventsRead(ctx,request);
     if(path.startsWith('/api/auth/')) {
      const section=path.slice('/api/auth/'.length);if(!['me','people','move-in','agents','apps','activity','methods','notices'].includes(section))fail('not_found',404);
      await requireSession(ctx,request,['people','move-in','agents','apps','activity'].includes(section));const data=await model(ctx,request,['move-in','agents'].includes(section)?section:undefined);return json(section==='me'?data:section==='move-in'?data.moveIn:data[section]);
@@ -73,6 +76,7 @@ export function createAuthRuntime(options) {
      if(isAppAction(action))return await appAction(ctx,request,action,data);
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);
      if(isWorkforceAction(action))return await workforceAction(ctx,request,action,data);
+     if(isEventsAction(action))return await eventsAction(ctx,request,action,data);
      return await adminAction(ctx,request,action,data);
     }
    }

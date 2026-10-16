@@ -15,6 +15,7 @@ import {scimBase,connectorOf,testConnection} from '../provisioning/scim.mjs';
 import {queue,queueApp,groupChanged,reconcile,preview,dispatch,ESCALATE_AFTER} from '../provisioning/obligations.mjs';
 import {recipe,catalog} from '../catalog/recipes.mjs';
 import {launcher} from './directory.mjs';
+import {emit} from '../events/store.mjs';
 
 const OWNER_ACTIONS=['/saml-keys/stage','/saml-keys/activate','/saml-keys/retire'];
 const ADMIN_ACTIONS=['/oidc-apps/create','/oidc-apps/rotate-secret','/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
@@ -63,6 +64,7 @@ export async function workforceAction(ctx,request,path,data) {
    :await run(ctx,`DELETE FROM auth_group_members WHERE group_id=? AND person_id=? AND ${g}`,group.id,person.id,...ga);
   if(!await held(changed))return json({ok:true,changed:false});
   await log(path==='/groups/add'?'group_member_added':'group_member_removed',group.id,{person:person.email});
+  await emit(ctx,path==='/groups/add'?'group.member_added':'group.member_removed',{type:'person',id:person.id,email:person.email},{group:group.id});
   await groupChanged(ctx,group.id,[person.id],path==='/groups/add'?'group_member_added':'group_member_removed');
   return json({ok:true,changed:true});
  }
@@ -114,7 +116,7 @@ export async function workforceAction(ctx,request,path,data) {
  if(path==='/company-apps/remove') {
   const current=await app(data.id);
   if(!await held(await run(ctx,`UPDATE auth_apps SET disabled_at=?,version=version+1 WHERE id=? AND disabled_at IS NULL AND ${g}`,ctx.now(),current.id,...ga)))fail('app_not_found',404);
-  await log('company_app_removed',current.id,{name:current.name});
+  await log('company_app_removed',current.id,{name:current.name});await emit(ctx,'app.removed',{type:'app',id:current.id},{name:current.name});
   await queueApp(ctx,current.id,'app_removed');
   return json({removed:true});
  }
@@ -130,6 +132,7 @@ export async function workforceAction(ctx,request,path,data) {
    :await run(ctx,`DELETE FROM auth_app_assignments WHERE app_id=? AND principal_type=? AND principal_id=? AND ${g}`,current.id,type,principal,...ga);
   if(!await held(changed))return json({ok:true,changed:false});
   await log(path==='/company-apps/assign'?'app_assigned':'app_unassigned',current.id,{[type]:target.name,role});
+  await emit(ctx,path==='/company-apps/assign'?'app.assigned':'app.unassigned',{type,id:principal,...(type==='person'?{email:target.name}:{})},{app:current.id,role});
   const people=type==='person'?[principal]:(await all(ctx,'SELECT person_id FROM auth_group_members WHERE group_id=?',principal)).map(m=>m.person_id);
   const connector=await connectorOf(ctx,current.id);
   await queue(ctx,current.id,[...people.map(id=>['person',id]),...(type==='group'&&connector?.push_groups?[['group',principal]]:[])],path.slice('/company-apps/'.length));

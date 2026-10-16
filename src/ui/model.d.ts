@@ -210,6 +210,7 @@ export interface AuthPageModel {
   moveIn?: { batches: MoveInBatch[]; batch: MoveInBatch | null; rows: MoveInRow[] }
   agents?: { now?: number; keys: AgentKey[]; proposals: AgentProposal[]; proposal: AgentProposal | null }
   workforce?: WorkforceModel
+  events?: { types: string[]; subscriptions: Array<{ id: string; url: string; types: string[]; createdAt: number; status: string; deliveries: Record<string, number> }> }
   launcher?: LauncherApp[]
 }
 

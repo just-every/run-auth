@@ -1,12 +1,13 @@
 import {DAY,random,hash,one,all,run,requireSession,audit,json,fail} from './core.mjs';
 import {requireLocalEmail,authority,requireAuthority} from './local-email.mjs';
+import {emit} from './events/store.mjs';
 export async function startRecovery(ctx,request) {
  const s=await requireSession(ctx,request),id=random(),now=ctx.now();
  if(!await one(ctx,'SELECT id FROM auth_passkeys WHERE person_id=? LIMIT 1',s.person_id))fail('no_passkeys');
  try {await run(ctx,'INSERT INTO auth_recoveries(id,person_id,session_id,created_at,ready_at) VALUES(?,?,?,?,?)',id,s.person_id,s.id,now,now+3*DAY);}catch{fail('recovery_already_pending',409);}
  await run(ctx,"INSERT INTO auth_notices(id,session_id,recovery_id,message,created_at) SELECT lower(hex(randomblob(24))),id,?,'Passkey recovery requested. Cancel this request if it was not you.',? FROM auth_sessions WHERE person_id=? AND revoked_at IS NULL AND expires_at>?",id,now,s.person_id,now);
  if(ctx.mail)await ctx.mail({to:s.email,subject:'Auth passkey recovery requested',text:`A passkey recovery was requested. It becomes available after 72 hours unless another administrator approves it. Sign in to ${ctx.origin}/app/account to cancel it.`,html:`<p>A passkey recovery was requested. Sign in to Auth to review or cancel it.</p>`});
- await audit(ctx,s.person_id,'recovery_requested',id);return json({id,readyAt:now+3*DAY},201);
+ await audit(ctx,s.person_id,'recovery_requested',id);await emit(ctx,'recovery.requested',{type:'person',id:s.person_id,email:s.email},{recovery:id,readyAt:new Date(now+3*DAY).toISOString()});return json({id,readyAt:now+3*DAY},201);
 }
 export async function changeRecovery(ctx,request,data,action) {
  const s=await requireSession(ctx,request,action==='approve'),id=data.id||data.recoveryId;
@@ -33,7 +34,10 @@ export async function changeRecovery(ctx,request,data,action) {
    ctx.db.prepare('UPDATE auth_sessions SET revoked_at=? WHERE person_id=? AND id!=? AND EXISTS(SELECT 1 FROM auth_recoveries WHERE id=? AND completion_marker=?)').bind(now,s.person_id,s.id,id,marker),
   ]);if(!results[0].meta.changes){await requireAuthority(ctx,s,guard);fail('recovery_wait_required',403);}
  }
- await audit(ctx,s.person_id,`recovery_${action}`,id);return json({ok:true});
+ await audit(ctx,s.person_id,`recovery_${action}`,id);
+ const owner=await one(ctx,'SELECT id,email FROM oa_operators WHERE id=?',r.person_id);
+ await emit(ctx,{approve:'recovery.approved',cancel:'recovery.cancelled',complete:'recovery.completed'}[action],{type:'person',id:owner.id,email:owner.email},{recovery:id});
+ return json({ok:true});
 }
 // CLI adapter generates token locally, sends only this SHA-256 digest via wrangler D1 execute,
 // and saves the raw token in a mode-0600 file, printing only its path. There is no public installation route.

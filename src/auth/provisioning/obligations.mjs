@@ -5,6 +5,7 @@
 import {one,all,run,random,audit} from '../core.mjs';
 import {assignment,appSubjects} from '../workforce/directory.mjs';
 import {scim,ok,retryable,findOne,connectorOf,USER,GROUP,PATCH} from './scim.mjs';
+import {emit} from '../events/store.mjs';
 
 const BACKOFF=[30000,60000,300000,900000,3600000],CLAIM=120000,BATCH=50;
 // SCIM resource endpoints (RFC 7644 section 3.2).
@@ -147,6 +148,8 @@ export async function dispatch(ctx,appId=null) {
   // A person's new account may complete a pushed group's membership.
   if(outcome.verified&&ob.subject_type==='person'&&connector.push_groups&&outcome.operation!=='none')for(const g of await all(ctx,"SELECT a.principal_id AS id FROM auth_app_assignments a JOIN auth_group_members m ON m.group_id=a.principal_id WHERE a.app_id=? AND a.principal_type='group' AND m.person_id=?",ob.app_id,ob.subject_id))await requeueGroup(ctx,ob.app_id,g.id);
   if(outcome.fail||outcome.block)await audit(ctx,null,'provisioning_failed',ob.app_id);
+  // Reported only once known: verified by read-back, or failed and still open.
+  if(outcome.verified||outcome.fail||outcome.block)await emit(ctx,outcome.verified?'provisioning.verified':'provisioning.failed',{type:ob.subject_type,id:ob.subject_id},{app:ob.app_id,operation:outcome.operation??null,reason:ob.reason,error:outcome.verified?null:error,eventAt:new Date(ob.event_at).toISOString()});
  }
 }
 async function requeueGroup(ctx,appId,groupId) {

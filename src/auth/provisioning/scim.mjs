@@ -1,17 +1,13 @@
 // A SCIM 2.0 service provider as Auth reaches it: one connector per app, its
 // bearer credential sealed under AUTH_ENCRYPTION_KEY and used only here.
-import {one,fail,isLoopback} from '../core.mjs';
+import {one} from '../core.mjs';
+import {outboundUrl} from '../outbound.mjs';
 import {unseal} from '../keys.mjs';
 
 export const USER='urn:ietf:params:scim:schemas:core:2.0:User',GROUP='urn:ietf:params:scim:schemas:core:2.0:Group',PATCH='urn:ietf:params:scim:api:messages:2.0:PatchOp';
 const TIMEOUT=15000,MAX_BODY=1048576;
 
-export function scimBase(ctx,value) {
- let url;try{url=new URL(String(value||''));}catch{fail('invalid_scim_url');}
- if(url.username||url.password||url.hash||url.search||!(url.protocol==='https:'||(ctx.local&&url.protocol==='http:'&&isLoopback(url.hostname))))fail('invalid_scim_url');
- if(!ctx.local&&(isLoopback(url.hostname)||/^(10|127|169\.254|192\.168|172\.(1[6-9]|2\d|3[01]))\.|^\[?(fc|fd|fe80|::1)/i.test(url.hostname)||/^\d+\.\d+\.\d+\.\d+$/.test(url.hostname)))fail('invalid_scim_url');
- return url.href.replace(/\/+$/,'');
-}
+export const scimBase=(ctx,value)=>outboundUrl(ctx,value,'invalid_scim_url').href.replace(/\/+$/,'');
 export const connectorOf=(ctx,appId)=>one(ctx,'SELECT * FROM auth_scim_connectors WHERE app_id=?',appId);
 
 // {status, body, retryAfter}; status 0 is a network failure or timeout.

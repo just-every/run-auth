@@ -1,4 +1,5 @@
 import {permitsProvider,configuredProvider,configurationHash,matchesConfiguredPin} from './domain-policy.mjs';
+import {emit} from './events/store.mjs';
 import {createOidcProviders,createOidcHandler} from '../modules/operator-auth/identity/oidc/index.mjs';
 import {trustedEmail} from '../modules/operator-auth/identity/principal.mjs';
 import {one,run,random,hash,cookie,bindingName,createSession,EMAIL_MAX_AGE,returnPath,fail,audit,SESSION_MAX_AGE} from './core.mjs';
@@ -29,7 +30,8 @@ export function createUpstreams(ctx) {
   const upstreamProofId=random();
   await run(ctx,'INSERT INTO auth_upstream_proofs(id,person_id,provider_id,issuer,subject,configuration_hash,verified_at,expires_at) VALUES(?,?,?,?,?,?,?,?)',upstreamProofId,person.id,principal.provider,principal.issuer,principal.subject,await configurationHash(provider),ctx.now(),ctx.now()+SESSION_MAX_AGE);
   if(person.status==='invited') {
-   await run(ctx,"UPDATE oa_operators SET status='active' WHERE id=? AND status='invited'",person.id);
+   const activated=await run(ctx,"UPDATE oa_operators SET status='active' WHERE id=? AND status='invited'",person.id);
+   if(activated.meta.changes)await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'upstream'});
    person=await one(ctx,"SELECT * FROM oa_operators WHERE id=? AND status='active'",person.id);
    if(!person)fail('account_unavailable',403);
   }

@@ -1,8 +1,9 @@
 import {deliverLogouts} from './links/logout.mjs';
 import {maintainProvisioning} from './provisioning/obligations.mjs';
 import {deliverGenericLogouts} from './oidc-apps/session.mjs';
+import {deliverEvents} from './events/delivery.mjs';
 // Safe for a Worker scheduled handler; no identity or audit history is removed.
-// It also retries back-channel logouts and provisioning that are due.
+// It also retries back-channel logouts, provisioning and event deliveries that are due.
 export async function maintainAuth(ctx) {
  const now=ctx.now();
  await ctx.db.batch([
@@ -20,5 +21,6 @@ export async function maintainAuth(ctx) {
  ]);
  await deliverLogouts(ctx);
  await deliverGenericLogouts(ctx);
+ await deliverEvents(ctx);
  await maintainProvisioning(ctx);
 }

@@ -9,6 +9,8 @@ import {fencePerson} from './links/logout.mjs';
 import {personChanged} from './provisioning/obligations.mjs';
 import {workforceModel} from './workforce/routes.mjs';
 import {launcher} from './workforce/directory.mjs';
+import {emit,personSubject} from './events/store.mjs';
+import {eventsModel} from './events/routes.mjs';
 import {rerTrustModel} from './links/rer-trust.mjs';
 export async function model(ctx,request,page='account') {
  const s=await session(ctx,request);if(!s)return {page,issuer:ctx.origin,user:null,me:null,isAdmin:false};
@@ -35,7 +37,7 @@ export async function model(ctx,request,page='account') {
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
   if(page==='agents')Object.assign(result,await agentsModel(ctx,request));
-  if(page==='apps')result.workforce=await workforceModel(ctx);
+  if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);}
  }
  result.launcher=await launcher(ctx,s.person_id);
  return result;
@@ -66,13 +68,15 @@ export async function adminAction(ctx,request,path,data) {
   const created=await run(ctx,`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${g} ON CONFLICT(email) DO NOTHING`,random(),address,name,ctx.now(),...ga);
   if(!created.meta.changes)await requireAuthority(ctx,s,guard);
   await sendInvitation(ctx,address);
-  await audit(ctx,s.person_id,'person_invited',address);return json({ok:true},201);
+  await audit(ctx,s.person_id,'person_invited',address);
+  if(created.meta.changes){const p=await one(ctx,'SELECT id FROM oa_operators WHERE email=?',address);await emit(ctx,'person.invited',{type:'person',id:p.id,email:address},{name});}
+  return json({ok:true},201);
  }
  if(path==='/people/domain'||path==='/domains/add') {
   const domain=domainOf(data);
   const added=await run(ctx,`INSERT OR IGNORE INTO auth_domains(domain,created_by,created_at) SELECT ?,?,? WHERE ${g}`,domain,s.person_id,ctx.now(),...ga);
   if(!added.meta.changes)await requireAuthority(ctx,s,guard);
-  await audit(ctx,s.person_id,'domain_allowed',domain);return json({ok:true},201);
+  await audit(ctx,s.person_id,'domain_allowed',domain);if(added.meta.changes)await emit(ctx,'policy.domain_allowed',{type:'domain',id:domain},{});return json({ok:true},201);
  }
  if(path==='/people/domain-rule') {
   const domain=domainOf(data),providerId=String(data.providerId||'');
@@ -81,20 +85,20 @@ export async function adminAction(ctx,request,path,data) {
    ?await run(ctx,`INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) SELECT ?,?,?,? WHERE ${g} ON CONFLICT(domain) DO UPDATE SET provider_id=excluded.provider_id,created_by=excluded.created_by,created_at=excluded.created_at`,domain,providerId,s.person_id,ctx.now(),...ga)
    :await run(ctx,`DELETE FROM oa_domain_rules WHERE domain=? AND ${g}`,domain,...ga);
   if(!changed.meta.changes)await requireAuthority(ctx,s,guard);
-  await audit(ctx,s.person_id,providerId?'domain_provider_required':'domain_provider_removed',domain);return json({ok:true});
+  await audit(ctx,s.person_id,providerId?'domain_provider_required':'domain_provider_removed',domain);await emit(ctx,'policy.domain_rule_changed',{type:'domain',id:domain},{requiredProvider:providerId||null});return json({ok:true});
  }
  if(path==='/people/role') {
   const id=data.id||data.personId;if(!['admin','member'].includes(data.role))fail('invalid_role');
   const changed=await run(ctx,`UPDATE oa_operators SET role=? WHERE id=? AND role!='owner' AND status='active' AND ${g}`,data.role,id,...ga);
   if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('person_unavailable',409);}
-  await audit(ctx,s.person_id,'person_role_changed',id);return json({ok:true});
+  await audit(ctx,s.person_id,'person_role_changed',id);await emit(ctx,'person.role_changed',await personSubject(ctx,id),{role:data.role});return json({ok:true});
  }
  if(path==='/people/suspend') {
   const id=data.personId||data.id,p=await one(ctx,'SELECT id,role FROM oa_operators WHERE id=?',id);if(!p)fail('person_not_found',404);if(p.role==='owner')fail('owner_suspension_requires_transfer',403);
   // Base's version trigger also revokes all previously issued Base sessions.
   const changed=await run(ctx,`UPDATE oa_operators SET status='inactive' WHERE id=? AND role!='owner' AND ${g}`,id,...ga);
   if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('person_unavailable',409);}
-  await audit(ctx,s.person_id,'person_suspended',id);await fencePerson(ctx,id);await personChanged(ctx,id,'person_suspended');return json({ok:true});
+  await audit(ctx,s.person_id,'person_suspended',id);await fencePerson(ctx,id);await emit(ctx,'person.suspended',await personSubject(ctx,id),{});await personChanged(ctx,id,'person_suspended');return json({ok:true});
  }
  if(path==='/keys/stage') {
   const staged=await stageSigningKey(ctx,data.alg,guard);if(!staged){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}
