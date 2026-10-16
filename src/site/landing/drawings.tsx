@@ -49,7 +49,8 @@ const Licence = () => (
 )
 
 const commands = [
-  'npx -y @runeditrun/rer dev just-every/run-auth',
+  'curl -fsSL https://runeditrun.com/install.sh | sh',
+  'rer dev just-every/run-auth',
 ]
 const Terminal = () => (
   <pre className="draw-terminal" aria-label="Start Auth on your computer"><code>{commands.map(line => <span key={line}><span className="prompt" aria-hidden="true">$ </span>{line}{'\n'}</span>)}</code></pre>

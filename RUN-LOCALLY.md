@@ -1,7 +1,7 @@
 # Run it locally
 
-Install the `rer` command once: `npx -y @runeditrun/rer cli install`, or the
-installer script on the RER site (`curl -fsSL https://runeditrun.com/install.sh | sh`).
+Install the `rer` command once with the installer script on the RER site (`curl -fsSL https://runeditrun.com/install.sh | sh`),
+which brings its own Node when there is none; with Node 22 or later already installed, `npx -y @runeditrun/rer cli install` does the same.
 `rer` runs every verb with the checkout's own pinned copy: a vendored
 `scripts/rer.mjs`, or in package mode the exact `@runeditrun/rer` devDependency in
 `node_modules`. The `OPERATIONS.json` argv and the `package.json` aliases are the
