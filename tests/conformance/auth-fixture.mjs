@@ -48,8 +48,8 @@ export async function fixture(directory,origin,suiteOrigin) {
   const discovered=await runtime.call('/.well-known/openid-configuration');
   assert.equal(discovered.status,200);
   const metadata=await discovered.json();
-  assert.deepEqual(metadata.token_endpoint_auth_methods_supported,['private_key_jwt']);
-  assert.deepEqual(metadata.response_types_supported,['code']);
+  assert.ok(metadata.token_endpoint_auth_methods_supported.includes('private_key_jwt'));
+  assert.ok(metadata.response_types_supported.includes('code'));
   const stage=await runtime.db.prepare('SELECT MAX(use_after) AS ready FROM auth_signing_keys').first();
   const wait=Math.max(0,stage.ready-Date.now()+50);
   if(wait)await new Promise(resolve=>setTimeout(resolve,wait));

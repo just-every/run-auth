@@ -6,6 +6,7 @@ import {createServer} from 'node:http';
 import {chromium,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {SAML} from '@node-saml/node-saml';
+import * as oidc from 'openid-client';
 import {openApp} from './runtime.mjs';
 import {spCredentials} from '../auth/saml-helpers.mjs';
 
@@ -33,7 +34,32 @@ async function serviceProvider(t,authOrigin) {
  return {origin,metadata:saml.generateServiceProviderMetadata(null,sp.cert)};
 }
 
-test('company apps journey: the owner adds a SAML app from its metadata, a group and an assignment; an employee signs in to the app through Auth, and loses it when removed, at desktop/mobile in both themes',async t=>{
+// An OpenID Connect app at the far edge: openid-client as a real relying party.
+async function relyingParty(t,authOrigin) {
+ let config,pending;const rp={};
+ const server=createServer(async(req,res)=>{
+  const url=new URL(req.url,rp.origin);
+  if(url.pathname==='/start') {
+   config??=await oidc.discovery(new URL(authOrigin),rp.clientId,{},oidc.ClientSecretBasic(rp.secret),{execute:[oidc.allowInsecureRequests]});
+   pending={verifier:oidc.randomPKCECodeVerifier(),state:oidc.randomState(),nonce:oidc.randomNonce()};
+   res.writeHead(302,{location:oidc.buildAuthorizationUrl(config,{redirect_uri:rp.origin+'/cb',scope:'openid email profile',code_challenge:await oidc.calculatePKCECodeChallenge(pending.verifier),code_challenge_method:'S256',state:pending.state,nonce:pending.nonce}).href});return res.end();
+  }
+  if(url.pathname==='/cb') {
+   res.writeHead(200,{'content-type':'text/html'});
+   if(url.searchParams.get('error'))return res.end(`<!doctype html><title>Wiki</title><h1>Refused: ${url.searchParams.get('error')}</h1>`);
+   // A fresh install signs only with keys published five minutes earlier, so this
+   // journey checks the authorization response; tests/auth/oidc-apps.test.mjs redeems codes.
+   const ok=url.searchParams.get('iss')===authOrigin&&url.searchParams.get('state')===pending.state&&/^[A-Za-z0-9_-]{43}$/.test(url.searchParams.get('code')||'');
+   return res.end(`<!doctype html><title>Wiki</title><h1>${ok?'Authorization code received from Auth':'Unexpected response'}</h1>`);
+  }
+  res.writeHead(404);res.end();
+ });
+ await new Promise(done=>server.listen(0,'127.0.0.1',done));t.after(()=>new Promise(done=>server.close(done)));
+ rp.origin=`http://localhost:${server.address().port}`;
+ return rp;
+}
+
+test('company apps journey: the owner adds a SAML app from its metadata, an OpenID Connect app, a group and assignments; an employee signs in through Auth, and loses both when removed, at desktop/mobile in both themes',async t=>{
  const app=await openApp();t.after(()=>app.close());await app.claim();
  const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
@@ -85,6 +111,19 @@ test('company apps journey: the owner adds a SAML app from its metadata, a group
  // The employee opens the app: it asks Auth, Auth answers in the browser, the app signs them in.
  await employeePage.goto(sp.origin+'/login');
  await expect(employeePage.getByRole('heading',{name:`Signed in as ${EMPLOYEE} (approver)`})).toBeVisible();
+ // An OpenID Connect app registered on the same page; its secret is shown once.
+ const rp=await relyingParty(t,app.origin);
+ const register=page.locator('form[action="/api/auth/oidc-apps/create"]');
+ await register.getByLabel('App name').fill('Wiki');await register.getByLabel('Redirect URIs (one per line)').fill(rp.origin+'/cb');
+ await register.getByRole('button',{name:'Add app'}).click();
+ const shown=page.locator('[data-auth-status]');await expect(shown).toContainText('Client secret, shown once');
+ [,rp.clientId,rp.secret]=(await shown.textContent()).match(/Client ID (\S+)\. Client secret, shown once: (\S+)/);
+ await page.reload();
+ const wiki=page.locator('section',{has:page.getByRole('heading',{name:'Wiki'})});
+ await wiki.locator('form[data-assign]').getByLabel('Give access to').selectOption({label:'Group: Finance'});await wiki.getByRole('button',{name:'Assign'}).click();
+ await expect(page.locator('section',{has:page.getByRole('heading',{name:'Wiki'})}).locator('.data-row',{hasText:'Finance'})).toBeVisible();
+ await employeePage.goto(rp.origin+'/start');
+ await expect(employeePage.getByRole('heading',{name:'Authorization code received from Auth'})).toBeVisible();
  await employeePage.goto(app.origin+'/app/account');await expect(employeePage.getByRole('heading',{name:'Your apps'})).toBeVisible();
  await shoot(employeePage,'launcher');
 
@@ -94,6 +133,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, a group
  await expect(groupRow().getByText('No members')).toBeVisible();
  await employeePage.goto(sp.origin+'/login');
  await expect(employeePage.getByRole('heading',{name:'You are not assigned to this app'})).toBeVisible();
+ await employeePage.goto(rp.origin+'/start');await expect(employeePage.getByRole('heading',{name:'Refused: access_denied'})).toBeVisible();
  await employee.close();
  assert.deepEqual(errors,[],'no browser runtime errors');
 });

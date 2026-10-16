@@ -20,7 +20,7 @@ test('bad client and callback show local error without redirect; code needs matc
  const grant=await r.authorize();assert.equal((await r.redeem(grant,{code_verifier:'z'.repeat(43)})).status,400);assert.equal((await r.redeem(grant,{client_assertion:'not-a-jwt'})).status,401);assert.equal((await r.redeem(grant,{client_secret:'shared'})).status,401);assert.equal((await r.redeem(grant)).status,200);
 });
 test('only the advertised query response mode is answered; other modes are refused after client and callback checks',async t=>{
- const r=await fixture(t);assert.deepEqual((await (await r.call('/.well-known/openid-configuration')).json()).response_modes_supported,['query']);
+ const r=await fixture(t);assert.deepEqual((await (await r.call('/.well-known/openid-configuration')).json()).response_modes_supported,['query','fragment']);
  for(const mode of ['form_post','fragment','query.jwt','jwt','']) {
   const out=await r.authorize({extra:{response_mode:mode}}),location=new URL(out.response.headers.get('location'),r.origin);
   assert.equal(out.response.status,302);assert.equal(location.origin+location.pathname,r.clientOrigin+'/callback');assert.equal(location.searchParams.get('error'),'invalid_request');assert.equal(location.searchParams.get('state'),'state-to-bind');assert.equal(location.searchParams.get('code'),null);assert.equal(location.hash,'');

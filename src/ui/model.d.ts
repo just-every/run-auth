@@ -219,7 +219,8 @@ export interface CompanyAppObligation {
   event_at: number; dispatched_at?: number | null; verified_at?: number | null; attempts: number; last_status?: number | null; last_error?: string | null; overdue?: boolean
 }
 export interface CompanyApp {
-  id: string; name: string; recipe?: string | null; entityId: string; acs: Array<{ url: string; binding: string }>; slo?: { url: string; binding: string } | null
+  id: string; name: string; protocol: string; recipe?: string | null
+  oidc: { clientId: string; authMethod: string; redirectUris: string[]; postLogoutRedirectUris: string[]; requirePkce: boolean; subjectType: string; legacyFlows: boolean; frontchannelLogoutUri?: string | null; backchannelLogoutUri?: string | null; idTokenAlg: string; liveSecrets: number; previousSecretUntil?: number | null } | null; entityId: string; acs: Array<{ url: string; binding: string }>; slo?: { url: string; binding: string } | null
   nameIdFormat: string; sign: string; digest: string; encryption?: string | null; idpInitiated: boolean; version: number; status: string
   assignments: Array<{ type: string; id: string; label?: string | null; role?: string | null }>
   provisioning: { baseUrl: string; deprovision: string; groups: boolean; lastSuccessAt?: number | null; lastError?: string | null; lastReconciledAt?: number | null } | null
@@ -237,6 +238,7 @@ export interface WorkforceModel {
   groups: Array<{ id: string; name: string; members: Array<{ id: string; email: string }> }>
   catalog: CatalogRecipe[]
   nameIdFormats: string[]
+  oidcMethods: string[]
 }
 
 export interface SignInPageModel {

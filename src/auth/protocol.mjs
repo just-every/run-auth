@@ -3,7 +3,9 @@ import {beginAuthorizationLogin,authorizationLogin,completedAuthorizationLogin} 
 import {createLocalJWKSet,jwtVerify} from 'jose';
 import {AuthError,random,hash,one,run,session,json,fail,validateClientOrigin,EMAIL_MAX_AGE,audit,b64,utf8} from './core.mjs';
 import {signToken,pairwiseSubject,activeSigningKey,TOKEN_SECONDS,SIGNING_ALGORITHMS} from './keys.mjs';
-export function discovery(ctx) {return {issuer:ctx.origin,rer_interfaces:['oidc-provider@1.0.0'],authorization_endpoint:`${ctx.origin}/oidc/authorize`,token_endpoint:`${ctx.origin}/oidc/token`,userinfo_endpoint:`${ctx.origin}/oidc/userinfo`,jwks_uri:`${ctx.origin}/oidc/jwks`,response_types_supported:['code'],response_modes_supported:['query'],grant_types_supported:['authorization_code'],subject_types_supported:['pairwise'],id_token_signing_alg_values_supported:SIGNING_ALGORITHMS,token_endpoint_auth_methods_supported:['private_key_jwt'],token_endpoint_auth_signing_alg_values_supported:['ES256'],scopes_supported:['openid','email','profile','claim'],claims_supported:['iss','sub','aud','iat','exp','nonce','auth_time','email','email_verified','email_verified_at','name','sid','amr','install_owner'],code_challenge_methods_supported:['S256'],authorization_response_iss_parameter_supported:true,request_parameter_supported:false,request_uri_parameter_supported:false,end_session_endpoint:`${ctx.origin}/oidc/logout`,backchannel_logout_supported:true,backchannel_logout_session_supported:true};}
+import {genericClient,LEGACY_TYPES,METHODS} from './oidc-apps/clients.mjs';
+import {genericAuthorize} from './oidc-apps/flow.mjs';
+export function discovery(ctx) {return {issuer:ctx.origin,rer_interfaces:['oidc-provider@1.0.0'],authorization_endpoint:`${ctx.origin}/oidc/authorize`,token_endpoint:`${ctx.origin}/oidc/token`,userinfo_endpoint:`${ctx.origin}/oidc/userinfo`,jwks_uri:`${ctx.origin}/oidc/jwks`,response_types_supported:['code',...LEGACY_TYPES],response_modes_supported:['query','fragment'],grant_types_supported:['authorization_code','implicit'],subject_types_supported:['pairwise','public'],id_token_signing_alg_values_supported:SIGNING_ALGORITHMS,token_endpoint_auth_methods_supported:['private_key_jwt',...METHODS.filter(m=>m!=='private_key_jwt')],token_endpoint_auth_signing_alg_values_supported:['ES256','RS256'],scopes_supported:['openid','email','profile','claim','groups'],claims_supported:['iss','sub','aud','iat','exp','nonce','auth_time','email','email_verified','email_verified_at','name','sid','amr','install_owner','groups','at_hash','c_hash'],frontchannel_logout_supported:true,frontchannel_logout_session_supported:true,code_challenge_methods_supported:['S256'],authorization_response_iss_parameter_supported:true,request_parameter_supported:false,request_uri_parameter_supported:false,end_session_endpoint:`${ctx.origin}/oidc/logout`,backchannel_logout_supported:true,backchannel_logout_session_supported:true};}
 async function client(ctx,id) {
  const c=await one(ctx,'SELECT * FROM auth_clients WHERE id=? AND disabled_at IS NULL',id||'');if(!c)fail('invalid_client',400);validateClientOrigin(ctx,c.origin);return c;
 }
@@ -15,7 +17,11 @@ export async function resumeAuthorization(ctx,request) {
  if(response.status===302)response.headers.append('set-cookie',completedAuthorizationLogin(ctx));
  return response;
 }
+// RER registrations keep this strict profile. Discovery also lists what the
+// general SaaS profile (oidc-apps/) offers its own registered clients only.
 export async function authorize(ctx,request,login=null) {
+ const generic=await genericClient(ctx,new URL(request.url).searchParams.get('client_id'));
+ if(generic)return genericAuthorize(ctx,request,login,generic);
  const q=new URL(request.url).searchParams,c=await client(ctx,q.get('client_id')),uri=redirect(c,q.get('redirect_uri'));
  const state=q.get('state'),nonce=q.get('nonce'),scopes=(q.get('scope')||'').split(' ').filter(Boolean),pkce=q.get('code_challenge');
  if(state?.length>2048)fail('invalid_authorization_request');

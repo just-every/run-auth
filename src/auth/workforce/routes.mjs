@@ -6,7 +6,9 @@
 import {random,one,all,run,json,fail,requireSession,auditDetail,session} from '../core.mjs';
 import {requireLocalEmail,authority,requireAuthority} from '../local-email.mjs';
 import {seal} from '../keys.mjs';
-import {appSettings,settingsColumns,SETTINGS_SQL,appOf,spMetadata,FORMATS} from '../saml/apps.mjs';
+import {appSettings,settingsColumns,SETTINGS_SQL,appOf,spMetadata,FORMATS,parseAttributes,endpoint} from '../saml/apps.mjs';
+import {clientSettings,overlapOf,METHODS} from '../oidc-apps/clients.mjs';
+import {hash} from '../core.mjs';
 import {stageSamlKey,activateSamlKey,retireSamlKey,publishedKeys,ensureSamlKey} from '../saml/signing.mjs';
 import {idpEntity} from '../saml/assertion.mjs';
 import {scimBase,connectorOf,testConnection} from '../provisioning/scim.mjs';
@@ -15,7 +17,7 @@ import {recipe,catalog} from '../catalog/recipes.mjs';
 import {launcher} from './directory.mjs';
 
 const OWNER_ACTIONS=['/saml-keys/stage','/saml-keys/activate','/saml-keys/retire'];
-const ADMIN_ACTIONS=['/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
+const ADMIN_ACTIONS=['/oidc-apps/create','/oidc-apps/rotate-secret','/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
 export const isWorkforceAction=path=>OWNER_ACTIONS.includes(path)||ADMIN_ACTIONS.includes(path);
 const text=(value,max,code)=>{const v=String(value??'').trim();if(!v||v.length>max)fail(code);return v;};
 
@@ -76,8 +78,34 @@ export async function workforceAction(ctx,request,path,data) {
   await log(r?'catalog_app_added':'company_app_created',id,{name:settings.name,entityId:settings.entityId,recipe:r?.id??null});
   return json({id,name:settings.name,notes:settings.notes,provisioning:statements.length>1},201);
  }
+ if(path==='/oidc-apps/create') {
+  const c=clientSettings(ctx,data),name=text(data.name,120,'invalid_name'),attributes=parseAttributes(data.attributes??[]),id=random(),clientId=random(),now=ctx.now();
+  const secret=c.authMethod.startsWith('client_secret')?random():null;
+  const statements=[
+   ctx.db.prepare(`INSERT INTO auth_apps(id,name,entity_id,acs,name_id_format,sign,digest,attributes,launch_url,protocol,created_by,created_at,updated_at) SELECT ?,?,?,'[]','persistent','response','sha256',?,?,'oidc',?,?,? WHERE ${g}`).bind(id,name,'oidc:'+clientId,JSON.stringify(attributes),data.launchUrl?endpoint(ctx,data.launchUrl,'launch_url'):null,s.person_id,now,now,...ga),
+   ctx.db.prepare(`INSERT INTO auth_oidc_clients(app_id,client_id,auth_method,jwks,redirect_uris,post_logout_redirect_uris,require_pkce,subject_type,legacy_flows,frontchannel_logout_uri,backchannel_logout_uri,id_token_alg) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${g}`).bind(id,clientId,c.authMethod,c.jwks?JSON.stringify(c.jwks):null,JSON.stringify(c.redirectUris),JSON.stringify(c.postLogout),c.requirePkce?1:0,c.subjectType,c.legacyFlows?1:0,c.frontchannel,c.backchannel,c.alg,...ga),
+  ];
+  if(secret)statements.push(ctx.db.prepare(`INSERT INTO auth_oidc_secrets(id,client_id,secret_hash,created_at) SELECT ?,?,?,? WHERE ${g}`).bind(random(),clientId,await hash(secret),now,...ga));
+  const [created]=await ctx.db.batch(statements);
+  if(!await held(created))fail('session_authority_changed',403);
+  await log('oidc_app_created',id,{name,authMethod:c.authMethod,redirectUris:c.redirectUris});
+  // The secret is shown once; Auth keeps only its digest.
+  return json({id,clientId,clientSecret:secret,authMethod:c.authMethod,message:`Client ID ${clientId}${secret?`. Client secret, shown once: ${secret}`:''}`},201);
+ }
+ if(path==='/oidc-apps/rotate-secret') {
+  const client=await one(ctx,"SELECT c.client_id,c.auth_method FROM auth_oidc_clients c JOIN auth_apps a ON a.id=c.app_id WHERE c.app_id=? AND a.disabled_at IS NULL",String(data.appId||''))||fail('app_not_found',404);
+  if(!client.auth_method.startsWith('client_secret'))fail('app_has_no_secret',409);
+  const overlap=overlapOf(data.overlapHours),secret=random(),now=ctx.now();
+  const [,added]=await ctx.db.batch([
+   ctx.db.prepare(`UPDATE auth_oidc_secrets SET expires_at=? WHERE client_id=? AND expires_at IS NULL AND ${g}`).bind(now+overlap,client.client_id,...ga),
+   ctx.db.prepare(`INSERT INTO auth_oidc_secrets(id,client_id,secret_hash,created_at) SELECT ?,?,?,? WHERE ${g}`).bind(random(),client.client_id,await hash(secret),now,...ga),
+  ]);
+  if(!await held(added))fail('session_authority_changed',403);
+  await log('oidc_secret_rotated',data.appId,{previousValidUntil:now+overlap});
+  return json({clientSecret:secret,previousValidUntil:now+overlap,message:`New client secret, shown once: ${secret}. The previous secret works until ${new Date(now+overlap).toISOString()}.`});
+ }
  if(path==='/company-apps/update') {
-  const current=await app(data.id),settings=appSettings(ctx,data);
+  const current=await app(data.id),settings=appSettings(ctx,data);if(current.protocol!=='saml')fail('not_a_saml_app',409);
   if(await one(ctx,'SELECT 1 FROM auth_apps WHERE entity_id=? AND id!=?',settings.entityId,current.id))fail('entity_id_in_use',409);
   if(!await held(await run(ctx,`UPDATE auth_apps SET ${SETTINGS_SQL.split(',').map(c=>`${c}=?`).join(',')},version=version+1,updated_at=? WHERE id=? AND version=? AND disabled_at IS NULL AND ${g}`,...settingsColumns(settings),ctx.now(),current.id,Number(data.version??current.version),...ga)))fail('app_changed',409);
   await log('company_app_updated',current.id,{entityId:settings.entityId});
@@ -154,16 +182,18 @@ export async function workforceModel(ctx) {
   all(ctx,"SELECT o.app_id,o.subject_type,o.subject_id,o.reason,o.operation,o.state,o.event_at,o.dispatched_at,o.verified_at,o.attempts,o.last_status,o.last_error,COALESCE(p.email,g.name) AS label FROM auth_provisioning o LEFT JOIN oa_operators p ON o.subject_type='person' AND p.id=o.subject_id LEFT JOIN auth_groups g ON o.subject_type='group' AND g.id=o.subject_id WHERE o.state!='superseded' ORDER BY o.event_at DESC LIMIT 200"),
   publishedKeys(ctx),
  ]);
+ const oidc=await all(ctx,"SELECT c.*,(SELECT COUNT(*) FROM auth_oidc_secrets s WHERE s.client_id=c.client_id AND (s.expires_at IS NULL OR s.expires_at>?)) AS live_secrets,(SELECT MAX(expires_at) FROM auth_oidc_secrets s WHERE s.client_id=c.client_id AND s.expires_at>?) AS overlap_until FROM auth_oidc_clients c",ctx.now(),ctx.now());
  const now=ctx.now();
  return {
   idp:{entityId:idpEntity(ctx),metadataUrl:`${ctx.origin}/saml/metadata`,ssoUrl:`${ctx.origin}/saml/sso`,sloUrl:`${ctx.origin}/saml/slo`},
   samlKeys:keys.map(k=>({kid:k.kid,state:k.state,createdAt:k.created_at,activatedAt:k.activated_at})),
-  companyApps:apps.map(row=>{const a=appOf(row),c=connectors.find(x=>x.app_id===a.id);return {id:a.id,name:a.name,recipe:a.recipe,entityId:a.entity_id,acs:a.acs,slo:a.slo,nameIdFormat:a.name_id_format,sign:a.sign,digest:a.digest,encryption:a.encryption,idpInitiated:Boolean(a.idp_initiated),version:a.version,status:a.disabled_at?'removed':'active',metadata:spMetadata(a),
+  companyApps:apps.map(row=>{const a=appOf(row),c=connectors.find(x=>x.app_id===a.id);const o=oidc.find(x=>x.app_id===a.id);return {id:a.id,name:a.name,protocol:a.protocol,oidc:o?{clientId:o.client_id,authMethod:o.auth_method,redirectUris:JSON.parse(o.redirect_uris),postLogoutRedirectUris:JSON.parse(o.post_logout_redirect_uris),requirePkce:Boolean(o.require_pkce),subjectType:o.subject_type,legacyFlows:Boolean(o.legacy_flows),frontchannelLogoutUri:o.frontchannel_logout_uri,backchannelLogoutUri:o.backchannel_logout_uri,idTokenAlg:o.id_token_alg,liveSecrets:o.live_secrets,previousSecretUntil:o.overlap_until}:null,recipe:a.recipe,entityId:a.entity_id,acs:a.acs,slo:a.slo,nameIdFormat:a.name_id_format,sign:a.sign,digest:a.digest,encryption:a.encryption,idpInitiated:Boolean(a.idp_initiated),version:a.version,status:a.disabled_at?'removed':'active',metadata:spMetadata(a),
    assignments:assignments.filter(x=>x.app_id===a.id).map(x=>({type:x.principal_type,id:x.principal_id,label:x.label,role:x.role})),
    provisioning:c?{baseUrl:c.base_url,deprovision:c.deprovision,groups:Boolean(c.push_groups),lastSuccessAt:c.last_success_at,lastError:c.last_error,lastReconciledAt:c.last_reconciled_at,rotatedAt:c.rotated_at}:null,
    obligations:obligations.filter(o=>o.app_id===a.id).map(o=>({...o,overdue:o.state!=='verified'&&now-o.event_at>ESCALATE_AFTER}))};}),
   groups:groups.map(gr=>({...gr,members:members.filter(m=>m.group_id===gr.id).map(m=>({id:m.id,email:m.email}))})),
   catalog:catalog(),
+  oidcMethods:METHODS,
   nameIdFormats:Object.keys(FORMATS),
  };
 }

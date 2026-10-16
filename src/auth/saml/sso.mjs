@@ -13,7 +13,7 @@ const SKEW=300000,REQUEST_LIFETIME=900000;
 const loginCookie=ctx=>ctx.local?'auth_saml_login':'__Host-auth_saml_login';
 const ID=/^[A-Za-z_][\w.-]{0,255}$/;
 
-export const activeApp=async(ctx,where,value)=>appOf(await one(ctx,`SELECT * FROM auth_apps WHERE ${where}=? AND disabled_at IS NULL`,value));
+export const activeApp=async(ctx,where,value)=>appOf(await one(ctx,`SELECT * FROM auth_apps WHERE ${where}=? AND disabled_at IS NULL AND protocol='saml'`,value));
 export function checkInstant(ctx,value) {
  if(!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(value||'')||Math.abs(Date.parse(value)-ctx.now())>SKEW)fail('stale_saml_message');
 }

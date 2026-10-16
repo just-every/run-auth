@@ -31,12 +31,12 @@ export function readMetadata(xml) {
  return {entityId:attr(entity,'entityID'),acs,slo,signingCertificates:certs('signing'),encryptionCertificate:certs('encryption')[0]??null,nameIdFormat:formats.map(formatName).find(Boolean)??null,wantAssertionsSigned:attr(sp,'WantAssertionsSigned')==='true',authnRequestsSigned:attr(sp,'AuthnRequestsSigned')==='true',notes};
 }
 
-function endpoint(ctx,value,label) {
+export function endpoint(ctx,value,label) {
  let url;try{url=new URL(String(value||''));}catch{fail(`invalid_${label}`);}
  if(url.username||url.password||url.hash||!(url.protocol==='https:'||(ctx.local&&url.protocol==='http:'&&isLoopback(url.hostname))))fail(`invalid_${label}`);
  return url.href;
 }
-const parseAttributes=value=>{
+export const parseAttributes=value=>{
  const lines=Array.isArray(value)?value:String(value||'').split(/\n|,/).map(l=>l.trim()).filter(Boolean).map(line=>{const [name,source]=line.split('=').map(s=>s?.trim());return {name,source};});
  if(lines.length>32)fail('invalid_attributes');
  for(const a of lines)if(!a.name||a.name.length>256||/[<>"&]/.test(a.name)||!SOURCES.includes(a.source))fail('invalid_attributes');

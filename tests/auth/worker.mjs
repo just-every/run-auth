@@ -14,8 +14,8 @@ function atBarrier(db,{name,size}) {
 export default {async fetch(request,env,execution) {
  const envelope=await request.json(),background=[];
  const runtime=createAuthRuntime({db:envelope.barrier?atBarrier(env.DB,envelope.barrier):env.DB,origin:envelope.origin||'https://auth.example.com',secret:'1a'.repeat(32),local:envelope.local||false,allowDevSession:envelope.allowDevSession===true?()=>true:undefined,now:()=>envelope.now,waitUntil:work=>{background.push(work);execution.waitUntil(work);},upstreamProviders:envelope.upstreamProviders,upstreamFetch:async uri=>{const u=new URL(uri);return Response.json(u.pathname.endsWith('openid-configuration')?envelope.upstream.discovery:u.pathname.endsWith('/keys')?envelope.upstream.jwks:envelope.upstream.tokens);},
-  // The SCIM service is the network edge: its public host is served by the test's own server.
-  connectorFetch:(uri,init)=>fetch(envelope.scimServer?String(uri).replace('https://scim.example.com',envelope.scimServer):uri,init),mail:async message=>{if(envelope.mailDelay)await new Promise(done=>setTimeout(done,envelope.mailDelay));await env.DB.prepare('INSERT INTO test_mail(message) VALUES(?)').bind(JSON.stringify(message)).run();}});
+  // Company apps are the network edge: their public hosts are served by the test's own servers.
+  connectorFetch:(uri,init)=>{const edges={...(envelope.scimServer?{'https://scim.example.com':envelope.scimServer}:{}),...envelope.edges},origin=Object.keys(edges).find(o=>String(uri).startsWith(o+'/'));return fetch(origin?edges[origin]+String(uri).slice(origin.length):uri,init);},mail:async message=>{if(envelope.mailDelay)await new Promise(done=>setTimeout(done,envelope.mailDelay));await env.DB.prepare('INSERT INTO test_mail(message) VALUES(?)').bind(JSON.stringify(message)).run();}});
  if(envelope.action==='stage')return Response.json(await stageSigningKey(runtime.context));
  // The scheduled handler's work, as the Worker's cron runs it.
  if(envelope.action==='maintain'){await maintainAuth(runtime.context);await Promise.allSettled(background);return Response.json({ok:true});}

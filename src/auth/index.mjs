@@ -4,6 +4,7 @@ import {registrationOptions,registrationVerify,authenticationOptions,authenticat
 import {startRecovery,changeRecovery,redeemRecoveryToken} from './recovery.mjs';
 import {discovery,authorize,resumeAuthorization,token} from './protocol.mjs';
 import {userinfo} from './userinfo.mjs';
+import {genericToken} from './oidc-apps/flow.mjs';
 import {jwks,JWKS_CACHE_SECONDS,ensureSigningKey} from './keys.mjs';
 import {adminAction,model} from './admin.mjs';
 import {createUpstreams} from './upstreams.mjs';
@@ -51,7 +52,7 @@ export function createAuthRuntime(options) {
     }
    }
    if(request.method==='POST') {
-    if(path==='/oidc/token')return await token(ctx,request);
+    if(path==='/oidc/token')return await genericToken(ctx,request)??await token(ctx,request);
     if(path==='/api/auth/move-in/stage')return await stage(ctx,request);
     const data=await input(ctx,request);
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);

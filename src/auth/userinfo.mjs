@@ -1,6 +1,8 @@
 import {createLocalJWKSet,jwtVerify} from 'jose';
 import {AuthError,json,one,sessionById,validateClientOrigin,EMAIL_MAX_AGE} from './core.mjs';
 import {jwks,SIGNING_ALGORITHMS,TOKEN_SECONDS} from './keys.mjs';
+import {genericClient} from './oidc-apps/clients.mjs';
+import {genericUserinfo} from './oidc-apps/session.mjs';
 
 function refusal(error='invalid_token',status=401) {
  return json({error},status,{'www-authenticate':`Bearer realm="userinfo"${error==='sign_in_required'?'':`, error="${error}"`}`});
@@ -37,6 +39,8 @@ export async function userinfo(ctx,request) {
  }catch(error) {return error instanceof AuthError?refusal(error.message,error.status):refusal();}
  const now=Math.floor(ctx.now()/1000);
  if(payload.aud!==`${ctx.origin}/oidc/userinfo`||!['sub','client_id','sid','scope','jti'].every(k=>typeof payload[k]==='string'&&payload[k].length>0)||!Number.isInteger(payload.iat)||!Number.isInteger(payload.exp)||payload.iat>now||payload.exp-payload.iat>TOKEN_SECONDS)return refusal();
+ // A general SaaS client's token is checked against its own app and assignment.
+ const generic=await genericClient(ctx,payload.client_id);if(generic)return genericUserinfo(ctx,request,payload,generic);
  const scopes=payload.scope.split(' ');
  if(!scopes.includes('openid')||scopes.some(s=>!['openid','email','profile','claim'].includes(s)))return refusal();
  const client=await one(ctx,'SELECT * FROM auth_clients WHERE id=? AND disabled_at IS NULL',payload.client_id);

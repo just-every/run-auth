@@ -14,14 +14,15 @@ import { RerError } from '../base-cli/cli/errors.mjs';
 // is for good). Left out: sessions and one-time state, signing keys, the pairwise
 // key (auth_settings), recovery and preparer secrets, move-in staging rows, link
 // transients and the RER keys an owner trusted, SAML signing keys and sessions,
-// and provisioning connectors (their credentials stay with the installation) and queue.
+// provisioning connectors (their credentials stay with the installation) and
+// queue, and OIDC app secrets, codes and sessions.
 export const POLICY = {
  product: 'identity-auth',
  includeTables: ['oa_operators', 'oa_external_identities', 'oa_domain_rules', 'oa_invitation_cancellations', 'oa_bootstrap', 'oa_first_run', 'auth_rer_withdrawals'],
  excludeTables: ['auth_sessions', 'auth_challenges', 'auth_limits', 'auth_codes', 'auth_assertions', 'auth_signing_keys', 'auth_settings',
   'auth_recoveries', 'auth_recovery_tokens', 'auth_notices', 'auth_upstream_proofs', 'auth_agent_%', 'auth_import_rows',
   'auth_link_requests', 'auth_link_tokens', 'auth_link_codes', 'auth_session_clients', 'auth_logout_deliveries', 'auth_rer_%',
-  'auth_saml_keys', 'auth_saml_requests', 'auth_saml_sessions', 'auth_saml_logouts', 'auth_scim_connectors', 'auth_provisioning'],
+  'auth_saml_keys', 'auth_saml_requests', 'auth_saml_sessions', 'auth_saml_logouts', 'auth_scim_connectors', 'auth_provisioning', 'auth_oidc_secrets', 'auth_oidc_codes', 'auth_oidc_sessions', 'auth_oidc_logouts'],
  requiredConfiguration: ['AUTH_ENCRYPTION_KEY'],
 };
 const engine = localPortability({ database: 'auth', policy: POLICY });
