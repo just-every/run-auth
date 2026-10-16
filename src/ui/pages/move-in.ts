@@ -18,8 +18,8 @@ const summaryOrder = ['new', 'existing_person', 'duplicate_in_file', 'disabled_a
 const keptReasons: Record<string, string> = { signed_in: 'signed in', passkey: 'holds a passkey', app_grant: 'has an app grant', status_changed: 'status or role changed', later_activity: 'later activity', removed_elsewhere: 'already removed', changed_during_undo: 'changed during undo' }
 
 const rowStatus = (row: MoveInRow): string => row.status === 'admitted'
-  ? `<span class="status-pill invited" data-row-status="${row.invitedAt ? 'invited' : 'admitted'}"><i class="status-dot"></i>${row.invitedAt ? 'Invitation sent' : 'Admitted, not yet sent'}</span>`
-  : row.status === 'undone' ? '<span class="status-pill suspended" data-row-status="undone"><i class="status-dot"></i>Removed by undo</span>' : ''
+  ? `<span class="status-pill invited" data-row-status="${row.invitedAt ? 'invited' : 'admitted'}">${row.invitedAt ? 'Invitation sent' : 'Admitted, not yet sent'}</span>`
+  : row.status === 'undone' ? '<span class="status-pill suspended" data-row-status="undone">Removed by undo</span>' : ''
 
 const findingText = (row: MoveInRow): string => {
   const list = row.reasons.length ? row.reasons : ['new']

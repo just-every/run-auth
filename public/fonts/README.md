@@ -1,16 +1,13 @@
 # Fonts
 
-Outfit is self-hosted under the SIL Open Font License 1.1 in
-`outfit/LICENSE.txt`. The Latin and Latin Extended WOFF2 subsets come from
-Fontsource's Outfit distribution; upstream: https://github.com/Outfitio/Outfit-Fonts.
+Wix Madefor Display (headings) and Wix Madefor Text (body and UI) are
+self-hosted under the SIL Open Font License 1.1 in `wix-madefor/LICENSE.txt`.
+The Latin and Latin Extended variable WOFF2 subsets (weights 400 to 800) come
+from Fontsource's `@fontsource-variable/wix-madefor-display` and
+`@fontsource-variable/wix-madefor-text` 5.3.0; upstream:
+https://github.com/wix/wixmadefor.
 
-The root document links `/fonts/fonts.css` once, outside the temporary dev SSR
-stylesheet, and preloads only the primary Latin file. Do not import this CSS
-from a component. Every body-font stack uses `--font-body`, including the local
-`Outfit Fallback` before generic fallback fonts; controls inherit it.
-
-Fallback scales use Outfit/Arial advance-width ratios over A-Z, a-z and 0-9
-at weights 400, 500 and 700. Ascent, descent and line gap match Outfit's
-1000, -260 and 0 per 1000 units, divided by each scale. Matching metrics reduces
-layout movement; different glyph designs cannot have identical widths in every
-piece of text. Recalculate the fallback and preload when changing the brand font.
+The documents link `/fonts/fonts.css` once and preload only the Latin Text
+file (`src/base/font-head.ts`). Do not import this CSS from a component. Body
+text uses `--font-body`, headings `--font-heading`; controls inherit them. The
+run site and the `--rer-*` theme (`public/rer-theme.css`) name the same faces.

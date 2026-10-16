@@ -1,0 +1,42 @@
+/* /signin and Auth's small protocol documents (email confirmation, app
+   sign-out): one centred 560px card with the door standing open behind its
+   right edge at 1440, above its top-left corner on a phone. */
+.app-signin {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; place-items: center; min-height: 100vh; padding: 64px 20px;
+}
+.signin-door {
+  position: absolute; z-index: -1; left: calc(50% + 150px); top: 50%;
+  width: auto; height: 560px; transform: translateY(-42%); pointer-events: none;
+}
+.signin-card {
+  width: min(560px, 100%); padding: 48px 48px 40px; border: 1px solid var(--rer-border); border-radius: 18px;
+  background: var(--rer-surface); box-shadow: 0 1px 2px rgb(31 36 40 / .06), 0 12px 32px rgb(31 36 40 / .08);
+}
+.signin-card > .brand { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 12px; row-gap: 4px; margin-bottom: 36px; }
+.signin-card > .brand .brand-text { display: contents; }
+.signin-card > .brand .brand-mark { width: 36px; height: 36px; margin: 0; }
+.signin-card > .brand strong { font-size: 30px; }
+.signin-card > .brand .brand-line { flex-basis: 100%; text-align: center; font-size: 15px; }
+.signin-card h1 { text-align: center; font-size: 46px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
+.signin-card > p { margin-top: 14px; text-align: center; color: var(--rer-muted); font-size: 17px; }
+.signin-card .notice-list { margin-top: 20px; }
+.signin-card form { display: grid; gap: 10px; margin-top: 28px; }
+.signin-card form .primary-button, .signin-card form button { width: 100%; min-height: 52px; margin-top: 8px; border: 0; border-radius: 999px; background: var(--rer-text); color: var(--rer-page); font-weight: 600; font-size: 16px; }
+.signin-card > .secondary-button { width: 100%; min-height: 52px; font-size: 16px; font-weight: 500; }
+.signin-card .provider-list { display: grid; gap: 12px; margin-top: 28px; }
+.signin-card .provider-form { margin: 0; }
+.signin-card .provider-form .secondary-button { width: 100%; min-height: 52px; margin: 0; background: transparent; color: var(--rer-text); border: 1.5px solid var(--rer-text); font-weight: 500; }
+.signin-divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; font-size: 14px; color: var(--rer-muted); }
+.signin-divider::before, .signin-divider::after { content: ""; flex: 1; height: 1px; background: var(--rer-border); }
+.signin-host { margin-top: 36px; text-align: center; font-size: 14px; color: var(--rer-muted); }
+.signin-host strong { font-weight: 500; font-size: 15px; color: var(--rer-text); }
+
+@media (max-width: 700px) {
+  .app-signin { place-items: start center; padding: 160px 16px 32px; }
+  .signin-door { left: 20px; top: 24px; height: 176px; transform: none; }
+  .signin-card { padding: 32px 22px 28px; }
+  .signin-card > .brand { margin-bottom: 24px; }
+  .signin-card h1 { font-size: 34px; }
+  .signin-card > p { font-size: 16px; }
+}

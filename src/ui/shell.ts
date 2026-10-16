@@ -3,12 +3,12 @@ import { iconDefinitions } from './icons.js'
 import { asArray, escape, fullName, hostLabel, icon, initials } from './helpers.js'
 
 const navItems: Array<{ page: AuthPage; label: string; symbol: string; admin?: boolean; href: string }> = [
-  { page: 'people', label: 'People', symbol: 'people', admin: true, href: '/app/people' },
-  { page: 'agents', label: 'Agents', symbol: 'key', admin: true, href: '/app/agents' },
+  { page: 'people', label: 'People', symbol: 'user', admin: true, href: '/app/people' },
+  { page: 'agents', label: 'Agents', symbol: 'robot', admin: true, href: '/app/agents' },
   { page: 'apps', label: 'Apps', symbol: 'apps', admin: true, href: '/app/apps' },
-  { page: 'methods', label: 'Sign-in methods', symbol: 'lock', href: '/app/methods' },
+  { page: 'methods', label: 'Sign-in methods', symbol: 'key', href: '/app/methods' },
   { page: 'activity', label: 'Activity', symbol: 'clock', admin: true, href: '/app/activity' },
-  { page: 'account', label: 'My account', symbol: 'user', href: '/app/account' },
+  { page: 'account', label: 'My account', symbol: 'gear', href: '/app/account' },
 ]
 
 export const pageCopy: Record<AuthPage, { title: string; subtitle: string }> = {
@@ -29,19 +29,27 @@ const modelNotices = (model: AuthPageModel): string => {
   return notes.map(message => `<div class="notice-panel" role="status">${escape(message)}</div>`).join('')
 }
 
+// The head every Auth document shares: fonts, the app stylesheet, the mark as favicon and the small client script.
+export const documentHead = (title: string): string => `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>${escape(title)}</title><link rel="icon" href="/brand/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/rer-theme.css"><link rel="stylesheet" href="/auth-assets/auth.css"><link rel="stylesheet" href="/auth-assets/shell.css"><link rel="stylesheet" href="/auth-assets/tables.css"><link rel="stylesheet" href="/auth-assets/pages.css"><link rel="stylesheet" href="/auth-assets/signin.css"><script src="/auth-assets/auth-ui.js" defer></script>`
+
+export const brandLockup = (tag: 'div' | 'a' = 'div'): string =>
+  `<${tag} class="brand"${tag === 'a' ? ' href="/app"' : ''}><img class="brand-mark" src="/brand/mark.svg" alt="" width="32" height="32"><span class="brand-text"><strong>Auth</strong><span class="brand-line">Identity for your business</span></span></${tag}>`
+
+const themeToggle = `<button class="icon-button" type="button" data-theme-toggle aria-label="Toggle color theme" aria-pressed="false">${icon('theme')}</button>`
+
 export const renderShell = (model: AuthPageModel, page: AuthPage, content: string): string => {
   const user = model.user ?? model.me ?? null
   const copy = pageCopy[page]
   const currentName = user ? fullName(user) : 'Signed out'
+  const host = escape(hostLabel(model.issuer))
   const nav = navItems.filter(item => !item.admin || model.isAdmin).map(item =>
     `<a href="${item.href}"${item.page === page || (page === 'move-in' && item.page === 'people') ? ' class="active" aria-current="page"' : ''}>${icon(item.symbol)}<span>${item.label}</span></a>`
   ).join('')
-  const initial = initials(user?.name)
   const accountBadge = user
-    ? `<a class="profile" href="/app/account" aria-label="My account for ${escape(currentName)}"><span class="initials account-initials">${escape(initial || '•')}</span>${icon('down')}</a>`
+    ? `<a class="initials account-initials" href="/app/account" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
     : ''
   const pageContent = model.isAdmin || !['people', 'move-in', 'agents', 'apps', 'activity'].includes(page)
     ? content
     : '<section class="availability"><strong>Administrator access required.</strong><p>Sign in with a passkey on an administrator account to view this page.</p></section>'
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>${copy.title} — Auth</title><link rel="stylesheet" href="/auth-assets/auth.css"><script src="/auth-assets/auth-ui.js" defer></script></head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside><div class="brand"><svg viewBox="0 0 32 36" aria-hidden="true"><use href="#shield"></use></svg><div><strong>Auth</strong><p>Identity for your business</p></div></div><nav aria-label="Main navigation">${nav}</nav><section class="issuer"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#building"></use></svg><p>Issuer host</p><span class="issuer-host">${escape(hostLabel(model.issuer))}</span><p class="description">Your organization’s identity service, hosted for your team.</p></section></aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools"><button type="button" data-theme-toggle aria-label="Toggle color theme" aria-pressed="false">Theme</button>${accountBadge ? `<div class="account"><div class="tenant"><i class="dot"></i><span>${escape(hostLabel(model.issuer))}</span>${icon('down')}</div>${accountBadge}</div>` : ''}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${pageContent}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
+  return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav><section class="issuer" aria-label="Issuer host"><div><p>Issuer host</p><span class="issuer-host">${host}</span></div><img class="issuer-door" src="/brand/door-small.webp" alt="" width="38" height="56"></section></aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}<span class="tenant" title="Issuer host">${host}</span>${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${pageContent}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
 }
