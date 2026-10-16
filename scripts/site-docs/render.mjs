@@ -7,7 +7,9 @@ import { Marked } from 'marked'
 // the repository, or an outside address) and reports the ones that go nowhere.
 
 const escapeHtml = value => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const plain = value => value.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim()
+const entities = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" }
+// One pass, so an escaped entity is never decoded twice.
+const decode = value => value.replace(/&(amp|lt|gt|quot|#39);/g, (_, name) => entities[name])
 
 export function slugger() {
   const seen = new Map()
@@ -28,9 +30,10 @@ export function renderMarkdown(markdown, link) {
     renderer: {
       heading({ tokens, depth }) {
         const inner = this.parser.parseInline(tokens)
-        const id = slug(plain(inner))
+        const text = decode(this.parser.parseInline(tokens, this.parser.textRenderer)).replace(/\s+/g, ' ').trim()
+        const id = slug(text)
         ids.push(id)
-        if (depth === 2) toc.push({ id, text: plain(inner) })
+        if (depth === 2) toc.push({ id, text })
         const level = Math.min(Math.max(depth, 2), 4)
         return `<h${level} id="${id}">${inner}</h${level}>\n`
       },
