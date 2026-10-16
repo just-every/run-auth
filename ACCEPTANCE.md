@@ -80,19 +80,35 @@ Existing evidence and limits: src/auth/domain-policy.mjs; src/auth/admin.mjs; te
 
 Existing evidence and limits: src/auth/userinfo.mjs; src/auth/upstreams.mjs; tests/auth/userinfo.test.mjs; tests/auth/upstreams.test.mjs — scoped reads and upstream bindings exist; profile editing and explicit link/unlink management are absent.
 
-**AUTH-ENROLLMENT-001 — Managed enrollment and password compatibility (partial).** Enroll an invited employee and an approved-domain self-registrant, reject an outside address, complete password reset and a one-use SMS/email challenge, and prove weaker methods cannot administer or bypass required MFA. Cancel enrollment and verify its outstanding links stop.
+**AUTH-ENROLLMENT-001 — Managed enrollment and password compatibility (partial).** Enroll an invited employee and an approved-domain self-registrant, reject an outside address, complete a password reset under AUTH-PASSWORD-002 and a one-use SMS/email challenge, and prove weaker methods cannot administer or bypass required MFA. Cancel enrollment and verify its outstanding links stop.
 
 Existing evidence and limits: src/auth/email.mjs; src/auth/passkeys.mjs; tests/auth/security.test.mjs; tests/auth/registration.test.mjs — email/domain enrollment and passkeys exist; passwords and SMS do not.
+
+**AUTH-PASSWORD-001 — Password policy per group (missing).** Assign a policy of length 12, history 24, minimum age 1 hour and lockout at 10 attempts to group A, and a policy of length 16 with symbols required and a 90-day maximum age with a 14-day warning to group B; preview the affected people. Through the web change door and a RADIUS sign-in, refuse for a person in A each of: 11 characters, a password from their history, a second change within the hour, a password containing their last name, a block-list word and a breached password; refuse a password without a symbol for B. Fail 10 attempts for A's person across web and RADIUS and see the password locked while passkey sign-in still succeeds; self-unlock under AUTH-PASSWORD-002. Age B's person's password into the warning window and past expiry, and see the warning at each surface and the forced change. Move the person from A to B and see B's rules at their next change.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
+
+**AUTH-PASSWORD-002 — Self-service password reset, unlock and propagation (missing).** For a person in group A with Auth push enrolled, reset a forgotten password through self-service with push, and be refused when offering email alone; unlock a locked password the same way. Within 60 seconds see the new password accepted and the old one refused at GlobalProtect RADIUS, an LDAPS bind, the WS-Trust endpoint and the Mac login in password-sync mode, and read the written-back password's change time from AD. Take the AD connector offline during a reset and see AD pending until it returns. Request a reset for an unknown address and receive the same response as for a known one; refuse a self-service reset by email alone for an administrator.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
+
+**AUTH-ONBOARD-001 — New-hire activation before the start date (partial).** From an HR test source, add a hire starting in 10 days with a 7-day lead time; see no invitation until 7 days before start, then the invitation at the HR personal address. Enroll a passkey and push before start; be refused app launch and token issuance until the start time, then launch. Let a second hire's link expire, reissue it and refuse the old link. Move a start date earlier and later and see the gate follow; rescind an offer and see the enrollment revoked. Confirm no message reaches the personal address after start except enabled recovery notices.
+
+Existing evidence and limits: src/auth/admin.mjs; src/auth/email.mjs; tests/integration/browser.test.mjs — administrators invite a person at an email address, and the invitation becomes active when that person signs in with email proof, after which they can enroll a passkey; HR-sourced personal-email invitations, lead time, expiring single-use activation links and start-time gating are missing.
+
+**AUTH-TAP-001 — Temporary access pass (missing).** As help desk scoped to a new hire's group, record manager attestation and issue a pass. At a fresh Mac's login window (Platform SSO) and at a fresh Windows PC, sign in with it, create the local account and enroll a passkey. Refuse the pass on reuse, after expiry, at an app launch, at app MFA step-up and at GlobalProtect RADIUS. Refuse issuance without a recorded verification, outside the issuer's scope and for an administrator. Inspect the audit trail and the notices.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
 
 **AUTH-EXPERIENCE-001 — Hosted and embedded identity journeys (partial).** Configure branding and an employee journey, use both hosted and embedded account/membership screens, preview a changed MFA step and roll it back. At 1440 and 390, in light/dark with keyboard and assistive technology, complete sign-in/recovery and expose durable errors without leaking hidden fields.
 
 Existing evidence and limits: src/ui/pages/signin.ts; src/ui/pages/account.ts; tests/integration/browser.test.mjs — hosted responsive pages exist; branding controls, embedded components and journey orchestration are missing.
 
-**AUTH-LAUNCHER-001 — Employee app launcher (missing).** As an employee with Google Workspace, Slack, AWS, a password-only app and a RER app assigned, launch each into its proper account. Request an unassigned app, remove an assignment and expire a temporary grant; the dashboard, the extension and direct launch all enforce the changed access.
+**AUTH-LAUNCHER-001 — Employee app launcher (missing).** As an employee with Google Workspace, Slack, AWS, a password-only app and a RER app assigned, launch each into its proper account. Request an unassigned app, remove an assignment and expire a temporary grant; the dashboard, the extension and direct launch all enforce the changed access. Assign a bookmark tile to a group and see it only for members.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-**AUTH-SWA-001 — Password-based app sign-in (missing).** Install the extension in each of the four browsers, assign a shared-credential and an individual-credential app, sign in from the launcher and by direct visit, generate a password and refuse fill on a lookalike origin. Unassign one employee and offboard another; their next fill is refused within 60 seconds, the shared password is rotated, and the audit shows every reveal, fill and rotation without the secret. Import an Okta SWA app definition and launch it.
+**AUTH-SWA-001 — Password-based app sign-in (missing).** Install the extension in each of the four browsers, and force-install it preconfigured through Intune on Windows and Jamf Pro on macOS, assign a shared-credential and an individual-credential app, sign in from the launcher and by direct visit, generate a password and refuse fill on a lookalike origin. Unassign one employee and offboard another; their next fill is refused within 60 seconds, the shared password is rotated, and the audit shows every reveal, fill and rotation without the secret. Import an Okta SWA app definition and launch it.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
@@ -106,13 +122,21 @@ Existing evidence and limits: src/auth/passkeys.mjs; src/auth/local-email.mjs; t
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-**AUTH-POLICY-001 — Conditional access and session policy (partial).** Preview and publish a payroll-app rule requiring a managed US device and fresh passkey; attempt allowed, foreign-network, stale-posture and expired-session launches through app and direct protocol routes. Change group/policy during sign-in and verify the current decision at token issuance.
+**AUTH-POLICY-001 — Conditional access and session policy (partial).** Preview and publish a payroll-app rule requiring a managed US device and fresh passkey; attempt allowed, foreign-network, stale-posture and expired-session launches through app and direct protocol routes. Add an AUTH-RISK-001 "step up on new country" condition and see a new-country sign-in stepped up with the signal named in the decision. Change group/policy during sign-in and verify the current decision at token issuance.
 
 Existing evidence and limits: src/auth/domain-policy.mjs; src/auth/authorization-login.mjs; tests/auth/authorization-policy.test.mjs; tests/auth/upstreams.test.mjs — current domain, session and prompt/max-age checks exist; general device/location/risk engine is missing.
 
-**AUTH-ABUSE-001 — Automated attack protection (partial).** Attack real authentication/reset/token HTTP doors with bot traffic, password spraying, a breached password and distributed source attempts; observe rate limits/lockouts, protected notifications and legitimate recovery. Simulate a risk change and verify step-up and an explainable log.
+**AUTH-ABUSE-001 — Automated attack protection (partial).** Attack real authentication/reset/token HTTP doors with bot traffic, password spraying, a breached password and distributed source attempts; observe rate limits/lockouts, protected notifications and legitimate recovery. Sign in through a Tor exit and from a location implying impossible travel, and verify step-up or denial with the AUTH-RISK-001 signal named in an explainable log.
 
 Existing evidence and limits: src/auth/email.mjs; src/auth/core.mjs; tests/auth/security.test.mjs — address/IP email throttling exists; configurable bot, password and adaptive attack controls are absent.
+
+**AUTH-RISK-001 — Named sign-in behavior signals (missing).** Publish "step up on new country, allow new city, deny Tor" for a group. Sign in from a known location and pass; from a new US city and pass with "new city" logged; from a new country and be stepped up; from a location implying 900 km/h travel since the previous sign-in and be stepped up with velocity logged; through a Tor exit and be denied. Change the radius and look-back and see the next decision follow them. Each decision log names the signal, its value and the feed version. Simulate the draft rule over 30 days of history and see per-signal counts.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
+
+**AUTH-NOTIFY-001 — Employee security notifications and suspicious-activity reports (partial).** Sign in from a new browser and receive the new-device email with its stated context. Enroll a factor, have help desk reset a factor and change a password, and receive each notification. From the new-device email, while signed out, click "Report suspicious activity": see the security owner's escalation in Slack and, under the end-sessions policy, the person's sessions ended and a linked app's back-channel logout delivered. Refuse the report link's reuse and use after expiry. Turn off new-device notices and receive none; try to turn off recovery notices and be refused.
+
+Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs — a cancellable recovery-requested notice is posted to each of the person's active sessions; email/push notifications for the other named events and the suspicious-activity report are missing.
 
 **AUTH-SAML-001 — SAML 2.0 workforce identity provider (missing).** Configure a generic SAML SP through the admin door, launch as an assigned employee over each binding, validate mapped role/NameID in each of the four formats, sign the response, the assertion and both with SHA-256 and SHA-512, decrypt an encrypted assertion with each named algorithm at the SP, and roll certificates with overlap. Complete SP- and IdP-initiated logout over both bindings. Refuse a forged request, altered ACS, wrong audience, SHA-1 without an exception, stale/replayed assertion and unassigned user.
 
@@ -164,7 +188,7 @@ Existing evidence and limits: src/auth/admin.mjs; src/auth/links/logout.mjs; tes
 
 Existing evidence and limits: src/auth/admin.mjs; src/auth/links/logout.mjs; tests/auth/security.test.mjs; tests/auth/linking.test.mjs — suspension denies Auth sessions at once and starts signed RER back-channel logout with bounded retries; measured downstream, source and joiner bounds and the timeliness report are missing.
 
-**AUTH-WORKFLOWS-001 — Employer-built identity automations (missing).** In authorized Google Workspace and Microsoft 365 test tenants, enable the leaver templates and terminate a person through HR: read back Drive files owned by the manager, the transferred calendar, the Gmail auto-reply and delegate, the shared mailbox with manager access and every reclaimed license. Dry-run an edited automation and see no remote change; fail one step and see it held as an unresolved obligation in the person's plan; refuse a step outside the automation's granted scope.
+**AUTH-WORKFLOWS-001 — Employer-built identity automations (missing).** In authorized Google Workspace and Microsoft 365 test tenants, enable the leaver templates and terminate a person through HR: read back Drive files owned by the manager, the transferred calendar, the Gmail auto-reply and delegate, the shared mailbox with manager access and every reclaimed license. Dry-run an edited automation and see no remote change; fail one step and see it held as an unresolved obligation in the person's plan; refuse a step outside the automation's granted scope. Call a generic REST endpoint with stored OAuth client credentials and use its response in a later step; refuse an HTTP step aimed at a private address.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
@@ -180,11 +204,19 @@ Existing evidence and limits: src/auth/upstreams.mjs; tests/auth/upstreams.test.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-**AUTH-DEVICE-001 — Device identity and trust (missing).** Enroll one device per supported desktop OS and read posture from each named management service. Launch an app, stale the posture, mark a device noncompliant and revoke it; verify policy denial, trust removal and an auditable employee/help-desk recovery path.
+**AUTH-DEVICE-001 — Device identity and trust (missing).** Enroll one device per supported desktop OS and an iPhone and an Android phone, and read posture from each named management service; launch from a jailbroken or rooted phone and from one below the required OS version and be denied. Launch an app, stale the posture, mark a device noncompliant and revoke it; verify policy denial, trust removal and an auditable employee/help-desk recovery path.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-**AUTH-DESKTOP-001 — Sign in to the computer with company identity (missing).** On a managed Mac and Windows PC, sign in at the OS login with company identity using push, TOTP and a security key; on the Mac exercise both password-sync and Secure Enclave modes. Sign in offline within and beyond the cached period. Lock an employee out and restore them with a help-desk recovery PIN, then refuse the PIN's reuse and its use after an hour. Offboard the employee and see the next online login and unlock refused.
+**AUTH-DESKTOP-001 — Sign in to the computer with company identity (missing).** On a managed Mac and Windows PC, sign in at the OS login with company identity using push, TOTP and a security key; on the Mac exercise both password-sync and Secure Enclave modes. Sign in offline within and beyond the cached period. Lock an employee out and restore them with a help-desk recovery PIN, then refuse the PIN's reuse and its use after an hour. Offboard the employee and see the next online login and unlock refused. On a domain-joined Windows PC, open the launcher and be signed in by Kerberos, then be stepped up where policy requires.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
+
+**AUTH-GATEWAY-001 — On-premises web apps through an access gateway (missing).** Deploy the gateway on a private network with no inbound port and publish a header-based test app and an IIS app using Kerberos constrained delegation. Launch both as an assigned employee and read the identity headers and Kerberos identity at each app. Send a forged identity header and see it stripped; deny an unassigned employee and a path-level rule; offboard the employee and see the next request refused within 60 seconds.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
+
+**AUTH-PRIVILEGED-001 — Server and SSH access without standing keys (missing).** Enroll two Linux servers (one with the agent, one with only the CA key) and one Windows server. As an engineer in a server group, sign in with a passkey, obtain a certificate and SSH in; RDP to the Windows server through the gateway. Be refused sudo until a time-bound request is approved, then gain it and see it expire. Refuse a server outside the person's groups, an expired certificate and an unassigned engineer. Offboard the engineer and see the next connection refused and the local account removed; the audit shows each session.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
@@ -195,6 +227,10 @@ Existing evidence and limits: No implementing product path or acceptance test ye
 Existing evidence and limits: src/auth/links/routes.mjs; src/auth/protocol.mjs; tests/auth/userinfo.test.mjs — client registration and identity scopes exist; app RBAC, API permissions, fine-grained checks and client credentials are missing.
 
 **AUTH-TOKENS-001 — Refresh and delegated session lifecycle (missing).** Use a native SDK to obtain an approved refresh grant, rotate it, replay an old token and revoke the family through My account. Run concurrent refresh, expiry, suspension and app removal, confirming the resource API refuses invalid authority and strict RER clients receive no refresh token.
+
+Existing evidence and limits: No implementing product path or acceptance test yet.
+
+**AUTH-HOOKS-001 — Inline hooks for custom sign-in logic (missing).** Register a token hook that adds a cost-center claim and see it in the ID token; a registration hook that denies an outside domain; and a hook that tries to add an administrator role and change the subject, and see both changes refused. Let a fail-closed hook time out and see the sign-in refused with a clear error, then a fail-open hook time out and see sign-in continue with the event logged. Refuse a hook URL that resolves to a private address.
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
@@ -220,13 +256,17 @@ Existing evidence and limits: src/auth/core.mjs; src/auth/admin.mjs; scripts/ins
 
 ## Migration, integration and operations
 
-**AUTH-MIGRATION-001 — Switch from Okta, Entra ID or JumpCloud (partial).** For Okta Workforce Identity, Microsoft Entra ID and JumpCloud separately, migrate a populated authorized test tenant with groups, apps, a collision, suspended worker and privileged assignment. Pilot a cohort, re-enroll factors, compare counts/permissions, roll back and cut over; prove old subjects cannot act as credentials and no app is silently omitted.
+**AUTH-MIGRATION-001 — Switch from Okta, Entra ID or JumpCloud (partial).** For Okta Workforce Identity, Microsoft Entra ID and JumpCloud separately, migrate a populated authorized test tenant with groups, apps, a collision, suspended worker and privileged assignment. Pilot a cohort, re-enroll factors through the AUTH-MIGRATION-003 campaign, compare counts/permissions, roll back and cut over; prove old subjects cannot act as credentials and no app is silently omitted.
 
 Existing evidence and limits: src/auth/move-in/sources.mjs; src/auth/move-in/routes.mjs; tests/auth/move-in-staging.test.mjs; tests/auth/move-in-admission.test.mjs — user-export staging/admission exists for all three; full configuration/group/app migration and live cutover are missing.
 
 **AUTH-MIGRATION-002 — Custom-directory and progressive move-in (partial).** Import Google and Auth0 records, migrate one eligible legacy worker at first login through the real bridge, and compare downstream subject mapping before/after. Refuse a wrong password, email collision and disabled worker; interrupt migration and prove an idempotent outcome and a cleanly disabled bridge.
 
 Existing evidence and limits: src/auth/move-in/sources.mjs; tests/auth/move-in-staging.test.mjs; tests/auth/move-in-admission.test.mjs — Google/Auth0 staged imports exist; first-login database migration does not.
+
+**AUTH-MIGRATION-003 — Cutover enrollment campaign (partial).** In an authorized Okta test tenant with 20 staged employees, run a campaign: all 20 enroll through Okta-federated proof with no help-desk action while the dashboard counts down. Leave 3 unenrolled and see them named as overdue with manager reminders and in the export. Refuse a person whose email matches but whose Okta subject differs, an unstaged person, proof after the campaign window and campaign proof for an administrator. Bridge one employee's Okta password and sign in with it at RADIUS after cutover. Repeat the enrollment proof with Entra ID and JumpCloud as upstreams.
+
+Existing evidence and limits: src/auth/upstreams.mjs; src/auth/move-in/routes.mjs; tests/auth/upstreams.test.mjs; tests/auth/move-in-admission.test.mjs — Okta, Microsoft and Google OIDC upstream sign-in with configured subject association and staged move-in admission exist; the campaign window, enrollment dashboard, reminders, JumpCloud/SAML upstreams and the Okta password bridge are missing.
 
 **AUTH-DEVELOPER-001 — Working integration SDKs and admin API (partial).** Build and run each framework quickstart against a fresh Auth install; enroll an employee, sign in, verify a protected API, switch an authorized organization, revoke access and observe logout. Follow the docs from an empty app and diagnose a deliberately wrong redirect without hand-editing SDK internals.
 
@@ -240,7 +280,7 @@ Existing evidence and limits: No implementing product path or acceptance test ye
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-**AUTH-MOBILE-001 — Native employee and administrator access (partial).** On real iOS and Android builds plus Expo SDK clients, enroll a passkey, return through a verified link, launch an assigned app, approve an authorized request and revoke the lost device. Refuse a hijacked callback and offline approval; exercise web equivalents at 1440 and 390.
+**AUTH-MOBILE-001 — Native employee and administrator access (partial).** On real iOS and Android builds plus Expo SDK clients, deploy the app with managed configuration through Intune and Android Enterprise, enroll a passkey, return through a verified link, launch an assigned app, approve an authorized request and revoke the lost device. Refuse a hijacked callback and offline approval; exercise web equivalents at 1440 and 390.
 
 Existing evidence and limits: src/ui/pages/account.ts; tests/integration/browser.test.mjs — responsive account/admin web exists; native apps, mobile SDKs and launcher do not.
 
@@ -304,7 +344,7 @@ Existing evidence and limits: src/auth/agents/keys.mjs; src/auth/agents/approval
 
 Existing evidence and limits: src/auth/links/logout.mjs; src/auth/agents/keys.mjs; tests/auth/linking.test.mjs; tests/auth/agents-keys.test.mjs — local key revocation and RER fences exist; app-wide delegated-credential inventory and verified remote reconciliation are missing.
 
-71 clauses: **13 done / 34 partial / 24 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgement or local queue success alone is insufficient.
+81 clauses: **13 done / 37 partial / 31 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgement or local queue success alone is insufficient.
 
 ## Retained implementation checks and historical outcomes
 
