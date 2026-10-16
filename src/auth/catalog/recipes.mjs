@@ -1,0 +1,86 @@
+// The SaaS catalog: the seven deep-journey apps (AUTH-CATALOG-001). A recipe
+// fills a SAML app and, where the vendor offers SCIM, a provisioning connector;
+// it states the edition, permissions and limits. None is marked verified until
+// a run against an authorized test tenant records a date.
+import {fail} from '../core.mjs';
+
+const slug=(value,label)=>{const v=String(value||'').trim().toLowerCase();if(!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(v))fail(`invalid_${label}`);return v;};
+const domain=value=>{const v=String(value||'').trim().toLowerCase();if(!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(v))fail('invalid_domain');return v;};
+
+export const RECIPES=[
+ {id:'google-workspace',name:'Google Workspace',protocols:['SAML'],provisioning:{kind:'vendor-api',api:'Admin SDK Directory API',status:'not built: Directory API connector is the next provisioning adapter'},
+  inputs:[{name:'domain',label:'Primary domain',example:'company.com'}],
+  saml:i=>({entityId:`google.com/a/${domain(i.domain)}`,acsUrl:`https://www.google.com/a/${domain(i.domain)}/acs`,nameIdFormat:'emailAddress',attributes:[]}),
+  edition:'Any Google Workspace edition; a super administrator configures a third-party SSO profile.',
+  permissions:'Super administrator: Security > Authentication > SSO with third-party IdP. Use Auth\'s sign-in URL, sign-out URL and signing certificate from its SAML metadata, and the domain-specific issuer.',
+  roles:'Google roles are not set over SAML; assign people in Auth and manage Google admin roles in Google.',
+  attributes:'NameID is the primary email address; it must match the Google account.',
+  testUser:'Assign one test person in Auth, apply the SSO profile to a test organizational unit, then sign in at https://mail.google.com/a/<domain>.',
+  rotation:'Upload Auth\'s next certificate to the SSO profile before activating it in Auth.',
+  limits:'Google sessions outlive an Auth sign-out; ending them needs the Directory API users.signOut call (AUTH-LOGOUT-002).'},
+ {id:'microsoft-365',name:'Microsoft 365',protocols:['SAML'],provisioning:{kind:'vendor-api',api:'Microsoft Graph',status:'not built: Graph user and license connector is next'},
+  inputs:[{name:'domain',label:'Federated domain',example:'company.com'}],
+  saml:i=>(domain(i.domain),{entityId:'urn:federation:MicrosoftOnline',acsUrl:'https://login.microsoftonline.com/login.srf',nameIdFormat:'persistent',nameIdSource:'person_id',attributes:[{name:'IDPEmail',source:'email'}]}),
+  edition:'Microsoft 365 with a verified custom domain in Microsoft Entra ID.',
+  permissions:'Global Administrator; Microsoft Graph Domain.ReadWrite.All to create the domain\'s internalDomainFederation with preferredAuthenticationProtocol saml, Auth\'s issuer (its metadata URL), passive sign-in URL (its /saml/sso) and signing certificate.',
+  roles:'Directory roles and licenses stay in Entra ID; Auth group-driven licensing is AUTH-M365-001.',
+  attributes:'NameID is each person\'s Auth person ID: set the Entra user\'s onPremisesImmutableId to it. IDPEmail is the user principal name.',
+  testUser:'Federate in a staged-rollout group first; sign in one test user at https://portal.office.com.',
+  rotation:'Update the federation\'s signingCertificate (and nextSigningCertificate) through Graph before activating Auth\'s next certificate.',
+  limits:'Microsoft may take up to two hours to apply a federation change; keep a cloud-only emergency administrator outside federation.'},
+ {id:'slack',name:'Slack',protocols:['SAML','SCIM'],provisioning:{kind:'scim',base:()=> 'https://api.slack.com/scim/v2',credential:'OAuth user token with the admin scope from an app installed by the Org (or Primary) Owner.',groups:true},
+  inputs:[{name:'workspace',label:'Workspace or org subdomain',example:'company'}],
+  saml:i=>({entityId:'https://slack.com',acsUrl:`https://${slug(i.workspace,'workspace')}.slack.com/sso/saml`,nameIdFormat:'persistent',attributes:[{name:'User.Email',source:'email'},{name:'User.Username',source:'name'},{name:'first_name',source:'first_name'},{name:'last_name',source:'last_name'}]}),
+  edition:'SAML SSO and SCIM: Business+ or Enterprise Grid.',
+  permissions:'Workspace or Org Owner: Settings > Authentication > SAML. SCIM needs an app with the admin scope installed by the Org or Primary Owner.',
+  roles:'Slack roles (owner, admin) are not pushed; SCIM sets user and user-group membership.',
+  attributes:'User.Email must match the Slack account email.',
+  testUser:'Assign a test person, sign in at https://<workspace>.slack.com, then remove the assignment and check the account is deactivated.',
+  rotation:'Paste Auth\'s next certificate into Slack\'s SAML settings before activating it; rotate the SCIM token by reinstalling the app.',
+  limits:'Deactivation ends Slack sessions; session reset of an active user needs admin.users.session.reset (Enterprise Grid).'},
+ {id:'github-enterprise',name:'GitHub Enterprise Cloud',protocols:['SAML','SCIM'],provisioning:{kind:'scim',base:i=>`https://api.github.com/scim/v2/enterprises/${slug(i.enterprise,'enterprise')}`,credential:'Personal access token (classic) with admin:enterprise scope from the enterprise setup user (Enterprise Managed Users).',groups:true},
+  inputs:[{name:'enterprise',label:'Enterprise slug',example:'company'}],
+  saml:i=>({entityId:`https://github.com/enterprises/${slug(i.enterprise,'enterprise')}`,acsUrl:`https://github.com/enterprises/${slug(i.enterprise,'enterprise')}/saml/consume`,nameIdFormat:'persistent',attributes:[{name:'emails',source:'email'},{name:'full_name',source:'name'}]}),
+  edition:'GitHub Enterprise Cloud with Enterprise Managed Users for SCIM; enterprise-level SAML for other enterprises.',
+  permissions:'Enterprise owner (or the EMU setup user) configures SAML under Settings > Authentication security.',
+  roles:'Enterprise roles map through SCIM roles (User, Guest Collaborator, Enterprise Owner, Billing Manager) on EMU.',
+  attributes:'NameID is persistent and must not change; emails and full_name are sent.',
+  testUser:'Assign a test person, sign in at https://github.com/enterprises/<enterprise>/sso, then unassign and check suspension.',
+  rotation:'Add Auth\'s next certificate in the enterprise SAML settings before activating it.',
+  limits:'GitHub ends SAML-authorized credentials when SCIM suspends the user; personal access tokens of EMU users stop with suspension.'},
+ {id:'aws-iam-identity-center',name:'AWS IAM Identity Center',protocols:['SAML','SCIM'],provisioning:{kind:'scim',base:i=>scimEndpoint(i.scimEndpoint),credential:'Access token generated in IAM Identity Center > Settings > Automatic provisioning (expires after one year).',groups:true},
+  inputs:[{name:'metadata',label:'IAM Identity Center SAML metadata',kind:'textarea'},{name:'scimEndpoint',label:'SCIM endpoint',example:'https://scim.us-east-1.amazonaws.com/xxxx/scim/v2'}],
+  saml:i=>({metadata:String(i.metadata||''),nameIdFormat:'emailAddress',attributes:[]}),
+  edition:'Any AWS Organization with IAM Identity Center enabled and the identity source set to an external identity provider.',
+  permissions:'An administrator of the management (or delegated administrator) account changes the identity source and enables automatic provisioning.',
+  roles:'Permission sets are assigned in AWS to groups Auth pushes over SCIM.',
+  attributes:'NameID is the email address; it must equal the SCIM userName Auth sends.',
+  testUser:'Push a test group with one person, assign it a permission set in AWS, and sign in from the AWS access portal.',
+  rotation:'Upload Auth\'s next certificate as the identity provider certificate before activating it; regenerate the SCIM token before it expires.',
+  limits:'Existing AWS console sessions last until their session duration ends; deprovisioning stops new sign-ins.'},
+ {id:'salesforce',name:'Salesforce',protocols:['SAML','SCIM'],provisioning:{kind:'scim',base:i=>`https://${slug(i.myDomain,'my_domain')}.my.salesforce.com/services/scim/v2`,credential:'OAuth access token of a connected app user with Manage Users.',groups:false},
+  inputs:[{name:'myDomain',label:'My Domain name',example:'company'},{name:'orgId',label:'Organization ID',example:'00D000000000000'}],
+  saml:i=>({entityId:`https://${slug(i.myDomain,'my_domain')}.my.salesforce.com`,acsUrl:`https://${slug(i.myDomain,'my_domain')}.my.salesforce.com?so=${/^00D[A-Za-z0-9]{12,15}$/.test(String(i.orgId||''))?i.orgId:fail('invalid_org_id')}`,nameIdFormat:'unspecified',nameIdSource:'email',attributes:[]}),
+  edition:'Enterprise, Performance, Unlimited or Developer edition (API access).',
+  permissions:'System administrator: Setup > Single Sign-On Settings (SAML enabled, Federation ID as the user identity); a connected app for SCIM.',
+  roles:'Profiles and permission sets are assigned through SCIM entitlements and roles.',
+  attributes:'NameID is the email address, matched to each user\'s Federation ID.',
+  testUser:'Set a test user\'s Federation ID to their email, assign them in Auth and sign in at https://<my-domain>.my.salesforce.com.',
+  rotation:'Upload Auth\'s next certificate as the identity provider certificate before activating it.',
+  limits:'Freezing or deactivating a user ends new sign-ins; existing OAuth tokens must be revoked separately (AUTH-LOGOUT-002).'},
+ {id:'zoom',name:'Zoom',protocols:['SAML','SCIM'],provisioning:{kind:'scim',base:()=> 'https://api.zoom.us/scim2',credential:'A bearer token from a Server-to-Server OAuth app with the SCIM scopes. These tokens last one hour, so a long-lived connector needs Auth\'s client-credentials token refresh, which is not built yet.',groups:false},
+  inputs:[{name:'vanity',label:'Vanity URL subdomain',example:'company'}],
+  saml:i=>({entityId:`${slug(i.vanity,'vanity')}.zoom.us`,acsUrl:`https://${slug(i.vanity,'vanity')}.zoom.us/saml/SSO`,nameIdFormat:'emailAddress',attributes:[{name:'email',source:'email'},{name:'first_name',source:'first_name'},{name:'last_name',source:'last_name'}]}),
+  edition:'Business, Business Plus or Enterprise with an approved vanity URL and associated domain.',
+  permissions:'Account owner or admin: Advanced > Single Sign-On; a Server-to-Server OAuth app for SCIM.',
+  roles:'Zoom user type and role can follow SAML response mapping in Zoom\'s SSO settings.',
+  attributes:'NameID and email must match the Zoom account email.',
+  testUser:'Assign a test person and sign in at https://<vanity>.zoom.us with SSO.',
+  rotation:'Upload Auth\'s next certificate in Zoom\'s SSO settings before activating it.',
+  limits:'Deactivating a Zoom user ends their sessions; revoking SSO tokens of an active user is AUTH-LOGOUT-002.'},
+];
+function scimEndpoint(value) {const v=String(value||'').trim();if(!/^https:\/\/scim\.[a-z0-9-]+\.amazonaws\.com\/[A-Za-z0-9-]+\/scim\/v2\/?$/.test(v))fail('invalid_scim_url');return v.replace(/\/$/,'');}
+
+export const recipe=id=>RECIPES.find(r=>r.id===id)??fail('unknown_recipe',404);
+// What a person reads in the catalog: everything but the builder functions.
+export const catalog=()=>RECIPES.map(({saml,provisioning,...r})=>({...r,provisioning:{kind:provisioning.kind,api:provisioning.api??'SCIM 2.0',credential:provisioning.credential??null,groups:provisioning.groups??false,status:provisioning.status??null},verifiedAt:null,verification:'Not yet verified against a live tenant.'}));

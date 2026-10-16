@@ -18,7 +18,7 @@ test('Chromium creates and uses a host-bound passkey through the Auth HTTP API',
  server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
  r.origin=`http://localhost:${server.address().port}`;
  await r.person('owner','owner@example.com','owner');
- const browser=await chromium.launch({headless:true});t.after(()=>browser.close());const context=await browser.newContext();
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());const context=await browser.newContext();
  const page=await context.newPage(),cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  await page.goto(r.origin);

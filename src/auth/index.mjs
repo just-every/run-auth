@@ -14,6 +14,8 @@ import {signOutEverywhere} from './links/logout.mjs';
 import {endSession,END_SESSION} from './links/end-session.mjs';
 import {rememberIssuer} from './links/grant-map.mjs';
 import {isTrustAction,trustAction} from './links/rer-trust.mjs';
+import {samlRoute,isSamlPath} from './saml/routes.mjs';
+import {isWorkforceAction,workforceAction,workforceRead,WORKFORCE_READS} from './workforce/routes.mjs';
 export {stageSigningKey,retireSigningKey,ensureSigningKey} from './keys.mjs';
 export {maintainAuth} from './maintenance.mjs';
 export {installRecoveryToken} from './recovery.mjs';
@@ -24,10 +26,12 @@ export function createAuthRuntime(options) {
  return {context:ctx,upstreamProviders:()=>upstreams?upstreams.providers.list():Promise.resolve([]),model:(request,page)=>model(ctx,request,page),async fetch(request) {
   const url=new URL(request.url),path=url.pathname;
   if(path.startsWith('/auth/oidc/')&&upstreams)return upstreams.fetch(request);
-  if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path))return null;
+  if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path)&&!isSamlPath(path))return null;
   try {
    if(url.origin!==ctx.origin)fail('wrong_issuer',400);
    if(path==='/oidc/userinfo')return await userinfo(ctx,request);
+   // SAML messages arrive from apps' pages; each door checks its own signed or bound input.
+   if(isSamlPath(path))return await samlRoute(ctx,request,path);
    // Apps and RER call these server to server; each verifies its own signed input.
    if(LINK_PATHS.includes(path))return await linkRoute(ctx,request,path);
    if(path===END_SESSION&&['GET','POST'].includes(request.method))return await endSession(ctx,request);
@@ -40,6 +44,7 @@ export function createAuthRuntime(options) {
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
+    if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
     if(path.startsWith('/api/auth/')) {
      const section=path.slice('/api/auth/'.length);if(!['me','people','move-in','agents','apps','activity','methods','notices'].includes(section))fail('not_found',404);
      await requireSession(ctx,request,['people','move-in','agents','apps','activity'].includes(section));const data=await model(ctx,request,['move-in','agents'].includes(section)?section:undefined);return json(section==='me'?data:section==='move-in'?data.moveIn:data[section]);
@@ -66,6 +71,7 @@ export function createAuthRuntime(options) {
      if(action==='/signout-everywhere')return await signOutEverywhere(ctx,request);
      if(isAppAction(action))return await appAction(ctx,request,action,data);
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);
+     if(isWorkforceAction(action))return await workforceAction(ctx,request,action,data);
      return await adminAction(ctx,request,action,data);
     }
    }

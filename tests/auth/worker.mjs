@@ -1,4 +1,4 @@
-import {createAuthRuntime,stageSigningKey,retireSigningKey,installRecoveryToken} from '../../src/auth/index.mjs';
+import {createAuthRuntime,stageSigningKey,retireSigningKey,installRecoveryToken,maintainAuth} from '../../src/auth/index.mjs';
 import {signedToken} from './signed-token.mjs';
 // Requests sent with the same barrier wait at their first D1 batch until all
 // have arrived, so each has passed every check before any one commits.
@@ -13,8 +13,12 @@ function atBarrier(db,{name,size}) {
 }
 export default {async fetch(request,env,execution) {
  const envelope=await request.json(),background=[];
- const runtime=createAuthRuntime({db:envelope.barrier?atBarrier(env.DB,envelope.barrier):env.DB,origin:envelope.origin||'https://auth.example.com',secret:'1a'.repeat(32),local:envelope.local||false,allowDevSession:envelope.allowDevSession===true?()=>true:undefined,now:()=>envelope.now,waitUntil:work=>{background.push(work);execution.waitUntil(work);},upstreamProviders:envelope.upstreamProviders,upstreamFetch:async uri=>{const u=new URL(uri);return Response.json(u.pathname.endsWith('openid-configuration')?envelope.upstream.discovery:u.pathname.endsWith('/keys')?envelope.upstream.jwks:envelope.upstream.tokens);},mail:async message=>{if(envelope.mailDelay)await new Promise(done=>setTimeout(done,envelope.mailDelay));await env.DB.prepare('INSERT INTO test_mail(message) VALUES(?)').bind(JSON.stringify(message)).run();}});
+ const runtime=createAuthRuntime({db:envelope.barrier?atBarrier(env.DB,envelope.barrier):env.DB,origin:envelope.origin||'https://auth.example.com',secret:'1a'.repeat(32),local:envelope.local||false,allowDevSession:envelope.allowDevSession===true?()=>true:undefined,now:()=>envelope.now,waitUntil:work=>{background.push(work);execution.waitUntil(work);},upstreamProviders:envelope.upstreamProviders,upstreamFetch:async uri=>{const u=new URL(uri);return Response.json(u.pathname.endsWith('openid-configuration')?envelope.upstream.discovery:u.pathname.endsWith('/keys')?envelope.upstream.jwks:envelope.upstream.tokens);},
+  // The SCIM service is the network edge: its public host is served by the test's own server.
+  connectorFetch:(uri,init)=>fetch(envelope.scimServer?String(uri).replace('https://scim.example.com',envelope.scimServer):uri,init),mail:async message=>{if(envelope.mailDelay)await new Promise(done=>setTimeout(done,envelope.mailDelay));await env.DB.prepare('INSERT INTO test_mail(message) VALUES(?)').bind(JSON.stringify(message)).run();}});
  if(envelope.action==='stage')return Response.json(await stageSigningKey(runtime.context));
+ // The scheduled handler's work, as the Worker's cron runs it.
+ if(envelope.action==='maintain'){await maintainAuth(runtime.context);await Promise.allSettled(background);return Response.json({ok:true});}
  if(envelope.action==='retire'){await retireSigningKey(runtime.context,envelope.kid);return Response.json({ok:true});}
  if(envelope.action==='recovery-token'){await installRecoveryToken(env.DB,envelope.token,envelope.now);return Response.json({ok:true});}
  if(envelope.action==='signed-token')return Response.json({token:await signedToken(runtime.context,envelope.claims,envelope.options,envelope.tokenIssuer)});

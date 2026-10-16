@@ -1,0 +1,99 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+import {join} from 'node:path';
+import {createServer} from 'node:http';
+import {chromium,expect} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import {SAML} from '@node-saml/node-saml';
+import {openApp} from './runtime.mjs';
+import {spCredentials} from '../auth/saml-helpers.mjs';
+
+const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
+const EMPLOYEE='erin@northwind.example.com';
+
+// A company app at the far edge: a real SAML service provider on its own port.
+async function serviceProvider(t,authOrigin) {
+ const sp=await spCredentials('expenses.localhost');let saml;
+ const server=createServer(async(req,res)=>{
+  let body='';for await(const chunk of req)body+=chunk;
+  if(req.url==='/login'){res.writeHead(302,{location:await saml.getAuthorizeUrlAsync('',undefined,{})});return res.end();}
+  if(req.url==='/acs'&&req.method==='POST') {
+   try {const {profile}=await saml.validatePostResponseAsync(Object.fromEntries(new URLSearchParams(body)));res.writeHead(200,{'content-type':'text/html'});res.end(`<!doctype html><title>Expenses</title><h1>Signed in as ${profile.email} (${profile.role})</h1>`);}
+   catch(error){res.writeHead(403,{'content-type':'text/plain'});res.end('Refused: '+error.message);}
+   return;
+  }
+  res.writeHead(404);res.end();
+ });
+ await new Promise(done=>server.listen(0,'127.0.0.1',done));t.after(()=>new Promise(done=>server.close(done)));
+ const origin=`http://localhost:${server.address().port}`;
+ const metadata=await (await fetch(authOrigin+'/saml/metadata')).text();
+ const idpCert=[...metadata.matchAll(/<ds:X509Certificate>([^<]+)</g)].map(m=>m[1]);
+ saml=new SAML({entryPoint:authOrigin+'/saml/sso',issuer:origin,audience:origin,callbackUrl:origin+'/acs',idpCert,idpIssuer:authOrigin+'/saml/metadata',privateKey:sp.key,publicCert:sp.cert,signatureAlgorithm:'sha256',digestAlgorithm:'sha256',identifierFormat:null,disableRequestedAuthnContext:true,wantAssertionsSigned:true,wantAuthnResponseSigned:true});
+ return {origin,metadata:saml.generateServiceProviderMetadata(null,sp.cert)};
+}
+
+test('company apps journey: the owner adds a SAML app from its metadata, a group and an assignment; an employee signs in to the app through Auth, and loses it when removed, at desktop/mobile in both themes',async t=>{
+ const app=await openApp();t.after(()=>app.close());await app.claim();
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+ const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
+ await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+ const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
+ page.on('dialog',dialog=>dialog.accept());
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ const shoot=async(target,name)=>{for(const [width,theme] of views){
+  await target.setViewportSize({width,height:1000});await target.emulateMedia({colorScheme:theme});await target.reload();
+  await expect(target.locator('h1')).toBeVisible();
+  const results=await new AxeBuilder({page:target}).analyze();
+  assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`${width} ${theme} ${name}`);
+  assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
+  await target.screenshot({path:join(directory,`company-apps-${name}-${width}-${theme}.png`),fullPage:true});
+ }await target.setViewportSize({width:1440,height:1000});await target.emulateMedia({colorScheme:'light'});};
+
+ // Owner: browser email link, setup, hardware passkey.
+ await page.goto(app.origin+'/signin?returnTo=%2Fsetup');
+ await page.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);await page.getByRole('button',{name:'Email me a sign-in link'}).click();
+ await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();await expect(page).toHaveURL(app.origin+'/setup');
+ await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Finish setup'}).click();await expect(page).toHaveURL(app.origin+'/app');
+ await page.goto(app.origin+'/app/methods');
+ const registered=page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
+ await page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await registered).status(),200);await page.waitForTimeout(500);
+
+ // An employee, invited and signed in from their own browser.
+ assert.equal((await context.request.post(app.origin+'/api/auth/people/invite',{data:{email:EMPLOYEE,name:'Erin Example'},headers:{origin:app.origin}})).status(),201);
+ const employee=await browser.newContext(),employeePage=await employee.newPage();
+ assert.equal((await employee.request.post(app.origin+'/auth/identity/email/request',{data:{email:EMPLOYEE},headers:{origin:app.origin}})).status(),202);
+ const link=await app.link();assert.equal((await employee.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:link.searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
+
+ // The app's own metadata, pasted on the Apps page.
+ const sp=await serviceProvider(t,app.origin);
+ await page.goto(app.origin+'/app/apps');
+ const create=page.locator('form[action="/api/auth/company-apps/create"]');
+ await create.getByLabel('Name',{exact:true}).fill('Expenses');await create.getByLabel('Service provider metadata').fill(sp.metadata);await create.getByLabel('Sign',{exact:true}).selectOption('both');await create.getByLabel(/^Attributes/).fill('email=email\nrole=role');
+ await create.getByRole('button',{name:'Add app'}).click();
+ await expect(page.getByRole('heading',{name:'Expenses'})).toBeVisible();
+ await page.getByLabel('Group name').fill('Finance');await page.getByRole('button',{name:'Create group'}).click();
+ const groupRow=()=>page.locator('section[aria-labelledby="groups-heading"] .data-row',{hasText:'Finance'}),finance=groupRow();await expect(finance).toBeVisible();
+ await finance.getByLabel('Add by email').fill(EMPLOYEE);await finance.getByRole('button',{name:'Add',exact:true}).click();
+ await expect(page.locator('.data-row',{hasText:EMPLOYEE}).first()).toBeVisible();
+ const assign=page.locator('form[data-assign]').first();
+ await assign.getByLabel('Give access to').selectOption({label:'Group: Finance'});await assign.getByLabel('App role (optional)').fill('approver');await assign.getByRole('button',{name:'Assign'}).click();
+ await expect(page.locator('.data-row',{hasText:'role approver'})).toBeVisible();
+ await shoot(page,'apps');
+
+ // The employee opens the app: it asks Auth, Auth answers in the browser, the app signs them in.
+ await employeePage.goto(sp.origin+'/login');
+ await expect(employeePage.getByRole('heading',{name:`Signed in as ${EMPLOYEE} (approver)`})).toBeVisible();
+ await employeePage.goto(app.origin+'/app/account');await expect(employeePage.getByRole('heading',{name:'Your apps'})).toBeVisible();
+ await shoot(employeePage,'launcher');
+
+ // Removed from the group: Auth refuses the next sign-in to the app.
+ await page.goto(app.origin+'/app/apps');
+ await groupRow().getByRole('button',{name:`Remove ${EMPLOYEE}`}).click();
+ await expect(groupRow().getByText('No members')).toBeVisible();
+ await employeePage.goto(sp.origin+'/login');
+ await expect(employeePage.getByRole('heading',{name:'You are not assigned to this app'})).toBeVisible();
+ await employee.close();
+ assert.deepEqual(errors,[],'no browser runtime errors');
+});

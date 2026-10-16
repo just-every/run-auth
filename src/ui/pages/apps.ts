@@ -1,5 +1,6 @@
 import type { AuthApp, AuthPageModel } from '../model.js'
 import { asArray, csrfField, emptyState, escape, replacementText, timeElement } from '../helpers.js'
+import { renderCompanyApps } from './company-apps.js'
 
 const appOrigin = (value: string): { host: string; punycode: boolean } => {
   try {
@@ -54,5 +55,5 @@ export function renderAppsPage(model: AuthPageModel): string {
   const token = `<section class="panel stacked" aria-labelledby="link-token-heading"><div class="panel-header"><div><h2 id="link-token-heading">Link token for rer setup</h2><p>One use, for one exact app address and its sign-in callbacks, valid for an hour. Save it to a private file and pass it as RER_LINK_TOKEN_FILE.</p></div></div><form class="inline-form" method="post" action="/api/auth/apps/link-token" data-link-token>${csrfField(model.csrf)}${originField('token-origin', 'App address')}<button type="submit">Create link token</button></form><div class="agent-secret" data-link-token-output hidden><label for="link-token-value">Copy this now. Auth keeps only its digest and will not show it again.</label><textarea id="link-token-value" rows="6" readonly data-link-token-value></textarea></div></section>`
   const table = `<section class="table-panel app-table" aria-label="Connected apps"><div class="table-scroll" tabindex="0" role="region" aria-label="Connected apps table"><table><thead><tr><th scope="col">Origin and app</th><th scope="col">Link source</th><th scope="col">Status</th><th scope="col">Versions in use</th><th scope="col">Linked</th><th scope="col">Actions</th></tr></thead><tbody>${appRows(allApps, model)}</tbody></table></div>${allApps.length ? `<footer class="table-footer">${allApps.length} ${allApps.length === 1 ? 'app' : 'apps'}</footer>` : ''}</section>`
   const empty = emptyState('No connected apps are available for this issuer.', 'Add an app below, or link one with rer setup and a link token.')
-  return `${allApps.length ? table : empty}<div class="section-grid">${add}${token}</div>`
+  return `${allApps.length ? table : empty}<div class="section-grid">${add}${token}</div>${renderCompanyApps(model)}`
 }

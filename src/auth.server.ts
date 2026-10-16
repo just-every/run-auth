@@ -70,7 +70,7 @@ export async function authResponse(request: Request, original: Bindings, executi
  }
  // Base claims the owner, but never authorizes Auth administration or enrollment.
  if (['/auth/bootstrap', '/auth/session', '/auth/signout'].includes(path)) return fontDocumentResponse(await createAuthHandler(operatorAuth(env))(request))
- const ownsIdentity = path.startsWith('/auth/') || path.startsWith('/oidc/') || path.startsWith('/api/auth/') || ['/.well-known/openid-configuration', '/.well-known/rer-provider', '/.well-known/rer-dependencies'].includes(path)
+ const ownsIdentity = path.startsWith('/auth/') || path.startsWith('/oidc/') || path.startsWith('/saml/') || path.startsWith('/api/auth/') || ['/.well-known/openid-configuration', '/.well-known/rer-provider', '/.well-known/rer-dependencies'].includes(path)
  const ownsPage = path === '/' || path === '/signin' || path === '/setup' || path === '/app' || path.startsWith('/app/')
  if (!ownsIdentity && !ownsPage) return null
  if (url.origin !== env.AUTH_ORIGIN || (request.headers.has('host') && request.headers.get('host')?.toLowerCase() !== url.host.toLowerCase())) return new Response(null, { status: 403, headers: privateHeaders })

@@ -6,6 +6,8 @@ export interface AuthRuntimeOptions {
  upstreamFetch?: typeof fetch;
  /** Outbound requests to linked apps (pull, callback, logout); defaults to fetch. */
  linkFetch?: typeof fetch;
+ /** Outbound requests to provisioning connectors (SCIM); defaults to fetch. */
+ connectorFetch?: typeof fetch;
  /** RER Managed: JSON object of trusted link-approval public keys (kid -> JWK). */
  rerTrustKeys?: string;
  allowDevSession?: (request: Request) => boolean | Promise<boolean>;

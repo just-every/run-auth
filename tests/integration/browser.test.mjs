@@ -8,7 +8,7 @@ import {openApp} from './runtime.mjs';
 
 test('real Auth pages: browser email, first setup, hardware passkey, people and account at desktop/mobile in both themes',async t=>{
  const app=await openApp({upstreamProviders:[{id:'company',label:'Company',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'},{id:'backup',label:'Backup',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'}]});t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});

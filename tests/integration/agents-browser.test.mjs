@@ -11,7 +11,7 @@ const LEAVER='leaver@northwind.example.com';
 
 test('agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes',async t=>{
  const app=await openApp();t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true});t.after(()=>browser.close());
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});

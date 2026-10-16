@@ -7,6 +7,10 @@ function signingAlgorithm(alg) {if(!SIGNING_ALGORITHMS.includes(alg))fail('unsup
 async function wrappingKey(ctx) { let bytes;try{bytes=/^[a-f0-9]{64}$/i.test(ctx.secret) ? Uint8Array.from(ctx.secret.match(/../g),v=>parseInt(v,16)) : unb64(ctx.secret);}catch{fail('signing_secret_required',503);}if(bytes.length!==32)fail('signing_secret_required',503);return crypto.subtle.importKey('raw',bytes,'AES-GCM',false,['encrypt','decrypt']); }
 async function encrypt(ctx,kid,value) {const iv=crypto.getRandomValues(new Uint8Array(12));const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:utf8.encode(kid)},await wrappingKey(ctx),utf8.encode(JSON.stringify(value)));return `${b64(iv)}.${b64(encrypted)}`;}
 async function decrypt(ctx,row) {const [iv,data]=row.encrypted_private.split('.');return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(iv),additionalData:utf8.encode(row.kid)},await wrappingKey(ctx),unb64(data))));}
+// Other installation secrets (SAML signing keys, connector credentials) under the
+// same AUTH_ENCRYPTION_KEY, each bound to its own label.
+export const seal=(ctx,label,value)=>encrypt(ctx,label,value);
+export const unseal=(ctx,label,sealed)=>decrypt(ctx,{kid:label,encrypted_private:sealed});
 // With a guard (an acting session's authority) the key is stored only while it holds; null otherwise.
 export async function stageSigningKey(ctx,alg='ES256',guard=null) {
  signingAlgorithm(alg);

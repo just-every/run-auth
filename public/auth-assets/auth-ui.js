@@ -303,7 +303,7 @@
         window.setTimeout(() => window.location.reload(), 350)
         return
       }
-      showStatus('Request completed.', 'success')
+      showStatus(typeof result.message === 'string' ? result.message : 'Request completed.', 'success')
     } catch (error) {
       if (error?.code === 'local_email_step_up_required') form.closest('dialog')?.close()
       showStatus(error instanceof Error ? error.message : 'Auth could not complete that request.', 'error')

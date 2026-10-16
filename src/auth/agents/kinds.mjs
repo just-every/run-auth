@@ -7,6 +7,7 @@
 import {email,one,all,fail,hash} from '../core.mjs';
 import {configuredProvider} from '../domain-policy.mjs';
 import {fencePerson} from '../links/logout.mjs';
+import {personChanged} from '../provisioning/obligations.mjs';
 import {APP_KINDS} from './app-kinds.mjs';
 
 const domainOf=value=>{const domain=String(value||'').trim().toLowerCase();if(!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)||domain.length>253)fail('invalid_domain');return domain;};
@@ -58,12 +59,13 @@ export const KINDS={
    ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE id=? AND role!='owner' AND ${claim.sql}`).bind(state.id,...claim.args),
    ctx.db.prepare(`UPDATE auth_sessions SET revoked_at=? WHERE person_id=? AND revoked_at IS NULL AND ${claim.sql}`).bind(ctx.now(),state.id,...claim.args),
   ],
-  after:(ctx,state)=>fencePerson(ctx,state.id)},
+  after:async(ctx,state)=>{await fencePerson(ctx,state.id);await personChanged(ctx,state.id,'person_suspended');}},
  restore_person:{
   target:personTarget,state:personState,same:samePerson,
   check:async(state,ctx)=>!state?'person_not_found':state.status!=='inactive'?'person_not_suspended':await one(ctx,'SELECT 1 FROM oa_invitation_cancellations WHERE operator_id=?',state.id)?'invitation_was_removed':null,
   effect:(ctx,state)=>personEffect(ctx,state,'active'),
-  run:(ctx,state,claim)=>[ctx.db.prepare(`UPDATE oa_operators SET status='active' WHERE id=? AND status='inactive' AND ${claim.sql}`).bind(state.id,...claim.args)]},
+  run:(ctx,state,claim)=>[ctx.db.prepare(`UPDATE oa_operators SET status='active' WHERE id=? AND status='inactive' AND ${claim.sql}`).bind(state.id,...claim.args)],
+  after:(ctx,state)=>personChanged(ctx,state.id,'person_restored')},
  remove_invitation:{
   target:personTarget,state:personState,same:samePerson,
   check:state=>!state?'person_not_found':state.status!=='invited'?'not_an_invitation':null,

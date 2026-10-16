@@ -4,8 +4,15 @@ on:
   pull_request:
 jobs:
   verify:
+    # Three parallel shards keep a push's Verify well inside 15 minutes;
+    # together they run everything `rer verify` runs.
+    name: verify (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [app, protocol, browser]
     permissions:
       contents: read
     env:
@@ -32,6 +39,14 @@ jobs:
           node-version: 22.20.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: node scripts/rer.mjs check --profile first-party
-      - run: node scripts/rer.mjs verify
+      - if: matrix.shard == 'browser'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: matrix.shard == 'app'
+        run: node scripts/rer.mjs check --profile first-party
+      - run: pnpm run build
+      - if: matrix.shard == 'app'
+        run: pnpm run typecheck && pnpm run test:typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site
+      - if: matrix.shard == 'protocol'
+        run: pnpm run test:auth
+      - if: matrix.shard == 'browser'
+        run: pnpm run test:browser

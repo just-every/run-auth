@@ -209,6 +209,34 @@ export interface AuthPageModel {
   providers?: AuthProvider[]
   moveIn?: { batches: MoveInBatch[]; batch: MoveInBatch | null; rows: MoveInRow[] }
   agents?: { now?: number; keys: AgentKey[]; proposals: AgentProposal[]; proposal: AgentProposal | null }
+  workforce?: WorkforceModel
+  launcher?: LauncherApp[]
+}
+
+export interface LauncherApp { id: string; name: string; launch: string | null }
+export interface CompanyAppObligation {
+  subject_type: string; subject_id: string; label?: string | null; reason: string; operation?: string | null; state: string
+  event_at: number; dispatched_at?: number | null; verified_at?: number | null; attempts: number; last_status?: number | null; last_error?: string | null; overdue?: boolean
+}
+export interface CompanyApp {
+  id: string; name: string; recipe?: string | null; entityId: string; acs: Array<{ url: string; binding: string }>; slo?: { url: string; binding: string } | null
+  nameIdFormat: string; sign: string; digest: string; encryption?: string | null; idpInitiated: boolean; version: number; status: string
+  assignments: Array<{ type: string; id: string; label?: string | null; role?: string | null }>
+  provisioning: { baseUrl: string; deprovision: string; groups: boolean; lastSuccessAt?: number | null; lastError?: string | null; lastReconciledAt?: number | null } | null
+  obligations: CompanyAppObligation[]
+}
+export interface CatalogRecipe {
+  id: string; name: string; protocols: string[]; inputs: Array<{ name: string; label: string; example?: string; kind?: string }>
+  provisioning: { kind: string; api: string; credential?: string | null; groups: boolean; status?: string | null }
+  edition: string; permissions: string; roles: string; attributes: string; testUser: string; rotation: string; limits: string; verifiedAt: number | null; verification: string
+}
+export interface WorkforceModel {
+  idp: { entityId: string; metadataUrl: string; ssoUrl: string; sloUrl: string }
+  samlKeys: Array<{ kid: string; state: string; createdAt: number; activatedAt?: number | null }>
+  companyApps: CompanyApp[]
+  groups: Array<{ id: string; name: string; members: Array<{ id: string; email: string }> }>
+  catalog: CatalogRecipe[]
+  nameIdFormats: string[]
 }
 
 export interface SignInPageModel {

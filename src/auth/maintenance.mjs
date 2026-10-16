@@ -1,6 +1,7 @@
 import {deliverLogouts} from './links/logout.mjs';
+import {maintainProvisioning} from './provisioning/obligations.mjs';
 // Safe for a Worker scheduled handler; no identity or audit history is removed.
-// It also retries back-channel logouts that are due.
+// It also retries back-channel logouts and provisioning that are due.
 export async function maintainAuth(ctx) {
  const now=ctx.now();
  await ctx.db.batch([
@@ -12,6 +13,9 @@ export async function maintainAuth(ctx) {
   ctx.db.prepare('DELETE FROM auth_signing_keys WHERE retire_at IS NOT NULL AND retire_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_link_codes WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_link_tokens WHERE expires_at<=?').bind(now),
+  ctx.db.prepare('DELETE FROM auth_saml_requests WHERE expires_at<=?').bind(now),
+  ctx.db.prepare('DELETE FROM auth_saml_logouts WHERE expires_at<=?').bind(now),
  ]);
  await deliverLogouts(ctx);
+ await maintainProvisioning(ctx);
 }

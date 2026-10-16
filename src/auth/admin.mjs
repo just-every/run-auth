@@ -6,6 +6,9 @@ import {moveInModel} from './move-in/routes.mjs';
 import {agentsModel} from './agents/routes.mjs';
 import {appsModel} from './links/routes.mjs';
 import {fencePerson} from './links/logout.mjs';
+import {personChanged} from './provisioning/obligations.mjs';
+import {workforceModel} from './workforce/routes.mjs';
+import {launcher} from './workforce/directory.mjs';
 import {rerTrustModel} from './links/rer-trust.mjs';
 export async function model(ctx,request,page='account') {
  const s=await session(ctx,request);if(!s)return {page,issuer:ctx.origin,user:null,me:null,isAdmin:false};
@@ -32,7 +35,9 @@ export async function model(ctx,request,page='account') {
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
   if(page==='agents')Object.assign(result,await agentsModel(ctx,request));
+  if(page==='apps')result.workforce=await workforceModel(ctx);
  }
+ result.launcher=await launcher(ctx,s.person_id);
  return result;
 }
 // The one invitation message, from People and from move-in alike.
@@ -89,7 +94,7 @@ export async function adminAction(ctx,request,path,data) {
   // Base's version trigger also revokes all previously issued Base sessions.
   const changed=await run(ctx,`UPDATE oa_operators SET status='inactive' WHERE id=? AND role!='owner' AND ${g}`,id,...ga);
   if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('person_unavailable',409);}
-  await audit(ctx,s.person_id,'person_suspended',id);await fencePerson(ctx,id);return json({ok:true});
+  await audit(ctx,s.person_id,'person_suspended',id);await fencePerson(ctx,id);await personChanged(ctx,id,'person_suspended');return json({ok:true});
  }
  if(path==='/keys/stage') {
   const staged=await stageSigningKey(ctx,data.alg,guard);if(!staged){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}
