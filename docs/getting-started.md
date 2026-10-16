@@ -1,5 +1,7 @@
 Auth runs on your own computer with one command. This page takes you from nothing to a signed-in owner with a passkey.
 
+These guides are also published at https://run-auth.com/docs, and the run page is at https://run-auth.com/run.
+
 ## Install rer
 
 `rer` is the Run Edit Run command. Install it once per computer:
