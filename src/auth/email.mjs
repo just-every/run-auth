@@ -1,4 +1,5 @@
 import {permitsSession,requirePolicy,upstreamProof} from './domain-policy.mjs';
+import {framedPage,FRAME_SOURCES} from './page-frame.mjs';
 import {email,hash,random,binding,bindingName,cookie,challenge,consumeChallenge,one,run,limit,json,createSession,audit,fail,returnPath,session,sessionById} from './core.mjs';
 export async function sendProof(ctx, person, bindingHash, amr = ['email'], returnTo = '/app/account', upstreamProofId = null, hardwareSessionId = null) {
  await requirePolicy(ctx,person,upstreamProofId);
@@ -61,5 +62,5 @@ async function continuingClient(ctx,token) {
 }
 export async function confirmationPage(ctx,request) {
  const app=await continuingClient(ctx,new URL(request.url).searchParams.get('token'));
- return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Confirm your Auth email</title><h1>Confirm your email</h1><form method="post"><button>Continue to Auth</button></form></html>`,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'strict-origin','content-security-policy':`default-src 'none'; form-action 'self'${app?' '+app:''}; frame-ancestors 'none'; base-uri 'none'`}});
+ return new Response(framedPage('Confirm your Auth email','<h1>Confirm your email</h1><form method="post"><button class="primary-button">Continue to Auth</button></form>'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'strict-origin','content-security-policy':`default-src 'none'; ${FRAME_SOURCES}; form-action 'self'${app?' '+app:''}; frame-ancestors 'none'; base-uri 'none'`}});
 }

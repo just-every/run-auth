@@ -1,0 +1,27 @@
+{
+  "sections": [
+    {
+      "title": "Start here",
+      "pages": [
+        { "slug": "getting-started", "title": "Get started", "file": "getting-started.md", "summary": "Run Auth on your computer, finish setup and register your passkey." },
+        { "slug": "sign-in", "title": "Passkeys and email links", "file": "sign-in.md", "summary": "How people sign in, what administrators need, and what to do about a lost passkey." }
+      ]
+    },
+    {
+      "title": "Everyday",
+      "pages": [
+        { "slug": "people", "title": "People, domains and roles", "file": "people.md", "summary": "Invite people, allow your company's domain, change roles and suspend access." },
+        { "slug": "apps", "title": "Link your apps", "file": "apps.md", "summary": "Add an app, link one from its setup, and sign out everywhere." },
+        { "slug": "move-in", "title": "Move people in", "file": "../MOVE-IN.md", "summary": "Bring your team across from Google Workspace, Microsoft Entra, Auth0, Okta or JumpCloud." },
+        { "slug": "backup-and-restore", "title": "Backup and restore", "file": "backup-and-restore.md", "summary": "Export everything, restore into a fresh copy, and get back in if you are locked out." }
+      ]
+    },
+    {
+      "title": "Reference",
+      "pages": [
+        { "slug": "commands", "title": "Auth commands", "file": "../AUTH-COMMANDS.md", "summary": "Setup, dev, recovery, private settings and export, in detail." },
+        { "slug": "linking", "title": "How app linking works", "file": "../LINKING.md", "summary": "The documents, handshake, continuity and sign-out behind a linked app." }
+      ]
+    }
+  ]
+}

@@ -31,7 +31,7 @@ const versionCell = (app: AuthApp, model: AuthPageModel): string => {
   return inUse + held
 }
 
-const appRows = (apps: AuthApp[], model: AuthPageModel): string => apps.length ? apps.map(app => {
+const appRows = (apps: AuthApp[], model: AuthPageModel): string => apps.map(app => {
   const origin = appOrigin(app.origin)
   const name = app.name?.trim() || origin.host
   const pending = app.status === 'pending'
@@ -40,9 +40,9 @@ const appRows = (apps: AuthApp[], model: AuthPageModel): string => apps.length ?
   const controls = pending
     ? `${actionForm('/api/auth/apps/approve', { id: app.id }, 'Approve app', model.csrf, `Link ${origin.host} to this issuer? People will be able to sign in to it with Auth.`)}<p class="data-meta">The app's owner must also approve this link in the app, within ten minutes.</p>`
     : removed ? '' : actionForm('/api/auth/apps/remove', { id: app.id }, 'Remove app', model.csrf, `Remove ${name} from this issuer?`, true)
-  const status = pending ? '<span class="pill">Approval pending</span>' : removed ? '<span class="status-pill suspended"><i class="status-dot"></i>Removed</span>' : '<span class="status-pill active"><i class="status-dot"></i>Active</span>'
-  return `<tr><td><strong>${escape(origin.host)}</strong><div class="data-meta">${escape(name)}</div></td><td><span class="pill">${escape(pending ? 'Waiting for approval' : linkSource(app.source))}</span>${appFlags ? `<div class="button-row flag-list">${appFlags}</div>` : ''}</td><td>${status}</td><td>${versionCell(app, model)}</td><td>${timeElement(app.linked_at ?? app.created_at ?? app.createdAt)}</td><td class="actions-cell">${controls}</td></tr>`
-}).join('') : '<tr><td colspan="6">No connected apps are available for this issuer.</td></tr>'
+  const status = pending ? '<span class="status-pill">Approval pending</span>' : removed ? '<span class="status-pill suspended">Removed</span>' : '<span class="status-pill active">Active</span>'
+  return `<tr class="app-row"><td><strong class="app-origin">${escape(origin.host)}</strong><div class="data-meta">${escape(name)}</div></td><td><span class="mobile-label">Link source</span><span class="pill">${escape(pending ? 'Waiting for approval' : linkSource(app.source))}</span>${appFlags ? `<div class="button-row flag-list">${appFlags}</div>` : ''}</td><td><span class="mobile-label">Status</span>${status}</td><td><span class="mobile-label">Versions in use</span>${versionCell(app, model)}</td><td><span class="mobile-label">Linked</span>${timeElement(app.linked_at ?? app.created_at ?? app.createdAt)}</td><td class="actions-cell">${controls}</td></tr>`
+}).join('')
 
 const originField = (id: string, label: string): string => `<div class="field"><label for="${id}">${label}</label><input id="${id}" name="origin" type="url" inputmode="url" placeholder="https://app.example.com" required></div>`
 
@@ -53,5 +53,6 @@ export function renderAppsPage(model: AuthPageModel): string {
   const add = `<section class="panel stacked" aria-labelledby="add-app-heading"><div class="panel-header"><div><h2 id="add-app-heading">Add an app</h2><p>Auth reads the app's own link document at this exact address, then shows it here for approval.</p></div></div><form class="inline-form" method="post" action="/api/auth/apps/request" data-auth-action data-reload="true">${csrfField(model.csrf)}${originField('app-origin', 'App address')}<button type="submit">Check app</button></form></section>`
   const token = `<section class="panel stacked" aria-labelledby="link-token-heading"><div class="panel-header"><div><h2 id="link-token-heading">Link token for rer setup</h2><p>One use, for one exact app address and its sign-in callbacks, valid for an hour. Save it to a private file and pass it as RER_LINK_TOKEN_FILE.</p></div></div><form class="inline-form" method="post" action="/api/auth/apps/link-token" data-link-token>${csrfField(model.csrf)}${originField('token-origin', 'App address')}<button type="submit">Create link token</button></form><div class="agent-secret" data-link-token-output hidden><label for="link-token-value">Copy this now. Auth keeps only its digest and will not show it again.</label><textarea id="link-token-value" rows="6" readonly data-link-token-value></textarea></div></section>`
   const table = `<section class="table-panel app-table" aria-label="Connected apps"><div class="table-scroll" tabindex="0" role="region" aria-label="Connected apps table"><table><thead><tr><th scope="col">Origin and app</th><th scope="col">Link source</th><th scope="col">Status</th><th scope="col">Versions in use</th><th scope="col">Linked</th><th scope="col">Actions</th></tr></thead><tbody>${appRows(allApps, model)}</tbody></table></div>${allApps.length ? `<footer class="table-footer">${allApps.length} ${allApps.length === 1 ? 'app' : 'apps'}</footer>` : ''}</section>`
-  return `${table}${allApps.length ? '' : emptyState('Add an app below, or link one with rer setup and a link token.')}<div class="section-grid">${add}${token}</div>`
+  const empty = emptyState('No connected apps are available for this issuer.', 'Add an app below, or link one with rer setup and a link token.')
+  return `${allApps.length ? table : empty}<div class="section-grid">${add}${token}</div>`
 }

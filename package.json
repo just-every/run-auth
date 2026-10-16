@@ -2,6 +2,8 @@
   "name": "@identity/auth",
   "version": "0.1.0",
   "private": true,
+  "repository": "https://github.com/just-every/run-auth",
+  "homepage": "https://run-auth.com",
   "type": "module",
   "engines": {
     "node": "22.20.0"
@@ -19,7 +21,7 @@
     "test:email-link": "node scripts/base-onboarding/queued-entry.mjs test:email-link -- sh -c \"node tests/email-link.mjs\"",
     "onboard": "node scripts/install.mjs",
     "build:app": "node scripts/base-onboarding/queued-entry.mjs build:app -- sh -c \"vite build\"",
-    "verify:app": "node scripts/base-onboarding/queued-entry.mjs verify:app -- sh -c \"pnpm run build && pnpm run typecheck && pnpm run test:typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:auth && pnpm run test:browser\"",
+    "verify:app": "node scripts/base-onboarding/queued-entry.mjs verify:app -- sh -c \"pnpm run build && pnpm run typecheck && pnpm run test:typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:auth && pnpm run test:site && pnpm run test:browser\"",
     "reset": "node scripts/rer.mjs reset",
     "export": "node scripts/rer.mjs export",
     "import": "node scripts/rer.mjs import",
@@ -31,7 +33,8 @@
     "deps": "node scripts/rer.mjs install",
     "rer": "node scripts/rer.mjs",
     "test:auth": "node --test --test-concurrency=1 tests/auth/linking.test.mjs tests/auth/rer-approval.test.mjs tests/auth/security.test.mjs tests/auth/registration.test.mjs tests/auth/fresh-proof.test.mjs tests/auth/local-email.test.mjs tests/auth/protocol.test.mjs tests/auth/authorization-policy.test.mjs tests/auth/userinfo.test.mjs tests/auth/upstreams.test.mjs tests/auth/move-in-staging.test.mjs tests/auth/move-in-admission.test.mjs tests/auth/agents-keys.test.mjs tests/auth/agents-proposals.test.mjs tests/auth/recovery-cli.test.mjs tests/integration/http.test.mjs",
-    "test:browser": "node --test --test-concurrency=1 tests/auth/browser.test.mjs tests/integration/browser.test.mjs tests/integration/move-in-browser.test.mjs tests/integration/agents-browser.test.mjs tests/integration/dev.test.mjs"
+    "test:browser": "node --test --test-concurrency=1 tests/auth/browser.test.mjs tests/integration/browser.test.mjs tests/integration/move-in-browser.test.mjs tests/integration/agents-browser.test.mjs tests/integration/dev.test.mjs",
+    "test:site": "node --test tests/site/run-site.test.mjs"
   },
   "dependencies": {
     "@simplewebauthn/server": "13.3.3",
@@ -50,6 +53,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "6.1.1",
+    "marked": "18.0.14",
     "typescript": "5.9.3",
     "vite": "8.2.2",
     "wrangler": "4.129.1"

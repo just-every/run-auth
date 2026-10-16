@@ -1,0 +1,72 @@
+/* The signed-in shell: a 272px sidebar beside one white panel at 1024px and up;
+   below that a top bar, a scrolling row of nav links and the page on paper. */
+.app { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 8px; min-height: 100vh; padding: 32px 40px 40px 0; }
+
+.sidebar { display: flex; flex-direction: column; padding: 8px 20px 0 32px; position: sticky; top: 32px; align-self: start; min-height: calc(100vh - 72px); }
+.sidebar-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 40px; }
+.sidebar-top .icon-button { display: none; }
+.brand { display: flex; align-items: flex-start; gap: 12px; text-decoration: none; color: var(--rer-text); }
+.brand-mark { width: 32px; height: 32px; flex: none; margin-top: 2px; }
+.brand-text { display: grid; gap: 2px; }
+.brand strong { font-family: var(--rer-font-heading); font-size: 26px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; }
+.brand-line { font-size: 13px; color: var(--rer-muted); }
+
+.sidebar nav { display: grid; gap: 4px; }
+.sidebar nav a {
+  display: flex; align-items: center; gap: 16px; min-height: 48px; padding: 0 16px; border-radius: 14px;
+  color: var(--rer-text); text-decoration: none; font-size: 15px;
+}
+.sidebar nav a:hover { background: color-mix(in srgb, var(--rer-text) 5%, transparent); }
+.sidebar nav a.active { background: var(--petrol-pale); color: var(--petrol-deep); font-weight: 600; }
+.sidebar nav svg { width: 20px; height: 20px; }
+
+.issuer {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 48px;
+  padding: 18px 16px 14px 20px; border: 1px solid var(--rer-border); border-radius: 16px; background: var(--rer-surface);
+}
+.sidebar .issuer { margin-top: auto; }
+.issuer > div { min-width: 0; padding-bottom: 4px; }
+.issuer p { font-size: 13px; color: var(--rer-muted); }
+.issuer-host { display: block; font-size: 15px; overflow-wrap: anywhere; }
+.issuer-door { width: auto; height: 56px; flex: none; }
+
+.app-page {
+  min-width: 0; padding: 40px; border-radius: 18px; background: var(--rer-surface); border: 1px solid var(--rer-border);
+  box-shadow: 0 1px 2px rgb(31 36 40 / .06), 0 12px 32px rgb(31 36 40 / .08);
+}
+.heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.heading h1 { font-size: 34px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; }
+.subtitle { margin-top: 8px; font-size: 15px; color: var(--rer-muted); }
+.heading-tools { display: flex; align-items: center; gap: 12px; flex: none; }
+.tenant {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 0 18px; border: 1px solid var(--input-border);
+  border-radius: 999px; font-size: 14px; white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis;
+}
+.initials {
+  display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 999px;
+  background: var(--invited); color: var(--invited-text); font-size: 14px; font-weight: 600; text-decoration: none; letter-spacing: .02em;
+}
+.account-initials { width: 44px; height: 44px; font-size: 15px; }
+.account-initials:hover { background: color-mix(in srgb, var(--invited) 80%, var(--rer-text)); }
+
+@media (max-width: 1023px) {
+  .app { display: block; padding: 0 0 48px; }
+  .sidebar { position: static; min-height: 0; padding: 0 20px; }
+  .sidebar-top { align-items: center; min-height: 64px; margin: 0; border-bottom: 1px solid var(--rer-border); }
+  .sidebar-top .icon-button { display: inline-grid; }
+  .brand { align-items: center; gap: 10px; }
+  .brand-mark { width: 30px; height: 30px; margin: 0; }
+  .brand strong { font-size: 24px; }
+  .sidebar .brand-line { display: none; }
+  .sidebar nav { display: flex; gap: 6px; overflow-x: auto; margin: 14px -20px 0; padding: 0 20px 4px; scrollbar-width: none; }
+  .sidebar nav::-webkit-scrollbar { display: none; }
+  .sidebar nav a { flex: none; min-height: 40px; padding: 0 16px; border-radius: 999px; font-size: 15px; }
+  .sidebar nav svg { display: none; }
+  .issuer { display: none; }
+  .app-page { padding: 24px 20px 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .heading { flex-direction: column; gap: 16px; margin-bottom: 24px; }
+  .heading h1 { font-size: 28px; }
+  .heading-tools { width: 100%; justify-content: space-between; }
+  .heading-tools > .icon-button { display: none; }
+  .heading-tools .tenant { max-width: calc(100% - 60px); }
+}

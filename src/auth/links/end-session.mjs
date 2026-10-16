@@ -6,11 +6,12 @@ import {compactVerify,createLocalJWKSet} from 'jose';
 import {one,all,run,session,cookie,cookieName,audit} from '../core.mjs';
 import {jwks} from '../keys.mjs';
 import {queueLogouts} from './logout.mjs';
+import {framedPage,FRAME_SOURCES} from '../page-frame.mjs';
 
 export const END_SESSION='/oidc/logout';
-const headers={'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'no-referrer','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"};
+const headers={'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'no-referrer','content-security-policy':`default-src 'none'; ${FRAME_SOURCES}; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`};
 const escape=v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-const page=(title,body,status=200,extra={})=>new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${title}</title><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem"><h1>${title}</h1>${body}</body></html>`,{status,headers:{...headers,...extra}});
+const page=(title,body,status=200,extra={})=>new Response(framedPage(title,`<h1>${title}</h1>${body}`),{status,headers:{...headers,...extra}});
 
 // Signature and issuer only: an expired hint still names the session it came from.
 async function hint(ctx,token) {

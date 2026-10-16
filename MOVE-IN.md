@@ -54,7 +54,7 @@ Apps that used Auth0 know each person by Auth0's `user_id`. After admitting an A
 
 ## Data you stage
 
-Staged rows hold personal data from the export (names, addresses, provider ids) until the batch is admitted or undone, and they stay in Auth's database for the record. They are listed only on the move-in review. Auth's export and import are not available yet (they wait on Base's transfer APIs); when they arrive, staged rows that were never admitted are to be left out of the export, and the former subject map travels with the people it belongs to.
+Staged rows hold personal data from the export (names, addresses, provider ids) until the batch is admitted or undone, and they stay in Auth's database for the record. They are listed only on the move-in review. `rer export` leaves out staged rows, and the former subject map travels with the people it belongs to in the signed grant map ([LINKING.md](LINKING.md#export-and-import)).
 
 ## What this does not prove
 

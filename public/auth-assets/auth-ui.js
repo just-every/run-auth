@@ -180,10 +180,12 @@
     const dark = resolvedTheme() === 'dark'
     for (const button of document.querySelectorAll('[data-theme-toggle]')) {
       button.setAttribute('aria-pressed', String(dark))
-      button.textContent = dark ? 'Dark' : 'Light'
+      button.title = dark ? 'Dark theme' : 'Light theme'
     }
   }
   updateThemeButton()
+  // On a phone the nav is one scrolling row: bring the current page's link into view.
+  document.querySelector('.sidebar nav a.active')?.scrollIntoView({ block: 'nearest', inline: 'center' })
   document.addEventListener('click', event => {
     const themeButton = event.target.closest('[data-theme-toggle]')
     if (themeButton) {
