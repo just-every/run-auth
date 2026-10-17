@@ -1,11 +1,16 @@
 # Foundation operations
 
-Run all first-party operations from the composed, runnable edition checkout
-with the shared RER command path. The detailed flags and effects are in
-`RUN-LOCALLY.md` and `SEED-COMMAND-CONTRACT.md`.
+Start Auth from nothing with one line: `npx -y @runeditrun/rer dev just-every/run-auth`
+(`npx -y @runeditrun/rer setup just-every/run-auth` sets up without starting;
+without Node, `curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth`).
+It clones Auth into `run-auth`, installs, makes you the owner and starts it.
+
+Run all other first-party operations from that composed, runnable edition
+checkout with the shared RER command path. The detailed flags and effects are
+in `RUN-LOCALLY.md` and `SEED-COMMAND-CONTRACT.md`. To be the owner under your
+own address, run these from the checkout:
 
 ```sh
-node scripts/rer.mjs install
 node scripts/rer.mjs setup --owner-email you@example.com
 node scripts/rer.mjs dev
 ```

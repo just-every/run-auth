@@ -13,22 +13,18 @@ RER trust: an Auth install RER provisioned carries RER's per-account public key 
 Sign in with a touch: passkeys and email links for your team, and one sign-in across the apps you link. Visit [run-auth.com](https://run-auth.com) for Auth and [run-auth.com/run](https://run-auth.com/run) for the two steps; the guides are at [run-auth.com/docs](https://run-auth.com/docs) and in [docs/](docs/).
 
 ```sh
-curl -fsSL https://runeditrun.com/install.sh | sh
-rer dev just-every/run-auth
+npx -y @runeditrun/rer dev just-every/run-auth
 ```
 
-The first line installs `rer` for you alone, with its own Node if you have none. It changes no shell settings: if it prints an `export PATH=…` line, run that line before the second. Already have Node 22 or later? `npx -y @runeditrun/rer dev just-every/run-auth` does both lines in one.
+That one line clones Auth, installs everything, makes you the owner and prints a link that opens Auth signed in. It needs Node 22 or later; without Node, `curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth` brings its own. To set it up without starting it, use `npx -y @runeditrun/rer setup just-every/run-auth`. To start it again later, run `cd run-auth && rer dev`. Runs on macOS, Linux or Windows with WSL2, with git; rer brings pnpm.
 
-The second line clones Auth, installs everything, makes you the owner and prints a link that opens Auth signed in. To start it again later, run `cd run-auth && rer dev`. Runs on macOS, Linux or Windows with WSL2, with git; the installer brings Node when it is missing, and rer brings pnpm.
+## Start locally with your own owner email
 
-## Start locally without installing rer
-
-The source lives at [just-every/run-auth](https://github.com/just-every/run-auth). The checkout carries its own copy of rer, so the same steps work without installing it:
+The source lives at [just-every/run-auth](https://github.com/just-every/run-auth). The checkout carries its own copy of rer, so after one command to fetch it, the steps run from the checkout without installing rer:
 
 ```sh
-git clone https://github.com/just-every/run-auth.git
+npx -y @runeditrun/rer install just-every/run-auth
 cd run-auth
-node scripts/rer.mjs install
 node scripts/rer.mjs setup --owner-email you@example.com
 node scripts/rer.mjs dev
 ```

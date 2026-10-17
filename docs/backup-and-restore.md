@@ -16,7 +16,7 @@ The archive holds people and their emails, passkey public keys, linked apps, the
 Import into a fresh, empty copy of Auth, then start it on the same address (host and port) the old copy used:
 
 ```sh
-git clone https://github.com/just-every/run-auth.git auth-restored
+npx -y @runeditrun/rer install just-every/run-auth --dir auth-restored
 cd auth-restored
 rer import --input ../run-auth/exports/auth.rer --yes
 rer dev

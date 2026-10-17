@@ -6,8 +6,9 @@ Auth's host owns its issuer and passkeys. Choose it before linking; changing it 
 
 Privacy: Auth shares email and name with apps each person uses. Under RER Managed, RER can sign link approvals for the account's Auth install; it receives people's data only as an ordinary linked app (README.md, RER trust).
 
+Start from nothing with `npx -y @runeditrun/rer dev just-every/run-auth` (set up only: `npx -y @runeditrun/rer setup just-every/run-auth`; without Node: `curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth`). The commands below run from the checkout it creates:
+
 ```sh
-node scripts/rer.mjs install
 node scripts/rer.mjs setup --owner-email you@example.com
 node scripts/rer.mjs dev
 node scripts/rer.mjs dev --stop
