@@ -15,7 +15,7 @@ test('the catalog configures the seven named apps as working SAML apps with thei
  assert.equal((await r.admin('catalog/add',{recipe:'salesforce',myDomain:'company',orgId:'nope'})).status,400);
  assert.equal((await r.admin('catalog/add',{recipe:'unknown'})).status,404);
  for(const [recipe,inputs] of Object.entries(INPUTS)) {
-  const added=await r.admin('catalog/add',{recipe,...inputs,token:recipe==='slack'?'xoxp-slack-admin-token':undefined});assert.equal(added.status,201,`${recipe}: ${await added.clone().text()}`);
+  const added=await r.admin('catalog/add',{recipe,...inputs,token:recipe==='slack'?'synthetic-slack-admin-token':undefined});assert.equal(added.status,201,`${recipe}: ${await added.clone().text()}`);
  }
  const sp=await spCredentials('aws');
  const aws=serviceProvider(r,{entity:'https://us-east-1.signin.aws.amazon.com/platform/saml/d-0000000000',idpCerts,sp,format:'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',assertion:false});

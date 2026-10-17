@@ -12,7 +12,7 @@ from runtime import Runtime
 def parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('--target', choices=['reference', 'external'], required=True)
-    parser.add_argument('--plans', default='basic,config,logout,private-key')
+    parser.add_argument('--plans', default='basic,config,logout,private-jwt')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--config', type=Path)
     parser.add_argument('--extra-host', action='append', default=[], metavar='NAME=ADDRESS', help='Add host mappings on nginx, the shared network namespace owner; ADDRESS may be host-gateway')

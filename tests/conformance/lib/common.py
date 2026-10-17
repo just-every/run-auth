@@ -50,7 +50,7 @@ PLANS = {
     'basic': 'oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=dynamic_client]',
     'config': 'oidcc-config-certification-test-plan',
     'logout': 'oidcc-backchannel-rp-initiated-logout-certification-test-plan[response_type=code id_token][client_registration=dynamic_client]',
-    'private-key': 'oidcc-test-plan[client_auth_type=private_key_jwt][response_type=code][response_mode=default][client_registration=dynamic_client]',
+    'private-jwt': 'oidcc-test-plan[client_auth_type=private_key_jwt][response_type=code][response_mode=default][client_registration=dynamic_client]',
     'basic-static': 'oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=static_client]',
     'private-key-static': 'oidcc-test-plan[client_auth_type=private_key_jwt][response_type=code][response_mode=default][client_registration=static_client]',
 }
