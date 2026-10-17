@@ -64,6 +64,7 @@
       "required": true,
       "ownerVisible": false,
       "input": "managed",
+      "generate": "hex",
       "group": "owner"
     },
     {

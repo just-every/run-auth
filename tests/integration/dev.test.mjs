@@ -1,3 +1,6 @@
+import { fileURLToPath as __rerTestEntryPath } from 'node:url';
+const __rerTestEntry = __rerTestEntryPath(import.meta.resolve('@runeditrun/rer/internal/bin/rer.mjs'));
+const __rerTestEntryArgs = args => args[1] === 'dev' && !args.some(arg => ['--foreground', '--detach', '--stop', '--help'].includes(arg)) ? [...args, '--foreground'] : args;
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
@@ -20,7 +23,7 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  // The copied checkout owns its local-operation lock, independently of verify.
  delete env.RER_LOCAL_OPERATION;
 
- function command(args){const child=spawn(process.execPath,['scripts/rer.mjs',...args],{cwd:directory,env,stdio:['ignore','pipe','pipe']});processes.push(child);let output='';for(const stream of [child.stdout,child.stderr])stream.on('data',chunk=>{output+=chunk;});return {child,output:()=>output};}
+ function command(args,argv=__rerTestEntryArgs([__rerTestEntry,...args])){const child=spawn(process.execPath,argv,{cwd:directory,env,stdio:['ignore','pipe','pipe']});processes.push(child);let output='';for(const stream of [child.stdout,child.stderr])stream.on('data',chunk=>{output+=chunk;});return {child,output:()=>output};}
  const setup=command(['setup','--owner-email','owner@example.com','--port',String(port),'--non-interactive','--json']);
  const setupExit=await new Promise(resolve=>setup.child.once('exit',resolve));
  if(setupExit!==0){const error=setup.output().split('\n').flatMap(line=>{try{return [JSON.parse(line)];}catch{return [];}}).find(event=>event.event==='error');throw new Error(`fresh rer setup failed (${setupExit}): ${error?.message ?? 'no structured diagnostic'}`);}
@@ -84,7 +87,7 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  assert.ok(previewReady,'rer preview ready');
  for(const path of privatePaths)assert.equal((await fetch(previewReady.url+path,{redirect:'manual'})).status,404,`preview ${path}`);
  const previewStop=command(['preview','--stop','--non-interactive']);assert.equal(await new Promise(resolve=>previewStop.child.once('exit',resolve)),0);await new Promise(resolve=>preview.child.exitCode!==null?resolve():preview.child.once('exit',resolve));
- const recovery=command(['recovery','--local']);assert.equal(await new Promise(resolve=>recovery.child.once('exit',resolve)),0);const tokenFile=join(directory,'.rer/local/recovery-token');assert.equal((await stat(tokenFile)).mode&0o777,0o600);const token=(await readFile(tokenFile,'utf8')).trim();assert.ok(!recovery.output().includes(token),'recovery wrapper never prints the token');
+ const recovery=command([],['scripts/auth-recovery.mjs','--local']);assert.equal(await new Promise(resolve=>recovery.child.once('exit',resolve)),0);const tokenFile=join(directory,'.rer/local/recovery-token');assert.equal((await stat(tokenFile)).mode&0o777,0o600);const token=(await readFile(tokenFile,'utf8')).trim();assert.ok(!recovery.output().includes(token),'recovery wrapper never prints the token');
  // Export carries people and the signed grant map, never sessions, signing keys or the pairwise key.
  const transfer=command(['export','--output','exports/auth.rer','--non-interactive','--json']);assert.equal(await new Promise(resolve=>transfer.child.once('exit',resolve)),0,transfer.output());
  const archived=(await readFile(join(directory,'exports/auth.rer'),'utf8')).split('\n').filter(Boolean).map(line=>JSON.parse(line)),tables=archived[0].tables.map(table=>table.name);

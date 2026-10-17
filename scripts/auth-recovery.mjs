@@ -10,7 +10,7 @@ async function localDirectory(root,relative) {
  const stat=await lstat(path);if(!stat.isDirectory()||stat.isSymbolicLink())throw new Error('Recovery requires a real checkout-local directory.');return path;
 }
 export async function recovery(argv=[],{root=process.cwd()}={}) {
- if(argv.some(arg=>arg!=='--local')||argv.length>1)throw new Error('Usage: rer recovery [--local]. Recovery installation is local only.');
+ if(argv.some(arg=>arg!=='--local')||argv.length>1)throw new Error('Usage: pnpm recovery [--local]. Recovery installation is local only.');
  root=resolve(root);
  await localDirectory(root,'.rer');const directory=await localDirectory(root,'.rer/local');
  // Inspect the canonical state path before invoking wrangler; never follow a state symlink.
@@ -27,6 +27,6 @@ export async function recovery(argv=[],{root=process.cwd()}={}) {
 }
 export default recovery;
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
- try {await recovery(process.argv.slice(2));console.log('Recovery token installed locally. Stored in .rer/local/recovery-token (owner-only).');}
+ try {const result=await recovery(process.argv.slice(2),{root:fileURLToPath(new URL('../',import.meta.url))});console.log(`Recovery token saved to ${result.path}`);}
  catch(error){console.error(error.message);process.exitCode=1;}
 }

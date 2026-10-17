@@ -1,3 +1,6 @@
+import { fileURLToPath as __rerTestEntryPath } from 'node:url';
+const __rerTestEntry = __rerTestEntryPath(import.meta.resolve('@runeditrun/rer/internal/global/rer.mjs'));
+const __rerTestEntryArgs = args => args[1] === 'dev' && !args.some(arg => ['--foreground', '--detach', '--stop', '--help'].includes(arg)) ? [...args, '--foreground'] : args;
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
@@ -9,7 +12,7 @@ import {join} from 'node:path';
 // people to /run and /docs, never to an installed instance's routes.
 test('rer build --site writes the homepage, the Run page and every listed docs page',async()=>{
  const root=join(import.meta.dirname,'..','..');
- const built=spawnSync(process.execPath,['scripts/rer.mjs','build','--site','--non-interactive'],{cwd:root,encoding:'utf8'});
+ const built=spawnSync(process.execPath,__rerTestEntryArgs([__rerTestEntry,'build','--site','--non-interactive']),{cwd:root,encoding:'utf8'});
  assert.equal(built.status,0,built.stderr+built.stdout);
  const site=join(root,'dist/site'),page=path=>readFile(join(site,path),'utf8');
  const home=await page('index.html');

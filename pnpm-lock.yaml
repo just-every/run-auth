@@ -49,6 +49,9 @@ importers:
       '@playwright/test':
         specifier: 1.55.1
         version: 1.55.1
+      '@runeditrun/rer':
+        specifier: 0.2.45
+        version: 0.2.45
       '@types/react':
         specifier: 19.2.18
         version: 19.2.18
@@ -719,6 +722,11 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
+
+  '@runeditrun/rer@0.2.45':
+    resolution: {integrity: sha512-yi59hH1g6WB1wMk374uB6ZQXvXIiG0KkC7P7PnPVkzB7QgccOONm+A4uOREPFH2dI18yNYzJLMPC+TmCEvqayw==}
+    engines: {node: '>=22'}
+    hasBin: true
 
   '@simplewebauthn/server@13.3.3':
     resolution: {integrity: sha512-LelX/lcy5cjc15A86i/aNxHhB5eU7dd20QsbP0VLAf9e38+SLlsnqCCyecx3xqfGofhmX05h1J9fKRYWxw+luA==}
@@ -2068,6 +2076,8 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.0.1': {}
+
+  '@runeditrun/rer@0.2.45': {}
 
   '@simplewebauthn/server@13.3.3':
     dependencies:

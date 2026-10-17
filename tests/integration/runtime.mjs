@@ -6,7 +6,7 @@ import {mkdtemp, rm, writeFile, symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {productionPlan,projectMiniflare} from '../../scripts/base-onboarding/production-options.mjs';
+import {productionPlan,projectMiniflare} from '@runeditrun/rer/internal/onboarding/production-options.mjs';
 
 // The emitted Worker under the same Miniflare plan rer preview serves, in this process.
 async function productionRuntime(directory,origin,port,host) {

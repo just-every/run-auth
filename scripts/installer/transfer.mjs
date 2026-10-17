@@ -4,10 +4,10 @@
 // Runtime modules load lazily: this adapter must load before `rer install`.
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import { localPortability } from '../base-cli/cli/portability.mjs';
-import { fileRecords } from '../base-cli/modules/portability/files.mjs';
-import { readSettings } from '../base-onboarding/adapter-settings.mjs';
-import { RerError } from '../base-cli/cli/errors.mjs';
+import { localPortability } from '@runeditrun/rer/portability';
+import { fileRecords } from '@runeditrun/rer/modules/portability/files';
+import { readSettings } from '@runeditrun/rer/adapter-settings';
+import { RerError } from '@runeditrun/rer/errors';
 
 // Kept: people, emails, passkey public keys, clients, grants, pairwise subjects,
 // former subjects, the audit log, grant maps and withdrawn RER keys (withdrawal

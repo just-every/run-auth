@@ -1,11 +1,10 @@
-import { randomBytes } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { operatorInstaller, developmentTarget, previewTarget } from '../base-onboarding/operator-installer.mjs';
-import { selectLocalState } from '../base-onboarding/local/state.mjs';
-import { commandAdapter as createCommandAdapter } from '../base-cli/cli/adapter.mjs';
-import { ownerDeploy } from '../base-cli/cli/deploy.mjs';
-import { localInstaller } from '../base-onboarding/adapter.mjs';
+import { operatorInstaller, developmentTarget, previewTarget } from '@runeditrun/rer/operator-installer';
+import { selectLocalState } from '@runeditrun/rer/local/state';
+import { commandAdapter as createCommandAdapter } from '@runeditrun/rer/adapter';
+import { ownerDeploy } from '@runeditrun/rer/deploy';
+import { localInstaller } from '@runeditrun/rer/local-installer';
 import { browserInstaller, browserSignIn } from './auth-signin.mjs';
 import * as model from './ui/seed.mjs';
 import { portability } from './transfer.mjs';
@@ -24,10 +23,6 @@ const lifecycle = { ...foundation, ...localInstaller({ ...foundation.hooks, sign
 // Append newly declared managed secrets on setup reruns; the shared writer
 // preserves existing generated values and unchanged settings bytes.
 lifecycle.settings.keepExisting = false;
-lifecycle.supplied = ['AUTH_ENCRYPTION_KEY'];
-lifecycle.settings.supplied = lifecycle.supplied;
-const localSettings = lifecycle.settings.values;
-lifecycle.settings.values = context => ({ ...localSettings(context), AUTH_ENCRYPTION_KEY: randomBytes(32).toString('base64url') });
 export const adapter = lifecycle;
 export const { install } = lifecycle;
 export const commandAdapter = createCommandAdapter(lifecycle, {
@@ -40,5 +35,8 @@ export const commandAdapter = createCommandAdapter(lifecycle, {
  // scans for the dev layer, and the kept end-to-end email-link test.
  devIdentity: { entry: 'src/server.dev.ts', output: ['dist'], emailLinkTest: 'tests/email-link.mjs' },
  localOnlyKeys: ['RER_DEV_ORIGIN', 'RER_DEV_IDENTITY'],
+ // A fresh checkout serves on localhost: WebAuthn refuses 127.0.0.1 as a relying-party ID,
+ // so passkeys need a domain. A saved origin and an explicit --host keep theirs.
+ host: 'localhost',
  product: model.product.name, input: { names: { email: 'OWNER_EMAIL', name: 'displayName' }, async defaults(root) { const { readFile } = await import('node:fs/promises'); const branding = JSON.parse(await readFile(join(root, 'src/branding.json'), 'utf8')); return { APP_NAME: branding.name, PRIMARY_COLOR: branding.primaryColor }; } },
 });

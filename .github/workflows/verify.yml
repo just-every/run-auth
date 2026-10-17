@@ -42,7 +42,7 @@ jobs:
       - if: matrix.shard == 'browser'
         run: pnpm exec playwright install --with-deps chromium
       - if: matrix.shard == 'app'
-        run: node scripts/rer.mjs check --profile first-party
+        run: pnpm exec rer check --profile first-party
       - run: pnpm run build
       - if: matrix.shard == 'app'
         run: pnpm run typecheck && pnpm run test:typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site

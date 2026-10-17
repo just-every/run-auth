@@ -1,6 +1,6 @@
 # Foundation setup adapter
 
-First-party setup runs through `node scripts/rer.mjs setup`. The public
+First-party setup runs through `rer setup`. The public
 command's flags, effects, state handling and exits are defined in
 `SEED-COMMAND-CONTRACT.md`; use `RUN-LOCALLY.md` for the owner workflow. The
 onboarding package supplies the shared lifecycle used by the command adapter.

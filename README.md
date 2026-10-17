@@ -25,8 +25,8 @@ The source lives at [just-every/run-auth](https://github.com/just-every/run-auth
 ```sh
 npx -y @runeditrun/rer install just-every/run-auth
 cd run-auth
-node scripts/rer.mjs setup --owner-email you@example.com
-node scripts/rer.mjs dev
+rer setup --owner-email you@example.com
+rer dev
 ```
 
 Fresh setup chooses `localhost`, which supports browser passkeys. Explicit hosts and saved issuers are preserved. An existing IP issuer needs an explicit host move before passkey enrollment; setup never rewrites it silently. Maintained runtimes are Node 22.20.0 and pnpm 10.12.4.

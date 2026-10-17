@@ -33,7 +33,7 @@ Import checks the archive and restores it in one step, and refuses app addresses
 If the only administrator loses their passkey, a recovery token gets you back in on your own computer:
 
 ```sh
-rer recovery --local
+pnpm recovery --local
 ```
 
 It saves a one-use token to `.rer/local/recovery-token` (readable only by you) and prints just that path. Signed in as the owner, redeem it as [Auth commands](/docs/commands) describes, then register a new passkey. A token only works on the computer where Auth runs; it never works over the network.

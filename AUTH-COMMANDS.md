@@ -9,13 +9,13 @@ Privacy: Auth shares email and name with apps each person uses. Under RER Manage
 Start from nothing with `npx -y @runeditrun/rer dev just-every/run-auth` (set up only: `npx -y @runeditrun/rer setup just-every/run-auth`; without Node: `curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth`). The commands below run from the checkout it creates:
 
 ```sh
-node scripts/rer.mjs setup --owner-email you@example.com
-node scripts/rer.mjs dev
-node scripts/rer.mjs dev --stop
-node scripts/rer.mjs preview
-node scripts/rer.mjs preview --stop
-node scripts/rer.mjs check --profile first-party
-node scripts/rer.mjs verify
+rer setup --owner-email you@example.com
+rer dev
+rer dev --stop
+rer preview
+rer preview --stop
+rer check --profile first-party
+rer verify
 ```
 
 Setup validates `rer-setup.json`, generates private settings, builds the Worker, migrates D1, claims the owner and publishes the initial public signing key. The key must age through the advertised JWKS cache lifetime before authorization can use it. Repeated setup preserves the saved owner and secrets. Setup does not mail a CLI-bound sign-in link.
@@ -27,10 +27,10 @@ First passkey enrollment begins with an Auth email-link session. An account with
 Private local settings are mode-0600 `.dev.vars`; D1 lives in `.wrangler/state`. `AUTH_ENCRYPTION_KEY` is the generated wrapping secret. `AUTH_UPSTREAM_PROVIDERS` is an optional private JSON array of Base IdentityProviderConfig objects, restricted to Google, Microsoft and Okta. Each includes its id, preset and clientId, with the provider's issuer/tenant and private client authentication material. Microsoft and Okta require explicit subjectEmails mappings. Only safe visible provider labels and sign-in paths reach HTML. No live upstream credentials are included.
 
 ```sh
-node scripts/rer.mjs recovery --local
+pnpm recovery --local
 ```
 
-Recovery invokes local wrangler D1, invalidates unused prior token digests and installs a new digest. The raw token is saved to `.rer/local/recovery-token` with mode 0600; the command prints only that path. An authenticated owner redeems it through `POST /api/auth/recovery/token` with a same-origin JSON body containing `token`. The normal delayed recovery controls are on My account. This edition extension accepts no arguments or `--local`; it does not inherit the generic verb flags or perform a remote operation.
+Recovery invokes local wrangler D1, invalidates unused prior token digests and installs a new digest. The raw token is saved to `.rer/local/recovery-token` with mode 0600; the command prints only that path. An authenticated owner redeems it through `POST /api/auth/recovery/token` with a same-origin JSON body containing `token`. The normal delayed recovery controls are on My account. This seed script (`scripts/auth-recovery.mjs`, not a `rer` verb) accepts no arguments or `--local`; it does not inherit the generic verb flags or perform a remote operation.
 
 `export` first writes a signed grant map, then exports Auth's data by policy: people, emails, passkey public keys, clients, grants, subjects and history, with no sessions, keys or pairwise key. `import` restores into an empty checkout and refuses app origins that checkout cannot serve and active dev personas. See LINKING.md. `reset --yes` destructively removes the declared local installation state and private settings; export first to keep it.
 

@@ -10,12 +10,7 @@ Every seed has two versions of its homepage (owner, 12 October 2026):
    **Lobby**, a minimal page whose one action is **Sign in**, or **Finish
    setup** until the owner has claimed the installation.
 
-Base builds the mechanism once (`foundation/runtime/identity.ts`, `lobby.ts`,
-`setup-state.ts`, `run-site.ts`; `rer build --site`, `RER_SITE`,
-`rer deploy --site`). `default-seed` and the foundation template adopt both; read
-them as the worked example. The contract is in `SEED-COMMAND-CONTRACT.md`
-(Installed homepage and run site) and the deploy target in
-`scripts/base-cli/modules/deploy-kit/README.md` (Run site).
+The shared homepage mechanism is described in `SEED-COMMAND-CONTRACT.md`. The deploy integration is exported as `@runeditrun/rer/deploy`.
 
 ## Rules for every seed
 
@@ -48,12 +43,7 @@ them as the worked example. The contract is in `SEED-COMMAND-CONTRACT.md`
   (`rer-consolidation/evidence/homepage-variants/minimal/12ui/round3-lobby-*`,
   `run-page/picks/a-*`), with no horizontal scroll and the primary action above
   the fold.
-- **Refresh from Base** with Base's own tools: `node scripts/export-cli.mjs
-  <seed>` from a Base checkout refreshes `scripts/base-cli/` and
-  `scripts/base-onboarding/`; copy `foundation/runtime/` to `src/base/` (the
-  exporters do this unchanged). A seed on the published package pins the rer
-  version that contains this change instead.
-
+- **Refresh shared behavior.** Update the exact `@runeditrun/rer` pin with `pnpm add -D -E @runeditrun/rer@VERSION`. Copy `foundation/runtime/` from the Base commit you adopt into the seed's `src/base/` folder.
 ## Edition identity
 
 Add one `EditionIdentity` value next to the seed's config (most seeds:

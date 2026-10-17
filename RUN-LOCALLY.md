@@ -2,11 +2,9 @@
 
 Start Auth from nothing with `npx -y @runeditrun/rer dev just-every/run-auth` (set up only: `npx -y @runeditrun/rer setup just-every/run-auth`).
 Without Node, `curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth` brings its own.
-`rer` (or `npx -y @runeditrun/rer`) runs every verb with the checkout's own pinned copy: a vendored
-`scripts/rer.mjs`, or in package mode the exact `@runeditrun/rer` devDependency in
-`node_modules`. The `OPERATIONS.json` argv and the `package.json` aliases are the
-machine contract (`node scripts/rer.mjs VERB` vendored, `rer VERB` in package
-mode), and `rer` runs them.
+`rer` (or `npx -y @runeditrun/rer`) runs every verb with the checkout's own pinned copy: the exact
+`@runeditrun/rer` devDependency in `node_modules`. The `OPERATIONS.json` argv and the
+`package.json` aliases are the machine contract (`rer VERB`), and `rer` runs them.
 
 ## Launch with one command
 
@@ -122,11 +120,7 @@ Conflicting saved identity or origin reports an actionable recovery path.
 Review reset's exact removal inventory before confirmation; export domain data
 first if it should be restored, and import only into an empty destination.
 
-Queue waits report immediately with a reason and numeric one-based position,
-then refresh about every 15 seconds while waiting. From the runnable project
-root, inspect the live queue with
-`node scripts/base-cli/modules/job-queue/cli.mjs status` (in package mode,
-`node node_modules/@runeditrun/rer/modules/job-queue/cli.mjs status`).
+Queue waits report their reason and live position while the command waits. Package mode has no queue status command.
 
 For the real owner mailbox, `setup` can prompt instead of receiving
 `--owner-email` on the command line. Setup builds the app, applies local

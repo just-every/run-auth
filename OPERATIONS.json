@@ -28,180 +28,165 @@
   "commands": {
     "setup": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "setup"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for setup effects."
     },
     "dev": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "dev"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for dev effects."
     },
     "build": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "build"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for build effects."
     },
     "verify": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "verify"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for verify effects."
     },
     "reset": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "reset"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for reset effects."
     },
     "deploy": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "deploy"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for deploy effects."
     },
     "export": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "export"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for export effects."
     },
     "import": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "import"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for import effects."
     },
     "release": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "release"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for release effects."
     },
     "outbox": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "outbox"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for outbox effects."
     },
     "doctor": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "doctor"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for doctor effects."
     },
     "describe": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "describe"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for describe effects."
     },
     "check": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "check"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for check effects."
     },
     "install": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "install"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "See SEED-COMMAND-CONTRACT.md for install effects."
     },
     "preview": {
       "argv": [
-        "node",
-        "scripts/rer.mjs",
+        "rer",
         "preview"
       ],
       "inputs": [
-        "scripts/rer.mjs",
+        "package.json",
         "scripts/installer/local.mjs"
       ],
       "effects": "Serve fixed production output, preserve local owner and durable state, stop after idle timeout or explicit stop."

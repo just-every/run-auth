@@ -11,27 +11,27 @@ in `RUN-LOCALLY.md` and `SEED-COMMAND-CONTRACT.md`. To be the owner under your
 own address, run these from the checkout:
 
 ```sh
-node scripts/rer.mjs setup --owner-email you@example.com
-node scripts/rer.mjs dev
+rer setup --owner-email you@example.com
+rer dev
 ```
 
 Use the setup prompt instead of the owner-email flag when entering the real
 mailbox. Follow the newest ordinary sign-in message in the printed local
 outbox; no external email is sent. Stop `dev` with
-`node scripts/rer.mjs dev --stop` or Ctrl-C, and stop `preview` with
-`node scripts/rer.mjs preview --stop` before build or verification.
+`rer dev --stop` or Ctrl-C, and stop `preview` with
+`rer preview --stop` before build or verification.
 
 ```sh
-node scripts/rer.mjs verify
-node scripts/rer.mjs reset --yes
-node scripts/rer.mjs export --output exports/installation.rer
-node scripts/rer.mjs import --input exports/installation.rer --yes
-node scripts/rer.mjs deploy
-node scripts/rer.mjs describe
+rer verify
+rer reset --yes
+rer export --output exports/installation.rer
+rer import --input exports/installation.rer --yes
+rer deploy
+rer describe
 ```
 
-Use `node scripts/rer.mjs describe` to inspect the checkout's actual
-capabilities. `node scripts/rer.mjs check --profile first-party` validates the
+Use `rer describe` to inspect the checkout's actual
+capabilities. `rer check --profile first-party` validates the
 declared command contract; it does not run application journeys or contact a
 provider.
 
@@ -59,12 +59,12 @@ a forward migration and verified transition/recovery.
 
 ## Deployment
 
-`node scripts/rer.mjs deploy --dry-run` validates the real owner-account
+`rer deploy --dry-run` validates the real owner-account
 deployment declaration and builds locally without provider requests. Real
 deployment requires privately supplied `CLOUDFLARE_ACCOUNT_ID` and
 `CLOUDFLARE_API_TOKEN`, the declared owner/session/setup secrets, and a real
 verified mail sender in `deploy.json`. Follow the owner-account deploy-kit
-instructions under `scripts/base-cli/modules/deploy-kit`; account scope,
+instructions under `node_modules/@runeditrun/rer/modules/deploy-kit`; account scope,
 resource ownership, migrations, receipt and health checks are defined there.
 Local validation does not prove hosted acceptance, provider delivery or remote
 health.
@@ -84,11 +84,11 @@ install's own checkout and redeploying. Nobody else patches a self-run install.
 git remote add upstream https://github.com/just-every/run-auth.git  # once
 git fetch upstream
 git merge upstream/main          # resolve conflicts; never edit applied migrations
-node scripts/rer.mjs install
-node scripts/rer.mjs check --profile first-party
-node scripts/rer.mjs verify
-node scripts/rer.mjs deploy --dry-run
-node scripts/rer.mjs deploy      # applies new D1 migrations, then the Worker
+rer install
+rer check --profile first-party
+rer verify
+rer deploy --dry-run
+rer deploy      # applies new D1 migrations, then the Worker
 ```
 
 Read the merged CONTRACT.md and ACCEPTANCE.md changes before deploying, and
@@ -142,14 +142,14 @@ restore from it has not been rehearsed and is not a supported path.
 
 ### Recovery rehearsal
 
-Run it on a local checkout (`node scripts/rer.mjs setup --owner-email ...`,
-then `node scripts/rer.mjs dev`), never on the live install.
+Run it on a local checkout (`rer setup --owner-email ...`,
+then `rer dev`), never on the live install.
 
 1. Sign in at `/signin` through the local outbox and register a passkey on
    Sign-in methods. It shows "Passkey 1", and People opens.
 2. Lose the passkey: open a private window and sign in by email again. My
    account shows "Administrator access is paused"; People answers 403.
-3. Run `node scripts/rer.mjs recovery --local`. It prints only the path of
+3. Run `pnpm recovery --local`. It prints only the path of
    `.rer/local/recovery-token` (mode 0600), never the token.
 4. In the private window, choose Confirm my email on Sign-in methods and open
    the link, then in its developer console run
