@@ -74,7 +74,9 @@ Interactive administration by the administrator roles AUTH-DECISIONS-001 lists (
 
   **Acceptance evidence:** Export a populated installation, import into an empty installation at the same host, and re-link the app with unchanged client/sector/pairwise subject. Inspect retained records and absent authority; refuse incompatible origins and active dev personas.
 
-## The workforce directory and employee experience
+## Target clauses
+
+### The workforce directory and employee experience
 
 - **AUTH-DIRECTORY-001 — One workforce directory.** Employers manage employees, contractors, service identities, managers, departments, locations, employment dates, immutable person/source identifiers, custom attributes and active/invited/suspended/terminated states. Search, filter, bulk preview and admin API edits (made through AUTH-ADMINAPI-001 credentials or an administrator's session) use the same validation and audit. Static and attribute-driven groups have explainable membership, group owners and mapped app roles; source precedence and manual overrides are visible. Rehires and email/name changes preserve reviewed identity continuity rather than merging by email.
 
@@ -132,7 +134,7 @@ Interactive administration by the administrator roles AUTH-DECISIONS-001 lists (
 
   **Acceptance evidence:** Install the extension in each of the four browsers, and force-install it preconfigured through Intune on Windows and Jamf Pro on macOS, assign a shared-credential and an individual-credential app, sign in from the launcher and by direct visit, generate a password and refuse fill on a lookalike origin. Unassign one employee and offboard another; their next fill is refused within 60 seconds, the shared password is rotated, and the audit shows every reveal, fill and rotation without the secret. Import an Okta SWA app definition and launch it.
 
-## Authentication, SSO and policy
+### Authentication, SSO and policy
 
 - **AUTH-MFA-001 — Passkey-first multifactor policy.** Employers require phishing-resistant platform/synced passkeys or hardware security keys, offer TOTP and single-use recovery codes under explicit assurance rules, and control enrollment, replacement and factor loss. SMS/email are policy-limited bootstrap/recovery alternatives with lower assurance, never equivalent to a security key. The Auth mobile authenticator (AUTH-AUTHENTICATOR-001) adds push with number matching and its own TOTP; each factor's assurance (phishing-resistant, push, TOTP, SMS/email) is published and policy chooses which satisfy which app, RADIUS flow (AUTH-LEGACY-001) and OS login (AUTH-DESKTOP-001). Factor inventory, lost-factor revocation, step-up and the named employee security notifications of AUTH-NOTIFY-001 cover web, desktop and native mobile; a lost factor without a recovery code is restored the same business day under AUTH-RECOVERY-003. Existing hardware-passkey and fresh local email gates for interactive Auth administration by the roles AUTH-DECISIONS-001 lists remain mandatory.
 
@@ -174,7 +176,7 @@ Interactive administration by the administrator roles AUTH-DECISIONS-001 lists (
 
   **Acceptance evidence:** Through the app setup door, map NameID to a computed `first.last` value with a collision suffix, map a role from group membership and push a formatted date over SCIM; preview against three people including one with a missing field, then launch and provision and read the values back at the SP and SCIM service. Refuse an expression that reads a secret, calls out or exceeds the time bound; roll back to the previous version.
 
-## SaaS, directories and workforce lifecycle
+### SaaS, directories and workforce lifecycle
 
 - **AUTH-CATALOG-001 — Production SaaS application catalog.** A maintained catalog configures Google Workspace, Microsoft 365, Slack, GitHub Enterprise, AWS IAM Identity Center, Salesforce and Zoom for SAML/OIDC SSO and supported lifecycle APIs/SCIM. Each recipe states required vendor edition/permissions, groups/roles, attribute ownership, test-user procedure, secret/certificate rotation and deactivation/session limits. Administrators can clone a recipe into a generic connector, securely enter provider credentials, test, preview changes, approve and roll back. A catalog label alone is not a working integration. These seven are the deep-journey anchors; catalog breadth is AUTH-CATALOG-002 and Microsoft 365 domain federation is AUTH-M365-001.
 
@@ -244,7 +246,7 @@ Interactive administration by the administrator roles AUTH-DECISIONS-001 lists (
 
   **Acceptance evidence:** Enroll two Linux servers (one with the agent, one with only the CA key) and one Windows server. As an engineer in a server group, sign in with a passkey, obtain a certificate and SSH in; RDP to the Windows server through the gateway. Be refused sudo until a time-bound request is approved, then gain it and see it expire. Refuse a server outside the person's groups, an expired certificate and an unassigned engineer. Offboard the engineer and see the next connection refused and the local account removed; the audit shows each session.
 
-## Access governance and application authorization
+### Access governance and application authorization
 
 - **AUTH-GRANTS-001 — App roles, APIs and service identities.** Group and role assignments govern app launch, provisioned app roles and registered API permissions. App owners define scopes, role/attribute/resource relationships and fine-grained permission checks through a documented authorization API, with default deny and current tenant/person context. Service accounts use scoped, expiring OAuth client-credentials tokens with distinct accountable owners, targets and audit; they cannot impersonate a person or obtain interactive administrator proof. Administering Auth itself by machine is only through AUTH-ADMINAPI-001's admin scopes. External app authorization remains enforced in the app using verified claims or Auth decisions.
 
@@ -286,7 +288,7 @@ Interactive administration by the administrator roles AUTH-DECISIONS-001 lists (
 
   **Acceptance evidence:** In an authorized Vanta test tenant, connect Auth through the private integration: Vanta's accounts page shows every Auth person in scope with the correct status, MFA status and factor types, and a custom MFA test passes. Remove one person's last factor and see the test fail within one sync; offboard another and see them in Vanta's offboarding queue within one sync. Scope by an Auth group and see Vanta's scope follow a membership change. Repeat in a Drata test tenant and see "MFA on Identity Provider" pass and then fail the same way. Configure the Secureframe and Thoropass recipes in authorized test accounts and see each person's MFA status. Revoke the Vanta credential and see the connector unhealthy, with a follow-up raised, within two hours.
 
-## Migration, integration and operations
+### Migration, integration and operations
 
 - **AUTH-MIGRATION-001 — Switch from Okta, Entra ID or JumpCloud.** Guided migration from each named incumbent inventories users, immutable source subjects, groups, app/role assignments, SAML/OIDC settings, password-based (Okta SWA) app definitions, provisioning rules, factors, devices, admin roles with their resource sets, and policies through authorized APIs/exports, and lists each Okta Workflows flow with the AUTH-WORKFLOWS-001 template or step that replaces it (an API Connector card maps to the HTTP request step), and each Okta inline hook to its AUTH-HOOKS-001 equivalent. Preview maps what can transfer and names every unsupported/credential-bound item with an actionable reenrollment or partner step; never import working sessions, private keys or fake MFA proof. Factor and password re-enrollment runs as AUTH-MIGRATION-003's enrollment campaign. Staged cohorts, old-to-new subject maps, app-owner-approved subject binding, dual-provider coexistence, reconciliation and rollback preserve employee access without enabling imported authority. The inventory also lists the incumbent's identity-reading integrations: compliance platforms (Vanta, Drata, Secureframe, Thoropass) and any other service holding an incumbent API token or reading its system log. For each it names the Auth replacement (AUTH-COMPLIANCE-001 for compliance platforms, AUTH-EVENTS-001 or the AUTH-AUDIT-001 streams for log readers) or states that none exists. The cutover plan connects every replacement and holds cutover until each one's first successful sync, so no compliance test loses its source during an audit observation window. Final cutover verifies SSO and leaver revocation in every affected app.
 
@@ -340,7 +342,7 @@ Interactive administration by the administrator roles AUTH-DECISIONS-001 lists (
 
   **Acceptance evidence:** As help desk scoped to the employee's group, restore a non-admin employee with no recovery code through manager attestation, and another through a Persona check in an authorized test account, each from case opening to a newly enrolled passkey in under 1 hour. Refuse the path for an administrator, for an employee outside scope, without a recorded verification, and on reuse or after an hour of the enrollment link; see the revoked sessions and every notice.
 
-## Privacy, custody and Base replacements
+### Privacy, custody and Base replacements
 
 - **AUTH-ERASURE-001 — Authorized erasure with retained accountability.** Owners erase a person, organization, app connection or installation under explicit retention/legal-hold policy, after preview and confirmation. Erasure removes profiles, factor keys, invitations, grants, staged/import copies, connector credentials and dependent personal data, revokes external authority, and reports unfinished remote removal separately. Durable audit/decision evidence uses anonymized references with a per-store completion receipt and portability fence; restore cannot resurrect erased records when given the later erasure journal. Already delivered messages and independently held provider data have named limits and partner deletion instructions. Suspension alone is not erasure; the last owner requires a protected reset/transfer path.
 
