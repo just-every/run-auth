@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "projectId": "just-every/run-auth",
+  "name": "Auth",
+  "sourceRepository": "https://github.com/just-every/run-auth",
+  "license": "MIT"
+}
