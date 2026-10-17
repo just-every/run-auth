@@ -58,7 +58,9 @@ Existing evidence and limits: src/auth/links/logout.mjs; src/auth/links/end-sess
 
 Existing evidence and limits: scripts/installer/transfer.mjs; src/auth/links/grant-map.mjs; tests/auth/linking.test.mjs
 
-## The workforce directory and employee experience
+## Target clauses
+
+### The workforce directory and employee experience
 
 **AUTH-DIRECTORY-001 — One workforce directory (partial).** In People/API, onboard a W-2 employee and a contractor, rename and transfer one, preview a bulk edit, evaluate dynamic groups, suspend and rehire; verify stable identifiers, explicit source conflicts and resulting assignments without duplicate accounts.
 
@@ -116,7 +118,7 @@ Existing evidence and limits: src/auth/workforce/directory.mjs; src/ui/pages/com
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-## Authentication, SSO and policy
+### Authentication, SSO and policy
 
 **AUTH-MFA-001 — Passkey-first multifactor policy (partial).** Enroll a platform passkey, hardware key, Auth push and TOTP, require step-up for a sensitive app, revoke a lost factor and consume a recovery code once. Deny downgraded admin access and prove factor removal/rotation reaches current sessions according to policy.
 
@@ -158,7 +160,7 @@ Existing evidence and limits: src/auth/oidc-apps/; src/auth/protocol.mjs; src/au
 
 Existing evidence and limits: src/auth/saml/apps.mjs; src/auth/saml/assertion.mjs; tests/auth/saml.test.mjs — per-app SAML attributes map from fixed directory sources (email, name, first/last name, person ID, app role, groups) and the NameID source is selectable. Missing: the versioned expression language, preview against chosen people and SCIM attribute transforms.
 
-## SaaS, directories and workforce lifecycle
+### SaaS, directories and workforce lifecycle
 
 **AUTH-CATALOG-001 — Production SaaS application catalog (partial).** For each of the seven named services, an authorized US test tenant connects from catalog, assigns a test group/role, creates or binds the correct account, launches SSO, changes role and offboards it; read back remote state and document any external-session limit. Inject one provider denial and prove it remains unresolved.
 
@@ -228,7 +230,7 @@ Existing evidence and limits: No implementing product path or acceptance test ye
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-## Access governance and application authorization
+### Access governance and application authorization
 
 **AUTH-GRANTS-001 — App roles, APIs and service identities (partial).** Register an API, map a group to read/write and resource-level permissions, and call it as an employee and a service identity. Deny an unassigned role, cross-employer resource, wrong audience, excessive scope and revoked service credential; role removal must change the next authorization decision.
 
@@ -270,7 +272,7 @@ Existing evidence and limits: src/auth/admin.mjs; src/ui/pages/people.ts; tests/
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-## Migration, integration and operations
+### Migration, integration and operations
 
 **AUTH-MIGRATION-001 — Switch from Okta, Entra ID or JumpCloud (partial).** For Okta Workforce Identity, Microsoft Entra ID and JumpCloud separately, migrate a populated authorized test tenant with groups, apps, a collision, suspended worker and privileged assignment. Pilot a cohort, re-enroll factors through the AUTH-MIGRATION-003 campaign, compare counts/permissions, roll back and cut over; prove old subjects cannot act as credentials and no app is silently omitted. With Vanta and Drata connected to the incumbent, see both listed with AUTH-COMPLIANCE-001 as their replacement, and cutover held until each replacement's first sync succeeds.
 
@@ -324,7 +326,7 @@ Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mj
 
 Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs — another administrator can approve any person's pending recovery the same day, after which the person completes it with email proof; the scoped help-desk role, recorded verification step, admin refusal and one-hour enrollment link are missing.
 
-## Privacy, custody and Base replacements
+### Privacy, custody and Base replacements
 
 **AUTH-ERASURE-001 — Authorized erasure with retained accountability (missing).** Erase a worker with multiple factors, imports, agent grants and SaaS access through the owner door; query/export all stores, inspect receipt and anonymized audit, and attempt restore of a pre-erasure archive with the later journal. Keep a blocked remote deletion visible, test legal hold and last-owner protection, then reset a local installation.
 
