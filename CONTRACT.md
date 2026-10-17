@@ -6,6 +6,14 @@ The buyer is the US IT/security owner who must get every employee and contractor
 
 The owner-approved workforce scope supersedes the earlier CIAM positioning in category research. Its useful table-stakes—SDKs, hosted/embedded flows, organizations, profile APIs, enterprise connections, token lifecycle and migration—are retained here as workforce/app interoperability, not used to turn Auth into a consumer application platform. No neighboring unowned category is absorbed.
 
+## Product target
+
+| | |
+| --- | --- |
+| Category | Workforce identity and single sign-on (IdP) |
+| Incumbents a buyer switches from | Okta Workforce Identity, Microsoft Entra ID, JumpCloud (up-and-comers it must also beat: Rippling IT (identity), authentik, Zitadel) |
+| First buyer | The US IT/security owner of a US employer who must get every employee and contractor into the right apps on day one, change access as their job changes, and prove it ended when they leave; costs in USD, US employment and timezone norms |
+
 ## How to read this contract
 
 Each named clause is a buyer promise with a public-door acceptance journey, repeated with status in ACCEPTANCE.md. The final status table is grounded in code-audit commit `cdd103e1ceeeedbacf52badf7a51bfc6b18296f6`, also the main revision read for this edition; no implementation changed since that audit. The input audit covers 64 inventory rows (10 done, 23 partial, 31 missing); clause counts below differ because clauses organize the whole workforce job. `done` means the bounded clause has implementation and cited automated/journey evidence, not hosted acceptance or certification. `partial` names delivered parts and absent target behavior. `missing` has no implementing product path. Target journeys for unfinished behavior are requirements, not reports of a test run.
