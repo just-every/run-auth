@@ -18,7 +18,7 @@ Existing evidence and limits: src/auth/userinfo.mjs; tests/auth/userinfo.test.mj
 
 Existing evidence and limits: src/auth/links/rer-trust.mjs; src/auth/links/rer-approval.mjs; tests/auth/rer-approval.test.mjs
 
-**AUTH-IDENTITY-001 — Owner and sign-in proof (done).** Through the real email, WebAuthn and administration routes, prove same-browser one-use confirmation, first/additional enrollment, fresh local email step-up rechecked at commit, wrong-session and revoked-session refusal, and approved/delayed/cancelled/emergency recovery.
+**AUTH-IDENTITY-001 — Owner and sign-in proof (done).** Through the real email, WebAuthn and administration routes, prove same-browser one-use confirmation, first/additional enrollment, fresh local email step-up rechecked at commit, wrong-session and revoked-session refusal, and approved/delayed/canceled/emergency recovery.
 
 Existing evidence and limits: src/auth/local-email.mjs; src/auth/recovery.mjs; tests/auth/security.test.mjs; tests/auth/fresh-proof.test.mjs; tests/auth/local-email.test.mjs; tests/auth/recovery-cli.test.mjs
 
@@ -142,7 +142,7 @@ Existing evidence and limits: No implementing product path or acceptance test ye
 
 **AUTH-NOTIFY-001 — Employee security notifications and suspicious-activity reports (partial).** Sign in from a new browser and receive the new-device email with its stated context. Enroll a factor, have help desk reset a factor and change a password, and receive each notification. From the new-device email, while signed out, click "Report suspicious activity": see the security owner's escalation in Slack and, under the end-sessions policy, the person's sessions ended and a linked app's back-channel logout delivered. Refuse the report link's reuse and use after expiry. Turn off new-device notices and receive none; try to turn off recovery notices and be refused.
 
-Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs — a cancellable recovery-requested notice is posted to each of the person's active sessions; email/push notifications for the other named events and the suspicious-activity report are missing.
+Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs — a cancelable recovery-requested notice is posted to each of the person's active sessions; email/push notifications for the other named events and the suspicious-activity report are missing.
 
 **AUTH-LOGOUT-002 — Universal logout from connected SaaS for a compromised account (partial).** In authorized Google Workspace, Microsoft 365, Slack Enterprise Grid, Zoom and Salesforce test tenants, sign a person in to each through Auth on the web and in each vendor's desktop or mobile client. From a new-device notice, report suspicious activity under the end-sessions policy: within 60 seconds the person's Auth sessions and a linked app's session end; within 5 minutes each vendor's API shows the sessions or tokens revoked, and each web and client session is refused at its next request, while the person stays active and signs in again with a passkey. Repeat from help desk's End all sessions action and be refused outside the holder's scope. An app with no revocation API is shown as unsupported with its manual step, and a vendor failure stays an open obligation.
 
@@ -304,7 +304,7 @@ Existing evidence and limits: src/ui/pages/account.ts; tests/integration/browser
 
 **AUTH-EVENTS-001 — Reliable lifecycle events and webhooks (done).** Subscribe a real app endpoint through admin/API, perform a joiner/mover/leaver, rotate signing material and recover after 429, timeout and outage. Replay an event and request a historical cursor; verify ordered/versioned reconstruction without duplicate grants or missing unresolved work.
 
-Existing evidence and limits: src/auth/events/; src/auth/outbound.mjs; tests/auth/events.test.mjs; COMPANY-APPS.md — administrators subscribe HTTPS endpoints (private, IP and internal destinations refused); versioned events with stable IDs and commit-order cursors for people, memberships, assignments, provisioning outcomes, recovery and policy are signed (Standard Webhooks HMAC), retried through 429 with Retry-After, a timeout and an outage without changing their ID, signed with both secrets during a rotation overlap, replayable with the original ID, and readable from a resumable cursor with a per-subscription read key; a delivery acknowledgement closes no access obligation.
+Existing evidence and limits: src/auth/events/; src/auth/outbound.mjs; tests/auth/events.test.mjs; COMPANY-APPS.md — administrators subscribe HTTPS endpoints (private, IP and internal destinations refused); versioned events with stable IDs and commit-order cursors for people, memberships, assignments, provisioning outcomes, recovery and policy are signed (Standard Webhooks HMAC), retried through 429 with Retry-After, a timeout and an outage without changing their ID, signed with both secrets during a rotation overlap, replayable with the original ID, and readable from a resumable cursor with a per-subscription read key; a delivery acknowledgment closes no access obligation.
 
 **AUTH-FOLLOWUP-001 — Follow-through until access is resolved (partial).** Leave an invitation, access approval and failed deprovision unresolved across a weekend/DST change and process restart; observe due actions/reminders/escalation, complete or cancel each through its normal door, and verify reminders cease while the complete history remains.
 
@@ -320,7 +320,7 @@ Existing evidence and limits: AUTH-COMMANDS.md; scripts/installer/local.mjs; src
 
 **AUTH-RECOVERY-002 — Emergency continuity and recovery drills (partial).** Drill lost phone/key, unavailable upstream, expired signing certificate and restoration of an owner installation through the public account/CLI doors. Confirm ordinary workers cannot invoke emergency authority, cancellation wins against completion where applicable, all notices persist and used credentials cannot be replayed.
 
-Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs; tests/auth/recovery-cli.test.mjs; tests/integration/browser.test.mjs — delayed/approved/cancellable and local emergency recovery exist; scheduled multi-system continuity drills do not.
+Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs; tests/auth/recovery-cli.test.mjs; tests/integration/browser.test.mjs — delayed/approved/cancelable and local emergency recovery exist; scheduled multi-system continuity drills do not.
 
 **AUTH-RECOVERY-003 — Same-day help-desk recovery for employees (partial).** As help desk scoped to the employee's group, restore a non-admin employee with no recovery code through manager attestation, and another through a Persona check in an authorized test account, each from case opening to a newly enrolled passkey in under 1 hour. Refuse the path for an administrator, for an employee outside scope, without a recorded verification, and on reuse or after an hour of the enrollment link; see the revoked sessions and every notice.
 
@@ -362,7 +362,7 @@ Existing evidence and limits: src/auth/agents/keys.mjs; src/auth/agents/approval
 
 Existing evidence and limits: src/auth/links/logout.mjs; src/auth/agents/keys.mjs; tests/auth/linking.test.mjs; tests/auth/agents-keys.test.mjs — local key revocation and RER fences exist; app-wide delegated-credential inventory and verified remote reconciliation are missing.
 
-85 clauses: **13 done / 39 partial / 33 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgement or local queue success alone is insufficient.
+85 clauses: **13 done / 39 partial / 33 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgment or local queue success alone is insufficient.
 
 ## Retained implementation checks and historical outcomes
 
