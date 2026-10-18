@@ -18,7 +18,7 @@ Existing evidence and limits: src/auth/userinfo.mjs; tests/auth/userinfo.test.mj
 
 Existing evidence and limits: src/auth/links/rer-trust.mjs; src/auth/links/rer-approval.mjs; tests/auth/rer-approval.test.mjs
 
-**AUTH-IDENTITY-001 — Owner and sign-in proof (done).** Through the real email, WebAuthn and administration routes, prove same-browser one-use confirmation, first/additional enrollment, fresh local email step-up rechecked at commit, wrong-session and revoked-session refusal, and approved/delayed/cancelled/emergency recovery.
+**AUTH-IDENTITY-001 — Owner and sign-in proof (done).** Through the real email, WebAuthn and administration routes, prove same-browser one-use confirmation, first/additional enrollment, fresh local email step-up rechecked at commit, wrong-session and revoked-session refusal, and approved/delayed/canceled/emergency recovery.
 
 Existing evidence and limits: src/auth/local-email.mjs; src/auth/recovery.mjs; tests/auth/security.test.mjs; tests/auth/fresh-proof.test.mjs; tests/auth/local-email.test.mjs; tests/auth/recovery-cli.test.mjs
 
@@ -304,7 +304,7 @@ Existing evidence and limits: src/ui/pages/account.ts; tests/integration/browser
 
 **AUTH-EVENTS-001 — Reliable lifecycle events and webhooks (done).** Subscribe a real app endpoint through admin/API, perform a joiner/mover/leaver, rotate signing material and recover after 429, timeout and outage. Replay an event and request a historical cursor; verify ordered/versioned reconstruction without duplicate grants or missing unresolved work.
 
-Existing evidence and limits: src/auth/events/; src/auth/outbound.mjs; tests/auth/events.test.mjs; COMPANY-APPS.md — administrators subscribe HTTPS endpoints (private, IP and internal destinations refused); versioned events with stable IDs and commit-order cursors for people, memberships, assignments, provisioning outcomes, recovery and policy are signed (Standard Webhooks HMAC), retried through 429 with Retry-After, a timeout and an outage without changing their ID, signed with both secrets during a rotation overlap, replayable with the original ID, and readable from a resumable cursor with a per-subscription read key; a delivery acknowledgement closes no access obligation.
+Existing evidence and limits: src/auth/events/; src/auth/outbound.mjs; tests/auth/events.test.mjs; COMPANY-APPS.md — administrators subscribe HTTPS endpoints (private, IP and internal destinations refused); versioned events with stable IDs and commit-order cursors for people, memberships, assignments, provisioning outcomes, recovery and policy are signed (Standard Webhooks HMAC), retried through 429 with Retry-After, a timeout and an outage without changing their ID, signed with both secrets during a rotation overlap, replayable with the original ID, and readable from a resumable cursor with a per-subscription read key; a delivery acknowledgment closes no access obligation.
 
 **AUTH-FOLLOWUP-001 — Follow-through until access is resolved (partial).** Leave an invitation, access approval and failed deprovision unresolved across a weekend/DST change and process restart; observe due actions/reminders/escalation, complete or cancel each through its normal door, and verify reminders cease while the complete history remains.
 
@@ -362,7 +362,7 @@ Existing evidence and limits: src/auth/agents/keys.mjs; src/auth/agents/approval
 
 Existing evidence and limits: src/auth/links/logout.mjs; src/auth/agents/keys.mjs; tests/auth/linking.test.mjs; tests/auth/agents-keys.test.mjs — local key revocation and RER fences exist; app-wide delegated-credential inventory and verified remote reconciliation are missing.
 
-85 clauses: **13 done / 39 partial / 33 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgement or local queue success alone is insufficient.
+85 clauses: **13 done / 39 partial / 33 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app’s end state; provider acknowledgment or local queue success alone is insufficient.
 
 ## Retained implementation checks and historical outcomes
 
