@@ -62,7 +62,24 @@ textarea { min-height: 0; resize: vertical; font-family: ui-monospace, SFMono-Re
 input::placeholder { color: color-mix(in srgb, var(--rer-muted) 80%, transparent); }
 input[type=file] { width: 100%; padding: 10px 0; font-size: 14px; }
 input[type=checkbox] { width: 20px; height: 20px; margin: 0; accent-color: var(--petrol); }
-select { appearance: auto; }
+/* Single-choice controls share Base #247's theme-aware chevron; lists stay native. */
+select:not([multiple],[size]:not([size="1"])) {
+  --rer-select-ink: var(--rer-muted);
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: normal;
+  text-indent: 4px;
+  padding-inline-end: 40px;
+  text-overflow: ellipsis;
+  background-image:
+    linear-gradient(to top right, transparent calc(50% - 1.1px), var(--rer-select-ink) calc(50% - .55px), var(--rer-select-ink) calc(50% + .55px), transparent calc(50% + 1.1px)),
+    linear-gradient(to top left, transparent calc(50% - 1.1px), var(--rer-select-ink) calc(50% - .55px), var(--rer-select-ink) calc(50% + .55px), transparent calc(50% + 1.1px));
+  background-repeat: no-repeat;
+  background-position: right 20px center, right 14px center;
+  background-size: 6px 6px;
+}
+select:not([multiple],[size]:not([size="1"])):focus-visible { --rer-select-ink: var(--rer-text); }
+select:not([multiple],[size]:not([size="1"])):disabled { --rer-select-ink: color-mix(in srgb, var(--rer-muted) 55%, transparent); }
 .field { display: grid; gap: 8px; min-width: 0; }
 .field-value { font-size: 17px; }
 
