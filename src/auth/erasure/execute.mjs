@@ -69,10 +69,12 @@ export async function commitErasure(ctx,s,plan,previewId) {
  statements.push(ctx.db.prepare(`INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT ?,'erasure_completed',?,? WHERE ${held}`).bind(plan.identifiers.has(s.person_id)?plan.reference:s.person_id,plan.reference,now,latch));
  const global=await installationFence(ctx,latch);
  const marker=(ctx.organization?.namespace??'')+'auth_erasure_commits';
+ if(plan.kind==='organization'&&ctx.organizationId!=='root')global.push(ctx.rootDb.prepare(`UPDATE auth_organizations SET name=?,created_by=?,status='erased' WHERE id=? AND EXISTS(SELECT 1 FROM ${marker} WHERE id=?)`).bind(plan.reference,plan.reference,ctx.organizationId,latch));
  global.push((ctx.rootDb??ctx.db).prepare(`DELETE FROM ${marker} WHERE id=?`).bind(latch));
  const results=await batchWithInstallation(ctx.db,statements,global);
  const saved=results[1+[...plan.stores.values()].reduce((n,t)=>n+1+t.rows.length,0)];
  if(!results[0].meta.changes||!saved?.meta.changes){await requireAuthority(ctx,s,guard);fail('erasure_conflict',409);}
  await executeRemote(ctx,id);
- return {id,reference:plan.reference,local:'complete',journalRequired:true,journal};
+ const receipt=await ctx.db.prepare('SELECT stores,status,limitations FROM auth_erasure_receipts WHERE id=?').bind(id).first();
+ return {id,reference:plan.reference,local:'complete',journalRequired:true,journal,receipt:{stores:JSON.parse(receipt.stores),status:receipt.status,limitations:JSON.parse(receipt.limitations)}};
 }

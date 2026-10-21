@@ -133,3 +133,25 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
  await command('erasure/retry',{receiptId:erased.id,confirmRemoteDeletion:true});assert.equal(remote(scim,'ada'),undefined);
  const complete=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(complete.status,'remote_unfinished');assert.ok(complete.remote.some(task=>task.kind==='scim-delete'&&task.state==='verified'));assert.ok(complete.remote.some(task=>task.kind==='partner-delete'&&task.state==='blocked'),'independently held partner data remains explicitly unresolved');
 });
+
+test('app erasure removes connector custody and protected organization reset erases its last owner without touching another employer',async t=>{
+ const {r,scim,app,connect}=await provisioned(t,{pushGroups:false});await connect();
+ const {register}=await import('./webauthn.mjs'),{emailSession}=await import('./runtime.mjs');
+ const command=async(client,cookie,path,data,status=200)=>{const response=await client.call('/api/auth/'+path,{method:'POST',data,cookie});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ const admin=(path,data,status)=>command(r,r.owner.cookie,path,data,status);
+ await admin('company-apps/assign',{appId:app.id,principalType:'person',principalId:'ada',role:'employee'});assert.ok(remote(scim,'ada'));
+ await admin('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ let preview=await admin('erasure/preview',{kind:'app',target:app.id});
+ const erased=await admin('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true});assert.equal(erased.local,'complete');
+ assert.equal(await r.db.prepare('SELECT app_id FROM auth_scim_connectors WHERE app_id=?').bind(app.id).first(),null);assert.equal(await r.db.prepare('SELECT id FROM auth_apps WHERE id=?').bind(app.id).first(),null);assert.equal(remote(scim,'ada'),undefined);assert.equal((await r.call('/api/auth/me',{cookie:r.ada})).status,200,'app erasure preserves the person');
+ const org=await admin('organizations/create',{name:'Subsidiary to be erased'},201),other=await admin('organizations/create',{name:'Retained partner workspace'},201);
+ const scoped=id=>({origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+id+path,options)});
+ const selected=scoped(org.id),kept=scoped(other.id),owner=await register(selected,await emailSession(selected,'owner@example.com')),keptOwner=await register(kept,await emailSession(kept,'owner@example.com'));
+ await command(selected,owner.cookie,'erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ preview=await command(selected,owner.cookie,'erasure/preview',{kind:'organization',target:org.id});
+ assert.equal((await selected.call('/api/auth/erasure/confirm',{method:'POST',cookie:owner.cookie,data:{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true}})).status,400);
+ const reset=await command(selected,owner.cookie,'erasure/confirm',{previewId:preview.id,confirmation:'RESET '+r.origin+'/org/'+org.id,confirmRemoteDeletion:true});assert.equal(reset.local,'complete');assert.ok(reset.journal.proof);assert.ok(reset.receipt.stores.find(s=>s.store==='oa_operators').deleted);
+ assert.equal((await selected.call('/api/auth/me',{cookie:owner.cookie})).status,404,'erased organization cannot reappear as an empty issuer');assert.equal((await selected.call('/.well-known/openid-configuration')).status,404);
+ assert.equal((await kept.call('/api/auth/me',{cookie:keptOwner.cookie})).status,200);assert.equal((await r.call('/api/auth/me',{cookie:r.owner.cookie})).status,200);
+ const registry=await r.db.prepare('SELECT * FROM auth_organizations WHERE id=?').bind(org.id).first();assert.equal(registry.status,'erased');assert.equal(registry.name,reset.reference);
+});

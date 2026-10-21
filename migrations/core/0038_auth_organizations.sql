@@ -6,7 +6,7 @@ CREATE TABLE auth_organizations (
  namespace TEXT NOT NULL UNIQUE CHECK(namespace='org_' || id || '_'),
  created_by TEXT NOT NULL,
  created_at INTEGER NOT NULL,
- status TEXT NOT NULL CHECK(status IN ('pending','active'))
+ status TEXT NOT NULL CHECK(status IN ('pending','active','erased'))
 );
 
 CREATE TABLE auth_org_invitations (
