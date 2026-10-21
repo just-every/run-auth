@@ -51,10 +51,10 @@ export async function desiredPerson(ctx,appId,personId) {
  if(!assigned)return {active:false,person};
  const name=(person.display_name||person.email).trim(),space=name.lastIndexOf(' ');
  const computed=await computedValues(ctx,appId,personId),mapped=scimValues(computed?.scim);
- return {active:true,person,role:assigned.role,user:{schemas:[USER],externalId:person.id,userName:person.email,displayName:name,name:{formatted:name,givenName:space>0?name.slice(0,space):name,familyName:space>0?name.slice(space+1):''},emails:[{value:person.email,type:'work',primary:true}],active:true,...(assigned.role?{roles:[{value:assigned.role,primary:true}]}:{}),...mapped,...(computed?.username?{userName:computed.username}:{})}};
+ return {active:true,person,role:assigned.role,mapped:{...mapped,...(computed?.username?{userName:computed.username}:{})},user:{schemas:[USER],externalId:person.id,userName:person.email,displayName:name,name:{formatted:name,givenName:space>0?name.slice(0,space):name,familyName:space>0?name.slice(space+1):''},emails:[{value:person.email,type:'work',primary:true}],active:true,...(assigned.role?{roles:[{value:assigned.role,primary:true}]}:{}),...mapped,...(computed?.username?{userName:computed.username}:{})}};
 }
 const includesValue=(remote,desired)=>desired&&typeof desired==='object'?Object.entries(desired).every(([k,v])=>includesValue(remote?.[k],v)):remote===desired;
-const sameUser=(remote,desired)=>remote&&includesValue(remote,desired)&&(remote.roles??[]).map(r=>r.value).join()===(desired.roles??[]).map(r=>r.value).join();
+const sameUser=(remote,desired,mapped)=>remote&&remote.active===true&&remote.userName===desired.userName&&remote.externalId===desired.externalId&&includesValue(remote,mapped??{})&&(remote.roles??[]).map(r=>r.value).join()===(desired.roles??[]).map(r=>r.value).join();
 const account=(ctx,appId,type,id)=>one(ctx,'SELECT * FROM auth_scim_accounts WHERE app_id=? AND subject_type=? AND subject_id=?',appId,type,id);
 const saveAccount=(ctx,appId,type,id,remote,state)=>run(ctx,'INSERT INTO auth_scim_accounts(app_id,subject_type,subject_id,remote_id,state,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(app_id,subject_type,subject_id) DO UPDATE SET remote_id=excluded.remote_id,state=excluded.state,updated_at=excluded.updated_at',appId,type,id,remote,state,ctx.now());
 
@@ -86,7 +86,7 @@ async function applyPerson(ctx,connector,ob,wrote) {
   }
   const read=await scim(ctx,connector,'GET',userPath(held.remote_id));
   if(!ok(read))return retryable(read)?{retry:read}:{fail:read};
-  return sameUser(read.body,desired.user)?{verified:true,operation}:{retry:read,error:'remote_state_differs'};
+  return sameUser(read.body,desired.user,desired.mapped)?{verified:true,operation}:{retry:read,error:'remote_state_differs'};
  }
  if(!held||held.state==='deleted')return {verified:true,operation:'none'};
  const path=userPath(held.remote_id);
@@ -177,7 +177,7 @@ export async function reconcile(ctx,appId) {
    const personId=mine?.subject_id??(remote.externalId&&await one(ctx,'SELECT id FROM oa_operators WHERE id=?',remote.externalId)?remote.externalId:null);
    if(!personId)continue;seen.add(personId);
    const desired=await desiredPerson(ctx,appId,personId);
-   if(desired.active?!sameUser(remote,desired.user):remote.active!==false)drift.add(personId);
+   if(desired.active?!sameUser(remote,desired.user,desired.mapped):remote.active!==false)drift.add(personId);
   }
   start+=resources.length;if(!resources.length||start>total)break;
  }

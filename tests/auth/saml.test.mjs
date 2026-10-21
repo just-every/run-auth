@@ -212,6 +212,6 @@ test('app setup previews typed mappings for three people, launches computed coll
  assert.equal((await r.admin('mapping/save',{...data,version:1,digest:preview.digest})).status,409);
  for(const cookie of [undefined,r.ada])assert.equal((await r.call('/api/auth/mapping/preview',{method:'POST',cookie,data})).status,cookie?403:401);
  r.tick=()=>{r.now=Date.now()+660000;};assert.equal((await r.admin('mapping/rollback',{appId:app.id,personIds:['ada'],version:3,targetVersion:1})).status,403);
- const history=(await r.db.prepare("SELECT event,detail FROM auth_activity WHERE event LIKE 'mapping_%'").all()).results;
+ const history=(await r.db.prepare("SELECT event FROM auth_activity WHERE event LIKE 'mapping_%'").all()).results;
  assert.deepEqual(history.map(x=>x.event),['mapping_saved','mapping_saved','mapping_rolled_back']);
 });
