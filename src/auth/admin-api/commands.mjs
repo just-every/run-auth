@@ -1,3 +1,4 @@
+import {writeProvider} from './providers.mjs';
 import {json,fail,one,all} from '../core.mjs';
 import {workforceCommand} from '../workforce/routes.mjs';
 import {loadDirectory} from '../workforce/people/load.mjs';
@@ -11,6 +12,7 @@ import {requireScope,requireResource,only,groupEffects,personEffects,planResourc
 
 export async function writeAdmin(ctx,actor,path,method,data) {
  let m;
+ if((m=/^\/idps\/([^/]+)$/.exec(path))&&method==='PUT'){requireScope(actor,'idps.manage');only(data,['enabled']);return writeProvider(ctx,actor,m[1],data);}
  if(path==='/groups'&&method==='POST') {
   requireScope(actor,'groups.manage');only(data,['name']);
   if(!actor.permits('groups','*'))fail('admin_service_resource_refused',403);

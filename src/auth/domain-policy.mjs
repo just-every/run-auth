@@ -11,7 +11,9 @@ export function configuredProvider(ctx,id) {
 }
 export async function matchesConfiguredPin(ctx,provider,issuer) {
  const preset=PRESETS[provider.preset],expected=preset.issuer||(preset.tenantIssuer?preset.tenantIssuer(provider.tenant):provider.issuer);
- const pin=await one(ctx,'SELECT issuer,client_id,preset,status FROM oa_identity_providers WHERE provider_id=?',provider.id);
+ // A callback or proof may hold a context captured before a provider was
+ // disabled. Recheck durable state alongside the identity pin on every use.
+ const pin=await one(ctx,'SELECT p.issuer,p.client_id,p.preset,p.status FROM oa_identity_providers p LEFT JOIN auth_provider_states s ON s.provider_id=p.provider_id WHERE p.provider_id=? AND (s.enabled IS NULL OR s.enabled=1)',provider.id);
  return Boolean(pin&&pin.status==='linked'&&pin.issuer===expected&&(!issuer||issuer===expected)&&pin.client_id===provider.clientId&&pin.preset===provider.preset);
 }
 export async function configurationHash(provider) {

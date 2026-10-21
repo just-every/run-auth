@@ -173,9 +173,26 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
   for(const path of excluded)assert.equal((await call(path,{token,method:'PUT',data:{},headers:{'if-match':etag}})).status,403,`${scope} excludes ${path}`);
   for(const path of ['/api/auth/people/role','/api/auth/recovery/approve','/api/auth/keys/stage','/api/auth/admin-service-apps/create'])assert.equal((await r.call(path,{method:'POST',data:{},headers:{authorization:'Bearer '+token}})).status,401,`${scope} has no human door`);
  }
+ // Provider management changes availability only. A callback begun before
+ // disable cannot admit a person afterwards, even with a valid network-edge JWT.
+ r.upstreamProviders=[{id:'company',preset:'google',clientId:'synthetic-auth-3',clientSecret:'synthetic-auth-4',tokenAuthMethod:'client_secret_basic'}];
+ const issuer='https://accounts.google.com';r.upstream={discovery:{issuer,authorization_endpoint:issuer+'/authorize',token_endpoint:issuer+'/token',jwks_uri:issuer+'/keys',response_types_supported:['code'],id_token_signing_alg_values_supported:['ES256'],token_endpoint_auth_methods_supported:['client_secret_basic'],authorization_response_iss_parameter_supported:true},jwks:{keys:[jwk]}};
+ await r.person('reader','reader@example.com');
+ const providerService=await(await create({name:'Provider availability',ownerId:'owner',scopes:['idps.manage']})).json(),providerAccess=(await(await grant(providerService)).json()).access_token;
+ const providerRead=await call('/idps',{token:providerAccess});assert.equal(providerRead.status,200);assert.equal((await providerRead.json()).items[0].available,true);
+ const begun=await r.call('/auth/oidc/company/start',{method:'POST',data:{returnTo:'/app/account'}});assert.equal(begun.status,303,await begun.clone().text());const upstreamStart=new URL(begun.headers.get('location'));
+ r.upstream.tokens={id_token:await new SignJWT({sub:'reader-subject',email:'reader@example.com',email_verified:true,hd:'example.com',nonce:upstreamStart.searchParams.get('nonce')}).setProtectedHeader({alg:'ES256',kid:jwk.kid}).setIssuer(issuer).setAudience('synthetic-auth-3').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+60).sign(privateKey)};
+ const disabled=await call('/idps/company',{token:providerAccess,method:'PUT',data:{enabled:false},headers:{'if-match':providerRead.headers.get('etag')}});assert.equal(disabled.status,200,await disabled.clone().text());
+ const callback=await r.call('/auth/oidc/company/callback?'+new URLSearchParams({code:'synthetic-auth-5',state:upstreamStart.searchParams.get('state'),iss:issuer}),{cookie:cookieOf(begun)});assert.equal(callback.status,404,'disabled provider refuses an in-flight callback');
+ assert.equal(await r.db.prepare("SELECT operator_id FROM oa_external_identities WHERE subject='reader-subject'").first(),null);
+ const disabledView=await call('/idps',{token:providerAccess});assert.equal((await disabledView.json()).items[0].available,false);
+ assert.equal((await call('/idps/company',{token:providerAccess,method:'PUT',data:{enabled:true,issuer:'https://foreign.example.com'},headers:{'if-match':disabledView.headers.get('etag')}})).status,403,'provider identity remains immutable');
+ assert.equal((await call('/idps/company',{token:providerAccess,method:'PUT',data:{enabled:true},headers:{'if-match':disabledView.headers.get('etag')}})).status,200);
+ assert.equal((await r.call('/auth/oidc/company/start',{method:'POST',data:{returnTo:'/app/account'}})).status,303,'reenabling offers only the original configuration');
+
  const beforeOwnerChange=await grant();assert.equal(beforeOwnerChange.status,200);
  assert.equal((await r.call('/api/auth/people/suspend',post({personId:'service-owner'},owner.cookie))).status,200);
- assert.equal((await call('/groups')).status,403,'already-issued tokens stop on owner suspension');assert.equal((await grant()).status,401);
+ assert.equal((await call('/groups')).status,401,'already-issued tokens stop on owner suspension');assert.equal((await grant()).status,401);
  assert.equal((await r.call('/api/auth/admin-service-apps/reassign',post({id:service.id,ownerId:'owner'},owner.cookie))).status,200);
  const reassigned=await grant();assert.equal(reassigned.status,200);assert.equal((await call('/groups')).status,401,'reassignment fences old revisions');
  const short=await(await create({name:'Short task',ownerId:'owner',expiresAt:r.now+1000})).json();r.now+=1001;assert.equal((await grant(short)).status,401,'app expiry refuses new grants');

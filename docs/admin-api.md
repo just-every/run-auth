@@ -51,7 +51,7 @@ All paths below are relative to `/api/auth/admin/v1`. A `.manage` scope also per
 | Apps | `GET /apps`, `GET /apps/{id}` | `apps.manage`: `POST /apps`, `PATCH` or `DELETE /apps/{id}` |
 | Assignments | `GET /assignments` | `assignments.manage`: `PUT` or `DELETE /assignments/{appId}/{principalType}/{principalId}` |
 | Policies | `GET /policies` | `policies.manage`: `PUT` or `DELETE /policies/{domain}` |
-| Identity providers | `GET /idps` | No provider mutation route; `idps.manage` permits the safe read only |
+| Identity providers | `GET /idps` | `idps.manage`: `PUT /idps/{id}` with `{ "enabled": true }` or `{ "enabled": false }` |
 | Allowed enrollment domains | `GET /domains` | Read-only through `domains.read` |
 | Activity | `GET /logs` | Read-only through `logs.read` |
 
@@ -65,7 +65,7 @@ People responses expose `id`, `email`, effective `name`, lifecycle `state` and `
 
 Company apps use the native SAML or OIDC settings and validation. `POST /apps` selects `protocol: "saml"` or `"oidc"`; `PATCH /apps/{id}` currently updates SAML apps only. OIDC updates and secret rotation have no machine route. `DELETE /apps/{id}` disables the app. App reads exclude client secrets, secret digests, verification/signing key material, sessions and provisioning credentials. Assignment `principalType` is `person` or `group`; the optional `role` in an assignment body is an app role, never an Auth administrator role.
 
-Policies currently mean **exact-domain required-provider rules**, distinct from allowed enrollment domains. `PUT /policies/{domain}` takes `{ "providerId": "configured-provider-id" }`; DELETE removes that requirement. Providers must already be configured through Base's private `AUTH_UPSTREAM_PROVIDERS` environment setting. `GET /idps` exposes only configured provider ID, label, preset and availability. It does not expose client IDs, secrets, tenant configuration or external-identity bindings. Provider configuration management, broader policy types and domain verification are outside this implementation.
+Policies currently mean **exact-domain required-provider rules**, distinct from allowed enrollment domains. `PUT /policies/{domain}` takes `{ "providerId": "configured-provider-id" }`; DELETE removes that requirement. Providers must already be configured through Base's private `AUTH_UPSTREAM_PROVIDERS` environment setting. `GET /idps` exposes only configured provider ID, label, preset and availability. It does not expose client IDs, secrets, tenant configuration or external-identity bindings. Provider availability can be changed with `idps.manage`. Disabling a provider ends its current upstream proofs and refuses callbacks already in flight; a required-provider rule stays required, so disabling cannot open an alternate employee sign-in. Enabling restores only the existing owner-configured issuer/client/subject associations. Creation and credential/issuer changes remain in Base configuration; generic provider setup, broader policy types and domain verification are outside this implementation.
 
 Logs are a safe Activity projection of supported business events: event, subject and time, with ID for ordering. Credential, factor, recovery, signing-key, administrator-role and service-app lifecycle events are excluded. Supported machine request events may additionally expose only service app ID, accountable owner ID, known scope and result. Arbitrary audit details are never returned.
 

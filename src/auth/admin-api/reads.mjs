@@ -115,7 +115,7 @@ export async function readAdmin(ctx,principal,path,url) {
   value=rows.filter(r=>principal.permits('apps',r.app_id)&&principal.permits(r.principal_type==='person'?'people':'groups',r.principal_id)).map(r=>({appId:r.app_id,principalType:r.principal_type,principalId:r.principal_id,role:r.role}));
  }
  if(family==='policies')value=(await all(ctx,'SELECT domain,provider_id FROM oa_domain_rules ORDER BY domain')).map(r=>({domain:r.domain,providerId:r.provider_id,available:Boolean(configuredProvider(ctx,r.provider_id))}));
- if(family==='idps')value=(ctx.upstreamProviders??[]).filter(r=>configuredProvider(ctx,r.id)).map(r=>({id:r.id,label:r.label||r.preset,preset:r.preset,available:true})).sort((a,b)=>a.id.localeCompare(b.id));
+ if(family==='idps')value=(ctx.configuredUpstreamProviders??ctx.upstreamProviders??[]).map(r=>({id:r.id,label:r.label||r.preset,preset:r.preset,available:Boolean(configuredProvider(ctx,r.id))})).sort((a,b)=>a.id.localeCompare(b.id));
  if(family==='domains')value=(await all(ctx,'SELECT domain,created_at FROM auth_domains ORDER BY domain')).map(r=>({domain:r.domain,createdAt:r.created_at}));
  if(family==='logs')value=await logs(ctx,principal);
  await principal.assertAuthority();

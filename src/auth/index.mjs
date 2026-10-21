@@ -1,3 +1,4 @@
+import {resolveProviders} from './admin-api/providers.mjs';
 import {adminToken,isAdminServiceAction,adminServiceAction} from './admin-api/credentials/index.mjs';
 import {adminApi} from './admin-api/routes.mjs';
 import {isHookAction,hookAction,hookModel} from './hooks/index.mjs';
@@ -30,8 +31,9 @@ export {installRecoveryToken} from './recovery.mjs';
 export function createAuthRuntime(options) {
  const ctx={...options,origin:new URL(options.origin).origin,now:options.now||Date.now,local:options.local===true};
  validateClientOrigin(ctx,ctx.origin);
- const upstreams=ctx.upstreamProviders?.length?createUpstreams(ctx):null;
- return {context:ctx,upstreamProviders:()=>upstreams?upstreams.providers.list():Promise.resolve([]),model:(request,page)=>model(ctx,request,page),async fetch(request) {
+ const resolved=()=>resolveProviders(ctx);
+ return {context:ctx,async upstreamProviders(){const current=await resolved();return current.upstreamProviders?.length?createUpstreams(current).providers.list():[];},async model(request,page){return model(await resolved(),request,page);},async fetch(request) {
+  const ctx=await resolved(),upstreams=ctx.upstreamProviders?.length?createUpstreams(ctx):null;
   const url=new URL(request.url),path=url.pathname;
   if(path.startsWith('/auth/oidc/')&&upstreams)return upstreams.fetch(request);
   if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path)&&!isSamlPath(path))return null;
