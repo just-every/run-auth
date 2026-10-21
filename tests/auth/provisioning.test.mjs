@@ -102,14 +102,23 @@ test('a provider answering 429 and 503, or losing a response, is retried until i
 
 test('owner erasure previews every store, honors legal holds, anonymizes decisions and keeps refused remote deletion visible',async t=>{
  const {r,scim,app,connect}=await provisioned(t,{pushGroups:false});await connect('synthetic-auth-1');scim.token='synthetic-auth-1';
- const {register}=await import('./webauthn.mjs');const first=await register(r,r.ada),second=await register(r,first.cookie);
+ const {register}=await import('./webauthn.mjs'),{signInAgain,preparer}=await import('./agents-helpers.mjs');const first=await register(r,r.ada);let second=await register(r,first.cookie);
  const command=async(path,data,status=200)=>{const response=await r.admin(path,data);assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ await command('people/role',{id:'ada',role:'admin'});second=await signInAgain(r,second,'ada@example.com');assert.equal((await r.db.prepare('SELECT count(*) AS n FROM auth_passkeys WHERE person_id=?').bind('ada').first()).n,2);
+ const minted=await r.call('/api/auth/agents/mint',{method:'POST',cookie:second.cookie,data:{label:'Employee support agent'}});assert.equal(minted.status,201);const agent=await minted.json();
+ assert.equal((await preparer(r,agent.key)).status,200);
+ const filed=await preparer(r,agent.key,{method:'POST',data:{kind:'suspend_person',target:'bob',reason:'Review a reported departure before approval'}});assert.equal(filed.status,201);const proposal=await filed.json();assert.equal(proposal.status,'pending');
+ assert.equal((await r.db.prepare('SELECT status FROM oa_operators WHERE id=?').bind('bob').first()).status,'active','filing a proposal does not execute it');
  await command('company-apps/assign',{appId:app.id,principalType:'person',principalId:'ada',role:'reader'});assert.ok(remote(scim,'ada'));
  await command('directory/source',{source:'hr',records:[{sourceId:'synthetic-auth-2',personId:'ada',fields:{department:'Engineering',name:'Ada Employee'}}]});
  const staged=await command('move-in/stage',{fileName:'workers.csv',exportDate:'2026-10-21',text:'user_id,email,name,email_verified\nsynthetic-auth-3,ada@example.com,Ada Employee,true\n'},201);
- const {generateKeyPair,exportJWK}=await import('jose'),pair=await generateKeyPair('ES256');
+ const {generateKeyPair,exportJWK,SignJWT}=await import('jose'),pair=await generateKeyPair('ES256');
  const api=await command('resource-apis/register',{appId:app.id,name:'Erasure test API',audience:'https://crm.example.com/api',scopes:['read'],roles:[{role:'reader',scopes:['read'],resources:['record:1']}],resources:[{id:'record:1'}]},201);
- await command('resource-apis/service-create',{apiId:api.id,name:'Ada automation',purpose:'Employee-approved work',ownerId:'ada',jwks:{keys:[{...await exportJWK(pair.publicKey),kid:'synthetic-auth-4',alg:'ES256',use:'sig'}]},scopes:['read'],resources:['record:1'],expiresAt:new Date(r.now+3600000).toISOString()},201);
+ const service=await command('resource-apis/service-create',{apiId:api.id,name:'Ada automation',purpose:'Employee-approved work',ownerId:'ada',jwks:{keys:[{...await exportJWK(pair.publicKey),kid:'synthetic-auth-4',alg:'ES256',use:'sig'}]},scopes:['read'],resources:['record:1'],expiresAt:new Date(r.now+3600000).toISOString()},201);
+ const oauth=async()=>r.call('/oidc/token',{method:'POST',form:{grant_type:'client_credentials',client_id:service.clientId,scope:'read',client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:await new SignJWT({jti:crypto.randomUUID()}).setProtectedHeader({alg:'ES256',kid:'synthetic-auth-4'}).setIssuer(service.clientId).setSubject(service.clientId).setAudience(r.origin+'/oidc/token').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+120).sign(pair.privateKey)}});
+ const issued=await oauth();assert.equal(issued.status,200,await issued.clone().text());const token=(await issued.json()).access_token;
+ const serviceCheck=()=>r.call('/api/auth/resource-apis/check',{method:'POST',headers:{authorization:'Bearer '+token,origin:''},data:{apiId:api.id,action:'read',resource:'record:1'}});
+ const allowed=await serviceCheck();assert.equal(allowed.status,200);assert.equal((await allowed.json()).allowed,true);
  assert.equal((await r.call('/api/auth/erasure/preview',{method:'POST',cookie:r.bob,data:{kind:'person',target:'ada'}})).status,403);
  await command('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
  await command('erasure/preview',{kind:'person',target:'owner'},409);
@@ -120,8 +129,15 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
  const plan=await command('erasure/preview',{kind:'person',target:'ada'});assert.ok(plan.stores.find(s=>s.store==='auth_passkeys').deleted>=2);assert.ok(plan.stores.find(s=>s.store==='auth_import_rows').deleted);
  await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:true,destinations:['https://unapproved.example.com']},400);
  const erased=await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:false,destinations:[]});assert.equal(erased.local,'complete');assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,401);
+ assert.equal((await preparer(r,agent.key)).status,401,'erasing the accountable person ends their preparer key immediately');
+ assert.equal((await serviceCheck()).status,401,'erasure cuts off the already issued resource service token');assert.equal((await oauth()).status,401,'erasure refuses a fresh assertion from the removed resource service');
+ assert.equal(await r.db.prepare('SELECT id FROM auth_agent_keys WHERE id=?').bind(agent.id).first(),null);assert.equal(await r.db.prepare('SELECT id FROM auth_agent_proposals WHERE id=?').bind(proposal.id).first(),null);
+ assert.equal((await r.db.prepare('SELECT status FROM oa_operators WHERE id=?').bind('bob').first()).status,'active','erasure never executes the pending proposal');
  assert.equal(remote(scim,'ada').active,false,'revocation does not wait for downstream deletion consent');
  const receipt=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(receipt.status,'remote_unfinished');assert.ok(receipt.remote.some(task=>task.state==='blocked'));assert.ok(receipt.stores.every(store=>store.status==='complete'));
+ assert.ok(receipt.stores.find(store=>store.store==='auth_agent_keys').deleted);assert.ok(receipt.stores.find(store=>store.store==='auth_agent_proposals').deleted);
+ assert.ok(receipt.decisions.some(decision=>decision.kind==='suspend_person'&&decision.status==='pending'&&decision.reference===erased.reference),'the removed proposal retains an anonymous decision');
+ for(const identifier of [agent.id,proposal.id,agent.label,'ada@example.com','bob@example.com'])assert.ok(!JSON.stringify(receipt.decisions).includes(identifier),'decision evidence retains no person, key or proposal identity');
  const tables=(await r.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND (name GLOB 'auth_*' OR name GLOB 'oa_*' OR name GLOB 'rer_*')").all()).results;
  for(const {name} of tables) {
   const text=JSON.stringify((await r.db.prepare(`SELECT * FROM "${name}"`).all()).results);
