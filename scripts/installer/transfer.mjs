@@ -3,7 +3,8 @@
 // every client and person against the destination's own rules before restoring.
 // Runtime modules load lazily: this adapter must load before `rer install`.
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { link, lstat, unlink } from 'node:fs/promises';
+import { join, relative } from 'node:path';
 import { localPortability } from '@runeditrun/rer/portability';
 import { fileRecords } from '@runeditrun/rer/modules/portability/files';
 import { readSettings } from '@runeditrun/rer/adapter-settings';
@@ -23,10 +24,20 @@ function registryFailure(error) {
  if(error instanceof StoreRegistryError)throw new RerError('restore_refused',`Restore/export refused (${error.code}): the managed store inventory requires review.`,4);
  throw error;
 }
-export function organizationPolicy(organizations=[]) {
- try{return {...POLICY,includeTables:portableTables(organizations)};}catch(error){registryFailure(error);}
+function installationArchiveAuthority(organizations,direction) {
+ // Every employer currently provisioned by Auth is isolated. Installation
+ // ownership is hosting/reset authority, never authority over its directory.
+ // An employer-owner archive/restore door remains AUTH-TRANSFER-002 work.
+ if(organizations.some(organization=>organization.status==='active'))throw new RerError('restore_refused',
+  `Installation ${direction} refused (isolated_organization_${direction}_forbidden): an active isolated employer exists. Installation roles have no authority to ${direction} its directory. Separate employer-owner-authorized archives and restores are not yet shipped (AUTH-TRANSFER-002).`,4);
 }
-const engineFor=organizations=>localPortability({database:'auth',policy:organizationPolicy(organizations)});
+export function organizationPolicy(organizations=[],direction='export') {
+ try {
+  const registered=registeredOrganizations(organizations);installationArchiveAuthority(registered,direction);
+  return {...POLICY,includeTables:portableTables(registered)};
+ }catch(error){registryFailure(error);}
+}
+const engineFor=(organizations,direction)=>localPortability({database:'auth',policy:organizationPolicy(organizations,direction)});
 
 function checkStores(names,organizations,portable=false) {
  for(const name of names) {
@@ -53,7 +64,9 @@ const settings = async root => (await readSettings(root, { file: '.dev.vars' }))
 
 async function exportAuth(context) {
  let organizations;
- try{organizations=await withDatabase(context.root,inventory);}catch(error){registryFailure(error);}
+ try{organizations=await withDatabase(context.root,inventory);installationArchiveAuthority(organizations,'export');}catch(error){registryFailure(error);}
+ try {await lstat(context.path);throw new RerError('restore_refused','Export requires a new archive path.',4);}
+ catch(error){if(error.code!=='ENOENT')throw error;}
  const vars = await settings(context.root);
  const { writeGrantMap, issuerOf } = await import('../../src/auth/links/grant-map.mjs');
  const map = await withDatabase(context.root, async db => {
@@ -63,14 +76,18 @@ async function exportAuth(context) {
   return writeGrantMap(ctx);
  });
  context.store.report(`Signed grant map: ${map.sectors} apps, ${map.subjects} pairwise subjects, ${map.former} former subjects.`);
- const result=await engineFor(organizations).export(context);
- // Check Base's actual catalog too, including excluded tables: migrations or
- // concurrent schema additions must not turn a refusal into a successful export.
+ // Base owns construction, snapshot cleanup and its private output file. Keep
+ // that output unpublished until the final live authority/inventory check.
+ const unpublished=context.path+'.'+crypto.randomUUID()+'.unpublished';
  try {
+  const result=await engineFor(organizations,'export').export({...context,path:unpublished});
+  const current=await withDatabase(context.root,inventory);installationArchiveAuthority(current,'export');
   checkStores(result.tables.map(table=>table.name),organizations,true);
-  checkStores(result.exclusions.tables,organizations);
+  checkStores(result.exclusions.tables,current);
+  await link(unpublished,context.path);
+  return {...result,output:relative(context.root,context.path),grantMap:map};
  }catch(error){registryFailure(error);}
- return {...result,grantMap:map};
+ finally {await unlink(unpublished).catch(error=>{if(error.code!=='ENOENT')throw error;});}
 }
 
 // A local install serves only loopback apps and a hosted one never does; a dev
@@ -93,7 +110,7 @@ async function importAuth(context) {
   }
  }
  try {
-  registeredOrganizations(organizations);
+  registeredOrganizations(organizations);installationArchiveAuthority(organizations,'import');
   checkStores(manifest.tables.map(table=>table.name),organizations,true);
   checkStores(manifest.excludedTables,organizations);
   for(const table of manifest.tables)checkStores(table.dependencies,organizations,true);
@@ -105,8 +122,8 @@ async function importAuth(context) {
    const reason=refusal(store.name,item.row,local,validateClientOrigin);
    if(reason)throw new RerError('restore_refused',`Restore refused (auth_import): ${reason}.`,4);
   }
-  await withDatabase(context.root,inventory);
+  const destination=await withDatabase(context.root,inventory);installationArchiveAuthority(destination,'import');
  }catch(error){registryFailure(error);}
- return engineFor(organizations).import(context);
+ return engineFor(organizations,'import').import(context);
 }
 export const portability = { export: exportAuth, import: importAuth };

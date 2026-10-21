@@ -41,3 +41,7 @@ It saves a one-use token to `.rer/local/recovery-token` (readable only by you) a
 ## Moving to another host
 
 Changing the issuer host is a provider move, not a restore: passkeys are bound to the old host, so people register new ones and each app's owner approves the new link. Choose the host before you link apps, and keep it.
+
+## Isolated employer boundary
+
+Every employer currently created by Auth is isolated. Installation roles cannot export or restore its directory. `rer export` and `rer import` therefore refuse while an active isolated employer exists, and import refuses an archive containing one. A separate employer-owner-authorized archive and inactive restore door remains AUTH-TRANSFER-002 work. Anonymous evidence from an already erased employer can be included in an installation archive; sealed unfinished remote work and credentials remain excluded. This boundary does not grant permission to erase an employer for a backup.

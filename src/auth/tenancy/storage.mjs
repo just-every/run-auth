@@ -1,3 +1,5 @@
+import {fail} from '../core.mjs';
+
 // Schema names, SQL text and raw D1 statements stay inside this module. A scoped
 // handle exposes only D1's query interface, never its underlying global handle.
 const schemas = new WeakMap();
@@ -218,8 +220,13 @@ export async function provisionOrganization(db, {id = crypto.randomUUID().replac
  if (typeof name !== 'string' || !name.trim() || name.trim().length > 200) throw new Error('invalid_organization_name');
  if (typeof createdBy !== 'string' || !createdBy || !Number.isSafeInteger(now)) throw new Error('invalid_organization_creator');
  const organization = {id, name: name.trim(), namespace, created_by: createdBy, created_at: now, status: 'pending'};
- await db.prepare("INSERT INTO auth_organizations(id,name,namespace,created_by,created_at,status) VALUES(?,?,?,?,?,'pending')")
+ // Base claims import_job before staging and holds it until complete/abort;
+ // applying alone is insufficient because a failed finalize returns to staging.
+ // Keep this check in the reservation statement so a concurrent import cannot
+ // pass between a JavaScript preflight and the first organization write.
+ const reserved = await db.prepare("INSERT INTO auth_organizations(id,name,namespace,created_by,created_at,status) SELECT ?,?,?,?,?,'pending' WHERE NOT EXISTS(SELECT 1 FROM rer_portability_state WHERE id=1 AND (import_job IS NOT NULL OR applying<>0))")
   .bind(id, organization.name, namespace, createdBy, now).run();
+ if (!reserved.meta.changes) fail('organization_unavailable_importing', 409);
  const schema = await currentSchema(db, namespace);
  await createSchema(db, schema);
  await db.batch([

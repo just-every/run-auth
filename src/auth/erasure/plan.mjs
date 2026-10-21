@@ -106,7 +106,10 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   const assigned=values(stores,'auth_app_assignments').some(a=>a.app_id===company.id&&(a.principal_type==='person'&&a.principal_id===target||a.principal_type==='group'&&groups.has(a.principal_id)));
   const held=values(stores,'auth_scim_accounts').some(a=>a.app_id===company.id&&a.subject_id===target);
   if(reset||kind==='app'&&company.id===target||kind==='person'&&(assigned||held)) {
-   let partner=company.name;try{partner=new URL(company.launch_url||company.acs).origin;}catch{}
+   let partner='app:'+company.id;
+   let acs=[];try{acs=JSON.parse(company.acs);}catch{}
+   let redirect=[];try{redirect=JSON.parse(values(stores,'auth_oidc_clients').find(client=>client.app_id===company.id)?.redirect_uris||'[]');}catch{}
+   try{partner=new URL(company.launch_url||acs[0]?.url||redirect[0]).origin;}catch{}
    remote.push({kind:'partner-delete',appLabel:company.name||'Company app',partner,work:null});
   }
  }

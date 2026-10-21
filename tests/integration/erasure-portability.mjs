@@ -14,7 +14,8 @@ export async function erasurePortability(t) {
  for(const name of ['package.json','edition.json','rer-project.json','rer-setup.json','wrangler.jsonc','scripts','src','public','migrations','deploy.json','composition.lock.json','.node-version','OPERATIONS.json','OPERATIONS.md','ACCEPTANCE.md','RUN-LOCALLY.md','SEED-COMMAND-CONTRACT.md','AUTH-COMMANDS.md','pnpm-lock.yaml'])await cp(join(root,name),join(app.directory,name),{recursive:true,errorOnExist:true,force:false});
  const runtime={origin:app.origin,call:(path,{method='GET',data,cookie}={})=>method==='POST'?app.post(path,data,cookie):app.get(path,cookie?{cookie}:{})};
  const owner=await register(runtime,await app.signIn());
- const command=async(path,data,status=200)=>{const response=await app.post('/api/auth/'+path,data,owner.cookie);assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ let commandCookie=owner.cookie;
+ const command=async(path,data,status=200)=>{const response=await app.post('/api/auth/'+path,data,commandCookie);assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
  await command('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
  const worker=await command('directory/onboard',{email:'worker@northwind.example.com',name:'Morgan Ellis',kind:'contractor',set:{department:'Engineering'}},201);
  const factor=await register(runtime,await app.signIn('/app/account','worker@northwind.example.com'));await register(runtime,factor.cookie);
@@ -46,5 +47,30 @@ export async function erasurePortability(t) {
  const proof=await app.post('/auth/identity/email/request',{email:app.vars.OWNER_EMAIL},cookieOf(authenticated.response)),link=await app.link();
  const confirmed=await app.post('/auth/identity/email/confirm',{token:link.searchParams.get('token')},cookieOf(proof));assert.equal(confirmed.status,200);
  const people=await (await app.get('/api/auth/people',{cookie:cookieOf(confirmed)})).json();assert.ok(people.some(p=>p.email==='owner@example.com'));assert.ok(!people.some(p=>p.email==='worker@northwind.example.com'));
+ // Hosting an isolated employer grants no authority to export its directory or
+ // to restore over it. Keep the original identity/journal restore proof above.
+ commandCookie=cookieOf(confirmed);
+ const organization=await command('organizations/create',{name:'Isolated employer archive boundary'},201),prefix='/org/'+organization.id;
+ assert.equal((await app.get(prefix+'/.well-known/openid-configuration')).status,200);
+ await app.pause();
+ const exportRefusal=await cli(['export','--output','exports/isolated-employer.rer'],4);assert.match(exportRefusal,/isolated_organization_export_forbidden/);
+ await assert.rejects(lstat(join(app.directory,'exports/isolated-employer.rer')),{code:'ENOENT'});
+ const importRefusal=await cli(['import','--input','exports/after-erasure.rer','--yes'],4);assert.match(importRefusal,/isolated_organization_import_forbidden/);
+ await app.resume();assert.equal((await app.get(prefix+'/.well-known/openid-configuration')).status,200,'refused root import preserves the isolated employer');
+ await command('erasure/policy',{organizationId:organization.id,confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ const resetPreview=await command('erasure/preview',{kind:'organization',target:organization.id});
+ const reset=await command('erasure/confirm',{organizationId:organization.id,previewId:resetPreview.id,confirmation:'RESET '+app.origin+prefix});assert.equal(reset.local,'complete');
+ assert.equal((await app.get(prefix+'/.well-known/openid-configuration')).status,404);
+ await app.pause();await cli(['export','--output','exports/erased-employer.rer']);
+ let erasedManifest;const erasedRows=[];
+ for await(const record of fileRecords(join(app.directory,'exports/erased-employer.rer'))){if(record.kind==='manifest')erasedManifest=record;if(record.kind==='part')erasedRows.push(...record.items.filter(item=>item.kind==='row'&&item.table.startsWith('org_'+organization.id+'_')));}
+ assert.ok(erasedRows.some(item=>item.table==='org_'+organization.id+'_auth_erasure_receipts'),'anonymous employer accountability remains portable');
+ assert.ok(!erasedRows.some(item=>item.table==='org_'+organization.id+'_oa_operators'),'no erased employer directory is restored into an archive');
+ assert.ok(!JSON.stringify(erasedRows).includes(app.vars.OWNER_EMAIL),'anonymous employer namespace holds no person email');
+ const namespace='org_'+organization.id+'_',secretColumns=new Set(['private_key','encrypted_private','sealed_work','sealed_token','sealed_secret','sealed_secrets','secret_hash','token_hash']);
+ for(const table of erasedManifest.tables.filter(table=>table.name.startsWith(namespace))) {
+  assert.ok(!['auth_settings','oa_dev_credentials'].includes(table.name.slice(namespace.length)),'installation-local credential store excluded');
+  assert.ok(table.columns.every(column=>!secretColumns.has(column.name)),'private credential and sealed-work columns excluded from '+table.name);
+ }
  return {beforeEpoch:before.epoch,afterEpoch:after.epoch};
 }

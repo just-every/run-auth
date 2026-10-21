@@ -148,3 +148,5 @@ rer import --input exports/before-erasure.rer --journal exports/after-erasure.re
 ```
 
 The later journal makes Base refuse the entire pre-erasure archive with `erasure_epoch`. It cannot resurrect its personal rows or its earlier identified audit copies. Restore the new post-erasure archive to retain anonymous history. The API's signed JSON journal accompanies the receipt for accountability; the `--journal` argument takes the later `.rer` archive, not that JSON document. An old archive cannot discover a later journal that its owner did not supply.
+
+An installation archive cannot bypass employer isolation. The installation CLI refuses export/import while an active isolated employer exists; a separate employer-owner-authorized archive/restore door remains AUTH-TRANSFER-002 work. Erased anonymous namespaces may be archived, with credentials and sealed pending remote work excluded. Download receipts through the authorized owner door; erasure is never a prerequisite imposed to obtain a backup.

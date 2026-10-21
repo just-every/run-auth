@@ -17,6 +17,7 @@ async function signer(ctx,plan,alg='ES256') {
  return {jwk:await unseal(ctx,key.kid,key.encrypted_private),kid:key.kid,alg};
 }
 function appLabel(plan,task) {
+ if(task.appLabel)return label(task.appLabel);
  const appId=task.work?.connector?.app_id;
  const app=rows(plan,'auth_apps').find(app=>app.id===appId||app.name===task.partner||[app.launch_url,app.acs].some(url=>{try{return new URL(url).origin===task.partner;}catch{return false;}}));
  const client=rows(plan,'auth_clients').find(client=>client.origin===task.partner);
