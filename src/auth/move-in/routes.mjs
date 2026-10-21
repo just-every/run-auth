@@ -1,3 +1,4 @@
+import {invokeHooks} from '../hooks/index.mjs';
 // Move-in administration: stage a directory export, admit reviewed rows as
 // ordinary invitations, send those invitations, and undo what is still untouched.
 // Every handler authorizes its own request; every write carries the session's
@@ -62,15 +63,17 @@ async function admit(ctx,request,data) {
  for(const row of rows) {
   if(!wanted.has(row.idx)||row.status!=='staged')continue;
   if(!row.admittable||taken.has(row.email)){skipped.push({email:row.email,reasons:row.admittable?['duplicate_in_file']:row.reasons});continue;}
+  const extension=await invokeHooks(ctx,'user_import',{sourceId:row.sourceId??String(row.idx),email:row.email,name:row.displayName||row.email});
+  const liveGuard=authority(ctx,s,['owner','admin']);
   const id=random(),now=ctx.now(),created=`EXISTS(SELECT 1 FROM oa_operators WHERE id=?)`;
   const statements=[
-   ctx.db.prepare(`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${guard.clause} ON CONFLICT(email) DO NOTHING`).bind(id,row.email,row.displayName||row.email,now,...guard.args),
+   ctx.db.prepare(`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${liveGuard.clause} ON CONFLICT(email) DO NOTHING`).bind(id,row.email,extension.profile?.name??row.displayName??row.email,now,...liveGuard.args),
    ctx.db.prepare(`UPDATE auth_import_rows SET status='admitted',person_id=?,admitted_at=? WHERE batch_id=? AND idx=? AND status='staged' AND ${created}`).bind(id,now,batch.id,row.idx,id),
   ];
   if(batch.source_system==='auth0'&&row.sourceId)statements.push(ctx.db.prepare(`INSERT OR IGNORE INTO auth_former_subjects(source_system,subject,person_id,batch_id,created_at) SELECT 'auth0',?,?,?,? WHERE ${created}`).bind(row.sourceId,id,batch.id,now,id));
   const [inserted]=await ctx.db.batch(statements);
   if(inserted.meta.changes){admitted.push(row.email);taken.add(row.email);continue;}
-  await requireAuthority(ctx,s,guard);skipped.push({email:row.email,reasons:['existing_person']});
+  await requireAuthority(ctx,s,liveGuard);skipped.push({email:row.email,reasons:['existing_person']});
  }
  if(admitted.length)await auditDetail(ctx,s.person_id,'move_in_admitted',batch.id,{admitted,skipped});
  return json({admitted:admitted.length,skipped});

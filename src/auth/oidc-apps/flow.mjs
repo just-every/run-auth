@@ -1,3 +1,5 @@
+import {invokeHooks} from '../hooks/index.mjs';
+import {recheckIssuance} from '../hooks/fences.mjs';
 // The general OIDC profile's authorization and token endpoints: the code flow
 // for every client (PKCE required for public clients and where an app asks),
 // and the implicit and hybrid flows only for an app that opted in.
@@ -25,9 +27,12 @@ async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToke
  const sub=await subjectFor(ctx,client,s.person_id),alg=client.id_token_alg,out={};
  const expiresAt=Math.min(Math.floor(ctx.now()/1000)+TOKEN_SECONDS,Math.floor(s.expires_at/1000),Math.floor((proof.verified_at+EMAIL_MAX_AGE)/1000));
  if(expiresAt<=Math.floor(ctx.now()/1000))return null;
+ const mappedClaims=withIdToken?await claimsFor(ctx,client,s,scopes,assigned.role,proof.verified_at):{};
+ const extension=withIdToken?await invokeHooks(ctx,'token',{personId:s.person_id,appId:client.app_id}):{claims:{}};
+ await recheckIssuance(ctx,s,{appId:client.app_id,appVersion:client.app_version,mappingVersion:client.mapping_version,assignmentRole:assigned.role});
  if(withAccessToken)Object.assign(out,{access_token:await signToken(ctx,{aud:`${ctx.origin}/oidc/userinfo`,sub,client_id:client.client_id,sid:s.id,scope:scopes.join(' '),jti:random()},{alg,typ:'at+jwt',expiresAt}),token_type:'Bearer',expires_in:expiresAt-Math.floor(ctx.now()/1000)});
  if(withIdToken) {
-  const claims={aud:client.client_id,sub,sid:s.id,auth_time:Math.floor(s.created_at/1000),amr:JSON.parse(s.amr),...(nonce?{nonce}:{}),...await claimsFor(ctx,client,s,scopes,assigned.role,proof.verified_at)};
+  const claims={aud:client.client_id,sub,sid:s.id,auth_time:Math.floor(s.created_at/1000),amr:JSON.parse(s.amr),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims};
   if(out.access_token)claims.at_hash=await halfHash(out.access_token);
   if(code)claims.c_hash=await halfHash(code);
   out.id_token=await signToken(ctx,claims,{alg,expiresAt:Math.floor(ctx.now()/1000)+TOKEN_SECONDS});

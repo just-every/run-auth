@@ -9,14 +9,16 @@ import {fileURLToPath} from 'node:url';
 import {productionPlan,projectMiniflare} from '@runeditrun/rer/internal/onboarding/production-options.mjs';
 
 // The emitted Worker under the same Miniflare plan rer preview serves, in this process.
-async function productionRuntime(directory,origin,port,host) {
+async function productionRuntime(directory,origin,port,host,outboundService) {
  const {Miniflare,convertV4MiniflareOptions}=await projectMiniflare(directory);
- const runtime=new Miniflare({...convertV4MiniflareOptions(await productionPlan(directory,origin,port,host)),resourcePersistencePath:join(directory,'.wrangler/state/v3')});
+ const plan=await productionPlan(directory,origin,port,host);
+ if(outboundService){if(plan.workers)for(const worker of plan.workers)worker.outboundService=outboundService;else plan.outboundService=outboundService;}
+ const runtime=new Miniflare({...convertV4MiniflareOptions(plan),resourcePersistencePath:join(directory,'.wrangler/state/v3')});
  return {ready:runtime.ready,dispose:()=>runtime.dispose()};
 }
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
-export async function openApp({upstreamProviders}={}) {
+export async function openApp({upstreamProviders,outboundService}={}) {
  const socket=createServer();await new Promise(resolve=>socket.listen(0,'127.0.0.1',resolve));
  const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
  const origin=`http://localhost:${port}`,directory=await mkdtemp(join(tmpdir(),'auth-integration-'));
@@ -31,7 +33,7 @@ export async function openApp({upstreamProviders}={}) {
   execFileSync(process.execPath,[join(root,'node_modules/wrangler/bin/wrangler.js'),'d1','migrations','apply','DB','--local','--persist-to',join(directory,'.wrangler/state'),'--config',join(root,'dist/server/wrangler.json')],{stdio:'ignore',env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',X_LOCAL_EXPLORER:'false'}});
   // Use the same emitted-Worker runtime as rer setup/preview. Wrangler dev's
   // own trigger endpoint is deliberately not a public application listener.
-  runtime=await productionRuntime(directory,origin,port,'127.0.0.1');await runtime.ready;
+  runtime=await productionRuntime(directory,origin,port,'127.0.0.1',outboundService);await runtime.ready;
  }catch(error){await runtime?.dispose();await rm(directory,{recursive:true,force:true});throw error;}
  const app={origin,vars,async close(){await runtime.dispose();await rm(directory,{recursive:true,force:true});},
   get:(path,headers={})=>fetch(origin+path,{headers,redirect:'manual'}),

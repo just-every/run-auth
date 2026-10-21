@@ -1,3 +1,4 @@
+import {hookModel} from './hooks/index.mjs';
 import {configuredProvider} from './domain-policy.mjs';
 import {freshLocalEmail,requireLocalEmail,authority,requireAuthority} from './local-email.mjs';
 import {stageSigningKey,retireSigningKey} from './keys.mjs';
@@ -40,7 +41,7 @@ export async function model(ctx,request,page='account') {
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
   if(page==='agents')Object.assign(result,await agentsModel(ctx,request));
   if(page==='people')result.directory=await directoryModel(ctx);
-  if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);}
+  if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
  result.launcher=await launcher(ctx,s.person_id);
  if(page==='account')result.profile=await profileModel(ctx,s);

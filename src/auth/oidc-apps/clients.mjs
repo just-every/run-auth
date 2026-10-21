@@ -49,7 +49,7 @@ export async function newSecret(ctx,clientId) {
 }
 export const overlapOf=hours=>{const ms=Math.round(Number(hours??24)*3600000);if(!Number.isFinite(ms)||ms<0||ms>SECRET_OVERLAP_MAX)fail('invalid_overlap');return ms;};
 
-const COLUMNS='c.*,a.name,a.attributes,a.disabled_at';
+const COLUMNS='c.*,a.name,a.attributes,a.disabled_at,a.version AS app_version,a.mapping_version';
 export async function genericClient(ctx,clientId) {
  if(typeof clientId!=='string'||!clientId)return null;
  const row=await one(ctx,`SELECT ${COLUMNS} FROM auth_oidc_clients c JOIN auth_apps a ON a.id=c.app_id WHERE c.client_id=? AND a.disabled_at IS NULL`,clientId);

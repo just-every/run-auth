@@ -1,8 +1,9 @@
+import {invokeHooks} from './hooks/index.mjs';
 import {permitsSession,requirePolicy,upstreamProof} from './domain-policy.mjs';
 import {framedPage,FRAME_SOURCES} from './page-frame.mjs';
 import {emit} from './events/store.mjs';
 import {evaluatePerson} from './workforce/people/evaluate.mjs';
-import {email,hash,random,binding,bindingName,cookie,challenge,consumeChallenge,one,run,limit,json,createSession,audit,fail,returnPath,session,sessionById} from './core.mjs';
+import {email,hash,random,binding,bindingName,cookie,challenge,consumeChallenge,one,run,limit,json,createSession,audit,fail,AuthError,returnPath,session,sessionById} from './core.mjs';
 export async function sendProof(ctx, person, bindingHash, amr = ['email'], returnTo = '/app/account', upstreamProofId = null, hardwareSessionId = null) {
  await requirePolicy(ctx,person,upstreamProofId);
  if(upstreamProofId&&!await upstreamProof(ctx,person.id,upstreamProofId))fail('upstream_proof_expired',403);
@@ -15,7 +16,10 @@ export async function sendProof(ctx, person, bindingHash, amr = ['email'], retur
 async function startProof(ctx, request, data, address, bound) {
  let person=await one(ctx,"SELECT * FROM oa_operators WHERE email=? AND status IN ('active','invited')",address);
  if(!person && await permitsSession(ctx,{email:address,role:'member'}) && await one(ctx,'SELECT domain FROM auth_domains WHERE domain=?',address.split('@')[1])) {
-  await run(ctx,"INSERT OR IGNORE INTO oa_operators(id,email,display_name,role,status,version,created_at) VALUES(?,?,?,'member','invited',1,?)",random(),address,address,ctx.now());
+  let extension;
+  try{extension=await invokeHooks(ctx,'registration',{email:address,name:address});}catch(error){if(error instanceof AuthError)return;throw error;}
+  if(!await permitsSession(ctx,{email:address,role:'member'}))return;
+  await run(ctx,"INSERT OR IGNORE INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE EXISTS(SELECT 1 FROM auth_domains WHERE domain=?) AND NOT EXISTS(SELECT 1 FROM oa_domain_rules WHERE domain=?)",random(),address,extension.profile?.name??address,ctx.now(),address.split('@')[1],address.split('@')[1]);
   person=await one(ctx,'SELECT * FROM oa_operators WHERE email=?',address);
  }
  if(!person)return;

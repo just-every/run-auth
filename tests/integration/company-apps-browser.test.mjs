@@ -1,3 +1,4 @@
+import {hookServer} from '../auth/hooks-server.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
@@ -20,7 +21,7 @@ async function serviceProvider(t,authOrigin) {
   let body='';for await(const chunk of req)body+=chunk;
   if(req.url==='/login'){res.writeHead(302,{location:await saml.getAuthorizeUrlAsync('',undefined,{})});return res.end();}
   if(req.url==='/acs'&&req.method==='POST') {
-   try {const {profile}=await saml.validatePostResponseAsync(Object.fromEntries(new URLSearchParams(body)));res.writeHead(200,{'content-type':'text/html'});res.end(`<!doctype html><title>Expenses</title><h1>Signed in as ${profile.email} (${profile.role})</h1>`);}
+   try {const {profile}=await saml.validatePostResponseAsync(Object.fromEntries(new URLSearchParams(body)));res.writeHead(200,{'content-type':'text/html'});res.end(`<!doctype html><title>Expenses</title><h1>Signed in as ${profile.email} (${profile.role})</h1><p>Cost center ${profile.cost_center??'none'}</p>`);}
    catch(error){res.writeHead(403,{'content-type':'text/plain'});res.end('Refused: '+error.message);}
    return;
   }
@@ -60,7 +61,7 @@ async function relyingParty(t,authOrigin) {
 }
 
 test('company apps journey: the owner adds a SAML app from its metadata, an OpenID Connect app, a group and assignments; an employee signs in through Auth, and loses both when removed, at desktop/mobile in both themes',async t=>{
- const app=await openApp();t.after(()=>app.close());await app.claim();
+ const edge=await hookServer(t),app=await openApp({outboundService:edge.fetch});t.after(()=>app.close());await app.claim();
  const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
@@ -122,9 +123,28 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  await shoot(page,'apps');
 
 
+ // Configure a signed SAML hook through the same real app setup form.
+ const hooks=page.locator('section[aria-labelledby="inline-hooks-heading"]'),hookForm=hooks.locator('[data-hook-register]');
+ await hookForm.getByLabel('Hook point').selectOption('saml');
+ await hookForm.getByLabel('App scope (token or SAML only)').selectOption({label:'Expenses (SAML)'});
+ await hookForm.getByLabel('Allowed output fields (comma separated)').fill('cost_center');
+ await hookForm.getByLabel('Hook HTTPS endpoint').fill('https://private.example.com/saml');
+ await hookForm.getByRole('button',{name:'Register hook'}).click();
+ await expect(page.locator('[data-auth-status]')).toContainText('resolves only to public addresses');
+ await hookForm.getByLabel('Hook HTTPS endpoint').fill('https://hooks.example.com/saml');
+ await hookForm.getByRole('button',{name:'Register hook'}).click();
+ await expect(page.locator('[data-auth-status]')).toContainText('Signing secret, shown once');
+ await page.reload();await expect(hooks.locator('.data-row')).toContainText('cost_center');
+ for(const width of [1440,390]){await page.setViewportSize({width,height:1100});await hooks.evaluate(el=>el.scrollIntoView({block:'start'}));await page.screenshot({path:join(directory,`company-apps-hooks-${width}.png`)});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ await page.setViewportSize({width:1440,height:1000});
  // The employee opens the app: it asks Auth, Auth answers in the browser, the app signs them in.
  await employeePage.goto(sp.origin+'/login');
- await expect(employeePage.getByRole('heading',{name:`Signed in as ${EMPLOYEE} (approver)`})).toBeVisible();
+ await expect(employeePage.getByRole('heading',{name:`Signed in as ${EMPLOYEE} (approver)`})).toBeVisible();await expect(employeePage.getByText('Cost center CC-42')).toBeVisible();
+ await hooks.getByRole('button',{name:'Stop hook'}).click();await expect(hooks.getByText('No inline hooks yet.')).toBeVisible();
+ await page.goto(app.origin+'/app/activity');
+ await expect(page.locator('.activity-row',{hasText:'Inline Hook Called'}).first()).toContainText('Latency:');
+ for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await page.screenshot({path:join(directory,`company-apps-hook-activity-${width}.png`)});}
+ await page.goto(app.origin+'/app/apps');
  // An OpenID Connect app registered on the same page; its secret is shown once.
  const rp=await relyingParty(t,app.origin);
  const register=page.locator('form[action="/api/auth/oidc-apps/create"]');

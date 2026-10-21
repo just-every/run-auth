@@ -19,6 +19,7 @@
     {
       "title": "Reference",
       "pages": [
+        { "slug": "inline-hooks", "title": "Inline sign-in hooks", "file": "inline-hooks.md", "summary": "Configure signed, bounded extension points with protected identity and fail policies." },
         { "slug": "attribute-mapping", "title": "Attribute mapping", "file": "attribute-mapping.md", "summary": "Preview and version computed usernames, claims and provisioning fields." },
         { "slug": "commands", "title": "Auth commands", "file": "../AUTH-COMMANDS.md", "summary": "Setup, dev, recovery, private settings and export, in detail." },
         { "slug": "linking", "title": "How app linking works", "file": "../LINKING.md", "summary": "The documents, handshake, continuity and sign-out behind a linked app." }

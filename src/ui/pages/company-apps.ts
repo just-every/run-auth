@@ -1,3 +1,4 @@
+import {inlineHooksPanel} from './inline-hooks.js'
 import {mappingPanel} from './mapping.js'
 import type { AuthPageModel, CompanyApp, WorkforceModel } from '../model.js'
 import { asArray, csrfField, emptyState, escape, timeElement } from '../helpers.js'
@@ -79,7 +80,7 @@ export function renderCompanyApps(model: AuthPageModel): string {
   const workforce = model.workforce
   if (!workforce) return ''
   const apps = asArray(workforce.companyApps).filter(a => a.status === 'active')
-  return `<h2>Company apps</h2>${apps.length ? apps.map(app => appPanel(app, workforce, model)).join('') : emptyState('No company apps yet. Add one from the catalog, from its SAML metadata or as an OpenID Connect app.')}<div class="section-grid">${catalogPanel(workforce, model)}${addPanel(workforce, model)}</div><div class="section-grid">${oidcPanel(workforce, model)}${eventsPanel(model)}</div><div class="section-grid">${groupsPanel(workforce, model)}${providerPanel(workforce, model)}</div>`
+  return `<h2>Company apps</h2>${apps.length ? apps.map(app => appPanel(app, workforce, model)).join('') : emptyState('No company apps yet. Add one from the catalog, from its SAML metadata or as an OpenID Connect app.')}<div class="section-grid">${catalogPanel(workforce, model)}${addPanel(workforce, model)}</div><div class="section-grid">${oidcPanel(workforce, model)}${eventsPanel(model)}</div>${inlineHooksPanel(model)}<div class="section-grid">${groupsPanel(workforce, model)}${providerPanel(workforce, model)}</div>`
 }
 
 // Employees: the apps they are assigned, opened from Auth or at the app's own sign-in.

@@ -1,3 +1,5 @@
+import {invokeHooks} from './hooks/index.mjs';
+import {recheckIssuance} from './hooks/fences.mjs';
 import {permitsSession} from './domain-policy.mjs';
 import {beginAuthorizationLogin,authorizationLogin,completedAuthorizationLogin} from './authorization-login.mjs';
 import {createLocalJWKSet,jwtVerify} from 'jose';
@@ -78,6 +80,9 @@ export async function token(ctx,request) {
  const consumed=await one(ctx,'DELETE FROM auth_codes WHERE code_hash=? AND consumed_at IS NULL RETURNING code_hash',code.code_hash);if(!consumed)fail('invalid_grant');
  const scopes=JSON.parse(code.scopes),claims={aud:c.id,sub:await pairwiseSubject(ctx,c.sector_id,code.person_id),nonce:code.nonce,sid:s.id,amr:ctx.local?['dev']:JSON.parse(s.amr),auth_time:Math.floor(s.created_at/1000),email_verified_at:Math.floor(proof.verified_at/1000)};
  if(scopes.includes('email'))Object.assign(claims,{email:s.email,email_verified:true});if(scopes.includes('profile'))claims.name=s.display_name;
+ const extension=await invokeHooks(ctx,'token',{personId:s.person_id,clientId:c.id});
+ await recheckIssuance(ctx,s,{clientId:c.id});
+ Object.assign(claims,extension.claims);
  if(scopes.includes('claim')) {const owner=await one(ctx,'UPDATE auth_clients SET owner_claimed_at=? WHERE id=? AND owner_person_id=? AND owner_claimed_at IS NULL RETURNING id',ctx.now(),c.id,code.person_id);if(owner)claims.install_owner=true;}
  const expiresAt=Math.min(Math.floor(ctx.now()/1000)+TOKEN_SECONDS,Math.floor(s.expires_at/1000),Math.floor((proof.verified_at+EMAIL_MAX_AGE)/1000));
  if(expiresAt<=Math.floor(ctx.now()/1000))fail('invalid_grant');

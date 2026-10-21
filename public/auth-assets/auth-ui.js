@@ -10,6 +10,12 @@
     }
   }
   const friendlyErrors = {
+    hook_timeout: 'An inline sign-in hook timed out. Try signing in again.',
+    hook_refused: 'Your employer’s sign-in hook refused this request.',
+    hook_invalid_response: 'The hook tried to change a protected or unapproved field.',
+    invalid_hook_url: 'Use an HTTPS endpoint that resolves only to public addresses.',
+    invalid_hook_scope: 'Choose an OpenID Connect app for token hooks or a SAML app for assertion hooks. Registration and import hooks use no app.',
+    invalid_hook_fields: 'Choose custom claim or attribute names; identity, roles and MFA fields are protected.',
     account_unavailable: 'This account cannot sign in right now.',
     required_provider: 'Sign in with the provider required by your email domain first.',
     unknown_provider: 'Choose a provider configured for this Auth install.',
@@ -303,6 +309,14 @@
     // A repeated field, such as the selected move-in rows, is sent as a list.
     const payload = {}
     for (const [key, value] of new FormData(form).entries()) payload[key] = key in payload ? [payload[key], value].flat() : value
+    if (form.hasAttribute('data-hook-register')) {
+      const target = payload.target || '', colon = target.indexOf(':')
+      if (colon > 0) payload[target.slice(0, colon) === 'app' ? 'appId' : 'clientId'] = target.slice(colon + 1)
+      delete payload.target
+      payload.allowedFields = String(payload.allowedFields || '').split(/[\s,]+/).filter(Boolean)
+      payload.timeoutMs = Number(payload.timeoutMs)
+      payload.failClosed = payload.failClosed !== 'false'
+    }
     showStatus('Sending request…')
     try {
       const result = await requestJSON(form.action, payload)

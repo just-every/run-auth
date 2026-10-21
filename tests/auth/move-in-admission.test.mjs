@@ -1,3 +1,4 @@
+import {hookServer,verifiedHook} from './hooks-server.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {emailSession,cookieOf} from './runtime.mjs';
@@ -26,9 +27,14 @@ test('admission is the ordinary invitation: administrators only, no proof, right
  const stale=await admit(r,cookie,batch,all);assert.equal(stale.status,403);assert.equal((await stale.json()).error,'local_email_step_up_required');
  assert.deepEqual(await snapshot(),before,'refusals change nothing');
  const fresh=await finishProof(r,await requestProof(r,'owner@example.com',cookie));assert.equal(fresh.status,200);
- const owner=cookieOf(fresh),mail=(await r.mails()).length;
+ const owner=cookieOf(fresh),mail=(await r.mails()).length,edge=await hookServer(t);r.edges=edge.edges;
+ const configured=await r.call('/api/auth/hooks/register',post({point:'user_import',url:'https://hooks.example.com/move-in',allowedFields:['name']},owner));assert.equal(configured.status,201);const hook=await configured.json();
+ edge.responses.set('/move-in',{body:{allow:false}});
+ assert.equal((await admit(r,owner,batch,all)).status,403);assert.equal(await person(r,GRACE),null);
+ edge.responses.set('/move-in',{body:{allow:true}});
+
  const admitted=await admit(r,owner,batch,all);assert.equal(admitted.status,200);
- const result=await admitted.json();assert.equal(result.admitted,2);assert.deepEqual(result.skipped,[{email:ADA,reasons:['existing_person']}]);
+ const result=await admitted.json();assert.equal(result.admitted,2);assert.ok(edge.received.every(call=>verifiedHook(hook.secret,call)));assert.equal((await r.call('/api/auth/hooks/disable',post({id:hook.id},owner))).status,200);assert.deepEqual(result.skipped,[{email:ADA,reasons:['existing_person']}]);
  assert.equal((await r.mails()).length,mail,'admission sends no mail');
  for(const email of [GRACE,MOLLY]) {
   const p=await person(r,email);assert.deepEqual({role:p.role,status:p.status,version:p.version},{role:'member',status:'invited',version:1});

@@ -1,3 +1,4 @@
+import {invokeHooks} from '../../hooks/index.mjs';
 // The workforce directory's doors: People and the admin API both land here, so
 // every edit meets the same validation and audit. Reads need a passkey
 // administrator; every write also needs this session's fresh local email proof,
@@ -38,7 +39,7 @@ export async function directoryAction(ctx,request,path,data,{notify}) {
  const dir=await loadDirectory(ctx);
  if(path==='/directory/preview'){const plan=await planEdits(ctx,dir,expand(dir,data),s.person_id);return json({plan});}
  requireLocalEmail(ctx,s);
- const guard=authority(ctx,s,['owner','admin']);
+ let guard=authority(ctx,s,['owner','admin']);
  const run=async(edits,{bulk=false,digest}={})=>{
   const plan=await planEdits(ctx,dir,edits,s.person_id);
   if(digest!==undefined&&digest!==plan.digest)fail('preview_changed',409);
@@ -62,7 +63,14 @@ export async function directoryAction(ctx,request,path,data,{notify}) {
   return done.refusal??json({ok:true,entry:done.plan.entries[0],changed:done.results[0].changed});
  }
  if(path==='/directory/source') {
-  const fed=feedEdits(dir,data.source,data.records);if(!fed)fail('invalid_records');
+  let records=data.records;
+  if(!feedEdits(dir,data.source,records))fail('invalid_records');
+  if(data.preview!==true){
+   records=[];
+   for(const record of data.records){const extension=await invokeHooks(ctx,'user_import',{sourceId:record.sourceId,email:record.email,name:record.fields?.name});records.push({...record,fields:{...record.fields,...(extension.profile?.name?{name:extension.profile.name}:{})}});}
+  }
+  guard=authority(ctx,s,['owner','admin']);
+  const fed=feedEdits(dir,data.source,records);if(!fed)fail('invalid_records');
   const plan=fed.edits.length?await planEdits(ctx,dir,fed.edits,s.person_id):{entries:[],ok:true,summary:{people:0},digest:null};
   const ok={...plan,entries:plan.entries.filter(e=>!e.refusals.length)};
   if(data.preview===true)return json({preview:true,outcomes:fed.outcomes.map(({edit,...o})=>o),plan});

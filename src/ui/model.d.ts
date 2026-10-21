@@ -243,6 +243,7 @@ export interface AuthPageModel {
   providers?: AuthProvider[]
   moveIn?: { batches: MoveInBatch[]; batch: MoveInBatch | null; rows: MoveInRow[] }
   agents?: { now?: number; keys: AgentKey[]; proposals: AgentProposal[]; proposal: AgentProposal | null }
+  inlineHooks?: { points: string[]; hooks: { id: string; point: string; url: string; appId: string | null; clientId: string | null; allowedFields: string[]; timeoutMs: number; failClosed: boolean; status: string }[] }
   workforce?: WorkforceModel
   events?: { types: string[]; subscriptions: Array<{ id: string; url: string; types: string[]; createdAt: number; status: string; deliveries: Record<string, number> }> }
   launcher?: LauncherApp[]

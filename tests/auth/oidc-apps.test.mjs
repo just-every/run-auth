@@ -1,3 +1,4 @@
+import {hookServer,verifiedHook} from './hooks-server.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
@@ -148,4 +149,71 @@ test('wrong, mismatched and rotated-out secrets, substituted redirects and codes
  assert.deepEqual(model.filter(x=>x.protocol==='oidc').map(x=>[x.name,x.oidc.authMethod,x.oidc.legacyFlows]).sort(),[['Board','client_secret_post',false],['Ledger','client_secret_basic',false],['Old portal','client_secret_post',true]]);
  // Inside the overlap both secrets are live, and the page says until when.
  const ledger=model.find(x=>x.name==='Ledger').oidc;assert.equal(ledger.liveSecrets,2);assert.equal(ledger.previousSecretUntil,rotated.previousValidUntil);
+});
+
+test('inline hooks add only approved token and SAML fields, deny registration and imports, enforce signed minimal payloads and timeout choices, and refuse private DNS and protected identity changes',async t=>{
+ const r=await samlInstall(t),edge=await hookServer(t);r.edges=edge.edges;await ready(r);
+ const app=await register(r,{name:'Hooked payroll',authMethod:'client_secret_basic',redirectUris:`${RP}/hooks`});
+ const config=await relyingParty(r,app.clientId,oidc.ClientSecretBasic(app.clientSecret));
+ const create=async data=>{const response=await r.admin('hooks/register',data);assert.equal(response.status,201);return response.json();};
+ const disable=async id=>assert.equal((await r.admin('hooks/disable',{id})).status,200);
+ const tokenHook=await create({point:'token',appId:app.id,url:'https://hooks.example.com/token',allowedFields:['cost_center']});
+ const issued=await (await signIn(r,config,{redirect:`${RP}/hooks`})).grant();assert.equal(issued.claims().cost_center,'CC-42');
+ assert.ok(verifiedHook(tokenHook.secret,edge.received[0]));
+ const payload=JSON.parse(edge.received[0].body);assert.deepEqual(Object.keys(payload.data).sort(),['appId','personId']);assert.equal(payload.data.personId,'ada');assert.equal(payload.version,1);
+ const unchanged=issued.claims().sub;
+ // A subject, administrator role, MFA or policy change is forbidden even for a fail-open hook.
+ await disable(tokenHook.id);
+ const unsafe=await create({point:'token',appId:app.id,url:'https://hooks.example.com/unsafe',allowedFields:['cost_center'],failClosed:false});
+ for(const claims of [{sub:'other'},{roles:['administrator']},{amr:[]},{policy:'allow'}]){
+  edge.responses.set('/unsafe',{body:{claims}});
+  await assert.rejects((await signIn(r,config,{redirect:`${RP}/hooks`})).grant());
+ }
+ assert.equal((await r.admin('hooks/register',{point:'token',appId:app.id,url:'https://hooks.example.com/token',allowedFields:['roles']})).status,400);
+ await disable(unsafe.id);
+ // Real timeout at the network edge: fail closed gives a clear public error; fail open continues unchanged.
+ edge.responses.set('/timeout','hang');
+ const timeout=await create({point:'token',appId:app.id,url:'https://hooks.example.com/timeout',allowedFields:[],timeoutMs:100});
+ let flow=await signIn(r,config,{redirect:`${RP}/hooks`});
+ let response=await tokenRequest(r,{grant_type:'authorization_code',code:flow.location.searchParams.get('code'),redirect_uri:`${RP}/hooks`,code_verifier:flow.verifier},basicAuth(app.clientId,app.clientSecret));
+ assert.equal(response.status,503);const failure=await response.json();assert.equal(failure.error,'hook_timeout');assert.match(failure.message,/timed out/);assert.equal(failure.id_token,undefined);
+ await disable(timeout.id);
+ const open=await create({point:'token',appId:app.id,url:'https://hooks.example.com/timeout',timeoutMs:100,failClosed:false});
+ const continued=await (await signIn(r,config,{redirect:`${RP}/hooks`})).grant();assert.equal(continued.claims().sub,unchanged);assert.equal(continued.claims().cost_center,undefined);
+ const activity=(await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json()).map(a=>a.detail?JSON.parse(a.detail):{});
+ assert.ok(activity.some(a=>a.outcome==='hook_timeout'&&a.latencyMs>=0));assert.ok(activity.some(a=>a.outcome==='ignored_hook_timeout'&&a.latencyMs>=0));
+ await disable(open.id);
+ // DNS is checked both at registration and at invocation; a fail-open choice never bypasses SSRF.
+ for(const url of ['http://hooks.example.com/a','https://127.0.0.1/a','https://private.example.com/a'])assert.equal((await r.admin('hooks/register',{point:'token',appId:app.id,url})).status,400);
+ const rebinding=await create({point:'token',appId:app.id,url:'https://hooks.example.com/token',failClosed:false});edge.privateHosts.add('hooks.example.com');
+ const before=edge.received.length;await assert.rejects((await signIn(r,config,{redirect:`${RP}/hooks`})).grant());assert.equal(edge.received.length,before);
+ edge.privateHosts.delete('hooks.example.com');await disable(rebinding.id);
+ // Self-registration may deny an otherwise allowed outside domain, with the same non-enumerating email response.
+ await r.admin('people/domain',{domain:'outside.example.com'});
+ edge.responses.set('/registration',request=>({body:{allow:request.data.email.endsWith('@example.com'),...(request.data.email.endsWith('@example.com')?{profile:{name:'Hooked employee'}}:{})}}));
+ const registration=await create({point:'registration',url:'https://hooks.example.com/registration',allowedFields:['name']});
+ const mail=(await r.mails()).length;
+ assert.equal((await r.call('/auth/identity/email/request',{method:'POST',data:{email:'outside@outside.example.com'}})).status,202);
+ assert.equal(await r.db.prepare("SELECT id FROM oa_operators WHERE email='outside@outside.example.com'").first(),null);assert.equal((await r.mails()).length,mail);
+ await r.admin('people/domain',{domain:'example.com'});
+ await (await import('./runtime.mjs')).emailSession(r,'new@example.com');assert.equal((await r.db.prepare("SELECT display_name FROM oa_operators WHERE email='new@example.com'").first()).display_name,'Hooked employee');
+ await disable(registration.id);
+ // Directory source matching uses immutable source ids; the hook may deny or change an allowed profile field, never rebind a subject.
+ const imported=await create({point:'user_import',url:'https://hooks.example.com/import',allowedFields:['name']});
+ edge.responses.set('/import',{body:{allow:false}});
+ assert.equal((await r.admin('directory/source',{source:'hr',records:[{sourceId:'synthetic-auth-3',personId:'bob',fields:{title:'Analyst'}}]})).status,403);
+ assert.equal(await r.db.prepare("SELECT 1 FROM auth_person_sources WHERE source_id='synthetic-auth-3'").first(),null);
+ edge.responses.set('/import',{body:{allow:true,profile:{name:'Robert Hook'}}});
+ assert.equal((await r.admin('directory/source',{source:'hr',records:[{sourceId:'synthetic-auth-3',personId:'bob',fields:{title:'Analyst'}}]})).status,200);
+ assert.equal((await r.db.prepare("SELECT display_name FROM oa_operators WHERE id='bob'").first()).display_name,'Robert Hook');await disable(imported.id);
+ // An independent service provider reads the hook attribute from the signed assertion.
+ const {spCredentials,idpCertificates,serviceProvider,metadataOf,addApp,signIn:signInSaml,posted}=await import('./saml-helpers.mjs');
+ const sp=await spCredentials('hook-saml.example.com'),saml=serviceProvider(r,{entity:'https://hook-saml.example.com',sp,idpCerts:await idpCertificates(r)});
+ const sa=await addApp(r,{metadata:metadataOf(saml,sp),sign:'both',attributes:'email=email'});
+ const sh=await create({point:'saml',appId:sa.id,url:'https://hooks.example.com/saml',allowedFields:['cost_center']});
+ const output=await saml.validatePostResponseAsync({SAMLResponse:(await posted(await signInSaml(r,saml,r.ada))).SAMLResponse});assert.equal(output.profile.cost_center,'CC-42');
+ await disable(sh.id);
+ // Ordinary sessions, signed-out callers and stale administrator email proof cannot configure hooks.
+ for(const cookie of [undefined,r.ada])assert.equal((await r.call('/api/auth/hooks/register',{method:'POST',cookie,data:{point:'registration',url:'https://hooks.example.com/registration'}})).status,cookie?403:401);
+ r.tick=()=>{r.now=Date.now()+660000;};assert.equal((await r.admin('hooks/register',{point:'registration',url:'https://hooks.example.com/registration'})).status,403);
 });

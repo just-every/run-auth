@@ -1,3 +1,4 @@
+import {isHookAction,hookAction,hookModel} from './hooks/index.mjs';
 import {isMappingAction,mappingAction} from './mapping/routes.mjs';
 import {AuthError,input,json,fail,requireSession,validateClientOrigin} from './core.mjs';
 import {requestEmail,confirmEmail,confirmationPage} from './email.mjs';
@@ -49,6 +50,7 @@ export function createAuthRuntime(options) {
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
+    if(path==='/api/auth/hooks'){await requireSession(ctx,request,true);return json(await hookModel(ctx));}
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
     if(DIRECTORY_READS.includes(path))return await directoryRead(ctx,request,path);
     if(PROFILE_READS.includes(path))return await profileRead(ctx,request);
@@ -82,6 +84,7 @@ export function createAuthRuntime(options) {
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);
      if(isProfileAction(action))return await profileAction(ctx,request,action,data,{upstreams});
      if(isDirectoryAction(action))return await directoryAction(ctx,request,action,data,{notify:sendInvitation});
+     if(isHookAction(action))return await hookAction(ctx,request,action,data);
      if(isMappingAction(action))return await mappingAction(ctx,request,action,data);
      if(isWorkforceAction(action))return await workforceAction(ctx,request,action,data);
      if(isEventsAction(action))return await eventsAction(ctx,request,action,data);
@@ -91,8 +94,9 @@ export function createAuthRuntime(options) {
    fail('not_found',404);
   } catch(error) {
    if(!(error instanceof AuthError))throw error;
-   if(path==='/oidc/authorize'||path==='/oidc/authorize/resume'||path===END_SESSION)return new Response('<!doctype html><html lang="en"><meta charset="utf-8"><title>Auth request could not continue</title><h1>Auth request could not continue</h1><p>Check the app and its sign-in address.</p></html>',{status:error.status,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'none'; frame-ancestors 'none'; base-uri 'none'"}});
-   return json({error:error.message},error.status);
+   if(path==='/oidc/authorize'||path==='/oidc/authorize/resume'||path===END_SESSION)return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><title>Auth request could not continue</title><h1>Auth request could not continue</h1><p>${error.message==='hook_timeout'?'An inline sign-in hook timed out. Try signing in again.':error.message==='hook_refused'?'Your employer’s inline hook refused sign-in.':'Check the app and its sign-in address.'}</p></html>`,{status:error.status,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'none'; frame-ancestors 'none'; base-uri 'none'"}});
+   const message=error.message==='hook_timeout'?'An inline sign-in hook timed out. Try signing in again.':error.message==='hook_refused'?'Your employer’s inline hook refused sign-in.':error.message==='hook_invalid_response'?'The inline hook attempted a protected or unapproved change.':undefined;
+   return json({error:error.message,...(message?{message,error_description:message}:{})},error.status);
   }
  }};
 }

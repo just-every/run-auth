@@ -1,3 +1,4 @@
+import {hookServer,verifiedHook} from './hooks-server.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {jwtVerify,createLocalJWKSet,generateKeyPair,SignJWT} from 'jose';
@@ -6,11 +7,14 @@ import {fixture} from './protocol-helpers.mjs';
 import {register} from './webauthn.mjs';
 import {requestProof,finishProof,sessionCookie} from './policy-helpers.mjs';
 test('code flow preserves ES256 ID token claims and adds a userinfo access token',async t=>{
- const r=await fixture(t),grant=await r.authorize();assert.equal(grant.response.status,302);
+ const r=await fixture(t),edge=await hookServer(t);r.edges=edge.edges;
+ r.cookie=(await register(r,r.cookie)).cookie;
+ const registered=await r.call('/api/auth/hooks/register',{method:'POST',cookie:r.cookie,data:{point:'token',clientId:'app',url:'https://hooks.example.com/rer-token',allowedFields:['cost_center']}});assert.equal(registered.status,201);const hook=await registered.json();
+ const grant=await r.authorize();assert.equal(grant.response.status,302);
  const redirect=new URL(grant.response.headers.get('location'));assert.equal(redirect.searchParams.get('iss'),r.origin);assert.equal(redirect.searchParams.get('state'),'state-to-bind');
  const response=await r.redeem(grant);assert.equal(response.status,200);const body=await response.json();assert.ok(body.id_token);assert.ok(body.access_token);assert.equal(body.refresh_token,undefined);
  const keys=await (await r.call('/oidc/jwks')).json();const {payload,protectedHeader}=await jwtVerify(body.id_token,createLocalJWKSet(keys),{issuer:r.origin,audience:'app',currentDate:new Date(r.now)});
- assert.equal(protectedHeader.alg,'ES256');assert.equal(payload.nonce,'nonce-to-bind');assert.equal(payload.email,'owner@example.com');assert.equal(payload.name,'owner');assert.equal(payload.role,undefined);assert.equal(payload.roles,undefined);assert.ok(payload.sid);assert.equal(payload.install_owner,true);assert.ok(payload.email_verified_at<r.now/1000+1);assert.notEqual(payload.sub,'owner');
+ assert.equal(protectedHeader.alg,'ES256');assert.equal(payload.nonce,'nonce-to-bind');assert.equal(payload.email,'owner@example.com');assert.equal(payload.name,'owner');assert.equal(payload.cost_center,'CC-42');assert.ok(verifiedHook(hook.secret,edge.received[0]));assert.equal(payload.role,undefined);assert.equal(payload.roles,undefined);assert.ok(payload.sid);assert.equal(payload.install_owner,true);assert.ok(payload.email_verified_at<r.now/1000+1);assert.notEqual(payload.sub,'owner');
  assert.equal((await r.redeem(grant)).status,400);
  const again=await (await r.redeem(await r.authorize())).json();const next=(await jwtVerify(again.id_token,createLocalJWKSet(keys),{currentDate:new Date(r.now)})).payload;assert.equal(next.sub,payload.sub);assert.equal(next.install_owner,undefined);
 });
