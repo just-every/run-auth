@@ -120,7 +120,8 @@ test('organization and authority journey: switch employers, delegate a scoped re
   await target.getByLabel('Email address',{exact:true}).fill(email);await target.getByRole('button',{name:'Email me a sign-in link'}).click();
   await target.goto((await app.link(prefix)).href);await target.getByRole('button',{name:'Continue to Auth'}).click();
   if(setup){await target.getByRole('checkbox').check();await target.getByRole('button',{name:'Finish setup'}).click();await target.goto(app.origin+'/app/methods');}
-  const response=target.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await target.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await response).status(),200);await target.waitForTimeout(450);
+  await target.waitForURL(app.origin+prefix+'/app/methods');await target.waitForLoadState('load');
+  const response=target.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify')),reloaded=target.waitForEvent('load');await target.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await response).status(),200);await reloaded;
  };
  const shoot=async(name,target=page)=>{
   for(const width of [1440,390]){await target.setViewportSize({width,height:1000});await target.emulateMedia({colorScheme:'light'});
