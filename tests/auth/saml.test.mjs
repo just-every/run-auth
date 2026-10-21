@@ -201,7 +201,8 @@ test('app setup previews typed mappings for three people, launches computed coll
  const functions={lower:op('lower','ABC'),upper:op('upper','abc'),substring:op('substring','abcdef',1,3),replace:op('replace','a-b','-','.'),regex:op('regexReplace','A  B',' +','-'),trim:op('trim',' x '),pad:op('pad','7',3,'0','start'),coalesce:op('coalesce',null,'yes'),manager:{manager:'email'},source:{source:'hr',field:'department'},filter:op('filter',{groups:true},'startsWith','Fin')};
  const values=(await admin('mapping/preview',{...data,program:{language:1,saml:functions}})).rows.find(x=>x.personId==='bob').values.saml;
  assert.deepEqual(values,{lower:'abc',upper:'ABC',substring:'bcd',replace:'a.b',regex:'A-B',trim:'x',pad:'007',coalesce:'yes',manager:'ada@example.com',source:'Sales',filter:[]});
- const expensive=op('regexReplace',op('concat',...Array(4).fill('a'.repeat(1024))),'a?'.repeat(60),'x');
+ const longText=op('concat',...Array(4).fill('a'.repeat(1024))),pattern='.'.repeat(128),replacement='a'.repeat(128);
+ const expensive=op('regexReplace',op('regexReplace',longText,pattern,replacement),pattern,replacement);
  const bounded=await r.admin('mapping/preview',{...data,program:{language:1,nameId:{expression:expensive}}});
  assert.equal(bounded.status,400);assert.equal((await bounded.json()).error,'mapping_budget');
  let tooDeep='x';for(let n=0;n<18;n++)tooDeep=op('lower',tooDeep);
