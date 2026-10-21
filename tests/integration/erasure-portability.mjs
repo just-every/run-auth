@@ -11,7 +11,7 @@ const varsText=vars=>Object.entries(vars).map(([key,value])=>`${key}=${value}`).
 
 export async function erasurePortability(t) {
  const app=await openApp();t.after(()=>app.close());await app.claim();
- for(const name of ['package.json','edition.json','rer-project.json','rer-setup.json','wrangler.jsonc','scripts','src','public','migrations','deploy.json','composition.lock.json','.node-version','OPERATIONS.json','RUN-LOCALLY.md','SEED-COMMAND-CONTRACT.md','AUTH-COMMANDS.md','pnpm-lock.yaml'])await cp(join(root,name),join(app.directory,name),{recursive:true,errorOnExist:true,force:false});
+ for(const name of ['package.json','edition.json','rer-project.json','rer-setup.json','wrangler.jsonc','scripts','src','public','migrations','deploy.json','composition.lock.json','.node-version','OPERATIONS.json','OPERATIONS.md','ACCEPTANCE.md','RUN-LOCALLY.md','SEED-COMMAND-CONTRACT.md','AUTH-COMMANDS.md','pnpm-lock.yaml'])await cp(join(root,name),join(app.directory,name),{recursive:true,errorOnExist:true,force:false});
  const runtime={origin:app.origin,call:(path,{method='GET',data,cookie}={})=>method==='POST'?app.post(path,data,cookie):app.get(path,cookie?{cookie}:{})};
  const owner=await register(runtime,await app.signIn());
  const command=async(path,data,status=200)=>{const response=await app.post('/api/auth/'+path,data,owner.cookie);assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};

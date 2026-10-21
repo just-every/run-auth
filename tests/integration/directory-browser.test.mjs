@@ -113,7 +113,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const hardware=async(context,page)=>{const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});page.on('dialog',dialog=>dialog.accept());};
  await hardware(context,page);
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- const saved=async(action,target=page)=>{const loaded=target.waitForEvent('load');await action();await loaded;};
+ const saved=async(action,target=page)=>{const loaded=target.waitForEvent('load',{timeout:30000});await action();await loaded;};
  const post=async(path,data,status=200,client=context)=>{const response=await client.request.post(app.origin+path,{data,headers:{origin:app.origin}});assert.equal(response.status(),status,path+' '+await response.text());return response.json();};
  const signIn=async(target,email,prefix='',setup=false)=>{
   await target.goto(app.origin+prefix+'/signin?returnTo='+encodeURIComponent(setup?'/setup':'/app/methods'));
@@ -148,7 +148,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');await definition.getByText('Choose permissions',{exact:true}).click();
  for(const id of ['roles.view','people.view','people.factors.reset','groups.view'])await definition.locator(`input[value="${id}"]`).check();
  await definition.getByRole('button',{name:'Preview role'}).click();await expect(definition.locator('[data-role-apply]')).toBeVisible();await shoot('role-preview');await saved(()=>definition.locator('[data-role-apply]').click());
- const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.getByLabel('Role',{exact:true}).selectOption({label:'Engineering support'});
+ const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.locator('[name=roleId]').selectOption({label:'Engineering support'});
  await grant.locator('[name="view.groups"]').selectOption(group.id);await grant.locator('[name="edit.groups"]').selectOption(group.id);
  await grant.getByRole('button',{name:'Preview delegation'}).click();await expect(grant.locator('[data-role-preview]')).toContainText('sam@northwind.example.com');await expect(grant.locator('[data-role-preview]')).toContainText('people.factors.reset');await expect(grant.locator('[data-role-preview]')).toContainText(group.id);await shoot('delegation-preview');await saved(()=>grant.locator('[data-role-apply]').click());
  await helperPage.goto(app.origin+'/app/roles');await expect(helperPage.getByRole('heading',{name:'Scoped factor resets'})).toBeVisible();await shoot('scoped-help-desk',helperPage);
@@ -169,5 +169,12 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const erase=page.locator('[data-erasure-preview]');await erase.getByLabel('Person',{exact:true}).selectOption(worker.id);await erase.getByRole('button',{name:'Preview erasure'}).click();await expect(erase.locator('[data-erasure-confirm]')).toBeVisible();await shoot('erasure-preview');await erase.getByLabel('Type the confirmation phrase').fill('ERASE');await erase.getByLabel('Authorize the listed remote deletion and revocation calls.').check();await saved(()=>erase.getByRole('button',{name:'Confirm erasure'}).click());
  await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();await page.getByText('Per-store completion and remote removal').click();await shoot('erasure-receipt');
  const retry=page.locator('[data-erasure-retry]');await retry.getByRole('checkbox').check();await saved(()=>retry.getByRole('button',{name:'Retry remote removal'}).click());await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();
+ const subsidiaryApp=await post(prefix+'/api/auth/company-apps/create',{name:'Subsidiary records',entityId:'https://subsidiary-records.example.com',acsUrl:'https://subsidiary-records.example.com/acs'},201);assert.ok(subsidiaryApp.id);
+ await post(prefix+'/api/auth/erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ const resetPreview=await post(prefix+'/api/auth/erasure/preview',{kind:'organization',target:prefix.split('/')[2]});
+ await post(prefix+'/api/auth/erasure/confirm',{previewId:resetPreview.id,confirmation:'RESET '+app.origin+prefix,confirmRemoteDeletion:true});
+ assert.equal((await context.request.get(app.origin+prefix+'/.well-known/openid-configuration')).status(),404);
+ await page.goto(app.origin+'/app/erasure');const retained=page.locator('article').filter({has:page.getByRole('heading',{name:'organization erasure · remote_unfinished'})});await expect(retained.getByText('Retained after organization reset')).toBeVisible();await retained.getByText('Per-store completion and remote removal').click();await shoot('erased-organization-receipt');
+ await retained.getByRole('checkbox').check();await saved(()=>retained.getByRole('button',{name:'Retry remote removal'}).click());
  assert.ok(!(await (await context.request.get(app.origin+'/api/auth/people')).json()).some(p=>p.email==='erin@northwind.example.com'));assert.deepEqual(errors,[]);
 });
