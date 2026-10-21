@@ -100,6 +100,7 @@ test('agents journey: mint a key, an agent files a suspension, a person approves
  await page.goto(app.origin+'/app/activity');
  await expect(page.locator('[data-activity-detail]',{hasText:'Directory review agent'}).first()).toBeVisible();
  await expect(page.getByText('Agent Proposal Done')).toBeVisible();
+ await expect(page.getByText('Service app Northwind access reconciler · Accountable: owner@example.com').first()).toBeVisible();
  await shoot('activity');
  assert.ok(!(await page.content()).includes(key),'Activity never shows the key');
  assert.deepEqual(errors,[],'no browser runtime errors');

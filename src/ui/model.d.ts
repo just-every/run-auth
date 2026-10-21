@@ -62,6 +62,8 @@ export interface AuthPasskey {
 }
 
 export interface AuthActivity {
+  service_name?: string | null
+  service_owner_email?: string | null
   id?: string | number
   actor_email?: string | null
   actorEmail?: string | null

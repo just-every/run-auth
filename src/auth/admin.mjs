@@ -32,7 +32,7 @@ export async function model(ctx,request,page='account') {
    all(ctx,'SELECT id,email,display_name AS name,role,status,created_at FROM oa_operators ORDER BY email'),
    all(ctx,'SELECT domain,created_at FROM auth_domains ORDER BY domain'),
    appsModel(ctx),
-   all(ctx,'SELECT a.*,p.email AS actor_email,d.detail FROM auth_activity a LEFT JOIN oa_operators p ON p.id=a.actor_id LEFT JOIN auth_activity_details d ON d.activity_id=a.id ORDER BY a.id DESC LIMIT 100'),
+   all(ctx,'SELECT a.*,p.email AS actor_email,service.name AS service_name,custodian.email AS service_owner_email,d.detail FROM auth_activity a LEFT JOIN oa_operators p ON p.id=a.actor_id LEFT JOIN auth_admin_service_apps service ON a.actor_id='admin-service:'||service.id LEFT JOIN oa_operators custodian ON custodian.id=service.owner_id LEFT JOIN auth_activity_details d ON d.activity_id=a.id ORDER BY a.id DESC LIMIT 100'),
    all(ctx,'SELECT domain,provider_id FROM oa_domain_rules ORDER BY domain'),
   ]);
   Object.assign(result,apps);

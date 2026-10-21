@@ -73,7 +73,10 @@ export async function writeAdmin(ctx,actor,path,method,data) {
   if(!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)||domain.length>253)fail('invalid_domain');
   if(method==='PUT'&&(!providerId||!configuredProvider(ctx,providerId)))fail('unknown_provider');
   const guard=actor.guard;
-  const statement=providerId?ctx.db.prepare(`INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) SELECT ?,?,?,? WHERE ${guard.clause} ON CONFLICT(domain) DO UPDATE SET provider_id=excluded.provider_id,created_by=excluded.created_by,created_at=excluded.created_at`).bind(domain,providerId,actor.actorId,ctx.now(),...guard.args):ctx.db.prepare(`DELETE FROM oa_domain_rules WHERE domain=? AND ${guard.clause}`).bind(domain,...guard.args);
+  // Base's policy row keeps its accountable human custodian as created_by.
+  // Authority still comes solely from the service guard; Activity records the
+  // actual machine principal and its owner, never a fabricated human session.
+  const statement=providerId?ctx.db.prepare(`INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) SELECT ?,?,?,? WHERE ${guard.clause} ON CONFLICT(domain) DO UPDATE SET provider_id=excluded.provider_id,created_by=excluded.created_by,created_at=excluded.created_at`).bind(domain,providerId,actor.ownerId,ctx.now(),...guard.args):ctx.db.prepare(`DELETE FROM oa_domain_rules WHERE domain=? AND ${guard.clause}`).bind(domain,...guard.args);
   await actor.commit([statement]);await emit(ctx,'policy.domain_rule_changed',{type:'domain',id:domain},{requiredProvider:providerId||null});return json({ok:true});
  }
  // No scope opens identity, custody, recovery, role/resource-set or credential
