@@ -118,8 +118,9 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
  await command('erasure/confirm',{previewId:held.id,confirmation:'ERASE',confirmRemoteDeletion:true},409);assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,200);
  await command('erasure/hold',{release:true,id:hold.id});
  const plan=await command('erasure/preview',{kind:'person',target:'ada'});assert.ok(plan.stores.find(s=>s.store==='auth_passkeys').deleted>=2);assert.ok(plan.stores.find(s=>s.store==='auth_import_rows').deleted);
- scim.fail(1,403);
- const erased=await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:true});assert.equal(erased.local,'complete');assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,401);
+ await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:true,destinations:['https://unapproved.example.com']},400);
+ const erased=await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:false,destinations:[]});assert.equal(erased.local,'complete');assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,401);
+ assert.equal(remote(scim,'ada').active,false,'revocation does not wait for downstream deletion consent');
  const receipt=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(receipt.status,'remote_unfinished');assert.ok(receipt.remote.some(task=>task.state==='blocked'));assert.ok(receipt.stores.every(store=>store.status==='complete'));
  const tables=(await r.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND (name GLOB 'auth_*' OR name GLOB 'oa_*' OR name GLOB 'rer_*')").all()).results;
  for(const {name} of tables) {
@@ -130,8 +131,15 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
  const activity=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(activity.some(row=>row.subject_id===erased.reference));assert.ok(activity.some(row=>row.event==='erasure_completed'));
  assert.equal((await r.call('/api/auth/move-in/subjects.csv?batch='+staged.batchId,{cookie:r.owner.cookie})).status,200);
  const later=await r.db.prepare('SELECT epoch FROM rer_portability_state').first();assert.ok(later.epoch>0);assert.ok((await r.db.prepare('SELECT COUNT(*) AS n FROM rer_portability_journal').first()).n>0);
- await command('erasure/retry',{receiptId:erased.id,confirmRemoteDeletion:true});assert.equal(remote(scim,'ada'),undefined);
+ assert.ok(receipt.remote.some(task=>task.kind==='scim-delete'&&task.consentRequired));
+ scim.fail(1,403);await command('erasure/retry',{receiptId:erased.id,confirmRemoteDeletion:true,destinations:['https://scim.example.com']});
+ const refused=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.ok(refused.remote.some(task=>task.kind==='scim-delete'&&task.lastStatus===403));
+ await command('erasure/retry',{receiptId:erased.id,confirmRemoteDeletion:true,destinations:['https://scim.example.com']});assert.equal(remote(scim,'ada'),undefined);
  const complete=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(complete.status,'remote_unfinished');assert.ok(complete.remote.some(task=>task.kind==='scim-delete'&&task.state==='verified'));assert.ok(complete.remote.some(task=>task.kind==='partner-delete'&&task.state==='blocked'),'independently held partner data remains explicitly unresolved');
+ await command('erasure/abandon',{receiptId:erased.id,confirmation:'ABANDON',destinations:complete.remote.filter(x=>x.state!=='verified').map(x=>x.partner)});
+ const abandoned=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(abandoned.status,'remote_abandoned');assert.ok(abandoned.remote.some(x=>x.state==='abandoned'));assert.ok((await r.db.prepare('SELECT sealed_work FROM auth_erasure_remote WHERE receipt_id=?').bind(erased.id).all()).results.every(x=>x.sealed_work===null));
+ const integrityPath='/api/auth/erasure/integrity?receiptId='+erased.id;let verified=await (await r.call(integrityPath,{cookie:r.owner.cookie})).json();assert.equal(verified.valid,true);assert.ok(verified.checked>0);
+ const committedEvent=await r.db.prepare('SELECT id FROM auth_activity ORDER BY id LIMIT 1').first();await r.db.prepare("UPDATE auth_activity SET event='tampered' WHERE id=?").bind(committedEvent.id).run();verified=await (await r.call(integrityPath,{cookie:r.owner.cookie})).json();assert.equal(verified.valid,false);assert.ok(verified.changed>0);
 });
 
 test('app erasure removes connector custody and protected organization reset erases its last owner without touching another employer',async t=>{
@@ -142,7 +150,7 @@ test('app erasure removes connector custody and protected organization reset era
  await admin('company-apps/assign',{appId:app.id,principalType:'person',principalId:'ada',role:'employee'});assert.ok(remote(scim,'ada'));
  await admin('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
  let preview=await admin('erasure/preview',{kind:'app',target:app.id});
- const erased=await admin('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true});assert.equal(erased.local,'complete');
+ const erased=await admin('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true,destinations:[...new Set(preview.remote.map(x=>x.partner))]});assert.equal(erased.local,'complete');
  assert.equal(await r.db.prepare('SELECT app_id FROM auth_scim_connectors WHERE app_id=?').bind(app.id).first(),null);assert.equal(await r.db.prepare('SELECT id FROM auth_apps WHERE id=?').bind(app.id).first(),null);assert.equal(remote(scim,'ada'),undefined);assert.equal((await r.call('/api/auth/me',{cookie:r.ada})).status,200,'app erasure preserves the person');
  const org=await admin('organizations/create',{name:'Subsidiary to be erased'},201),other=await admin('organizations/create',{name:'Retained partner workspace'},201);
  const scoped=id=>({origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+id+path,options)});
@@ -150,11 +158,12 @@ test('app erasure removes connector custody and protected organization reset era
  const subsidiaryApp=await command(selected,owner.cookie,'company-apps/create',{entityId:'https://subsidiary-crm.example.com',acsUrl:'https://subsidiary-crm.example.com/acs'},201);
  await command(selected,owner.cookie,'provisioning/connect',{appId:subsidiaryApp.id,baseUrl:BASE,token:scim.token,pushGroups:false},201);
  await command(selected,owner.cookie,'company-apps/assign',{appId:subsidiaryApp.id,principalType:'person',principalId:(await (await selected.call('/api/auth/me',{cookie:owner.cookie})).json()).user.id,role:'employee'});
- scim.fail(1,403);
+ scim.fail(2,403);
  await command(selected,owner.cookie,'erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
- preview=await command(selected,owner.cookie,'erasure/preview',{kind:'organization',target:org.id});
- assert.equal((await selected.call('/api/auth/erasure/confirm',{method:'POST',cookie:owner.cookie,data:{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true}})).status,400);
- const reset=await command(selected,owner.cookie,'erasure/confirm',{previewId:preview.id,confirmation:'RESET '+r.origin+'/org/'+org.id,confirmRemoteDeletion:true});assert.equal(reset.local,'complete');assert.ok(reset.journal.proof);assert.ok(reset.receipt.stores.find(s=>s.store==='oa_operators').deleted);
+ await command(selected,owner.cookie,'erasure/preview',{kind:'organization',target:org.id},403);
+ preview=await admin('erasure/preview',{kind:'organization',target:org.id});
+ await admin('erasure/confirm',{organizationId:org.id,previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true},400);
+ const reset=await admin('erasure/confirm',{organizationId:org.id,previewId:preview.id,destinations:[...new Set(preview.remote.map(x=>x.partner))],confirmation:'RESET '+r.origin+'/org/'+org.id,confirmRemoteDeletion:true});assert.equal(reset.local,'complete');assert.ok(reset.journal.proof);assert.ok(reset.receipt.stores.find(s=>s.store==='oa_operators').deleted);
  assert.equal((await selected.call('/api/auth/me',{cookie:owner.cookie})).status,404,'erased organization cannot reappear as an empty issuer');assert.equal((await selected.call('/.well-known/openid-configuration')).status,404);
  assert.equal((await kept.call('/api/auth/me',{cookie:keptOwner.cookie})).status,200);assert.equal((await r.call('/api/auth/me',{cookie:r.owner.cookie})).status,200);
  const registry=await r.db.prepare('SELECT * FROM auth_organizations WHERE id=?').bind(org.id).first();assert.equal(registry.status,'erased');assert.equal(registry.name,reset.reference);
@@ -162,7 +171,9 @@ test('app erasure removes connector custody and protected organization reset era
  assert.doesNotMatch(JSON.stringify(retained),/sealed_work|sealed_token|owner@example.com/);
  await command(kept,keptOwner.cookie,'erasure/retry',{organizationId:org.id,receiptId:reset.id,confirmRemoteDeletion:true},403);
  await command(r,r.ada,'erasure/retry',{organizationId:org.id,receiptId:reset.id,confirmRemoteDeletion:true},403);
- const retried=await admin('erasure/retry',{organizationId:org.id,receiptId:reset.id,confirmRemoteDeletion:true});
+ const retried=await admin('erasure/retry',{organizationId:org.id,receiptId:reset.id,confirmRemoteDeletion:true,destinations:['https://scim.example.com']});
  assert.ok(retried.receipts.find(x=>x.id===reset.id).remote.some(x=>x.kind==='scim-delete'&&x.state==='verified'));
  assert.equal((await selected.call('/.well-known/openid-configuration')).status,404,'retained custody never reactivates the erased issuer');
+ const integrity=await (await r.call('/api/auth/erasure/integrity?organizationId='+org.id+'&receiptId='+reset.id,{cookie:r.owner.cookie})).json();assert.equal(integrity.valid,true);assert.ok(integrity.checked>0);
+ assert.equal((await r.call('/api/auth/erasure/journal?organizationId='+org.id+'&receiptId='+reset.id,{cookie:r.owner.cookie})).status,200);
 });

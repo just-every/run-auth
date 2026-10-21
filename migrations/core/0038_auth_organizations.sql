@@ -10,7 +10,7 @@ CREATE TABLE auth_organizations (
 );
 
 CREATE TABLE auth_org_invitations (
- person_id TEXT PRIMARY KEY REFERENCES oa_operators(id),
+ person_id TEXT PRIMARY KEY REFERENCES oa_operators(id) ON DELETE CASCADE,
  expires_at INTEGER NOT NULL,
  cancelled_at INTEGER,
  created_by TEXT NOT NULL

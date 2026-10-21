@@ -11,6 +11,7 @@ const text=v=>typeof v==='string'&&v.length>0;
 export async function planErasure(ctx,kind,target,reference='erased:'+random()) {
  if(!['person','app','organization','installation'].includes(kind))fail('invalid_erasure_kind');
  if(typeof target!=='string'||!target||target.length>512)fail('invalid_erasure_target');
+ if(kind==='organization'&&ctx.organizationId!=='root'&&!ctx.installationAuthority)fail('installation_owner_required',403);
  if(kind==='organization'&&target!==organizationOf(ctx))fail('wrong_erasure_organization',403);
  if(kind==='installation'&&(!ctx.local||ctx.organizationId&&ctx.organizationId!=='root'))fail('local_installation_reset_required',403);
  const reset=['organization','installation'].includes(kind),stores=await snapshot(ctx);
@@ -108,6 +109,12 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
    remote.push({kind:'partner-delete',partner,work:null});
   }
  }
+ // Delivered event/hook copies are independently held processor data. A
+ // local erase cannot silently treat their deletion as a verified outcome.
+ const events=new Set(values(stores,'auth_events').filter(row=>reset||contains(row,identifiers)).map(row=>row.id));
+ const subscriptions=new Set(values(stores,'auth_event_deliveries').filter(row=>reset||events.has(row.event_id)).map(row=>row.subscription_id));
+ for(const subscription of values(stores,'auth_event_subscriptions'))if(reset||subscriptions.has(subscription.id))remote.push({kind:'partner-delete',partner:new URL(subscription.url).origin,work:null});
+ for(const hook of values(stores,'auth_hooks'))if(reset||values(stores,'auth_activity_details').some(row=>contains(row,identifiers)&&String(row.detail).includes(hook.id)))remote.push({kind:'partner-delete',partner:new URL(hook.url).origin,work:null});
  const counts=[];
  for(const table of stores.values()) {
   const deleted=table.rows.filter((_,i)=>removed.has(rowId(table.name,i))).length,anonymized=table.rows.filter((_,i)=>updates.has(rowId(table.name,i))&&!removed.has(rowId(table.name,i))).length;
@@ -121,4 +128,4 @@ export const keyOf=rowId;
 export const publicPlan=plan=>({kind:plan.kind,target:plan.target,confirmation:plan.confirmation,stores:plan.counts,
  remote:plan.remote.map(r=>({kind:r.kind,partner:r.partner,state:r.work?'awaiting-confirmation':'partner-action-required'})),
  holds:plan.holds.map(h=>({id:h.id,kind:h.kind,reason:h.reason})),policyConfigured:Boolean(plan.policy?.configured),
- limits:['Already delivered messages and independently held provider data cannot be recalled.','Ask every named partner to delete its independently held copies and confirm completion.','Save the receipt and signed erasure journal before local reset; an old archive cannot discover a later journal.']});
+ limits:['Mailbox/provider owners must delete already delivered messages; Auth cannot recall them.','Installation owners must delete exported archive/backup copies or supply the later erasure journal on restore.','External audit receiver owners must delete delivered event copies; Auth cannot verify that independent storage.','Ask every named partner to delete its independently held copies and confirm completion.','Save the receipt and signed erasure journal before local reset; an old archive cannot discover a later journal.']});

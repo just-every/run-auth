@@ -42,6 +42,10 @@ export async function roleState(ctx,s) {
  if(!p||p.status!=='active')fail('session_authority_changed',403);
  const legacy=['owner','admin'].includes(p.role);
  const entries=legacy?[{id:null,role:{id:p.role,rank:LEGACY_RANK[p.role],permissions:BUILTINS[0].permissions},resources:ALL_RESOURCES}]:activeGrants.filter(g=>g.person_id===s.person_id);
- const rankOf=id=>Math.max(LEGACY_RANK[dir.people.get(id)?.role]??0,...activeGrants.filter(g=>g.person_id===id).map(g=>g.role.rank));
- return {epoch,dir,roles,grants,activeGrants,cases,apps,memberships,person:p,legacy,entries,rank:rankOf(s.person_id),rankOf};
+ // An unrevoked administrator assignment protects its target account even
+ // while suspended or after its sponsor loses authority. Only revocation
+ // removes that classification. Inactive assignments grant the actor nothing.
+ const rankOf=id=>Math.max(LEGACY_RANK[dir.people.get(id)?.role]??0,...grants.filter(g=>g.person_id===id&&g.revoked_at===null).map(g=>roles.get(g.role_id)?.rank??0));
+ const rank=Math.max(LEGACY_RANK[p.role]??0,...activeGrants.filter(g=>g.person_id===s.person_id).map(g=>g.role.rank));
+ return {epoch,dir,roles,grants,activeGrants,cases,apps,memberships,person:p,legacy,entries,rank,rankOf};
 }

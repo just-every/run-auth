@@ -1,6 +1,7 @@
 import {DAY,random,hash,one,all,run,requireSession,audit,json,fail} from './core.mjs';
 import {requireLocalEmail,authority,requireAuthority} from './local-email.mjs';
 import {emit} from './events/store.mjs';
+import {requireAccountRank} from './ranks.mjs';
 export async function startRecovery(ctx,request) {
  const s=await requireSession(ctx,request),id=random(),now=ctx.now();
  if(!await one(ctx,'SELECT id FROM auth_passkeys WHERE person_id=? LIMIT 1',s.person_id))fail('no_passkeys');
@@ -14,7 +15,7 @@ export async function changeRecovery(ctx,request,data,action) {
  const r=await one(ctx,'SELECT * FROM auth_recoveries WHERE id=? AND cancelled_at IS NULL AND completed_at IS NULL',id);if(!r)fail('recovery_unavailable',404);
  if(action==='approve') {
   if(r.person_id===s.person_id)fail('distinct_admin_required',403);
-  requireLocalEmail(ctx,s);const guard=authority(ctx,s,['owner','admin']);
+  requireLocalEmail(ctx,s);const guard=await requireAccountRank(ctx,s,r.person_id,authority(ctx,s,['owner','admin']));
   const result=await run(ctx,`UPDATE auth_recoveries SET approved_by=? WHERE id=? AND cancelled_at IS NULL AND completed_at IS NULL AND ${guard.clause}`,s.person_id,id,...guard.args);
   if(!result.meta.changes){await requireAuthority(ctx,s,guard);fail('recovery_changed',409);}
  } else if(action==='cancel') {

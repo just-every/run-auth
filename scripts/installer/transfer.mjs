@@ -5,36 +5,44 @@
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { localPortability } from '@runeditrun/rer/portability';
-import { excludedTables } from '@runeditrun/rer/modules/portability';
 import { fileRecords } from '@runeditrun/rer/modules/portability/files';
 import { readSettings } from '@runeditrun/rer/adapter-settings';
 import { RerError } from '@runeditrun/rer/errors';
+import { portableTables, registeredOrganizations, resolveStore, StoreRegistryError } from '../../src/auth/stores.mjs';
 
-// Kept: people, emails, passkey public keys, clients, grants, pairwise subjects,
-// former subjects, the audit log, grant maps and withdrawn RER keys (withdrawal
-// is for good). Left out: sessions and one-time state, signing keys, the pairwise
-// key (auth_settings), recovery and preparer secrets, move-in staging rows, link
-// transients and the RER keys an owner trusted, SAML signing keys and sessions,
-// provisioning connectors (their credentials stay with the installation) and
-// queue, OIDC app secrets, codes and sessions, and event subscriptions (their
-// secrets) and deliveries.
+// Base still owns the archive, journal fence and atomic restore. Its default
+// inclusion is replaced with the same explicit store decisions erasure uses.
+// Even a store created after preflight cannot silently enter an archive.
 export const POLICY = {
  product: 'identity-auth',
- includeTables: ['oa_operators', 'oa_external_identities', 'oa_domain_rules', 'oa_invitation_cancellations', 'oa_bootstrap', 'oa_first_run', 'auth_rer_withdrawals'],
- excludeTables: ['auth_sessions', 'auth_challenges', 'auth_limits', 'auth_codes', 'auth_assertions', 'auth_signing_keys', 'auth_settings',
-  'auth_recoveries', 'auth_recovery_tokens', 'auth_notices', 'auth_upstream_proofs', 'auth_agent_%', 'auth_import_rows',
-  'auth_link_requests', 'auth_link_tokens', 'auth_link_codes', 'auth_session_clients', 'auth_logout_deliveries', 'auth_rer_%',
-  'auth_saml_keys', 'auth_saml_requests', 'auth_saml_sessions', 'auth_saml_logouts', 'auth_scim_connectors', 'auth_provisioning', 'auth_oidc_secrets', 'auth_oidc_codes', 'auth_oidc_sessions', 'auth_oidc_logouts',
-  'auth_event_subscriptions', 'auth_event_deliveries', 'auth_link_intents', 'auth_admin_service_assertions', 'auth_resource_services', 'auth_resource_assertions', 'auth_erasure_previews', 'auth_erasure_commits', 'auth_erasure_remote', 'auth_role_previews'],
+ includeTables: portableTables(),
+ excludeTables: ['%'],
  requiredConfiguration: ['AUTH_ENCRYPTION_KEY'],
 };
-export function organizationPolicy(namespaces=[]) {
- const prefixes=[...new Set(namespaces)];
- if(prefixes.some(prefix=>!/^org_[a-f0-9]{32}_$/.test(prefix)))throw new RerError('restore_refused','Invalid organization storage namespace.',4);
- return {...POLICY,includeTables:[...POLICY.includeTables,...prefixes.flatMap(prefix=>POLICY.includeTables.map(table=>prefix+table))],excludeTables:[...POLICY.excludeTables,...prefixes.flatMap(prefix=>[...excludedTables,...POLICY.excludeTables].map(table=>prefix+table))]};
+function registryFailure(error) {
+ if(error instanceof StoreRegistryError)throw new RerError('restore_refused',`Restore/export refused (${error.code}): the managed store inventory requires review.`,4);
+ throw error;
 }
-const engineFor=namespaces=>localPortability({database:'auth',policy:organizationPolicy(namespaces)});
-const namespaces=async root=>withDatabase(root,async db=>(await db.prepare("SELECT namespace FROM auth_organizations ORDER BY id").all()).results.map(row=>row.namespace));
+export function organizationPolicy(organizations=[]) {
+ try{return {...POLICY,includeTables:portableTables(organizations)};}catch(error){registryFailure(error);}
+}
+const engineFor=organizations=>localPortability({database:'auth',policy:organizationPolicy(organizations)});
+
+function checkStores(names,organizations,portable=false) {
+ for(const name of names) {
+  const store=resolveStore(name,organizations);
+  if(portable&&(!store||!store.portable))throw new StoreRegistryError('nonportable_store',name);
+ }
+}
+async function inventory(db) {
+ const tables=(await db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all()).results.map(row=>row.name);
+ // A genuinely empty restore destination has no organization registry yet;
+ // Base applies the product migrations before its own destination validation.
+ const organizations=registeredOrganizations(tables.includes('auth_organizations')
+  ? (await db.prepare('SELECT id,namespace,status FROM auth_organizations ORDER BY id').all()).results : []);
+ checkStores(tables,organizations);
+ return organizations;
+}
 
 async function withDatabase(root, work) {
  const { getPlatformProxy } = createRequire(join(root, 'package.json'))('wrangler');
@@ -44,6 +52,8 @@ async function withDatabase(root, work) {
 const settings = async root => (await readSettings(root, { file: '.dev.vars' })).values;
 
 async function exportAuth(context) {
+ let organizations;
+ try{organizations=await withDatabase(context.root,inventory);}catch(error){registryFailure(error);}
  const vars = await settings(context.root);
  const { writeGrantMap, issuerOf } = await import('../../src/auth/links/grant-map.mjs');
  const map = await withDatabase(context.root, async db => {
@@ -53,7 +63,14 @@ async function exportAuth(context) {
   return writeGrantMap(ctx);
  });
  context.store.report(`Signed grant map: ${map.sectors} apps, ${map.subjects} pairwise subjects, ${map.former} former subjects.`);
- return { ...await engineFor(await namespaces(context.root)).export(context), grantMap: map };
+ const result=await engineFor(organizations).export(context);
+ // Check Base's actual catalog too, including excluded tables: migrations or
+ // concurrent schema additions must not turn a refusal into a successful export.
+ try {
+  checkStores(result.tables.map(table=>table.name),organizations,true);
+  checkStores(result.exclusions.tables,organizations);
+ }catch(error){registryFailure(error);}
+ return {...result,grantMap:map};
 }
 
 // A local install serves only loopback apps and a hosted one never does; a dev
@@ -68,14 +85,28 @@ export function refusal(table, row, local, validateClientOrigin) {
 async function importAuth(context) {
  // rer import restores into this checkout: local unless its settings say it is configured as hosted.
  const local = (await settings(context.root).catch(() => ({}))).AUTH_LOCAL !== 'false', { validateClientOrigin } = await import('../../src/auth/core.mjs');
- const organizationNamespaces=[];
+ const organizations=[];let manifest;
  for await (const record of fileRecords(context.path)) {
+  if(record.kind==='manifest')manifest=record;
   for (const item of record.kind === 'part' ? record.items : []) {
-   if(item.kind==='row'&&item.table==='auth_organizations')organizationNamespaces.push(item.row.namespace);
-   const reason = item.kind === 'row' ? refusal(item.table, item.row, local, validateClientOrigin) : null;
-   if (reason) throw new RerError('restore_refused', `Restore refused (auth_import): ${reason}.`, 4);
+   if(item.kind==='row'&&item.table==='auth_organizations')organizations.push(item.row);
   }
  }
- return engineFor(organizationNamespaces).import(context);
+ try {
+  registeredOrganizations(organizations);
+  checkStores(manifest.tables.map(table=>table.name),organizations,true);
+  checkStores(manifest.excludedTables,organizations);
+  for(const table of manifest.tables)checkStores(table.dependencies,organizations,true);
+  // Registry rows are authenticated by the complete archive before namespace
+  // translation. Apply Auth's admission checks to every organization's rows.
+  for await(const record of fileRecords(context.path))for(const item of record.kind==='part'?record.items:[])if(item.kind==='row') {
+   const store=resolveStore(item.table,organizations);
+   if(!store?.portable)throw new StoreRegistryError('nonportable_store',item.table);
+   const reason=refusal(store.name,item.row,local,validateClientOrigin);
+   if(reason)throw new RerError('restore_refused',`Restore refused (auth_import): ${reason}.`,4);
+  }
+  await withDatabase(context.root,inventory);
+ }catch(error){registryFailure(error);}
+ return engineFor(organizations).import(context);
 }
 export const portability = { export: exportAuth, import: importAuth };

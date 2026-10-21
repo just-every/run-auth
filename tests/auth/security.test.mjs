@@ -92,8 +92,35 @@ test('recovery waits 72 hours, notifies every session, supports cancellation and
  assert.equal((await r.call('/api/auth/people/role',post({id:'admin',role:'admin'},ownerAgain.cookie))).status,200);
  const admin=await register(r,await emailSession(r,'admin@example.com'));
  const started=await r.call('/api/auth/recovery/start',post({},resumed)),again=await started.json();assert.equal(started.status,201);
- assert.equal((await r.call('/api/auth/recovery/approve',post({id:again.id},admin.cookie))).status,200);assert.equal((await r.call('/api/auth/recovery/complete',post({id:again.id},resumed))).status,200);
- const approvedReplacement=await register(r,resumed);assert.equal((await r.call('/api/auth/people',{cookie:approvedReplacement.cookie})).status,200);
+ // Equal or higher administrators are viewable, but their accounts cannot be
+ // changed or exported by this administrator through any administration door.
+ assert.equal((await r.call('/api/auth/people/suspend',post({personId:'owner'},admin.cookie))).status,403);
+ assert.equal((await r.call('/api/auth/people/role',post({id:'owner',role:'member'},admin.cookie))).status,403);
+ assert.equal((await r.call('/api/auth/recovery/approve',post({id:again.id},admin.cookie))).status,403);
+ assert.equal((await r.call('/api/auth/recovery/complete',post({id:again.id},resumed))).status,403);
+ await r.person('peer','peer@example.com','admin');
+ const peer=await register(r,await emailSession(r,'peer@example.com')),peerEmail=await emailSession(r,'peer@example.com');
+ const peerRecovery=await (await r.call('/api/auth/recovery/start',post({},peerEmail))).json();
+ for(const [path,data] of [
+  ['/people/suspend',{personId:'peer'}],
+  ['/people/role',{id:'peer',role:'member'}],
+  ['/directory/edit',{personId:'peer',set:{title:'Changed by peer'}}],
+  ['/directory/edit',{personId:'peer',state:'suspended'}],
+  ['/recovery/approve',{id:peerRecovery.id}],
+ ])assert.equal((await r.call('/api/auth'+path,post(data,admin.cookie))).status,403,path);
+ assert.equal((await r.call('/api/auth/roles/people?personId=peer',{cookie:admin.cookie})).status,200,'rank does not block viewing an administrator');
+ assert.equal((await r.call('/api/auth/roles/export?personId=peer',{cookie:admin.cookie})).status,403,'person export carries the account rank fence');
+ assert.equal((await r.db.prepare("SELECT role,status,display_name FROM oa_operators WHERE id='peer'").first()).role,'admin');
+ assert.equal((await r.db.prepare('SELECT approved_by FROM auth_recoveries WHERE id=?').bind(peerRecovery.id).first()).approved_by,null);
+ assert.equal((await r.call('/api/auth/recovery/approve',post({id:peerRecovery.id},ownerAgain.cookie))).status,200,'owner can approve a lower administrator');
+ assert.equal((await r.call('/api/auth/recovery/complete',post({id:peerRecovery.id},peerEmail))).status,200);
+ assert.equal((await r.call('/api/auth/directory/edit',post({personId:'peer',set:{title:'Owner-approved title'}},ownerAgain.cookie))).status,200);
+ assert.equal((await r.call('/api/auth/people/role',post({id:'peer',role:'member'},ownerAgain.cookie))).status,200,'owner can demote a lower administrator');
+ assert.equal((await r.call('/api/auth/people/role',post({id:'peer',role:'admin'},ownerAgain.cookie))).status,200);
+ assert.equal((await r.call('/api/auth/people/suspend',post({personId:'peer'},ownerAgain.cookie))).status,200,'owner can suspend a lower administrator');
+ assert.equal((await r.call('/api/auth/directory/edit',post({personId:'peer',state:'active'},admin.cookie))).status,403,'suspension does not remove administrator protection');
+ assert.equal((await r.call('/api/auth/directory/edit',post({personId:'peer',state:'active'},ownerAgain.cookie))).status,200,'owner can restore a lower administrator');
+ assert.equal((await r.call('/api/auth/me',{cookie:peer.cookie})).status,401,'completed recovery ended the original hardware session');
 });
 test('wrangler-installed recovery token is owner-only and one use',async t=>{
  const r=await fixture(t),owner=await register(r,await emailSession(r,'owner@example.com')),emailCookie=await emailSession(r,'owner@example.com'),raw='R'.repeat(43);
@@ -160,11 +187,25 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  assert.equal((await a.call('/api/auth/people/role',post({id:contractorId,role:'admin'},contractor.cookie))).status,403);
  await command(a,adminA.cookie,'organizations/invite',{email:'recover@example.com',name:'Recovery employee'},201);
  const worker=await register(a,await emailSession(a,'recover@example.com')),workerId=(await (await a.call('/api/auth/me',{cookie:worker.cookie})).json()).user.id;
+ for(const roleId of ['manager','group-owner','app-owner']) {
+  const preview=await command(a,adminA.cookie,'roles/preview',{kind:'grant',personId:workerId,roleId,resources:{view:{people:[workerId],apps:[appA.id]},edit:{apps:[appA.id]}}});
+  await command(a,adminA.cookie,'roles/apply',{previewId:preview.previewId});
+ }
+ const workerView=await (await a.call('/api/auth/roles/people?personId='+workerId,{cookie:adminA.cookie})).json();
+ assert.equal(workerView.people[0].canResetFactors,true,'manager/group/app ownership does not confer administrator custody');
  const recovery=await command(a,adminA.cookie,'roles/recovery-case',{action:'open',personId:workerId,reason:'Employee reported a lost device'},201);
  await delegate('help-desk',{view:{people:[workerId],cases:[recovery.caseId]},edit:{people:[workerId],cases:[recovery.caseId]}});
  await command(a,contractor.cookie,'roles/recovery-case',{action:'verify',caseId:recovery.caseId,verification:{method:'employee-in-person',reference:'Recorded support appointment synthetic-auth-6'}});
  await command(a,contractor.cookie,'roles/reset-factors',{personId:workerId,caseId:recovery.caseId,reason:'Verified replacement enrollment'});
  assert.equal((await a.call('/api/auth/me',{cookie:worker.cookie})).status,401);
+ await command(a,adminA.cookie,'organizations/invite',{email:'helpdesk@example.com',name:'Help desk verifier'},201);
+ const helpdesk=await register(a,await emailSession(a,'helpdesk@example.com')),helpdeskId=(await (await a.call('/api/auth/me',{cookie:helpdesk.cookie})).json()).user.id;
+ const helperGrant=await command(a,adminA.cookie,'roles/preview',{kind:'grant',personId:helpdeskId,roleId:'help-desk',resources:{view:{people:[contractorId]},edit:{people:[contractorId]}}});
+ await command(a,adminA.cookie,'roles/apply',{previewId:helperGrant.previewId});
+ await command(a,adminA.cookie,'directory/edit',{personId:contractorId,state:'suspended'});
+ assert.equal((await a.call('/api/auth/roles/command',post({action:'/people/restore',params:{personId:contractorId}},helpdesk.cookie))).status,403,'suspended scoped administrator keeps its protected account rank');
+ await command(a,adminA.cookie,'directory/edit',{personId:contractorId,state:'active'});
+
  const discoveryA=await (await a.call('/.well-known/openid-configuration')).json(),discoveryB=await (await b.call('/.well-known/openid-configuration')).json();
  assert.equal(discoveryA.issuer,r.origin+'/org/'+north.id);assert.equal(discoveryB.issuer,r.origin+'/org/'+south.id);
  const keysA=await (await a.call('/oidc/jwks')).json(),keysB=await (await b.call('/oidc/jwks')).json();assert.ok(keysA.keys.every(ka=>keysB.keys.every(kb=>ka.kid!==kb.kid)),'issuer private keys are distinct');

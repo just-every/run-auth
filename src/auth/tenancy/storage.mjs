@@ -233,9 +233,9 @@ export async function provisionOrganization(db, {id = crypto.randomUUID().replac
 
 // Erasure changes both a selected employer and the installation-wide archive
 // fence in one transaction. Ordinary handlers keep the scope-only batch door.
-export function batchWithInstallation(scoped, local, installation) {
+export function batchWithInstallation(scoped, local, installation, before = []) {
  const selected=databaseScopes.get(scoped);
- if(!selected)return scoped.batch([...local,...installation]);
+ if(!selected)return scoped.batch([...before,...local,...installation]);
  const unwrap=statement=>{const entry=statements.get(statement);if(!entry||entry.scope!==selected.scope)throw new Error('organization_statement_scope');return entry.raw;};
- return selected.db.batch([...local.map(unwrap),...installation]);
+ return selected.db.batch([...before,...local.map(unwrap),...installation]);
 }

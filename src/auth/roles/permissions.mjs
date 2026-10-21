@@ -1,11 +1,13 @@
 import {fail} from '../core.mjs';
+import {BUILTIN_RANKS} from '../ranks.mjs';
+export {LEGACY_RANK} from '../ranks.mjs';
 
 export const PERMISSIONS=Object.freeze({
  'roles.view':'View role definitions and own grants',
  'roles.edit':'Create or revise custom roles (also requires legacy owner/admin)',
  'roles.grant':'Grant or revoke strictly lower roles within held authority',
  'people.view':'View people within view resources',
- 'people.export':'Export people within view resources',
+ 'people.export':'Export lower-ranked people within edit resources',
  'people.profile.edit':'Edit directory profile fields within edit resources',
  'people.factors.reset':'Reset non-administrator passkeys and revoke all sessions',
  'people.suspend':'Suspend a lower non-owner person within edit resources',
@@ -26,22 +28,23 @@ export const PERMISSIONS=Object.freeze({
  'cases.verify':'Record verification or close an assigned recovery review case',
  'cases.open':'Open a recovery review case for an editable non-administrator',
 });
-const role=(id,name,rank,permissions)=>Object.freeze({id,name,rank,permissions:Object.freeze(permissions),builtin:true,revision:1});
+const role=(id,name,permissions)=>Object.freeze({id,name,rank:BUILTIN_RANKS[id],permissions:Object.freeze(permissions),builtin:true,revision:1});
 export const BUILTINS=Object.freeze([
- role('owner','Owner',100,Object.keys(PERMISSIONS)),
- role('identity-administrator','Identity administrator',80,Object.keys(PERMISSIONS).filter(p=>!['roles.edit','admin-api.manage'].includes(p))),
- role('app-administrator','App administrator',50,['roles.view','roles.grant','apps.view','apps.edit','apps.assign']),
- role('group-owner','Group owner',40,['roles.view','roles.grant','people.view','groups.view','groups.edit','groups.rules.edit']),
- role('manager','Manager',30,['roles.view','people.view','people.profile.edit','groups.view']),
- role('help-desk','Help desk',20,['roles.view','people.view','people.factors.reset','groups.view','cases.view','cases.open','cases.verify','recovery.approve','people.suspend','people.restore']),
- role('auditor','Auditor',10,['roles.view','people.view','people.export','groups.view','apps.view','cases.view','audit.view','audit.export']),
- role('employee','Employee',0,[]),
+ role('owner','Owner',Object.keys(PERMISSIONS)),
+ role('identity-administrator','Identity administrator',Object.keys(PERMISSIONS).filter(p=>!['roles.edit','admin-api.manage'].includes(p))),
+ role('security-policy-administrator','Security/policy administrator',['roles.view','roles.grant','people.view','people.export','policy.manage','identity-providers.manage','audit.view','audit.export','cases.view']),
+ role('app-administrator','App administrator',['roles.view','roles.grant','apps.view','apps.edit','apps.assign']),
+ role('group-owner','Group owner',['roles.view','people.view','groups.view','groups.edit','groups.rules.edit']),
+ role('manager','Manager',['roles.view','people.view','groups.view']),
+ role('app-owner','App owner',['roles.view','apps.view','apps.assign']),
+ role('help-desk','Help desk',['roles.view','people.view','people.factors.reset','groups.view','cases.view','cases.open','cases.verify','recovery.approve','people.suspend','people.restore']),
+ role('auditor','Auditor',['roles.view','people.view','people.export','groups.view','apps.view','cases.view','audit.view','audit.export']),
+ role('employee','Employee',[]),
 ]);
 export const RESOURCE_KINDS=['people','groups','apps','cases'];
 export const ALL_RESOURCES=Object.freeze(Object.fromEntries(['view','edit'].map(mode=>[mode,Object.fromEntries(RESOURCE_KINDS.map(k=>[k,['*']]))])));
-export const LEGACY_RANK={owner:100,admin:90,member:0};
 export const writePermission=p=>['roles.edit','roles.grant','people.profile.edit','people.factors.reset','groups.edit','apps.edit','cases.open','cases.verify','people.suspend','people.restore','recovery.approve','groups.rules.edit','apps.assign','policy.manage','identity-providers.manage','admin-api.manage','audit.export'].includes(p);
-export const permissionKind=p=>p.startsWith('people.')?'people':p.startsWith('groups.')?'groups':p.startsWith('apps.')?'apps':p.startsWith('cases.')?'cases':null;
+export const permissionKind=p=>p==='recovery.approve'?'cases':p.startsWith('people.')?'people':p.startsWith('groups.')?'groups':p.startsWith('apps.')?'apps':p.startsWith('cases.')?'cases':null;
 export const contains=(ids,id)=>ids.includes('*')||ids.includes(id);
 export const subset=(small,large)=>large.includes('*')||small.every(id=>large.includes(id));
 export function resources(raw) {

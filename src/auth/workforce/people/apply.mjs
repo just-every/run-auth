@@ -3,6 +3,7 @@
 // events, provisioning, group provisioning) once the change has committed.
 import {random,fail,auditDetail} from '../../core.mjs';
 import {requireAuthority} from '../../local-email.mjs';
+import {commitAccountWrite} from '../../ranks.mjs';
 import {setStatement,clearStatement} from './fields.mjs';
 import {addRuleMember,dropRuleMember} from './groups.mjs';
 import {planEdit} from './plan.mjs';
@@ -63,7 +64,10 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
   if(!touched(e)){results.push({personId:e.personId,changed:false});continue;}
   const {statements,stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e);
   let done;
-  try {done=await (actor.commit??(statements=>ctx.db.batch(statements)))(statements);}
+  try {
+   const accountEdit=(e.writes.length||e.state||e.emailChange||e.nameChange)&&!(e.source==='self'&&e.personId===actor.actorId);
+   done=accountEdit?await commitAccountWrite(ctx,actor,e.personId,guard,g=>entryStatements(ctx,g,actor.actorId,dir,e).statements):await (actor.commit??(statements=>ctx.db.batch(statements)))(statements);
+  }
   catch(error) {
    await actor.assertAuthority();
    if(/UNIQUE|constraint/i.test(String(error?.message)))fail(e.emailChange?'email_in_use':'source_id_in_use',409);

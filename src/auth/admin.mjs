@@ -1,4 +1,5 @@
 import {roleModel,roleRead} from './roles/index.mjs';
+import {requireAccountRank} from './ranks.mjs';
 import {AuthError} from './core.mjs';
 import {grantModel} from './grants/index.mjs';
 import {erasureModel} from './erasure/index.mjs';
@@ -108,14 +109,16 @@ export async function adminAction(ctx,request,path,data) {
  }
  if(path==='/people/role') {
   const id=data.id||data.personId;if(!['admin','member'].includes(data.role))fail('invalid_role');
-  const changed=await run(ctx,`UPDATE oa_operators SET role=? WHERE id=? AND role!='owner' AND status='active' AND ${g}`,data.role,id,...ga);
+  const account=await requireAccountRank(ctx,s,id,guard);
+  const changed=await run(ctx,`UPDATE oa_operators SET role=? WHERE id=? AND role!='owner' AND status='active' AND ${account.clause}`,data.role,id,...account.args);
   if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('person_unavailable',409);}
   await audit(ctx,s.person_id,'person_role_changed',id);await emit(ctx,'person.role_changed',await personSubject(ctx,id),{role:data.role});return json({ok:true});
  }
  if(path==='/people/suspend') {
   const id=data.personId||data.id,p=await one(ctx,'SELECT id,role FROM oa_operators WHERE id=?',id);if(!p)fail('person_not_found',404);if(p.role==='owner')fail('owner_suspension_requires_transfer',403);
   // Base's version trigger also revokes all previously issued Base sessions.
-  const changed=await run(ctx,`UPDATE oa_operators SET status='inactive' WHERE id=? AND role!='owner' AND ${g}`,id,...ga);
+  const account=await requireAccountRank(ctx,s,id,guard);
+  const changed=await run(ctx,`UPDATE oa_operators SET status='inactive' WHERE id=? AND role!='owner' AND ${account.clause}`,id,...account.args);
   if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('person_unavailable',409);}
   await audit(ctx,s.person_id,'person_suspended',id);await fencePerson(ctx,id);await emit(ctx,'person.suspended',await personSubject(ctx,id),{});await personChanged(ctx,id,'person_suspended');return json({ok:true});
  }

@@ -1,6 +1,7 @@
 import {one,fail} from '../core.mjs';
 import {authority,requireLocalEmail} from '../local-email.mjs';
 import {roleState} from './state.mjs';
+import {accountPermission,lowerAccountRank} from '../ranks.mjs';
 import {contains,writePermission,permissionKind} from './permissions.mjs';
 
 export function personInScope(state,scope,id,write=false) {
@@ -10,8 +11,8 @@ export function personInScope(state,scope,id,write=false) {
  return held&&(!write||[...groups].every(g=>contains(scope.groups,g)));
 }
 export function permitted(state,permission,target={}) {
- const write=target.write??writePermission(permission),kind=permissionKind(permission),mode=write?'edit':'view';
- if(write&&target.personId&&(target.personId===state.person.id||state.rankOf(target.personId)>=state.rank))return false;
+ const write=permission==='people.export'||(target.write??writePermission(permission)),kind=permissionKind(permission),mode=write?'edit':'view';
+ const personId=target.personId??(accountPermission(permission)&&target.caseId?state.cases.find(c=>c.id===target.caseId)?.person_id:null);
  return state.entries.some(entry=>{
   if(!entry.role.permissions.includes(permission))return false;
   const scope=entry.resources[mode];
@@ -20,6 +21,9 @@ export function permitted(state,permission,target={}) {
   if(target.appId&&!contains(scope.apps,target.appId))return false;
   if(target.caseId&&!contains(scope.cases,target.caseId))return false;
   if(kind&&!target.personId&&!target.groupId&&!target.appId&&!target.caseId)return Object.values(scope).some(ids=>ids.length);
+  // Rank follows permission and scope, and only fences administration of an
+  // account. Group membership and app assignments are ordinary decisions.
+  if(personId&&accountPermission(permission)&&!lowerAccountRank(state,personId))return false;
   return true;
  });
 }

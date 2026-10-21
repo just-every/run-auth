@@ -27,21 +27,47 @@ resource sets as custom roles; their definitions are fixed.
 | --- | ---: | --- |
 | `owner` | 100 | All published permissions; the legacy owner holds all resources implicitly |
 | `identity-administrator` | 80 | All published permissions except `roles.edit` and legacy-custody `admin-api.manage` |
+| `security-policy-administrator` | 80 | `roles.view`, `roles.grant`, `people.view`, `people.export`, `policy.manage`, `identity-providers.manage`, `audit.view`, `audit.export`, `cases.view` |
 | `app-administrator` | 50 | `roles.view`, `roles.grant`, `apps.view`, `apps.edit`, `apps.assign` |
-| `group-owner` | 40 | `roles.view`, `roles.grant`, `people.view`, `groups.view`, `groups.edit`, `groups.rules.edit` |
-| `manager` | 30 | `roles.view`, `people.view`, `people.profile.edit`, `groups.view` |
+| `group-owner` | 0 | `roles.view`, `people.view`, `groups.view`, `groups.edit`, `groups.rules.edit` |
+| `manager` | 0 | `roles.view`, `people.view`, `groups.view` |
+| `app-owner` | 0 | `roles.view`, `apps.view`, `apps.assign` |
 | `help-desk` | 20 | `roles.view`, `people.view`, `people.factors.reset`, `groups.view`, `cases.view`, `cases.open`, `cases.verify`, `recovery.approve`, `people.suspend`, `people.restore` |
 | `auditor` | 10 | `roles.view`, `people.view`, `people.export`, `groups.view`, `apps.view`, `cases.view`, `audit.view`, `audit.export` |
 | `employee` | 0 | No administration permissions; ordinary employee profile doors continue to apply |
 
+Built-in administrator ranks are immutable and defined once in
+`src/auth/ranks.mjs`: owner 100, installation administrator 90, identity and
+security/policy administrators 80, app administrator 50, help desk 20, auditor
+10. Group owner, manager, app owner and employee have administrator rank 0.
+Their ordinary group/app decisions remain permission- and resource-scoped;
+rank does not make them administrators or block help-desk recovery.
+
+Rank grants no permission or resource access. Authorization checks the selected
+organization boundary, published permission, view/edit resource set, then rank
+for administration of an account. Viewing uses view scope without a rank fence.
+The account fence covers profile, status, factors, recovery approval, roles,
+sessions and exports of that person's data. Equal or higher accounts cannot be
+administered; this does not prohibit everyday app/group decisions.
+
 Legacy `admin` has implicit rank 90 and all published permissions/resources.
 The named `admin-api.manage` permission forwards to existing credential
 management only for a legacy owner/admin custodian. Scoped authority cannot
-create, change, or reassign that custody. No scoped owner grant can be issued: delegation must be strictly below the
-issuer's rank. Custom role ranks are integers 1–89. Only legacy owner/admin
+create, change, or reassign that custody. This owner/admin restriction is an
+interim custody rule, not a permanent exclusion of custom permissions; a service
+app cannot exceed the current authority of its accountable human owner. No scoped owner grant can be issued: delegation must be strictly below the
+issuer's rank. Custom role ranks are integers 1–89, strictly below the chooser's active rank,
+with permissions no wider than the chooser can delegate. The chooser is the
+installation owner, an installation admin within an installation-operated
+organization, or that organization's owner. Only legacy owner/admin
 may create or revise custom role definitions, and built-ins cannot be changed.
-Revising a custom role invalidates its previous grants; explicitly grant the
-new revision to restore intended holders.
+Revising a custom role invalidates its previous authority grants; explicitly
+grant the new revision to restore intended authority. Any unrevoked assigned
+administrator role still protects its holder's account while suspended, after
+its sponsor loses authority, or while a revised grant has no active authority.
+Explicitly revoking the assignment removes its rank contribution. Conversely,
+an inactive high-rank assignment grants its holder no authority to administer
+others through a lower active role.
 
 ## Resources and delegation
 
@@ -54,8 +80,10 @@ People can be selected directly or through groups. Viewing a person requires
 one matching view selector. Editing requires a matching edit selector **and
 every current group of that person inside the same grant's edit groups**.
 Thus a help desk holder may view group B but edit only A; a person belonging
-to both A and B cannot be edited. Any person-targeted write refuses the actor
-and people of equal or higher current administrator rank. Factor reset is
+to both A and B cannot be edited. An account-administration action refuses the actor
+and people of equal or higher administrator rank. People export uses edit
+scope and the same account fence; ordinary viewing still uses view scope.
+App/group assignments are ordinary decisions and do not inherit that fence. Factor reset is
 stricter: it refuses every legacy or scoped administrator, even a lower one.
 
 Membership is evaluated on every decision using the existing directory's
@@ -228,3 +256,12 @@ review cases (`auth_role_cases`), transaction claims (`auth_role_operations`),
 detailed audit (`auth_role_events`) and the triggered authority epoch
 (`auth_role_epoch`). Ordinary Activity receives the same committed events and
 details. It adds no user-facing secrets and changes no existing role column.
+
+The shared `ranks.mjs` helpers also fence the legacy suspend/role and recovery
+approval doors, and directory profile/lifecycle writes through their common
+native planner. The directory transaction claims the effective human owner's
+rank and the current authority epoch before applying any statement, including
+machine calls; its own epoch changes cannot leave a partially applied plan.
+The ordinary employee's own profile and self-session controls remain separate
+self-service actions. Recovery of an equal/higher administrator follows the
+existing delay or emergency mechanism; a lower administrator cannot approve it.

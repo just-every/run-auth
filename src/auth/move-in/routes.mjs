@@ -6,6 +6,7 @@ import {invokeHooks} from '../hooks/index.mjs';
 import {requireLocalEmail,authority,requireAuthority} from '../local-email.mjs';
 import {random,hash,one,all,run,requireSession,json,fail,auditDetail} from '../core.mjs';
 import {sendInvitation} from '../admin.mjs';
+import {requireAccountRank} from '../ranks.mjs';
 import {parseExport,MoveInError,MAX_FILE_BYTES} from './parse.mjs';
 import {classify,stagedShape} from './review.mjs';
 
@@ -146,9 +147,12 @@ export async function moveInAction(ctx,request,path,data) {
 // Old Auth0 subject to Auth email, for app owners to rebind deliberately.
 const cell=value=>{const text=String(value??'');const safe=/^[=+\-@\t\r]/.test(text)?`'${text}`:text;return /[",\r\n]/.test(safe)?`"${safe.replace(/"/g,'""')}"`:safe;};
 export async function formerSubjects(ctx,request) {
- await requireSession(ctx,request,true);
+ const s=await requireSession(ctx,request,true);requireLocalEmail(ctx,s);
+ let guard=authority(ctx,s,ADMIN);
  const batch=await one(ctx,'SELECT * FROM auth_import_batches WHERE id=?',new URL(request.url).searchParams.get('batch')||'')||fail('batch_unavailable',404);
- const rows=await all(ctx,'SELECT f.subject,p.email,p.status FROM auth_former_subjects f JOIN oa_operators p ON p.id=f.person_id WHERE f.batch_id=? ORDER BY p.email',batch.id);
+ const rows=await all(ctx,'SELECT f.person_id,f.subject,p.email,p.status FROM auth_former_subjects f JOIN oa_operators p ON p.id=f.person_id WHERE f.batch_id=? ORDER BY p.email',batch.id);
+ for(const row of rows)guard=await requireAccountRank(ctx,s,row.person_id,guard);
+ await requireAuthority(ctx,s,guard);
  const csv=[['former_subject','auth_email','auth_status','source','export_date'],...rows.map(r=>[r.subject,r.email,r.status,batch.source_system,batch.export_date])].map(r=>r.map(cell).join(',')).join('\r\n')+'\r\n';
  return new Response(csv,{headers:{'content-type':'text/csv; charset=utf-8','content-disposition':`attachment; filename="former-subjects-${batch.export_date}.csv"`,'cache-control':'no-store','referrer-policy':'no-referrer','x-content-type-options':'nosniff'}});
 }

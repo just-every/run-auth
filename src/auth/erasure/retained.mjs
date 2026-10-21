@@ -2,6 +2,8 @@ import {all,one,run,fail} from '../core.mjs';
 import {authority,requireAuthority} from '../local-email.mjs';
 import {erasedOrganizationDatabase} from '../tenancy/storage.mjs';
 import {executeRemote,publicRemote} from './remote.mjs';
+import {consentRemote,abandonRemote} from './consent.mjs';
+import {ownerWrite} from './authorization.mjs';
 
 export async function receiptModel(ctx) {
  const [receipts,remote]=await Promise.all([
@@ -23,14 +25,16 @@ export async function retainedReceipts(ctx) {
 // Called only after the root installation owner has proved hardware and fresh
 // local email. Never use a session or role from the erased employer, and never
 // disclose its sealed connector/signing material to the installation owner.
-export async function retryRetained(ctx,s,data) {
+export async function retryRetained(ctx,s,data,abandon=false) {
  if(ctx.organizationId!=='root')fail('installation_owner_required',403);
  const selected=await erasedOrganizationDatabase(ctx.db,data.organizationId);
  if(!selected)fail('erasure_receipt_not_found',404);
  const receipt=await one({...ctx,db:selected.db},'SELECT id FROM auth_erasure_receipts WHERE id=?',data.receiptId);
  if(!receipt)fail('erasure_receipt_not_found',404);
  const guard=authority(ctx,s,['owner']);
- const result=await run(ctx,`INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT ?,'erasure_remote_retry',?,? WHERE ${guard.clause}`,s.person_id,receipt.id,ctx.now(),...guard.args);
+ const result=await run(ctx,`INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT ?,?, ?,? WHERE ${guard.clause}`,s.person_id,abandon?'erasure_remote_abandoned':'erasure_remote_retry',receipt.id,ctx.now(),...guard.args);
  if(!result.meta.changes){await requireAuthority(ctx,s,guard);fail('erasure_conflict',409);}
- await executeRemote({...ctx,db:selected.db},receipt.id);
+ const retained={...ctx,db:selected.db,organization:selected.organization,organizationId:data.organizationId,installationAuthority:{context:ctx,session:s,erased:true}};
+ if(abandon)await abandonRemote(retained,receipt.id,data,build=>ownerWrite(retained,s,build));
+ else {await consentRemote(retained,receipt.id,data,build=>ownerWrite(retained,s,build));await executeRemote(retained,receipt.id);}
 }

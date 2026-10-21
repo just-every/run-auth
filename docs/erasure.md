@@ -1,6 +1,9 @@
 # Owner-authorized erasure
 
-Erasure is a separate owner action from suspension. The owner signs in with a
+Erasure is a separate owner action from suspension. A company owner erases
+people and app connections only in that company. The installation owner uses
+the root door to erase a whole employer or the installation; ordinary
+installation roles do not gain directory access to isolated employers. The owner signs in with a
 passkey and confirms their email in that session within ten minutes. Every
 erasure write rechecks that live authority in its transaction.
 
@@ -26,8 +29,11 @@ and installation holds protect all records in their selected namespace.
 2. Review the preview. It expires after ten minutes and changes to underlying
    state require another preview.
 3. `POST /api/auth/erasure/confirm` with `previewId`, `confirmation:"ERASE"` and
-   `confirmRemoteDeletion:true` authorizes the displayed removal, including
-   remote SCIM deletion and authority revocation. A prior preview alone never
+   `destinations:["https://scim.example.com"]` and
+   `confirmRemoteDeletion:true` authorize deletion at exactly those listed
+   destinations. Local access ends and back-channel/SCIM revocation is attempted
+   independently of downstream deletion consent. Missing destinations authorize
+   no deletion; a broad boolean alone authorizes nothing. A prior preview alone never
    authorizes external destruction.
 4. Save the response's receipt reference and signed `journal`. The receipt
    records local completion separately from outstanding remote work.
@@ -42,7 +48,7 @@ and connector credential required for unfinished work remain sealed under the
 installation key; they are erased after verification and never appear in the
 receipt, journal or ordinary export. Explicitly authorize another attempt with
 `POST /api/auth/erasure/retry` and
-`{"receiptId":"receipt-id","confirmRemoteDeletion":true}`. Existing local
+`{"receiptId":"receipt-id","destinations":["https://scim.example.com"],"confirmRemoteDeletion":true}`. Existing local
 sessions, factors and grants are removed even when the provider is unavailable.
 
 Linked applications receive an identity fence when the saved callback and
@@ -55,8 +61,10 @@ independently held by Google, Microsoft, Okta or another provider cannot be
 recalled by deleting local Auth records. Local outbox copies are removed.
 
 The last active owner cannot be erased as an ordinary person. Transfer ownership
-first, or choose the protected organization reset: preview `kind:"organization"`
-with the selected organization's ID, then confirm the exact phrase
+first, or have the installation owner choose the protected organization reset
+at the root erasure endpoint: preview `kind:"organization"` with the selected
+organization's ID as `target`, then confirm with that `organizationId`, the
+preview ID, destination choices and the exact phrase
 `RESET <issuer>`. This removes that namespace's records, including owners,
 while retaining anonymized evidence, receipts and the journal. Download the
 confirm response: the session used to reset the organization no longer exists.
@@ -73,6 +81,24 @@ it never reports those other organizations as erased. For removal of every local
 private installation settings, save the receipt/journal and resolve outstanding
 remote work before using the existing `rer reset --yes` command. Reset removes
 the wrapping key too, so unfinished remote work cannot be retried afterwards.
+
+Receipts bind retained anonymous audit rows with signed SHA-256 commitments.
+The owner can call `GET /api/auth/erasure/integrity?receiptId=<id>`; erased
+employer receipts additionally name `organizationId`. The corresponding journal
+download accepts the same parameters. Later audit appends do not invalidate a
+snapshot. Another erasure can legitimately redact older rows again: use the
+latest signed receipt to check the current projection, and retain earlier
+downloads and their public verification keys as historical snapshots. This is
+a signed erasure snapshot, not the complete audit investigation service of
+AUTH-AUDIT-001.
+
+To abandon unfinished work, explicitly select its destinations and type
+`ABANDON` through `POST /api/auth/erasure/abandon`. This destroys retained sealed
+identifiers/credentials and records `remote_abandoned`; it never claims the
+provider deleted its data or revoked access. The receipt remains visible.
+
+Retention expiry is governed separately by AUTH-RETENTION-001. No automatic
+erasure does not disable that clause's configured retention obligations.
 
 After erasure, create a new portability archive with `rer export --output exports/after-erasure.rer`. Keep it outside any installation that you will reset. This later archive carries Base's installation-wide erasure checkpoint, including erasures in an employer namespace. Restore uses the existing public command:
 

@@ -15,10 +15,13 @@ export function planEffects(state,plan) {
  // to act on that target. Include every current scoped holder in the diff.
  const affected=new Set(state.activeGrants.map(g=>g.person_id));
  if(plan.kind==='grant')affected.add(plan.personId);
- const view=(personId,grants)=>{
+ const protectedBefore=state.grants.filter(g=>g.revoked_at===null);
+ const protectedAfter=protectedBefore.filter(g=>plan.kind!=='revoke'||g.id!==plan.grantId);
+ if(plan.kind==='grant')protectedAfter.push({person_id:plan.personId,role_id:plan.roleId});
+ const view=(personId,grants,protectedGrants,updated=false)=>{
   const person=state.dir.people.get(personId),legacy=['owner','admin'].includes(person.role);
-  const rankOf=id=>Math.max(LEGACY_RANK[state.dir.people.get(id)?.role]??0,...grants.filter(g=>g.person_id===id).map(g=>g.role.rank));
-  return {...state,person,legacy,entries:legacy?[{role:{rank:LEGACY_RANK[person.role],permissions:BUILTINS[0].permissions},resources:ALL_RESOURCES}]:grants.filter(g=>g.person_id===personId),rank:rankOf(personId),rankOf};
+  const rankOf=id=>Math.max(LEGACY_RANK[state.dir.people.get(id)?.role]??0,...protectedGrants.filter(g=>g.person_id===id).map(g=>updated&&plan.kind==='role'&&g.role_id===plan.role.id?plan.role.rank:state.roles.get(g.role_id)?.rank??0));
+  return {...state,person,legacy,entries:legacy?[{role:{rank:LEGACY_RANK[person.role],permissions:BUILTINS[0].permissions},resources:ALL_RESOURCES}]:grants.filter(g=>g.person_id===personId),rank:Math.max(LEGACY_RANK[person.role]??0,...grants.filter(g=>g.person_id===personId).map(g=>g.role.rank)),rankOf};
  };
  const actions=model=>{
   const found=new Map();
@@ -34,7 +37,7 @@ export function planEffects(state,plan) {
   return found;
  };
  return [...affected].sort().map(personId=>{
-  const before=actions(view(personId,state.activeGrants)),now=actions(view(personId,after));
+  const before=actions(view(personId,state.activeGrants,protectedBefore)),now=actions(view(personId,after,protectedAfter,true));
   return {personId,email:state.dir.people.get(personId).email,gained:[...now].filter(([k])=>!before.has(k)).map(([,a])=>a),lost:[...before].filter(([k])=>!now.has(k)).map(([,a])=>a)};
  }).filter(effect=>effect.gained.length||effect.lost.length);
 }

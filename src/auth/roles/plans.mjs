@@ -30,6 +30,7 @@ export function planChange(state,s,data,{newId=random()}={}) {
   if(!state.legacy)fail('owner_admin_required',403);
   const id=data.role?.id||newId,held=state.roles.get(id);
   if(held?.builtin)fail('builtin_role_fixed',403);
+  for(const grant of state.grants.filter(g=>g.role_id===id&&g.revoked_at===null))if(grant.person_id===state.person.id||state.rankOf(grant.person_id)>=state.rank)fail('lower_rank_required',403);
   const role=customRole(data.role,id);
   if(role.rank>=state.rank)fail('lower_rank_required',403);
   if(!state.entries.some(e=>role.permissions.every(p=>e.role.permissions.includes(p))))fail('role_permissions_wider_than_holder',403);
