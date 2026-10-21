@@ -18,7 +18,7 @@ export async function remoteWork(ctx,plan) {
    const subject=rows(plan,'auth_subjects').find(s=>s.sector_id===client.sector_id&&s.person_id===grant.person_id)?.subject;
    const signing=await signer(ctx,plan);
    tasks.push({kind:'authority-fence',partner:new URL(client.logout_uri).origin,
-    work:subject&&signing?{url:client.logout_uri,signing,issuer:ctx.origin,claims:{aud:client.id,sub:subject,jti:random(),events:{[FENCE_EVENT]:{}}}}:null});
+    work:subject&&signing?{url:client.logout_uri,signing,issuer:ctx.issuer||ctx.origin,claims:{aud:client.id,sub:subject,jti:random(),events:{[FENCE_EVENT]:{}}}}:null});
   }
  }
  for(const logged of rows(plan,'auth_oidc_sessions')) {
@@ -27,7 +27,7 @@ export async function remoteWork(ctx,plan) {
   const subject=client.subject_type==='public'?session.person_id:rows(plan,'auth_subjects').find(s=>s.sector_id==='oidc:'+client.client_id&&s.person_id===session.person_id)?.subject;
   const signing=await signer(ctx,plan,client.id_token_alg);
   tasks.push({kind:'authority-fence',partner:new URL(client.backchannel_logout_uri).origin,
-   work:subject&&signing?{url:client.backchannel_logout_uri,signing,issuer:ctx.origin,claims:{aud:client.client_id,sub:subject,sid:session.id,jti:random(),events:{[LOGOUT_EVENT]:{}}}}:null});
+   work:subject&&signing?{url:client.backchannel_logout_uri,signing,issuer:ctx.issuer||ctx.origin,claims:{aud:client.client_id,sub:subject,sid:session.id,jti:random(),events:{[LOGOUT_EVENT]:{}}}}:null});
  }
  return Promise.all(tasks.map(async task=>{const id=random();return {...task,id,sealed:task.work?await seal(ctx,'erasure:'+id,task.work):null};}));
 }
