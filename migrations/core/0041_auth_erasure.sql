@@ -1,5 +1,6 @@
 -- Explicit owner-authorized erasure. Journals contain one-way identifiers, not
--- recoverable profiles. Remote credentials are installation-local sealed data.
+-- recoverable profiles. Pending remote identifiers are sealed; reset destroys
+-- connector credentials and signing private keys.
 CREATE TABLE auth_erasure_policy (
  singleton INTEGER PRIMARY KEY CHECK(singleton=1), configured INTEGER NOT NULL DEFAULT 0,
  policy TEXT NOT NULL, updated_by TEXT, updated_at INTEGER NOT NULL
