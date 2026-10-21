@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {openApp} from './runtime.mjs';
+import {readTheme} from '@runeditrun/rer/internal/onboarding/theme.mjs';
 
 test('real Auth pages: browser email, first setup, hardware passkey, people and account at desktop/mobile in both themes',async t=>{
  const app=await openApp({upstreamProviders:[{id:'company',label:'Company',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'},{id:'backup',label:'Backup',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'}]});t.after(()=>app.close());await app.claim();
@@ -16,6 +17,8 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  const accessible=async label=>{const results=await new AxeBuilder({page}).analyze();assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],label);};
+ const theme=await context.request.get(app.origin+'/rer-theme.css');assert.equal(theme.status(),200);
+ readTheme(await theme.text(),'/rer-theme.css');
  await page.goto(app.origin+'/signin?returnTo=%2Fsetup');await accessible('sign-in');
  await page.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);
  const requested=page.waitForResponse(response=>response.url().endsWith('/auth/identity/email/request'));

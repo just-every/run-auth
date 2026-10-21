@@ -1,109 +1,48 @@
-/* Auth's declared theme. The Lobby, the run site's Run page, and Base's
-   no-JavaScript frames (first-run /setup, the foundation sign-in) read these
-   --rer-* tokens; the app stylesheet (public/auth-assets/auth.css) reads the
-   same tokens. Faces come from /fonts/fonts.css.
-   --rer-accent is ink, not petrol: Base paints every frame and Lobby button
-   with it, and Auth's primary buttons are ink. Petrol stays the one accent of
-   drawings, pills, numerals, icons and the current nav item (--petrol). */
+/* Auth's literal theme tokens and self-hosted faces, read by RER's installer.
+   App tokens, theme switching and frame styles live in /fonts/fonts.css. */
 :root {
-  --rer-font-body: 'Wix Madefor Text', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
-  --rer-font-heading: 'Wix Madefor Display', 'Wix Madefor Text', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
-  --rer-wordmark-weight: 700;
+  --rer-font-body: 'Wix Madefor Text', system-ui, '-apple-system', 'Segoe UI', Arial, sans-serif;
+  --rer-font-heading: 'Wix Madefor Display', 'Wix Madefor Text', system-ui, '-apple-system', 'Segoe UI', Arial, sans-serif;
   --rer-page: #FBF8F2;
   --rer-surface: #FFFFFF;
   --rer-text: #1F2428;
   --rer-muted: #5B6268;
-  --rer-border: #E6E1D7;
+  --rer-border: #98938A;
   --rer-accent: #1F2428;
   --rer-accent-text: #FFFFFF;
   --rer-focus: #14536E;
   --rer-link: #1F2428;
-  --rer-radius: 18px;
-  --rer-button-radius: 999px;
-  --rer-logo: url('/brand/mark.svg');
-  --petrol: #14536E;
-  --petrol-deep: #0B4654;
-  --petrol-pale: #DDEFF2;
-  --warm-light: #F7D197;
-  --danger: #A23A2A;
-  --danger-pale: #F8E7E3;
-  --invited: #F1EEE7;
-  --invited-text: #5B6268;
-  --input-border: #B9B3A8;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --rer-page: #121517;
-    --rer-surface: #1A1F22;
-    --rer-text: #F1EEE7;
-    --rer-muted: #A8AFB4;
-    --rer-border: #2C3337;
-    --rer-accent: #F1EEE7;
-    --rer-accent-text: #121517;
-    --rer-focus: #6FB3CC;
-    --rer-link: #F1EEE7;
-    --petrol: #6FB3CC;
-    --petrol-deep: #A9D6E5;
-    --petrol-pale: #173440;
-    --warm-light: #E9B970;
-    --danger: #F08C7A;
-    --danger-pale: #3A2420;
-    --invited: #2A2F32;
-    --invited-text: #C9CDD0;
-    --input-border: #4A5358;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --rer-page: #121517;
-  --rer-surface: #1A1F22;
-  --rer-text: #F1EEE7;
-  --rer-muted: #A8AFB4;
-  --rer-border: #2C3337;
-  --rer-accent: #F1EEE7;
-  --rer-accent-text: #121517;
-  --rer-focus: #6FB3CC;
-  --rer-link: #F1EEE7;
-  --petrol: #6FB3CC;
-  --petrol-deep: #A9D6E5;
-  --petrol-pale: #173440;
-  --warm-light: #E9B970;
-  --danger: #F08C7A;
-  --danger-pale: #3A2420;
-  --invited: #2A2F32;
-  --invited-text: #C9CDD0;
-  --input-border: #4A5358;
-  color-scheme: dark;
 }
 
-/* Dark: the door cut tight to its frame and step, without the pale wall. */
-:root[data-theme="dark"] img[src="/brand/door.webp"] { content: url('/brand/door-dark.webp'); }
-:root[data-theme="dark"] img[src="/brand/door-small.webp"] { content: url('/brand/door-small-dark.webp'); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) img[src="/brand/door.webp"] { content: url('/brand/door-dark.webp'); }
-  :root:not([data-theme="light"]) img[src="/brand/door-small.webp"] { content: url('/brand/door-small-dark.webp'); }
-  html.rer-themed main::before { background-image: url('/brand/door-dark.webp'); }
+@font-face {
+  font-family: 'Wix Madefor Display';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/wix-madefor/wix-madefor-display-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-
-/* Base's frames (/setup): the 12ui pick's card, heavy title and the door standing open beside it. */
-html.rer-themed body { padding: 18vh 20px 48px; }
-html.rer-themed main { position: relative; max-width: 560px; padding: 48px 48px 44px; border: 1px solid var(--rer-border); box-shadow: 0 1px 2px rgb(31 36 40 / .06), 0 12px 32px rgb(31 36 40 / .08); }
-html.rer-themed main::before { content: ""; position: absolute; z-index: -1; right: calc(100% - 28px); bottom: 40px; width: 250px; height: 368px; background: url('/brand/door.webp') center bottom / contain no-repeat; pointer-events: none; }
-html.rer-themed h1 { font-size: 56px; line-height: 1.02; font-weight: 800; letter-spacing: -.03em; margin-bottom: 20px; }
-html.rer-themed main > p { font-size: 19px; line-height: 1.5; color: var(--rer-text); }
-html.rer-themed .rer-brand { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 40px; }
-html.rer-themed dl { gap: 0; grid-template-columns: 140px minmax(0, 1fr); font-size: 17px; }
-html.rer-themed dt, html.rer-themed dd { padding: 14px 0; border-bottom: 1px solid var(--rer-border); }
-html.rer-themed input[type=checkbox] { accent-color: var(--petrol); }
-html.rer-themed button { min-height: 56px; border-radius: var(--rer-button-radius); font-size: 18px; }
-@media (max-width: 700px) {
-  html.rer-themed body { padding: 150px 16px 32px; }
-  html.rer-themed main { padding: 28px 22px; }
-  html.rer-themed main::before { right: auto; left: -4px; bottom: calc(100% - 26px); width: 104px; height: 152px; background-position: left bottom; }
-  html.rer-themed h1 { font-size: 40px; }
-  html.rer-themed main > p { font-size: 17px; }
-  html.rer-themed .rer-brand { font-size: 22px; margin-bottom: 28px; }
-  html.rer-themed dl { grid-template-columns: 96px minmax(0, 1fr); font-size: 16px; }
-  html.rer-themed button { min-height: 52px; }
+@font-face {
+  font-family: 'Wix Madefor Display';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/wix-madefor/wix-madefor-display-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Wix Madefor Text';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/wix-madefor/wix-madefor-text-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Wix Madefor Text';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/wix-madefor/wix-madefor-text-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }

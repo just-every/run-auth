@@ -1,5 +1,5 @@
 /* The run site's frame: page, header, footer, type and the two actions. Colours and
-   faces are the --rer-* and petrol tokens of /rer-theme.css. Page chrome is ink on
+   faces use /rer-theme.css and the app tokens in /fonts/fonts.css. Page chrome is ink on
    paper; petrol appears only in drawings, pills, numerals and icons. */
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 24px; }

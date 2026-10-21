@@ -1,5 +1,5 @@
-/* Auth app: base, controls and shared components. Every colour is a token from
-   /rer-theme.css (light, dark and the data-theme toggle are declared there once).
+/* Auth app: base, controls and shared components. Shared light tokens come from
+   /rer-theme.css; app tokens and theme switching come from /fonts/fonts.css.
    Layout lives in shell.css, tables in tables.css, sign-in in signin.css and
    page-specific pieces in pages.css. */
 *, *::before, *::after { box-sizing: border-box; }
