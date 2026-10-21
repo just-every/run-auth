@@ -191,7 +191,7 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  const {register}=await import('./webauthn.mjs'),{emailSession}=await import('./runtime.mjs');
  await r.person('helper','helper@example.com');const helper=await register(r,await emailSession(r,'helper@example.com'));
  const a=await admin(r,'groups/create',{name:'Support scope A'},201),b=await admin(r,'groups/create',{name:'Read-only scope B'},201);
- await admin(r,'groups/add',{groupId:a.id,personId:'ada'});await admin(r,'groups/add',{groupId:b.id,personId:'bob'});
+ await admin(r,'directory/edit',{personId:'ada',set:{location:'US'}});await admin(r,'groups/rule',{groupId:a.id,rule:{match:'all',conditions:[{field:'location',op:'eq',value:'US'}]}});await admin(r,'groups/add',{groupId:b.id,personId:'bob'});
  const ada=await register(r,r.ada);const bob=await register(r,r.bob);
  const plan=async(data,cookie=r.owner.cookie)=>{
   const response=await r.call('/api/auth/roles/preview',{method:'POST',cookie,data});assert.equal(response.status,200,await response.clone().text());
@@ -217,6 +217,7 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  assert.equal((await r.call('/api/auth/me',{cookie:adaAgain.cookie})).status,401);
  await r.person('senior','senior@example.com','admin');await admin(r,'groups/add',{groupId:a.id,personId:'senior'});
  assert.equal((await command({personId:'senior'})).status,403,'administrator in A cannot be reset');
+ await admin(r,'directory/edit',{personId:'ada',set:{location:'UK'}});assert.equal((await command({personId:'ada'})).status,403,'attribute-driven group departure changes the next decision');
  const trail=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(trail.some(e=>e.event==='roles.factors.reset'));
  const noEmail=await r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{personId:'bob',reason:'Still refused'}});assert.equal(noEmail.status,403);
  // Revocation is live, rather than a session-embedded permission.

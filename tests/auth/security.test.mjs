@@ -128,10 +128,14 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  const switched=await command(a,both,'organizations/switch',{organizationId:south.id});assert.equal(switched.redirect,'/org/'+south.id+'/app/account');
  assert.equal((await a.call('/api/auth/organizations/switch',post({organizationId:south.id},memberA))).status,403);
  for(const cookie of [owner.cookie,adminB.cookie,memberB])assert.equal((await a.call('/api/auth/me',{cookie})).status,401,'foreign session refused');
- const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','directory/export'];
+ const importA=await command(a,adminA.cookie,'move-in/stage',{fileName:'workers.csv',exportDate:'2026-10-21',text:'user_id,email,name,email_verified\nsynthetic-auth-7,confidential@northwind.example.com,Private Contractor,true\n'},201);
+ await command(a,adminA.cookie,'move-in/admit',{batchId:importA.batchId,rows:[0]});
+ const ownExport=await a.call('/api/auth/move-in/subjects.csv?batch='+importA.batchId,{cookie:adminA.cookie});assert.equal(ownExport.status,200);assert.ok((await ownExport.text()).includes('confidential@northwind.example.com'));
+ assert.equal((await b.call('/api/auth/move-in/subjects.csv?batch='+importA.batchId,{cookie:adminB.cookie})).status,404);
+ const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis'];
  for(const path of reads) {
   const response=await b.call('/api/auth/'+path,{cookie:adminB.cookie});
-  assert.ok([200,404].includes(response.status),path+' '+await response.clone().text());
+  assert.equal(response.status,200,path+' '+await response.clone().text());
   assert.ok(!(await response.text()).includes('Confidential Northwind'),path+' cannot read another organization');
  }
  assert.equal((await b.call('/api/auth/groups/add',post({groupId:group.id,personId:(await (await b.call('/api/auth/me',{cookie:memberB})).json()).user.id},adminB.cookie))).status,404);
@@ -150,6 +154,9 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  await delegate('app-administrator',{view:{apps:[appA.id]},edit:{apps:[appA.id]}});
  await command(a,contractor.cookie,'roles/command',{action:'/oidc-apps/update',params:{appId:appA.id,name:'Northwind knowledge',redirectUris:['https://wiki.example.com/new-callback']}});
  assert.equal((await a.call('/api/auth/roles/command',post({action:'/oidc-apps/update',params:{appId:otherApp.id,name:'Intrusion'}},contractor.cookie))).status,403);
+ await command(a,contractor.cookie,'resource-apis/register',{appId:appA.id,name:'Delegated wiki API',audience:'https://wiki.example.com/api',scopes:['read'],roles:[{role:'reader',scopes:['read'],resources:['page:1']}],resources:[{id:'page:1'}]},201);
+ assert.equal((await a.call('/api/auth/resource-apis/register',post({appId:otherApp.id,name:'Forbidden API',audience:'https://payroll.example.com/api',scopes:['read'],roles:[{role:'reader',scopes:['read'],resources:['page:1']}],resources:[{id:'page:1'}]},contractor.cookie))).status,403);
+ assert.equal((await (await a.call('/api/auth/resource-apis',{cookie:contractor.cookie})).json()).apis.length,1);
  assert.equal((await a.call('/api/auth/people/role',post({id:contractorId,role:'admin'},contractor.cookie))).status,403);
  await command(a,adminA.cookie,'organizations/invite',{email:'recover@example.com',name:'Recovery employee'},201);
  const worker=await register(a,await emailSession(a,'recover@example.com')),workerId=(await (await a.call('/api/auth/me',{cookie:worker.cookie})).json()).user.id;

@@ -252,6 +252,10 @@ test('resource APIs use live app roles and tenant resources for employees and di
  const claims=decodeJwt(token);assert.notEqual(claims.sub,'ada');assert.equal(claims.aud,'https://documents.example.com/api');assert.equal(claims.amr,undefined);assert.equal(claims.sid,undefined);
  assert.equal((await oauth('read',signed)).status,401,'one-use client assertion');
  assert.equal((await check({},undefined,token)).body.allowed,true);assert.equal((await check({action:'write'},undefined,token)).body.allowed,false);
+ const foreign=await command('organizations/create',{name:'Unrelated employer'},201);
+ assert.equal((await r.call('/org/'+foreign.id+'/api/auth/resource-apis/check',{method:'POST',data:{apiId:api.id,action:'read',resource:'document:budget'},headers:{authorization:'Bearer '+token}})).status,401,'active cross-employer bearer denied');
+ const otherApi=await command('resource-apis/register',{appId:app.id,name:'Different audience',audience:'https://documents.example.com/other-api',scopes:['read'],roles:[{role:'reader',scopes:['read'],resources:['record:1']}],resources:[{id:'record:1'}]},201);
+ assert.equal((await check({apiId:otherApi.id,resource:'record:1'},undefined,token)).response.status,401,'token for another registered audience denied');
  assert.equal((await check({subject:'ada'},undefined,token)).response.status,403);
  assert.equal((await r.call('/api/auth/people',{headers:{authorization:'Bearer '+token}})).status,401);
  assert.equal((await r.call('/oidc/userinfo',{headers:{authorization:'Bearer '+token}})).status,401,'API token has no identity audience');
@@ -263,6 +267,5 @@ test('resource APIs use live app roles and tenant resources for employees and di
  assert.equal((await check({})).body.allowed,true);assert.equal((await check({action:'write'})).body.allowed,false);
  await command('resource-apis/service-revoke',{clientId:service.clientId});assert.equal((await check({},undefined,token)).response.status,401);assert.equal((await oauth()).status,401);
  const audit=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(audit.some(a=>a.event==='resource_permission_check'&&a.actor_id===service.clientId));
- const org=await command('organizations/create',{name:'Unrelated employer'},201);
- assert.equal((await r.call('/org/'+org.id+'/api/auth/resource-apis/check',{method:'POST',data:{apiId:api.id,action:'read',resource:'document:budget'},headers:{authorization:'Bearer '+token}})).status,401,'cross-employer bearer denied');
+
 });
