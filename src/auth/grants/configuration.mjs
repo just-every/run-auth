@@ -1,6 +1,6 @@
 import {one,requireSession,fail} from '../core.mjs';
 import {authority,requireLocalEmail} from '../local-email.mjs';
-import {requireRolePermission,assertPermission,requireHardware,roleGuard} from '../roles/policy.mjs';
+import {requireRolePermission,assertPermission,requireHardware} from '../roles/policy.mjs';
 import {roleState} from '../roles/state.mjs';
 import {apiRow,serviceRow} from './authority.mjs';
 
@@ -31,6 +31,6 @@ export async function configurationView(ctx,request,model) {
  const state=await roleState(ctx,s),{permitted}=await import('../roles/policy.mjs');
  assertPermission(state,'apps.view');
  const apis=model.apis.filter(api=>permitted(state,'apps.view',{appId:api.appId})),ids=new Set(apis.map(api=>api.id));
- if(!await one(ctx,`SELECT 1 WHERE ${roleGuard(ctx,s,state).clause}`,...roleGuard(ctx,s,state).args))fail('role_authority_changed',409);
+ if(!await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),state.epoch))fail('role_authority_changed',409);
  return {...model,apis,services:model.services.filter(service=>ids.has(service.apiId))};
 }

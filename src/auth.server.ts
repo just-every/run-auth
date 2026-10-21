@@ -61,6 +61,8 @@ const pages = new Set<AuthPage>(['people', 'move-in', 'agents', 'apps', 'methods
 export async function authResponse(request: Request, original: Bindings, execution: ExecutionContext, allowDevSession?: AuthRuntimeOptions['allowDevSession']): Promise<Response | null> {
  const selected = organizationRequest(request)
  if (selected.id !== 'root') {
+  if (new URL(request.url).origin !== runtimeBindings(original).AUTH_ORIGIN) return new Response(null, { status: 403, headers: privateHeaders })
+  if (!await organizationDatabase(original.DB, selected.id)) return devNotFound()
   if (['/auth/bootstrap', '/auth/session', '/auth/signout'].includes(new URL(selected.request.url).pathname)) return devNotFound()
   const response = await authResponse(selected.request, { ...original, AUTH_ORGANIZATION_ID: selected.id }, execution, allowDevSession)
   return response ? organizationResponse({ basePath: selected.basePath }, response) : devNotFound()

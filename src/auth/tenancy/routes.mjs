@@ -9,7 +9,7 @@ export async function tenancyModel(ctx,request,s) {
  s??=await requireSession(ctx,request);
  const root=ctx.rootDb??ctx.db,available=[];
  // Only a live membership session reveals an employer, never an email match.
- const organizations=(await root.prepare("SELECT id,name FROM auth_organizations WHERE status='active' ORDER BY created_at,id LIMIT 100").all()).results;
+ const organizations=(await root.prepare("SELECT id,name FROM auth_organizations WHERE status='active' ORDER BY created_at,id").all()).results;
  for(const org of [{id:'root',name:'Installation'},...organizations]) {
   const db=org.id==='root'?root:(await organizationDatabase(root,org.id))?.db;
   if(!db)continue;
