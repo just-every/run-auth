@@ -8,6 +8,7 @@ import {appsModel} from './links/routes.mjs';
 import {fencePerson} from './links/logout.mjs';
 import {personChanged} from './provisioning/obligations.mjs';
 import {workforceModel} from './workforce/routes.mjs';
+import {directoryModel} from './workforce/people/model.mjs';
 import {launcher} from './workforce/directory.mjs';
 import {emit,personSubject} from './events/store.mjs';
 import {eventsModel} from './events/routes.mjs';
@@ -37,6 +38,7 @@ export async function model(ctx,request,page='account') {
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
   if(page==='agents')Object.assign(result,await agentsModel(ctx,request));
+  if(page==='people')result.directory=await directoryModel(ctx);
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);}
  }
  result.launcher=await launcher(ctx,s.person_id);

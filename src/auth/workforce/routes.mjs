@@ -16,6 +16,8 @@ import {queue,queueApp,groupChanged,reconcile,preview,dispatch,ESCALATE_AFTER} f
 import {recipe,catalog} from '../catalog/recipes.mjs';
 import {launcher} from './directory.mjs';
 import {emit} from '../events/store.mjs';
+import {loadDirectory} from './people/load.mjs';
+import {matches} from './people/groups.mjs';
 
 const OWNER_ACTIONS=['/saml-keys/stage','/saml-keys/activate','/saml-keys/retire'];
 const ADMIN_ACTIONS=['/oidc-apps/create','/oidc-apps/rotate-secret','/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
@@ -46,9 +48,11 @@ export async function workforceAction(ctx,request,path,data) {
  if(path==='/groups/delete') {
   const group=await one(ctx,'SELECT id,name FROM auth_groups WHERE id=?',String(data.id||''))||fail('group_not_found',404);
   const members=(await all(ctx,'SELECT person_id FROM auth_group_members WHERE group_id=?',group.id)).map(m=>m.person_id),apps=await all(ctx,"SELECT app_id FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?",group.id);
-  const [,, done]=await ctx.db.batch([
+  const [,,,, done]=await ctx.db.batch([
    ctx.db.prepare(`DELETE FROM auth_app_assignments WHERE principal_type='group' AND principal_id=? AND ${g}`).bind(group.id,...ga),
    ctx.db.prepare(`DELETE FROM auth_group_members WHERE group_id=? AND ${g}`).bind(group.id,...ga),
+   ctx.db.prepare(`DELETE FROM auth_group_exclusions WHERE group_id=? AND ${g}`).bind(group.id,...ga),
+   ctx.db.prepare(`DELETE FROM auth_group_owners WHERE group_id=? AND ${g}`).bind(group.id,...ga),
    ctx.db.prepare(`DELETE FROM auth_groups WHERE id=? AND ${g}`).bind(group.id,...ga),
   ]);
   if(!await held(done))fail('group_not_found',404);
@@ -57,15 +61,29 @@ export async function workforceAction(ctx,request,path,data) {
   return json({ok:true});
  }
  if(path==='/groups/add'||path==='/groups/remove') {
-  const group=await one(ctx,'SELECT id FROM auth_groups WHERE id=?',String(data.groupId||''))||fail('group_not_found',404);
+  const group=await one(ctx,'SELECT id,rule FROM auth_groups WHERE id=?',String(data.groupId||''))||fail('group_not_found',404);
   const person=await one(ctx,'SELECT id,email FROM oa_operators WHERE id=? OR email=?',String(data.personId||''),String(data.email||'').trim().toLowerCase())||fail('person_not_found',404);
-  const changed=path==='/groups/add'
-   ?await run(ctx,`INSERT INTO auth_group_members(group_id,person_id,added_by,added_at) SELECT ?,?,?,? WHERE ${g} ON CONFLICT DO NOTHING`,group.id,person.id,s.person_id,ctx.now(),...ga)
-   :await run(ctx,`DELETE FROM auth_group_members WHERE group_id=? AND person_id=? AND ${g}`,group.id,person.id,...ga);
+  const adding=path==='/groups/add';let changed;
+  if(adding) {
+   // An administrator's addition pins the person, and lifts an earlier exclusion from a rule's group.
+   const [added,lifted]=await ctx.db.batch([
+    ctx.db.prepare(`INSERT INTO auth_group_members(group_id,person_id,added_by,added_at) SELECT ?,?,?,? WHERE ${g} ON CONFLICT(group_id,person_id) DO UPDATE SET source='manual',added_by=excluded.added_by,added_at=excluded.added_at WHERE auth_group_members.source='rule'`).bind(group.id,person.id,s.person_id,ctx.now(),...ga),
+    ctx.db.prepare(`DELETE FROM auth_group_exclusions WHERE group_id=? AND person_id=? AND ${g}`).bind(group.id,person.id,...ga),
+   ]);
+   changed={meta:{changes:added.meta.changes+lifted.meta.changes}};
+  } else {
+   // Removing someone a rule matches excludes them, so the rule does not add them back.
+   const dir=group.rule?await loadDirectory(ctx):null,rule=group.rule&&JSON.parse(group.rule),excluded=Boolean(rule&&matches(rule,dir.values(dir.people.get(person.id))));
+   const [removed,exclusion]=await ctx.db.batch([
+    ctx.db.prepare(`DELETE FROM auth_group_members WHERE group_id=? AND person_id=? AND ${g}`).bind(group.id,person.id,...ga),
+    ctx.db.prepare(`INSERT INTO auth_group_exclusions(group_id,person_id,reason,set_by,set_at) SELECT ?,?,?,?,? WHERE ${excluded?'1':'0'} AND ${g} ON CONFLICT DO NOTHING`).bind(group.id,person.id,data.reason?String(data.reason).slice(0,200):null,s.person_id,ctx.now(),...ga),
+   ]);
+   changed={meta:{changes:removed.meta.changes+exclusion.meta.changes}};
+  }
   if(!await held(changed))return json({ok:true,changed:false});
-  await log(path==='/groups/add'?'group_member_added':'group_member_removed',group.id,{person:person.email});
-  await emit(ctx,path==='/groups/add'?'group.member_added':'group.member_removed',{type:'person',id:person.id,email:person.email},{group:group.id});
-  await groupChanged(ctx,group.id,[person.id],path==='/groups/add'?'group_member_added':'group_member_removed');
+  await log(adding?'group_member_added':'group_member_removed',group.id,{person:person.email});
+  await emit(ctx,adding?'group.member_added':'group.member_removed',{type:'person',id:person.id,email:person.email},{group:group.id});
+  await groupChanged(ctx,group.id,[person.id],adding?'group_member_added':'group_member_removed');
   return json({ok:true,changed:true});
  }
 

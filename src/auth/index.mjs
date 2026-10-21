@@ -6,7 +6,7 @@ import {discovery,authorize,resumeAuthorization,token} from './protocol.mjs';
 import {userinfo} from './userinfo.mjs';
 import {genericToken} from './oidc-apps/flow.mjs';
 import {jwks,JWKS_CACHE_SECONDS,ensureSigningKey} from './keys.mjs';
-import {adminAction,model} from './admin.mjs';
+import {adminAction,model,sendInvitation} from './admin.mjs';
 import {createUpstreams} from './upstreams.mjs';
 import {stage,moveInAction,formerSubjects} from './move-in/routes.mjs';
 import {preparer,agentsAction} from './agents/routes.mjs';
@@ -17,6 +17,7 @@ import {rememberIssuer} from './links/grant-map.mjs';
 import {isTrustAction,trustAction} from './links/rer-trust.mjs';
 import {samlRoute,isSamlPath} from './saml/routes.mjs';
 import {isWorkforceAction,workforceAction,workforceRead,WORKFORCE_READS} from './workforce/routes.mjs';
+import {isDirectoryAction,directoryAction,directoryRead,DIRECTORY_READS} from './workforce/people/routes.mjs';
 import {isEventsAction,eventsAction,eventsRead,EVENTS_READ} from './events/routes.mjs';
 export {stageSigningKey,retireSigningKey,ensureSigningKey} from './keys.mjs';
 export {maintainAuth} from './maintenance.mjs';
@@ -47,6 +48,7 @@ export function createAuthRuntime(options) {
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
+    if(DIRECTORY_READS.includes(path))return await directoryRead(ctx,request,path);
     // The event cursor reads its own read key, never a cookie.
     if(path===EVENTS_READ)return await eventsRead(ctx,request);
     if(path.startsWith('/api/auth/')) {
@@ -75,6 +77,7 @@ export function createAuthRuntime(options) {
      if(action==='/signout-everywhere')return await signOutEverywhere(ctx,request);
      if(isAppAction(action))return await appAction(ctx,request,action,data);
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);
+     if(isDirectoryAction(action))return await directoryAction(ctx,request,action,data,{notify:sendInvitation});
      if(isWorkforceAction(action))return await workforceAction(ctx,request,action,data);
      if(isEventsAction(action))return await eventsAction(ctx,request,action,data);
      return await adminAction(ctx,request,action,data);

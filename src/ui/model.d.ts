@@ -183,7 +183,32 @@ export interface RerTrustKey {
   withdrawn_at?: number | null
 }
 
+export interface DirectoryField { value: string; source: string; also: { source: string; value: string }[] }
+export interface DirectoryPerson {
+  id: string
+  email: string
+  name: string
+  role: string
+  state: 'invited' | 'active' | 'suspended' | 'terminated'
+  fields: Record<string, DirectoryField>
+  conflicts: { field: string }[]
+  groups: { id: string; name: string; via: 'manual' | 'rule'; why?: string[] }[]
+  apps: { appId: string; app: string; role: string | null }[]
+}
+export interface DirectoryAttribute { key: string; label: string; type: string; choices: string[] | null; visibility: string; employeeEditable: boolean; standard: boolean }
+export interface DirectoryGroup {
+  id: string
+  name: string
+  rule: { match: 'all' | 'any'; conditions: { field: string; op: string; value?: string; values?: string[] }[] } | null
+  owners: { id: string; email: string | null }[]
+  apps: { appId: string; app: string; role: string | null }[]
+  members: { id: string; email: string | null; via: 'manual' | 'rule'; why?: string[]; matchesRule?: boolean }[]
+  excluded: { id: string; email: string | null; reason: string | null }[]
+}
+export interface DirectoryModel { people: DirectoryPerson[]; groups: DirectoryGroup[]; attributes: DirectoryAttribute[] }
+
 export interface AuthPageModel {
+  directory?: DirectoryModel
   page: AuthPage | string
   issuer?: string
   returnTo?: string
