@@ -1,6 +1,6 @@
 # Machine administration API
 
-The version 1 machine API is at `/api/auth/admin/v1`. Its OpenAPI description is available at `/api/auth/admin/v1/openapi.json`. It supports the current directory, company apps and domain-provider rules. It does not yet implement the complete target administration API or a Terraform provider.
+The version 1 machine API is at `/api/auth/admin/v1`. Its OpenAPI description is available at `/api/auth/admin/v1/openapi.json`. It covers the current directory, company apps, domain-provider rules and availability of owner-configured identity providers. Future custom-role, policy and federation capabilities remain in AUTH-ROLES-001, AUTH-POLICY-001 and AUTH-FEDERATION-001; their machine doors must reuse this credential, scope, exclusion, audit and concurrency model before shipping. The Terraform provider remains AUTH-TERRAFORM-001.
 
 ## Register a service app
 
