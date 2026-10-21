@@ -22,6 +22,11 @@ test('onboard, rename, transfer, bulk preview, dynamic groups, suspend and rehir
  assert.equal((await r.mails()).length,mails+2);
  assert.equal((await person(r,'erin@corp.example.com')).state,'invited');
  assert.deepEqual(erin.plan.groups.added.map(g=>g.name),['US engineers']);assert.deepEqual(cole.plan.groups.added,[]);
+ const robot=await admin(r,'directory/onboard',{email:'ci-bot@corp.example.com',name:'CI bot',kind:'service',invite:false,set:{department:'Engineering',location:'US'}},201);
+ assert.equal((await r.mails()).length,mails+2,'no invitation was sent for the service identity');
+ const filtered=await get(r,'directory?state=invited&f.kind=service');assert.deepEqual(filtered.people.map(p=>p.id),[robot.id]);assert.equal(filtered.total,1);
+ assert.deepEqual((await get(r,'directory?q=Cole')).people.map(p=>p.id),[cole.id]);assert.equal((await get(r,'directory?group='+engineers.id)).total,2);
+ const mapped=(await get(r,'directory/groups')).groups.find(g=>g.id===engineers.id);assert.deepEqual(mapped.apps,[{appId:wiki.id,app:mapped.apps[0].app,role:'editor'}]);
  // Neither a second onboarding nor an email change can create a duplicate or merge by email.
  const dupe=await r.admin('directory/onboard',{email:'erin@corp.example.com',name:'Erin Again'});assert.equal(dupe.status,409);
  assert.deepEqual(await dupe.json(),{error:'onboard_refused',refusals:['person_exists'],personId:erin.id});
@@ -37,7 +42,7 @@ test('onboard, rename, transfer, bulk preview, dynamic groups, suspend and rehir
  // Bulk preview by filter: nothing changes until the exact preview is applied.
  const bulk={filter:{fields:{department:'Engineering'}},set:{department:'Platform'}};
  const planned=(await admin(r,'directory/preview',bulk)).plan;
- assert.equal(planned.summary.people,2);assert.equal(planned.summary.groupsLost,2);assert.deepEqual(planned.entries.flatMap(e=>e.groups.removed.map(g=>g.name)),['US engineers','US engineers']);
+ assert.equal(planned.summary.people,3);assert.equal(planned.summary.groupsLost,3);assert.deepEqual(planned.entries.flatMap(e=>e.groups.removed.map(g=>g.name)),['US engineers','US engineers','US engineers']);
  assert.equal((await person(r,'erin@corp.example.com')).fields.department.value,'Engineering');
  assert.equal((await r.admin('directory/apply',bulk)).status,400);
  assert.equal((await r.admin('directory/apply',{...bulk,digest:'stale'})).status,409);
@@ -62,6 +67,10 @@ test('onboard, rename, transfer, bulk preview, dynamic groups, suspend and rehir
  r.ada=await (await import('./runtime.mjs')).emailSession(r,'ada@example.com');
  assert.deepEqual((await (await r.call('/api/auth/launcher',{cookie:r.ada})).json()).apps.map(a=>a.id),[wiki.id]);
  assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM oa_operators WHERE email='ada@example.com'").first()).n,1);
+ // The returning worker's address belongs to the former record: onboarding refuses and names it for a rehire review.
+ await admin(r,'directory/edit',{personId:adaId,state:'terminated'});
+ const again=await r.admin('directory/onboard',{email:'ada@example.com',name:'Ada Again'});assert.equal(again.status,409);assert.deepEqual(await again.json(),{error:'onboard_refused',refusals:['rehire_review_required'],personId:adaId});
+ await admin(r,'directory/edit',{personId:adaId,state:'active'});
  // Invited people, the owner and the acting administrator cannot be suspended through the directory.
  for(const [id,code] of [[erin.id,'invitation_not_accepted'],['owner','owner_state_fixed']]){const refused=await r.admin('directory/edit',{personId:id,state:'suspended'});assert.equal(refused.status,409);assert.match(JSON.stringify(await refused.json()),new RegExp(code));}
 });
@@ -166,4 +175,13 @@ test('directory doors need a passkey administrator with fresh email proof; attri
  const cleared=await admin(r,'groups/rule',{groupId:everyone.id,rule:null,preview:true});assert.deepEqual(cleared.removed,[]);
  await admin(r,'groups/remove',{groupId:everyone.id,personId:bob});await admin(r,'groups/delete',{id:everyone.id});
  for(const table of ['auth_group_owners','auth_group_exclusions','auth_group_members'])assert.equal((await r.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first()).n,0,table);
+ // Someone invited outside the directory is put in a rule's group when they activate.
+ const staff=await admin(r,'groups/create',{name:'All employees'},201);
+ await admin(r,'groups/rule',{groupId:staff.id,rule:{match:'all',conditions:[{field:'kind',op:'eq',value:'employee'}]}});
+ await admin(r,'people/invite',{email:'newhire@example.com',name:'New Hire'},201);
+ const members=async()=>(await get(r,'directory/groups')).groups.find(g=>g.id===staff.id).members.map(m=>m.email);
+ assert.equal((await members()).includes('newhire@example.com'),false,'access and membership wait for activation');
+ await (await import('./runtime.mjs')).emailSession(r,'newhire@example.com');
+ assert.equal((await members()).includes('newhire@example.com'),true);
 });
+

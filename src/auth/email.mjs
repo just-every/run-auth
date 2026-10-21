@@ -1,6 +1,7 @@
 import {permitsSession,requirePolicy,upstreamProof} from './domain-policy.mjs';
 import {framedPage,FRAME_SOURCES} from './page-frame.mjs';
 import {emit} from './events/store.mjs';
+import {evaluatePerson} from './workforce/people/evaluate.mjs';
 import {email,hash,random,binding,bindingName,cookie,challenge,consumeChallenge,one,run,limit,json,createSession,audit,fail,returnPath,session,sessionById} from './core.mjs';
 export async function sendProof(ctx, person, bindingHash, amr = ['email'], returnTo = '/app/account', upstreamProofId = null, hardwareSessionId = null) {
  await requirePolicy(ctx,person,upstreamProofId);
@@ -47,7 +48,7 @@ export async function confirmEmail(ctx,request,data) {
  ]);
  const s=await createSession(ctx,proof.person_id,[...proof.payload.amr,...(hardware?['hwk']:[])],proof.payload.upstreamProofId,{localEmailVerifiedAt:ctx.now(),expiresAt:hardware?.expires_at,sourceSession:hardware,personVersion:person.status==='active'?person.version:null});
  await audit(ctx,proof.person_id,'email_confirmed');
- if(person.status==='invited')await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'email'});
+ if(person.status==='invited'){await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'email'});await evaluatePerson(ctx,person.id);}
  const returnTo=returnPath(proof.payload.returnTo);
  if((request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded'))return new Response(null,{status:303,headers:{location:returnTo,'set-cookie':s.header,'cache-control':'no-store'}});
  return json({ok:true,returnTo},200,{'set-cookie':s.header});

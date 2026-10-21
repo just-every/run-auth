@@ -6,6 +6,7 @@ import {one,run,random,hash,cookie,bindingName,createSession,EMAIL_MAX_AGE,retur
 import {sendProof} from './email.mjs';
 import {pendingAuthorizationLogin} from './authorization-login.mjs';
 import {openIntent,completeLink} from './profiles/links.mjs';
+import {evaluatePerson} from './workforce/people/evaluate.mjs';
 export function createUpstreams(ctx) {
  const configured=ctx.upstreamProviders||[];
  if(configured.some(p=>!['google','microsoft','okta'].includes(p.preset)))fail('unsupported_upstream',503);
@@ -35,7 +36,7 @@ export function createUpstreams(ctx) {
   await run(ctx,'INSERT INTO auth_upstream_proofs(id,person_id,provider_id,issuer,subject,configuration_hash,verified_at,expires_at) VALUES(?,?,?,?,?,?,?,?)',upstreamProofId,person.id,principal.provider,principal.issuer,principal.subject,await configurationHash(provider),ctx.now(),ctx.now()+SESSION_MAX_AGE);
   if(person.status==='invited') {
    const activated=await run(ctx,"UPDATE oa_operators SET status='active' WHERE id=? AND status='invited'",person.id);
-   if(activated.meta.changes)await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'upstream'});
+   if(activated.meta.changes){await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'upstream'});await evaluatePerson(ctx,person.id);}
    person=await one(ctx,"SELECT * FROM oa_operators WHERE id=? AND status='active'",person.id);
    if(!person)fail('account_unavailable',403);
   }

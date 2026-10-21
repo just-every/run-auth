@@ -24,7 +24,7 @@ export const POLICY = {
   'auth_recoveries', 'auth_recovery_tokens', 'auth_notices', 'auth_upstream_proofs', 'auth_agent_%', 'auth_import_rows',
   'auth_link_requests', 'auth_link_tokens', 'auth_link_codes', 'auth_session_clients', 'auth_logout_deliveries', 'auth_rer_%',
   'auth_saml_keys', 'auth_saml_requests', 'auth_saml_sessions', 'auth_saml_logouts', 'auth_scim_connectors', 'auth_provisioning', 'auth_oidc_secrets', 'auth_oidc_codes', 'auth_oidc_sessions', 'auth_oidc_logouts',
-  'auth_event_subscriptions', 'auth_event_deliveries'],
+  'auth_event_subscriptions', 'auth_event_deliveries', 'auth_link_intents'],
  requiredConfiguration: ['AUTH_ENCRYPTION_KEY'],
 };
 const engine = localPortability({ database: 'auth', policy: POLICY });
