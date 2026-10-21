@@ -1,3 +1,4 @@
+import {computedValues} from '../mapping/program.mjs';
 // General OpenID Connect clients for company SaaS, web and native apps. They
 // never share code, client or key paths with RER registrations, which keep the
 // strict private_key_jwt and mandatory PKCE profile in protocol.mjs.
@@ -106,6 +107,7 @@ export async function claimsFor(ctx,client,s,scopes,role,proofAt) {
    if(value!==null&&value!==undefined&&!['sub','iss','aud','exp','iat','nonce','sid','auth_time','at_hash','c_hash'].includes(a.name))claims[a.name]=value;
   }
  }
+ if(scopes.includes('profile'))Object.assign(claims,(await computedValues(ctx,client.app_id,s.person_id))?.oidc??{});
  if(scopes.includes('groups'))claims.groups=await groupNames(ctx,s.person_id);
  return claims;
 }

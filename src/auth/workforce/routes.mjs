@@ -194,6 +194,7 @@ export async function workforceAction(ctx,request,path,data) {
 
 // Apps page model for administrators.
 export async function workforceModel(ctx) {
+ const mappings=await all(ctx,'SELECT app_id,version,program,created_at FROM auth_mapping_versions ORDER BY version DESC');
  const [apps,assignments,groups,members,connectors,obligations,keys]=await Promise.all([
   all(ctx,'SELECT * FROM auth_apps ORDER BY name'),
   all(ctx,"SELECT a.app_id,a.principal_type,a.principal_id,a.role,COALESCE(g.name,p.email) AS label FROM auth_app_assignments a LEFT JOIN auth_groups g ON a.principal_type='group' AND g.id=a.principal_id LEFT JOIN oa_operators p ON a.principal_type='person' AND p.id=a.principal_id ORDER BY label"),
@@ -208,7 +209,7 @@ export async function workforceModel(ctx) {
  return {
   idp:{entityId:idpEntity(ctx),metadataUrl:`${ctx.origin}/saml/metadata`,ssoUrl:`${ctx.origin}/saml/sso`,sloUrl:`${ctx.origin}/saml/slo`},
   samlKeys:keys.map(k=>({kid:k.kid,state:k.state,createdAt:k.created_at,activatedAt:k.activated_at})),
-  companyApps:apps.map(row=>{const a=appOf(row),c=connectors.find(x=>x.app_id===a.id);const o=oidc.find(x=>x.app_id===a.id);return {id:a.id,name:a.name,protocol:a.protocol,oidc:o?{clientId:o.client_id,authMethod:o.auth_method,redirectUris:JSON.parse(o.redirect_uris),postLogoutRedirectUris:JSON.parse(o.post_logout_redirect_uris),requirePkce:Boolean(o.require_pkce),subjectType:o.subject_type,legacyFlows:Boolean(o.legacy_flows),frontchannelLogoutUri:o.frontchannel_logout_uri,backchannelLogoutUri:o.backchannel_logout_uri,idTokenAlg:o.id_token_alg,liveSecrets:o.live_secrets,previousSecretUntil:o.overlap_until}:null,recipe:a.recipe,entityId:a.entity_id,acs:a.acs,slo:a.slo,nameIdFormat:a.name_id_format,sign:a.sign,digest:a.digest,encryption:a.encryption,idpInitiated:Boolean(a.idp_initiated),version:a.version,status:a.disabled_at?'removed':'active',metadata:spMetadata(a),
+  companyApps:apps.map(row=>{const a=appOf(row),c=connectors.find(x=>x.app_id===a.id);const o=oidc.find(x=>x.app_id===a.id);return {id:a.id,name:a.name,mapping:{version:a.mapping_version,versions:mappings.filter(m=>m.app_id===a.id)},protocol:a.protocol,oidc:o?{clientId:o.client_id,authMethod:o.auth_method,redirectUris:JSON.parse(o.redirect_uris),postLogoutRedirectUris:JSON.parse(o.post_logout_redirect_uris),requirePkce:Boolean(o.require_pkce),subjectType:o.subject_type,legacyFlows:Boolean(o.legacy_flows),frontchannelLogoutUri:o.frontchannel_logout_uri,backchannelLogoutUri:o.backchannel_logout_uri,idTokenAlg:o.id_token_alg,liveSecrets:o.live_secrets,previousSecretUntil:o.overlap_until}:null,recipe:a.recipe,entityId:a.entity_id,acs:a.acs,slo:a.slo,nameIdFormat:a.name_id_format,sign:a.sign,digest:a.digest,encryption:a.encryption,idpInitiated:Boolean(a.idp_initiated),version:a.version,status:a.disabled_at?'removed':'active',metadata:spMetadata(a),
    assignments:assignments.filter(x=>x.app_id===a.id).map(x=>({type:x.principal_type,id:x.principal_id,label:x.label,role:x.role})),
    provisioning:c?{baseUrl:c.base_url,deprovision:c.deprovision,groups:Boolean(c.push_groups),lastSuccessAt:c.last_success_at,lastError:c.last_error,lastReconciledAt:c.last_reconciled_at,rotatedAt:c.rotated_at}:null,
    obligations:obligations.filter(o=>o.app_id===a.id).map(o=>({...o,overdue:o.state!=='verified'&&now-o.event_at>ESCALATE_AFTER}))};}),

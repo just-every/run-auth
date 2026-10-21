@@ -1,3 +1,4 @@
+import {isMappingAction,mappingAction} from './mapping/routes.mjs';
 import {AuthError,input,json,fail,requireSession,validateClientOrigin} from './core.mjs';
 import {requestEmail,confirmEmail,confirmationPage} from './email.mjs';
 import {registrationOptions,registrationVerify,authenticationOptions,authenticationVerify} from './passkeys.mjs';
@@ -81,6 +82,7 @@ export function createAuthRuntime(options) {
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);
      if(isProfileAction(action))return await profileAction(ctx,request,action,data,{upstreams});
      if(isDirectoryAction(action))return await directoryAction(ctx,request,action,data,{notify:sendInvitation});
+     if(isMappingAction(action))return await mappingAction(ctx,request,action,data);
      if(isWorkforceAction(action))return await workforceAction(ctx,request,action,data);
      if(isEventsAction(action))return await eventsAction(ctx,request,action,data);
      return await adminAction(ctx,request,action,data);

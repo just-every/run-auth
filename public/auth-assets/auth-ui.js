@@ -275,6 +275,25 @@
       if (submitter) submitter.disabled = false
       return
     }
+    const mapping = event.target.closest('form[data-mapping-form]')
+    if (mapping) {
+      event.preventDefault()
+      const payload = Object.fromEntries(new FormData(mapping))
+      payload.personIds = new FormData(mapping).getAll('personIds')
+      const result = mapping.querySelector('[data-mapping-result]'), save = mapping.querySelector('[data-mapping-save]')
+      save.disabled = true
+      try {
+        const preview = await requestJSON(mapping.action, payload)
+        result.textContent = preview.message
+        save.disabled = false
+        save.onclick = async () => {
+          save.disabled = true
+          try { await requestJSON('/api/auth/mapping/save', { ...payload, version: preview.version, digest: preview.digest }); window.location.reload() }
+          catch (error) { result.textContent = error.message }
+        }
+      } catch (error) { result.textContent = error.message }
+      return
+    }
     const form = event.target.closest('form[data-auth-action]')
     if (!form) return
     event.preventDefault()
@@ -310,6 +329,8 @@
       if (submitter) submitter.disabled = false
     }
   })
+
+  document.querySelectorAll('[data-mapping-form]').forEach(form => form.addEventListener('input', () => { form.querySelector('[data-mapping-save]').disabled = true }))
 
   const search = document.querySelector('[data-people-search]')
   if (search) {

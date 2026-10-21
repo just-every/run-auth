@@ -49,6 +49,9 @@ test('SaaS clients sign in with client_secret_basic, client_secret_post and priv
  assert.deepEqual(discovery.subject_types_supported,['pairwise','public']);assert.equal(discovery.frontchannel_logout_supported,true);
  const basic=await register(r,{name:'Expenses',authMethod:'client_secret_basic',redirectUris:`${RP}/cb`,postLogoutRedirectUris:`${RP}/bye`,frontchannelLogoutUri:`${RP}/fc`,backchannelLogoutUri:`${RP}/bc`});
  assert.equal(basic.clientSecret.length,43);
+ const mapped={appId:basic.id,personIds:['ada'],program:{language:1,oidc:{mapped_name:{op:'upper',args:[{field:'name'}]}}}};
+ const preview=await (await r.admin('mapping/preview',mapped)).json();
+ assert.equal((await r.admin('mapping/save',{...mapped,version:0,digest:preview.digest})).status,200);
  const post=await register(r,{name:'Travel',authMethod:'client_secret_post',redirectUris:`${RP}/travel/cb`,backchannelLogoutUri:`${RP}/travel/bc`,subjectType:'public'});
  const key=await generateKeyPair('RS256',{extractable:true}),jwk={...await exportJWK(key.publicKey),kid:'rp-key',alg:'RS256',use:'sig'};
  const jwt=await register(r,{name:'Payroll',authMethod:'private_key_jwt',jwks:JSON.stringify({keys:[jwk]}),redirectUris:`${RP}/payroll/cb`,requirePkce:true});
@@ -65,7 +68,7 @@ test('SaaS clients sign in with client_secret_basic, client_secret_post and priv
   const config=await relyingParty(r,app.clientId,auth);
   const flow=await signIn(r,config,{redirect});assert.equal(flow.location.searchParams.get('iss'),r.origin);
   const tokens=await flow.grant(),claims=tokens.claims();
-  assert.equal(claims.email,'ada@example.com');assert.equal(claims.department,'finance');assert.equal(tokens.refresh_token,undefined);
+  assert.equal(claims.email,'ada@example.com');if(app.id===basic.id)assert.equal(claims.mapped_name,'ADA');assert.equal(claims.department,'finance');assert.equal(tokens.refresh_token,undefined);
   subjects.add(claims.sub);session??=claims.sid;
   const info=await oidc.fetchUserInfo(config,tokens.access_token,claims.sub);assert.equal(info.email,'ada@example.com');assert.deepEqual(info.groups,[]);
   app.tokens=tokens;app.config=config;

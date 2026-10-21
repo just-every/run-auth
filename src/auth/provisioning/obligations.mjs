@@ -1,3 +1,4 @@
+import {computedValues,scimValues} from '../mapping/program.mjs';
 // Provisioning obligations: what Auth still has to make true in an app, pushed
 // on the event and kept open until a read-back shows it. Each records the event,
 // dispatch and remote-verified times. Access ends locally before any of this:
@@ -49,9 +50,11 @@ export async function desiredPerson(ctx,appId,personId) {
  const assigned=person&&await assignment(ctx,appId,personId);
  if(!assigned)return {active:false,person};
  const name=(person.display_name||person.email).trim(),space=name.lastIndexOf(' ');
- return {active:true,person,role:assigned.role,user:{schemas:[USER],externalId:person.id,userName:person.email,displayName:name,name:{formatted:name,givenName:space>0?name.slice(0,space):name,familyName:space>0?name.slice(space+1):''},emails:[{value:person.email,type:'work',primary:true}],active:true,...(assigned.role?{roles:[{value:assigned.role,primary:true}]}:{})}};
+ const computed=await computedValues(ctx,appId,personId),mapped=scimValues(computed?.scim);
+ return {active:true,person,role:assigned.role,user:{schemas:[USER],externalId:person.id,userName:person.email,displayName:name,name:{formatted:name,givenName:space>0?name.slice(0,space):name,familyName:space>0?name.slice(space+1):''},emails:[{value:person.email,type:'work',primary:true}],active:true,...(assigned.role?{roles:[{value:assigned.role,primary:true}]}:{}),...mapped,...(computed?.username?{userName:computed.username}:{})}};
 }
-const sameUser=(remote,desired)=>remote&&remote.active===true&&remote.userName===desired.userName&&remote.externalId===desired.externalId&&(remote.roles??[]).map(r=>r.value).join()===(desired.roles??[]).map(r=>r.value).join();
+const includesValue=(remote,desired)=>desired&&typeof desired==='object'?Object.entries(desired).every(([k,v])=>includesValue(remote?.[k],v)):remote===desired;
+const sameUser=(remote,desired)=>remote&&includesValue(remote,desired)&&(remote.roles??[]).map(r=>r.value).join()===(desired.roles??[]).map(r=>r.value).join();
 const account=(ctx,appId,type,id)=>one(ctx,'SELECT * FROM auth_scim_accounts WHERE app_id=? AND subject_type=? AND subject_id=?',appId,type,id);
 const saveAccount=(ctx,appId,type,id,remote,state)=>run(ctx,'INSERT INTO auth_scim_accounts(app_id,subject_type,subject_id,remote_id,state,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(app_id,subject_type,subject_id) DO UPDATE SET remote_id=excluded.remote_id,state=excluded.state,updated_at=excluded.updated_at',appId,type,id,remote,state,ctx.now());
 

@@ -171,3 +171,47 @@ test('single logout from the app and from Auth over both bindings ends the Auth 
  assert.equal((await r.admin('saml-keys/retire',{kid:previous.kid})).status,200);
  const remaining=await idpCertificates(r);assert.equal(remaining.length,1);assert.notEqual(remaining[0],idpCerts[0]);
 });
+
+test('app setup previews typed mappings for three people, launches computed collision-safe NameID and group role, provisions formatted dates, refuses unsafe programs and rolls back an audited version',async t=>{
+ const r=await samlInstall(t),{scimServer}=await import('./scim-server.mjs'),scim=await scimServer(t,'synthetic-auth-1');r.scimServer=scim.url;
+ const admin=async(path,data,status=200)=>{const response=await r.admin(path,data);assert.equal(response.status,status,await response.clone().text());return response.json();};
+ await admin('directory/edit',{personId:'ada',set:{name:'Ada Lovelace',start_date:'2026-10-01'}});
+ await admin('directory/edit',{personId:'bob',set:{name:'Ada Lovelace',start_date:'2026-10-02',manager:'ada'}});
+ const group=await admin('groups/create',{name:'Finance'},201);await admin('groups/add',{groupId:group.id,personId:'ada'});
+ const idpCerts=await idpCertificates(r),sp=await spCredentials('mapping.example.com'),entity='https://mapping.example.com',saml=serviceProvider(r,{entity,idpCerts,sp});
+ const app=await addApp(r,{metadata:metadataOf(saml,sp),sign:'both',attributes:'email=email',assign:['ada','bob']});
+ const op=(op,...args)=>({op,args}),field=field=>({field});
+ const username={expression:op('lower',op('concat',field('first_name'),'.',field('last_name'))),unique:true};
+ const program={language:1,nameId:username,username,saml:{role:op('if',op('inGroup','Finance'),'finance','reader')},scim:{title:op('date',field('start_date'),'YYYYMMDD')}};
+ const data={appId:app.id,personIds:['ada','bob','owner'],program};
+ let preview=await admin('mapping/preview',data);
+ assert.deepEqual(preview.rows.map(x=>[x.personId,x.values.nameId]),[['ada','ada.lovelace-1'],['bob','ada.lovelace-2'],['owner',null]]);
+ assert.ok(preview.rows.find(x=>x.personId==='owner').warnings.includes('nameId:empty'));
+ assert.ok(preview.rows.find(x=>x.personId==='ada').warnings.includes('nameId:duplicate'));
+ assert.deepEqual(preview.rows.filter(x=>x.personId!=='owner').map(x=>x.values.scim.title),['20261001','20261002']);
+ assert.equal((await r.admin('mapping/save',{...data,version:0,digest:'stale'})).status,409);
+ await admin('mapping/save',{...data,version:0,digest:preview.digest});
+ const read=async()=> (await saml.validatePostResponseAsync({SAMLResponse:(await posted(await signIn(r,saml,r.ada))).SAMLResponse})).profile;
+ assert.equal((await read()).nameID,'ada.lovelace-1');assert.equal((await read()).role,'finance');
+ await admin('provisioning/connect',{appId:app.id,baseUrl:'https://scim.example.com/scim/v2',token:scim.token},201);
+ assert.deepEqual([...scim.users.values()].map(x=>[x.userName,x.title]).sort(),[['ada.lovelace-1','20261001'],['ada.lovelace-2','20261002']]);
+ const verified=(await r.db.prepare("SELECT state FROM auth_provisioning WHERE app_id=? AND state!='superseded'").bind(app.id).all()).results;assert.ok(verified.length>=2&&verified.every(x=>x.state==='verified'));
+ // All functions are exercised through the same preview door, with manager and source lookups.
+ await admin('directory/source',{source:'hr',records:[{personId:'bob',sourceId:'synthetic-auth-2',fields:{department:'Sales'}}]});
+ const functions={lower:op('lower','ABC'),upper:op('upper','abc'),substring:op('substring','abcdef',1,3),replace:op('replace','a-b','-','.'),regex:op('regexReplace','A  B',' +','-'),trim:op('trim',' x '),pad:op('pad','7',3,'0','start'),coalesce:op('coalesce',null,'yes'),manager:{manager:'email'},source:{source:'hr',field:'department'},filter:op('filter',{groups:true},'startsWith','Fin')};
+ const values=(await admin('mapping/preview',{...data,program:{language:1,saml:functions}})).rows.find(x=>x.personId==='bob').values.saml;
+ assert.deepEqual(values,{lower:'abc',upper:'ABC',substring:'bcd',replace:'a.b',regex:'A-B',trim:'x',pad:'007',coalesce:'yes',manager:'ada@example.com',source:'Sales',filter:[]});
+ let tooDeep='x';for(let n=0;n<18;n++)tooDeep=op('lower',tooDeep);
+ assert.equal((await r.admin('mapping/preview',{...data,program:{language:1,nameId:{expression:tooDeep}}})).status,400);
+ for(const expr of [{field:'AUTH_ENCRYPTION_KEY'},op('fetch','https://example.com'),op('pad','x',100000000),op('regexReplace','aaaa','(a+)+','x'),op('lower',42)]){
+  assert.equal((await r.admin('mapping/preview',{...data,program:{language:1,nameId:{expression:expr}}})).status,400);
+ }
+ const next={...program,saml:{role:'reader'}};preview=await admin('mapping/preview',{...data,program:next});
+ await admin('mapping/save',{...data,program:next,version:1,digest:preview.digest});assert.equal((await read()).role,'reader');
+ await admin('mapping/rollback',{appId:app.id,personIds:['ada'],version:2,targetVersion:1});assert.equal((await read()).role,'finance');
+ assert.equal((await r.admin('mapping/save',{...data,version:1,digest:preview.digest})).status,409);
+ for(const cookie of [undefined,r.ada])assert.equal((await r.call('/api/auth/mapping/preview',{method:'POST',cookie,data})).status,cookie?403:401);
+ r.tick=()=>{r.now=Date.now()+660000;};assert.equal((await r.admin('mapping/rollback',{appId:app.id,personIds:['ada'],version:3,targetVersion:1})).status,403);
+ const history=(await r.db.prepare("SELECT event,detail FROM auth_activity WHERE event LIKE 'mapping_%'").all()).results;
+ assert.deepEqual(history.map(x=>x.event),['mapping_saved','mapping_saved','mapping_rolled_back']);
+});

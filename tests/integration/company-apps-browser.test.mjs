@@ -106,7 +106,21 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  const assign=page.locator('form[data-assign]').first();
  await assign.getByLabel('Give access to').selectOption({label:'Group: Finance'});await assign.getByLabel('App role (optional)').fill('approver');await assign.getByRole('button',{name:'Assign'}).click();
  await expect(page.locator('.data-row',{hasText:'role approver'})).toBeVisible();
+ // Preview and save computed mappings in the existing app setup panel.
+ const expenses=page.locator('section[aria-labelledby^="company-app-"]',{has:page.getByRole('heading',{name:'Expenses',exact:true})});
+ await expenses.locator('[data-mapping] summary').click();
+ const mapping=expenses.locator('[data-mapping-form]');
+ const program={language:1,nameId:{expression:{op:'lower',args:[{op:'concat',args:[{field:'first_name'},'.',{field:'last_name'}]}]},unique:true},saml:{role:{op:'if',args:[{op:'inGroup',args:['Finance']},'approver','reader']}}};
+ await mapping.getByLabel('Mapping expressions (JSON)').fill(JSON.stringify(program,null,2));
+ await mapping.getByLabel('Preview people').selectOption([{label:EMPLOYEE},{label:app.vars.OWNER_EMAIL}]);
+ await mapping.getByRole('button',{name:'Preview mapping'}).click();
+ await expect(mapping.locator('[data-mapping-result]')).toContainText('erin.example');
+ await expect(mapping.getByRole('button',{name:'Save mapping'})).toBeEnabled();
+ for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await mapping.scrollIntoViewIfNeeded();await page.screenshot({path:join(directory,`company-apps-mapping-preview-${width}.png`)});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ await mapping.getByRole('button',{name:'Save mapping'}).click();
+ await expect(expenses.locator('[data-mapping] summary')).toContainText('version 1');
  await shoot(page,'apps');
+
 
  // The employee opens the app: it asks Auth, Auth answers in the browser, the app signs them in.
  await employeePage.goto(sp.origin+'/login');

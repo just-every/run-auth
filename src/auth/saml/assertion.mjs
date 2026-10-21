@@ -1,3 +1,4 @@
+import {computedValues} from '../mapping/program.mjs';
 // The SAML Response Auth sends an app: NameID in the app's format, the mapped
 // attributes, signed and encrypted as the app is configured.
 import {one,run,random} from '../core.mjs';
@@ -38,9 +39,10 @@ export function statusResponse(ctx,{acs,inResponseTo,code,detail}) {
 
 export async function signInResponse(ctx,{app,s,acs,inResponseTo,role}) {
  const now=ctx.now(),existing=await one(ctx,'SELECT session_index FROM auth_saml_sessions WHERE session_id=? AND app_id=?',s.id,app.id);
- const sessionIndex=existing?.session_index??random(),subject=await nameId(ctx,app,s),format=FORMATS[app.name_id_format];
+ const sessionIndex=existing?.session_index??random(),computed=await computedValues(ctx,app.id,s.person_id),subject=computed?.nameId??await nameId(ctx,app,s),format=FORMATS[app.name_id_format];
  const attributes=[];
- for(const a of app.attributes){const values=await attributeValues(ctx,a.source,s,role);if(values.length)attributes.push(el('saml:Attribute',{Name:a.name,NameFormat:'urn:oasis:names:tc:SAML:2.0:attrname-format:basic'},values.map(v=>el('saml:AttributeValue',{},[v]))));}
+ for(const a of app.attributes.filter(a=>!Object.hasOwn(computed?.saml??{},a.name))){const values=await attributeValues(ctx,a.source,s,role);if(values.length)attributes.push(el('saml:Attribute',{Name:a.name,NameFormat:'urn:oasis:names:tc:SAML:2.0:attrname-format:basic'},values.map(v=>el('saml:AttributeValue',{},[v]))));}
+ for(const [name,value] of Object.entries(computed?.saml??{})){const values=(Array.isArray(value)?value:[value]).filter(v=>v!==null&&v!==undefined);if(values.length)attributes.push(el('saml:Attribute',{Name:name,NameFormat:'urn:oasis:names:tc:SAML:2.0:attrname-format:basic'},values.map(v=>el('saml:AttributeValue',{},[String(v)]))));}
  const assertion=el('saml:Assertion',{ID:messageId(),IssueInstant:iso(now),Version:'2.0'},[
   el('saml:Issuer',{},[idpEntity(ctx)]),
   el('saml:Subject',{},[el('saml:NameID',{Format:format,NameQualifier:app.name_id_format==='persistent'?idpEntity(ctx):undefined,SPNameQualifier:app.name_id_format==='persistent'?app.entity_id:undefined},[subject]),
