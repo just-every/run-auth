@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
+import {generateKeyPair,exportJWK,SignJWT} from 'jose';
 import {chromium,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {openApp} from './runtime.mjs';
@@ -51,6 +52,28 @@ test('agents journey: mint a key, an agent files a suspension, a person approves
  await page.reload();await expect(page.locator('[data-agent-secret]')).toBeHidden();
  assert.ok(!(await page.content()).includes(key),'the page never shows the key again');
  await expect(page.locator('[data-agent-key="Directory review agent"]')).toBeVisible();
+
+ // A separate machine credential is created on the same page. The service
+ // owns its private key; the browser sends only the public verification key.
+ const serviceKeys=await generateKeyPair('ES256'),serviceJwk={...await exportJWK(serviceKeys.publicKey),kid:'reconciler',alg:'ES256',use:'sig'};
+ await page.getByLabel('App name',{exact:true}).fill('Northwind access reconciler');
+ await page.getByLabel('Purpose',{exact:true}).fill('Maintain approved company groups and application assignments');
+ await page.getByLabel('Public signing keys (JWKS JSON)').fill(JSON.stringify({keys:[serviceJwk]}));
+ await page.locator('[data-admin-service-create] input[value="groups.manage"]').check();
+ await page.getByLabel('Expires (your local time)').fill(new Date(Date.now()+7*86400000).toISOString().slice(0,16));
+ const createdService=page.waitForResponse(response=>response.url().endsWith('/api/auth/admin-service-apps/create'));
+ await page.getByRole('button',{name:'Create service app',exact:true}).click();
+ const serviceResponse=await createdService;assert.equal(serviceResponse.status(),201,await serviceResponse.text());const service=await serviceResponse.json();
+ const serviceCard=page.locator(`[data-admin-service="${service.id}"]`);await expect(serviceCard).toContainText('Active');await expect(serviceCard).toContainText(service.clientId);
+ await shoot('service-active');
+ const now=Math.floor(Date.now()/1000),clientAssertion=await new SignJWT({}).setProtectedHeader({alg:'ES256',kid:'reconciler'}).setIssuer(service.clientId).setSubject(service.clientId).setAudience(app.origin+'/oidc/token').setIssuedAt(now).setExpirationTime(now+60).setJti(crypto.randomUUID()).sign(serviceKeys.privateKey);
+ const tokenResponse=await fetch(app.origin+'/oidc/token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'client_credentials',client_id:service.clientId,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:clientAssertion})});
+ assert.equal(tokenResponse.status,200,await tokenResponse.clone().text());const machine=await tokenResponse.json();
+ const groupResponse=await fetch(app.origin+'/api/auth/admin/v1/groups',{method:'POST',headers:{authorization:'Bearer '+machine.access_token,'content-type':'application/json'},body:JSON.stringify({name:'Company app operators'})});assert.equal(groupResponse.status,201,await groupResponse.clone().text());
+ await serviceCard.getByRole('button',{name:'Revoke Northwind access reconciler',exact:true}).click();
+ await expect(serviceCard).toContainText('Revoked');await shoot('service-revoked');
+ assert.equal((await fetch(app.origin+'/api/auth/admin/v1/groups',{headers:{authorization:'Bearer '+machine.access_token}})).status,401,'revocation ends an already-issued machine token');
+ assert.ok(!(await page.content()).includes(machine.access_token)&&!(await page.content()).includes(clientAssertion),'machine tokens and assertions never appear on the page');
 
  // The agent: inventory, then a suspension for the person who left.
  const agent=(method,data)=>fetch(app.origin+'/api/auth/preparer',{method,headers:{authorization:'Preparer '+key,...(data?{'content-type':'application/json'}:{})},body:data&&JSON.stringify(data)});

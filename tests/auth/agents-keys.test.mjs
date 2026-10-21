@@ -132,7 +132,7 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
  const {generateKeyPair,exportJWK,SignJWT,decodeJwt}=await import('jose');
  const {SCOPES}=await import('../../src/auth/admin-api/credentials/index.mjs');
  const {r,owner}=await ownerInstall(t),admin=await passkeyPerson(r,'service-owner','sara@example.com','admin');
- const {publicKey,privateKey}=await generateKeyPair('ES256'),jwk={...await exportJWK(publicKey),kid:'automation',alg:'ES256',use:'sig'};
+ const {publicKey,privateKey}=await generateKeyPair('ES256',{extractable:true}),jwk={...await exportJWK(publicKey),kid:'automation',alg:'ES256',use:'sig'};
  const settings={name:'Access reconciler',purpose:'Reconcile company groups and approved app assignments',ownerId:'service-owner',jwks:{keys:[jwk]},scopes:['groups.manage','assignments.manage'],allowedIps:['192.0.2.0/24'],expiresAt:r.now+86400000};
  const create=async(extra={},cookie=owner.cookie)=>r.call('/api/auth/admin-service-apps/create',post({...settings,...extra},cookie));
  assert.equal((await create({},null)).status,401);
