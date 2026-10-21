@@ -126,9 +126,10 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const shoot=async(name,target=page)=>{
   for(const width of [1440,390]){await target.setViewportSize({width,height:1000});await target.emulateMedia({colorScheme:'light'});
    await expect(target.locator('h1')).toBeVisible();
-   assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits '+width);
-   const axe=await new AxeBuilder({page:target}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],name+' '+width);
    await target.screenshot({path:join(directory,`authority-${name}-${width}.png`),fullPage:true});
+   const layout=await target.evaluate(()=>({fits:document.documentElement.scrollWidth<=innerWidth,width:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('main *')].filter(el=>el.scrollWidth>el.clientWidth+1&&getComputedStyle(el).overflowX==='visible').slice(-8).map(el=>({tag:el.tagName,classes:el.className,text:el.textContent.slice(0,60),width:el.clientWidth,scroll:el.scrollWidth}))}));
+   assert.ok(layout.fits,name+' fits '+width+' '+JSON.stringify(layout));
+   const axe=await new AxeBuilder({page:target}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],name+' '+width);
   }await target.setViewportSize({width:1440,height:1000});
  };
  await signIn(page,app.vars.OWNER_EMAIL,'',true);
