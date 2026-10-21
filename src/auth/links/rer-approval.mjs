@@ -14,7 +14,7 @@ export async function rerApproval(ctx,origin,approval) {
  const key=(await activeKeys(ctx)).find(k=>k.kid===header.kid);
  if(!key||header.alg!=='ES256'||header.typ!==APPROVAL_TYPE)fail('untrusted_rer_approval',403);
  let claims;
- try{({payload:claims}=await jwtVerify(approval,createLocalJWKSet({keys:[key]}),{audience:ctx.origin,algorithms:['ES256'],typ:APPROVAL_TYPE,currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}
+ try{({payload:claims}=await jwtVerify(approval,createLocalJWKSet({keys:[key]}),{audience:(ctx.issuer??ctx.origin),algorithms:['ES256'],typ:APPROVAL_TYPE,currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}
  catch{fail('invalid_rer_approval',401);}
  const sec=Math.floor(ctx.now()/1000);
  if(claims.exp-claims.iat>300||claims.iat>sec+30||typeof claims.jti!=='string'||!claims.jti||claims.jti.length>200)fail('invalid_rer_approval',401);

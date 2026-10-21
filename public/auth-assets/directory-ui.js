@@ -1,5 +1,11 @@
 // People: the edit dialog, the previewed bulk edit and the group rule editor.
 (() => {
+  const organizationPrefix = window.location.pathname.match(/^\/org\/[a-f0-9]{32}(?=\/|$)/)?.[0] || ''
+  const organizationPath = path => {
+    const url = new URL(path, window.location.origin)
+    if (url.origin !== window.location.origin || !organizationPrefix || url.pathname.startsWith('/org/')) return path
+    return organizationPrefix + url.pathname + url.search + url.hash
+  }
   const status = (message, kind = 'info') => {
     for (const el of document.querySelectorAll('[data-auth-status]')) {
       el.textContent = message
@@ -9,7 +15,7 @@
     }
   }
   const post = async (path, payload) => {
-    const response = await fetch(path, { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+    const response = await fetch(organizationPath(path), { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
     let body = null
     try { body = await response.json() } catch {}
     if (!response.ok) {

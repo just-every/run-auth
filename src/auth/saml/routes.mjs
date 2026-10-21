@@ -15,7 +15,7 @@ export const isSamlPath=path=>path.startsWith('/saml/');
 
 async function metadata(ctx) {
  await ensureSamlKey(ctx);
- const keys=await publishedKeys(ctx),endpoints=(name,path)=>Object.values(BINDINGS).map(binding=>el(`md:${name}`,{Binding:binding,Location:ctx.origin+path}));
+ const keys=await publishedKeys(ctx),endpoints=(name,path)=>Object.values(BINDINGS).map(binding=>el(`md:${name}`,{Binding:binding,Location:(ctx.issuer??ctx.origin)+path}));
  const xml=canonical(el('md:EntityDescriptor',{entityID:idpEntity(ctx)},[el('md:IDPSSODescriptor',{WantAuthnRequestsSigned:'false',protocolSupportEnumeration:'urn:oasis:names:tc:SAML:2.0:protocol'},[
   ...keys.map(k=>el('md:KeyDescriptor',{use:'signing'},[el('ds:KeyInfo',{},[el('ds:X509Data',{},[el('ds:X509Certificate',{},[k.certificate])])])])),
   ...endpoints('SingleLogoutService',SLO_PATH),

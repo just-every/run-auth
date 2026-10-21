@@ -1,6 +1,6 @@
-import {random,hash,cookies,cookie,challenge,consumeChallenge,one,fail} from './core.mjs';
+import {scopedCookieName,random,hash,cookies,cookie,challenge,consumeChallenge,one,fail} from './core.mjs';
 
-const loginCookie=ctx=>ctx.local?'auth_oidc_login':'__Host-auth_oidc_login';
+const loginCookie=ctx=>scopedCookieName(ctx,ctx.local?'auth_oidc_login':'__Host-auth_oidc_login');
 
 // The original request stays server-side. A return URL alone cannot waive
 // prompt=login or max_age=0, and email/passkey binding cookies remain independent.

@@ -99,3 +99,37 @@ test('a provider answering 429 and 503, or losing a response, is retried until i
  r.now+=16*60000;const model=await appModel(r,app.id);
  assert.equal(model.provisioning.lastError,'http_503');assert.equal(model.obligations.find(o=>o.subject_id==='carol').overdue,true);
 });
+
+test('owner erasure previews every store, honors legal holds, anonymizes decisions and keeps refused remote deletion visible',async t=>{
+ const {r,scim,app,connect}=await provisioned(t,{pushGroups:false});await connect('synthetic-auth-1');scim.token='synthetic-auth-1';
+ const {register}=await import('./webauthn.mjs');const first=await register(r,r.ada),second=await register(r,first.cookie);
+ const command=async(path,data,status=200)=>{const response=await r.admin(path,data);assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ await command('company-apps/assign',{appId:app.id,principalType:'person',principalId:'ada',role:'reader'});assert.ok(remote(scim,'ada'));
+ await command('directory/source',{source:'hr',records:[{sourceId:'synthetic-auth-2',personId:'ada',fields:{department:'Engineering',name:'Ada Employee'}}]});
+ const staged=await command('move-in/stage',{fileName:'workers.csv',exportDate:'2026-10-21',text:'user_id,email,name,email_verified\nsynthetic-auth-3,ada@example.com,Ada Employee,true\n'},201);
+ const {generateKeyPair,exportJWK}=await import('jose'),pair=await generateKeyPair('ES256');
+ const api=await command('resource-apis/register',{appId:app.id,name:'Erasure test API',audience:'https://crm.example.com/api',scopes:['read'],roles:[{role:'reader',scopes:['read'],resources:['record:1']}],resources:[{id:'record:1'}]},201);
+ await command('resource-apis/service-create',{apiId:api.id,name:'Ada automation',purpose:'Employee-approved work',ownerId:'ada',jwks:{keys:[{...await exportJWK(pair.publicKey),kid:'synthetic-auth-4',alg:'ES256',use:'sig'}]},scopes:['read'],resources:['record:1'],expiresAt:new Date(r.now+3600000).toISOString()},201);
+ assert.equal((await r.call('/api/auth/erasure/preview',{method:'POST',cookie:r.bob,data:{kind:'person',target:'ada'}})).status,403);
+ await command('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ await command('erasure/preview',{kind:'person',target:'owner'},409);
+ const hold=await command('erasure/hold',{kind:'person',target:'ada',reason:'Active employment dispute'},201);
+ const held=await command('erasure/preview',{kind:'person',target:'ada'});assert.equal(held.holds.length,1);
+ await command('erasure/confirm',{previewId:held.id,confirmation:'ERASE',confirmRemoteDeletion:true},409);assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,200);
+ await command('erasure/hold',{release:true,id:hold.id});
+ const plan=await command('erasure/preview',{kind:'person',target:'ada'});assert.ok(plan.stores.find(s=>s.store==='auth_passkeys').deleted>=2);assert.ok(plan.stores.find(s=>s.store==='auth_import_rows').deleted);
+ scim.fail(1,403);
+ const erased=await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:true});assert.equal(erased.local,'complete');assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,401);
+ const receipt=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(receipt.status,'remote_unfinished');assert.ok(receipt.remote.some(task=>task.state==='blocked'));assert.ok(receipt.stores.every(store=>store.status==='complete'));
+ const tables=(await r.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND (name GLOB 'auth_*' OR name GLOB 'oa_*' OR name GLOB 'rer_*')").all()).results;
+ for(const {name} of tables) {
+  const text=JSON.stringify((await r.db.prepare(`SELECT * FROM "${name}"`).all()).results);
+  assert.ok(!text.includes('ada@example.com'),name+' retains no erased email');
+  assert.ok(!text.includes('synthetic-auth-2'),name+' retains no source identity');
+ }
+ const activity=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(activity.some(row=>row.subject_id===erased.reference));assert.ok(activity.some(row=>row.event==='erasure_completed'));
+ assert.equal((await r.call('/api/auth/move-in/subjects.csv?batch='+staged.batchId,{cookie:r.owner.cookie})).status,200);
+ const later=await r.db.prepare('SELECT epoch FROM rer_portability_state').first();assert.ok(later.epoch>0);assert.ok((await r.db.prepare('SELECT COUNT(*) AS n FROM rer_portability_journal').first()).n>0);
+ await command('erasure/retry',{receiptId:erased.id,confirmRemoteDeletion:true});assert.equal(remote(scim,'ada'),undefined);
+ const complete=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(complete.status,'remote_unfinished');assert.ok(complete.remote.some(task=>task.kind==='scim-delete'&&task.state==='verified'));assert.ok(complete.remote.some(task=>task.kind==='partner-delete'&&task.state==='blocked'),'independently held partner data remains explicitly unresolved');
+});

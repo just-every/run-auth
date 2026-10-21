@@ -5,6 +5,7 @@
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { localPortability } from '@runeditrun/rer/portability';
+import { excludedTables } from '@runeditrun/rer/modules/portability';
 import { fileRecords } from '@runeditrun/rer/modules/portability/files';
 import { readSettings } from '@runeditrun/rer/adapter-settings';
 import { RerError } from '@runeditrun/rer/errors';
@@ -24,10 +25,16 @@ export const POLICY = {
   'auth_recoveries', 'auth_recovery_tokens', 'auth_notices', 'auth_upstream_proofs', 'auth_agent_%', 'auth_import_rows',
   'auth_link_requests', 'auth_link_tokens', 'auth_link_codes', 'auth_session_clients', 'auth_logout_deliveries', 'auth_rer_%',
   'auth_saml_keys', 'auth_saml_requests', 'auth_saml_sessions', 'auth_saml_logouts', 'auth_scim_connectors', 'auth_provisioning', 'auth_oidc_secrets', 'auth_oidc_codes', 'auth_oidc_sessions', 'auth_oidc_logouts',
-  'auth_event_subscriptions', 'auth_event_deliveries', 'auth_link_intents'],
+  'auth_event_subscriptions', 'auth_event_deliveries', 'auth_link_intents', 'auth_admin_service_assertions', 'auth_resource_services', 'auth_resource_assertions', 'auth_erasure_previews', 'auth_erasure_commits', 'auth_erasure_remote', 'auth_role_previews'],
  requiredConfiguration: ['AUTH_ENCRYPTION_KEY'],
 };
-const engine = localPortability({ database: 'auth', policy: POLICY });
+export function organizationPolicy(namespaces=[]) {
+ const prefixes=[...new Set(namespaces)];
+ if(prefixes.some(prefix=>!/^org_[a-f0-9]{32}_$/.test(prefix)))throw new RerError('restore_refused','Invalid organization storage namespace.',4);
+ return {...POLICY,includeTables:[...POLICY.includeTables,...prefixes.flatMap(prefix=>POLICY.includeTables.map(table=>prefix+table))],excludeTables:[...POLICY.excludeTables,...prefixes.flatMap(prefix=>[...excludedTables,...POLICY.excludeTables].map(table=>prefix+table))]};
+}
+const engineFor=namespaces=>localPortability({database:'auth',policy:organizationPolicy(namespaces)});
+const namespaces=async root=>withDatabase(root,async db=>(await db.prepare("SELECT namespace FROM auth_organizations ORDER BY id").all()).results.map(row=>row.namespace));
 
 async function withDatabase(root, work) {
  const { getPlatformProxy } = createRequire(join(root, 'package.json'))('wrangler');
@@ -46,7 +53,7 @@ async function exportAuth(context) {
   return writeGrantMap(ctx);
  });
  context.store.report(`Signed grant map: ${map.sectors} apps, ${map.subjects} pairwise subjects, ${map.former} former subjects.`);
- return { ...await engine.export(context), grantMap: map };
+ return { ...await engineFor(await namespaces(context.root)).export(context), grantMap: map };
 }
 
 // A local install serves only loopback apps and a hosted one never does; a dev
@@ -61,12 +68,14 @@ export function refusal(table, row, local, validateClientOrigin) {
 async function importAuth(context) {
  // rer import restores into this checkout: local unless its settings say it is configured as hosted.
  const local = (await settings(context.root).catch(() => ({}))).AUTH_LOCAL !== 'false', { validateClientOrigin } = await import('../../src/auth/core.mjs');
+ const organizationNamespaces=[];
  for await (const record of fileRecords(context.path)) {
   for (const item of record.kind === 'part' ? record.items : []) {
+   if(item.kind==='row'&&item.table==='auth_organizations')organizationNamespaces.push(item.row.namespace);
    const reason = item.kind === 'row' ? refusal(item.table, item.row, local, validateClientOrigin) : null;
    if (reason) throw new RerError('restore_refused', `Restore refused (auth_import): ${reason}.`, 4);
   }
  }
- return engine.import(context);
+ return engineFor(organizationNamespaces).import(context);
 }
 export const portability = { export: exportAuth, import: importAuth };

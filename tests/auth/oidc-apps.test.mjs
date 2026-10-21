@@ -224,3 +224,45 @@ test('inline hooks add only approved token and SAML fields, deny registration an
  await started;assert.equal((await r.admin('people/suspend',{personId:'ada'})).status,200);release();await assert.rejects(pendingGrant);await disable(heldHook.id);
  r.tick=()=>{r.now=Date.now()+660000;};assert.equal((await r.admin('hooks/register',{point:'registration',url:'https://hooks.example.com/registration'})).status,403);
 });
+
+test('resource APIs use live app roles and tenant resources for employees and distinct accountable OAuth services',async t=>{
+ const r=await samlInstall(t);
+ const {addApp}=await import('./saml-helpers.mjs');
+ const app=await addApp(r,{name:'Engineering documents',entityId:'https://documents.example.com',acsUrl:'https://documents.example.com/acs',assign:[]});
+ const command=async(path,data,status=200)=>{const response=await r.admin(path,data);assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ const group=await command('groups/create',{name:'Document editors'},201);await command('groups/add',{groupId:group.id,personId:'ada'});
+ const api=await command('resource-apis/register',{appId:app.id,name:'Documents API',audience:'https://documents.example.com/api',scopes:['read','write'],roles:[{role:'editor',scopes:['read','write'],resources:['document:*'],relations:{ownerId:'$person'}},{role:'reader',scopes:['read'],resources:['document:*']}],resources:[{id:'document:budget',attributes:{ownerId:'ada'}},{id:'document:private',attributes:{ownerId:'bob'}}]},201);
+ await command('resource-apis/assign',{apiId:api.id,principalType:'group',principalId:group.id,role:'editor'});
+ const check=async(data,cookie=r.ada,token)=>{
+  const response=await r.call('/api/auth/resource-apis/check',{method:'POST',cookie,data:{apiId:api.id,action:'read',resource:'document:budget',...data},headers:token?{authorization:'Bearer '+token,origin:''}:{}});return {response,body:await response.json()};
+ };
+ assert.equal((await check({})).body.allowed,true);assert.equal((await check({action:'write'})).body.allowed,true);
+ assert.equal((await check({},r.bob)).body.allowed,false,'unassigned role denied');
+ assert.equal((await check({resource:{id:'document:budget',organizationId:'foreign'}})).body.allowed,false);
+ assert.equal((await check({resource:{id:'document:private',ownerId:'ada'}})).body.allowed,false,'caller cannot forge registered relation');
+ assert.equal((await check({audience:'https://wrong.example.com/api'})).body.allowed,false);
+ assert.equal((await check({action:'delete'})).body.allowed,false);
+ assert.equal((await check({subject:'bob'})).response.status,403);
+ const pair=await generateKeyPair('ES256'),jwk={...await exportJWK(pair.publicKey),kid:'synthetic-auth-1',alg:'ES256',use:'sig'};
+ const service=await command('resource-apis/service-create',{apiId:api.id,name:'Search indexer',purpose:'Index explicitly assigned documents',ownerId:'ada',jwks:{keys:[jwk]},scopes:['read'],resources:['document:budget'],expiresAt:new Date(r.now+3600000).toISOString()},201);
+ const assertion=async(audience=r.origin+'/oidc/token')=>new (await import('jose')).SignJWT({jti:crypto.randomUUID()}).setProtectedHeader({alg:'ES256',kid:jwk.kid}).setIssuer(service.clientId).setSubject(service.clientId).setAudience(audience).setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+120).sign(pair.privateKey);
+ const oauth=async(scope='read',signed)=>r.call('/oidc/token',{method:'POST',form:{grant_type:'client_credentials',client_id:service.clientId,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:signed??await assertion(),scope}});
+ assert.equal((await oauth('write')).status,400,'service cannot request excess scope');assert.equal((await oauth('read',await assertion('https://wrong.example.com/oidc/token'))).status,401);
+ const signed=await assertion(),issued=await oauth('read',signed);assert.equal(issued.status,200,await issued.clone().text());const token=(await issued.json()).access_token;
+ const claims=decodeJwt(token);assert.notEqual(claims.sub,'ada');assert.equal(claims.aud,'https://documents.example.com/api');assert.equal(claims.amr,undefined);assert.equal(claims.sid,undefined);
+ assert.equal((await oauth('read',signed)).status,401,'one-use client assertion');
+ assert.equal((await check({},undefined,token)).body.allowed,true);assert.equal((await check({action:'write'},undefined,token)).body.allowed,false);
+ assert.equal((await check({subject:'ada'},undefined,token)).response.status,403);
+ assert.equal((await r.call('/api/auth/people',{headers:{authorization:'Bearer '+token}})).status,401);
+ assert.equal((await r.call('/oidc/userinfo',{headers:{authorization:'Bearer '+token}})).status,401,'API token has no identity audience');
+ assert.equal((await r.call('/auth/passkeys/register/options',{method:'POST',data:{},headers:{authorization:'Bearer '+token}})).status,401);
+ await command('resource-apis/assign',{apiId:api.id,principalType:'group',principalId:group.id,remove:true});
+ assert.equal((await check({})).body.allowed,false);assert.equal((await check({},undefined,token)).body.allowed,false,'role removal changes next service decision');
+ assert.ok(!(await (await r.call('/api/auth/me',{cookie:r.ada})).json()).launcher.some(a=>a.id===app.id));
+ await command('resource-apis/assign',{apiId:api.id,principalType:'group',principalId:group.id,role:'reader'});
+ assert.equal((await check({})).body.allowed,true);assert.equal((await check({action:'write'})).body.allowed,false);
+ await command('resource-apis/service-revoke',{clientId:service.clientId});assert.equal((await check({},undefined,token)).response.status,401);assert.equal((await oauth()).status,401);
+ const audit=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(audit.some(a=>a.event==='resource_permission_check'&&a.actor_id===service.clientId));
+ const org=await command('organizations/create',{name:'Unrelated employer'},201);
+ assert.equal((await r.call('/org/'+org.id+'/api/auth/resource-apis/check',{method:'POST',data:{apiId:api.id,action:'read',resource:'document:budget'},headers:{authorization:'Bearer '+token}})).status,401,'cross-employer bearer denied');
+});

@@ -15,7 +15,7 @@ const noStore={'cache-control':'no-store','referrer-policy':'no-referrer'};
 
 function respond(ctx,uri,mode,params) {
  const url=new URL(uri),values=new URLSearchParams();
- for(const [k,v] of Object.entries({...params,iss:ctx.origin}))if(v!==undefined&&v!==null)values.set(k,String(v));
+ for(const [k,v] of Object.entries({...params,iss:(ctx.issuer??ctx.origin)}))if(v!==undefined&&v!==null)values.set(k,String(v));
  if(mode==='fragment')url.hash=values.toString();else for(const [k,v] of values)url.searchParams.set(k,v);
  return new Response(null,{status:302,headers:{location:url.href,...noStore}});
 }
@@ -30,7 +30,7 @@ async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToke
  const mappedClaims=withIdToken?await claimsFor(ctx,client,s,scopes,assigned.role,proof.verified_at):{};
  const extension=withIdToken?await invokeHooks(ctx,'token',{personId:s.person_id,appId:client.app_id}):{claims:{}};
  await recheckIssuance(ctx,s,{appId:client.app_id,appVersion:client.app_version,mappingVersion:client.mapping_version,assignmentRole:assigned.role});
- if(withAccessToken)Object.assign(out,{access_token:await signToken(ctx,{aud:`${ctx.origin}/oidc/userinfo`,sub,client_id:client.client_id,sid:s.id,scope:scopes.join(' '),jti:random()},{alg,typ:'at+jwt',expiresAt}),token_type:'Bearer',expires_in:expiresAt-Math.floor(ctx.now()/1000)});
+ if(withAccessToken)Object.assign(out,{access_token:await signToken(ctx,{aud:`${(ctx.issuer??ctx.origin)}/oidc/userinfo`,sub,client_id:client.client_id,sid:s.id,scope:scopes.join(' '),jti:random()},{alg,typ:'at+jwt',expiresAt}),token_type:'Bearer',expires_in:expiresAt-Math.floor(ctx.now()/1000)});
  if(withIdToken) {
   const claims={aud:client.client_id,sub,sid:s.id,auth_time:Math.floor(s.created_at/1000),amr:JSON.parse(s.amr),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims};
   if(out.access_token)claims.at_hash=await halfHash(out.access_token);
@@ -91,7 +91,7 @@ export async function genericToken(ctx,request) {
  const text=await request.clone().text();if(text.length>32768)return null;
  const form=new URLSearchParams(text),client=await namedClient(ctx,request,form);
  if(!client)return null;
- try {await authenticate(ctx,request,form,client,[`${ctx.origin}/oidc/token`,ctx.origin]);}
+ try {await authenticate(ctx,request,form,client,[`${(ctx.issuer??ctx.origin)}/oidc/token`,(ctx.issuer??ctx.origin)]);}
  catch(error){if(error instanceof AuthError)return oauthError('invalid_client',401,client.auth_method==='client_secret_basic'?{'www-authenticate':'Basic realm="token"'}:{});throw error;}
  if(form.get('grant_type')!=='authorization_code')return oauthError('unsupported_grant_type');
  // One winner: the code is gone whatever happens next.

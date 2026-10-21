@@ -1,6 +1,6 @@
 export interface AuthRuntimeOptions {
- db: D1Database; origin: string; secret: string; local?: boolean; now?: () => number;
- mail?: (message: {to: string; subject: string; text: string; html: string}) => Promise<unknown>;
+ db: D1Database; origin: string; organizationId?: string; secret: string; local?: boolean; now?: () => number;
+ mail?: (message: {to: string; subject: string; text: string; html: string}, store?: {db:D1Database;organizationId:string}) => Promise<unknown>;
  waitUntil?: (work: Promise<unknown>) => void;
  upstreamProviders?: import('../modules/operator-auth/index.mjs').IdentityProviderConfig[];
  upstreamFetch?: typeof fetch;

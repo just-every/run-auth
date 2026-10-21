@@ -26,7 +26,7 @@ export async function endGenericSessions(ctx,s) {
  const now=ctx.now(),queued=apps.filter(a=>a.backchannel_logout_uri).map(a=>({id:random(),client:a.client_id}));
  if(queued.length)await ctx.db.batch(queued.map(q=>ctx.db.prepare('INSERT INTO auth_oidc_logouts(id,client_id,person_id,sid,jti,next_attempt_at,created_at) VALUES(?,?,?,?,?,?,?)').bind(q.id,q.client,s.person_id,s.id,random(),now,now)));
  if(queued.length){const work=deliverGenericLogouts(ctx,queued.map(q=>q.id));if(ctx.waitUntil)ctx.waitUntil(work);else await work;}
- return apps.filter(a=>a.frontchannel_logout_uri).map(a=>{const url=new URL(a.frontchannel_logout_uri);url.searchParams.set('iss',ctx.origin);url.searchParams.set('sid',s.id);return url.href;});
+ return apps.filter(a=>a.frontchannel_logout_uri).map(a=>{const url=new URL(a.frontchannel_logout_uri);url.searchParams.set('iss',(ctx.issuer??ctx.origin));url.searchParams.set('sid',s.id);return url.href;});
 }
 
 async function attempt(ctx,d) {

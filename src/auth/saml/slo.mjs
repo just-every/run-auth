@@ -54,7 +54,7 @@ async function advance(ctx,id) {
 export async function slo(ctx,request) {
  const {message,root,app,id}=await inbound(ctx,request,['LogoutRequest','LogoutResponse']);
  await verifyMessage(ctx,app,message,root,true);
- const destination=attr(root,'Destination');if(destination!==null&&destination!==ctx.origin+SLO_PATH)fail('wrong_destination');
+ const destination=attr(root,'Destination');if(destination!==null&&destination!==(ctx.issuer??ctx.origin)+SLO_PATH)fail('wrong_destination');
  if(root.local==='LogoutResponse') {
   const row=await one(ctx,'SELECT id FROM auth_saml_logouts WHERE awaiting_app=? AND awaiting_request=? AND expires_at>?',app.id,attr(root,'InResponseTo')||'',ctx.now())||fail('saml_logout_not_awaited');
   const status=attr(child(child(root,'Status',NS.samlp),'StatusCode',NS.samlp),'Value');
@@ -83,6 +83,6 @@ export async function logout(ctx,request) {
  const s=await session(ctx,request);
  if(!s)return samlPage('You are signed out','You have signed out of Auth on this browser.',200);
  if(request.method==='GET')return samlPage('Sign out of Auth and your apps?',`Signed in as ${s.email}.`,200,{},`<form method="post" action="${LOGOUT_PATH}"><button type="submit">Sign out</button></form>`);
- if(request.headers.get('origin')!==ctx.origin)fail('origin_required',403);
+ if(request.headers.get('origin')!==(ctx.issuer??ctx.origin))fail('origin_required',403);
  return start(ctx,s.id,null);
 }

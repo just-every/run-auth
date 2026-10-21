@@ -1,3 +1,4 @@
+import {organizationContext} from './tenancy/context.mjs';
 import {deliverLogouts} from './links/logout.mjs';
 import {maintainProvisioning} from './provisioning/obligations.mjs';
 import {deliverGenericLogouts} from './oidc-apps/session.mjs';
@@ -25,4 +26,8 @@ export async function maintainAuth(ctx) {
  await deliverGenericLogouts(ctx);
  await deliverEvents(ctx);
  await maintainProvisioning(ctx);
+ if(!ctx.organizationId||ctx.organizationId==='root') {
+  const organizations=(await ctx.db.prepare("SELECT id FROM auth_organizations WHERE status='active' ORDER BY created_at,id").all()).results;
+  for(const organization of organizations)await maintainAuth(await organizationContext(ctx,organization.id));
+ }
 }

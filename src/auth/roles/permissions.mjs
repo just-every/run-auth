@@ -1,0 +1,69 @@
+import {fail} from '../core.mjs';
+
+export const PERMISSIONS=Object.freeze({
+ 'roles.view':'View role definitions and own grants',
+ 'roles.edit':'Create or revise custom roles (also requires legacy owner/admin)',
+ 'roles.grant':'Grant or revoke strictly lower roles within held authority',
+ 'people.view':'View people within view resources',
+ 'people.export':'Export people within view resources',
+ 'people.profile.edit':'Edit directory profile fields within edit resources',
+ 'people.factors.reset':'Reset non-administrator passkeys and revoke all sessions',
+ 'people.suspend':'Suspend a lower non-owner person within edit resources',
+ 'people.restore':'Restore a lower non-owner person within edit resources',
+ 'recovery.approve':'Approve a scoped non-administrator recovery case',
+ 'groups.rules.edit':'Manage group rules and every affected person',
+ 'apps.assign':'Assign an app to an editable person or group',
+ 'policy.manage':'Manage organization-wide exact-domain provider requirements',
+ 'identity-providers.manage':'Enable or disable configured identity providers',
+ 'audit.view':'View scoped administrator audit events',
+ 'audit.export':'Export scoped administrator audit events with fresh email',
+ 'admin-api.manage':'Manage admin API credentials under legacy human custody',
+ 'groups.view':'View groups within view resources',
+ 'groups.edit':'Add or remove group members within edit resources',
+ 'apps.view':'View app identity and enabled state within view resources',
+ 'apps.edit':'Configure an assigned app, credentials and provisioning; create only with wildcard apps',
+ 'cases.view':'View assigned recovery review cases',
+ 'cases.verify':'Record verification or close an assigned recovery review case',
+ 'cases.open':'Open a recovery review case for an editable non-administrator',
+});
+const role=(id,name,rank,permissions)=>Object.freeze({id,name,rank,permissions:Object.freeze(permissions),builtin:true,revision:1});
+export const BUILTINS=Object.freeze([
+ role('owner','Owner',100,Object.keys(PERMISSIONS)),
+ role('identity-administrator','Identity administrator',80,Object.keys(PERMISSIONS).filter(p=>!['roles.edit','admin-api.manage'].includes(p))),
+ role('app-administrator','App administrator',50,['roles.view','roles.grant','apps.view','apps.edit','apps.assign']),
+ role('group-owner','Group owner',40,['roles.view','roles.grant','people.view','groups.view','groups.edit','groups.rules.edit']),
+ role('manager','Manager',30,['roles.view','people.view','people.profile.edit','groups.view']),
+ role('help-desk','Help desk',20,['roles.view','people.view','people.factors.reset','groups.view','cases.view','cases.open','cases.verify','recovery.approve','people.suspend','people.restore']),
+ role('auditor','Auditor',10,['roles.view','people.view','people.export','groups.view','apps.view','cases.view','audit.view','audit.export']),
+ role('employee','Employee',0,[]),
+]);
+export const RESOURCE_KINDS=['people','groups','apps','cases'];
+export const ALL_RESOURCES=Object.freeze(Object.fromEntries(['view','edit'].map(mode=>[mode,Object.fromEntries(RESOURCE_KINDS.map(k=>[k,['*']]))])));
+export const LEGACY_RANK={owner:100,admin:90,member:0};
+export const writePermission=p=>['roles.edit','roles.grant','people.profile.edit','people.factors.reset','groups.edit','apps.edit','cases.open','cases.verify','people.suspend','people.restore','recovery.approve','groups.rules.edit','apps.assign','policy.manage','identity-providers.manage','admin-api.manage','audit.export'].includes(p);
+export const permissionKind=p=>p.startsWith('people.')?'people':p.startsWith('groups.')?'groups':p.startsWith('apps.')?'apps':p.startsWith('cases.')?'cases':null;
+export const contains=(ids,id)=>ids.includes('*')||ids.includes(id);
+export const subset=(small,large)=>large.includes('*')||small.every(id=>large.includes(id));
+export function resources(raw) {
+ if(!raw||typeof raw!=='object'||Object.keys(raw).some(k=>!['view','edit'].includes(k)))fail('invalid_role_resources');
+ const out={};
+ for(const mode of ['view','edit']) {
+  const source=raw[mode]??{};
+  if(!source||typeof source!=='object'||Array.isArray(source)||Object.keys(source).some(k=>!RESOURCE_KINDS.includes(k)))fail('invalid_role_resources');
+  out[mode]={};
+  for(const kind of RESOURCE_KINDS) {
+   const ids=source[kind]??[];
+   if(!Array.isArray(ids)||ids.length>200||ids.some(v=>typeof v!=='string'||!v||v.length>200))fail('invalid_role_resources');
+   out[mode][kind]=[...new Set(ids)].sort();
+   if(ids.includes('*')&&ids.length!==1)fail('invalid_role_resources');
+  }
+ }
+ for(const k of RESOURCE_KINDS)if(!subset(out.edit[k],out.view[k]))fail('edit_requires_view_scope');
+ return out;
+}
+export function customRole(raw,id) {
+ const name=String(raw?.name??'').trim();
+ const rank=raw?.rank;
+ if(!name||name.length>80||!Number.isInteger(rank)||rank<1||rank>=90||!Array.isArray(raw.permissions)||!raw.permissions.length||raw.permissions.some(p=>!Object.hasOwn(PERMISSIONS,p)))fail('invalid_role');
+ return {id,name,rank,permissions:[...new Set(raw.permissions)].sort(),builtin:false};
+}

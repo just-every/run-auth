@@ -12,10 +12,11 @@ export const email = value => typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^
 export class AuthError extends Error { constructor(code, status = 400) { super(code); this.status = status; } }
 export const fail = (code, status) => { throw new AuthError(code, status); };
 export const json = (value, status = 200, headers = {}) => new Response(JSON.stringify(value), {status, headers: {'content-type':'application/json', 'cache-control':'no-store', 'referrer-policy':'no-referrer', ...headers}});
-export const cookieName = ctx => ctx.local ? 'auth_session' : '__Host-auth_session';
+export const scopedCookieName=(ctx,name)=>name+(ctx.organizationId&&ctx.organizationId!=='root'?'_'+ctx.organizationId:'');
+export const cookieName = ctx => scopedCookieName(ctx,ctx.local ? 'auth_session' : '__Host-auth_session');
 export const cookies = request => Object.fromEntries((request.headers.get('cookie') || '').split(';').map(v => v.trim().split('=')));
 export const cookie = (ctx, name, value, age = 86400) => `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${ctx.local ? '' : '; Secure'}`;
-export const bindingName = ctx => ctx.local ? 'auth_browser' : '__Host-auth_browser';
+export const bindingName = ctx => scopedCookieName(ctx,ctx.local ? 'auth_browser' : '__Host-auth_browser');
 export async function binding(ctx, request) { const raw = cookies(request)[bindingName(ctx)]; return raw ? hash(raw) : null; }
 export async function input(ctx, request) {
  if (request.headers.get('origin') !== ctx.origin) fail('origin_required', 403);

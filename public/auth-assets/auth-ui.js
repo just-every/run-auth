@@ -1,4 +1,10 @@
 (() => {
+  const organizationPrefix = window.location.pathname.match(/^\/org\/[a-f0-9]{32}(?=\/|$)/)?.[0] || ''
+  const organizationPath = path => {
+    const url = new URL(path, window.location.origin)
+    if (url.origin !== window.location.origin || !organizationPrefix || url.pathname.startsWith('/org/')) return path
+    return organizationPrefix + url.pathname + url.search + url.hash
+  }
   const root = document.documentElement
   const statuses = () => Array.from(document.querySelectorAll('[data-auth-status]'))
   const showStatus = (message, kind = 'info') => {
@@ -53,7 +59,7 @@
     admin_service_not_found: 'This service app is no longer available. Refresh the page.',
   }
   const requestJSON = async (path, payload) => {
-    const response = await fetch(path, {
+    const response = await fetch(organizationPath(path), {
       method: 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
@@ -158,7 +164,7 @@
         button.disabled = false
         return
       }
-      window.location.assign(localPath(result.returnTo || returnTo))
+      window.location.assign(organizationPath(localPath(result.returnTo || returnTo)))
     } catch (error) {
       showStatus(passkeyError(error), 'error')
       button.disabled = false
@@ -243,7 +249,7 @@
       try {
         if (file.size > 1048576) throw new Error(friendlyErrors.file_too_large)
         const result = await requestJSON(upload.action, { fileName: file.name, exportDate: new FormData(upload).get('exportDate'), text: await file.text() })
-        window.location.assign(`/app/move-in?batch=${encodeURIComponent(result.batchId)}`)
+        window.location.assign(organizationPath(`/app/move-in?batch=${encodeURIComponent(result.batchId)}`))
       } catch (error) {
         showStatus(error instanceof Error ? error.message : 'Auth could not stage that file.', 'error')
         if (submitter) submitter.disabled = false
@@ -345,6 +351,13 @@
         payload.expiresAt = new Date(expiry).toISOString()
       }
       const result = await requestJSON(form.action, payload)
+      if (form.hasAttribute('data-organization-switch')) { window.location.assign(result.redirect); return }
+      if (form.hasAttribute('data-organization-create')) {
+        const output = form.querySelector('[data-organization-result]')
+        output.replaceChildren(Object.assign(document.createElement('a'), { href: result.signInPath, textContent: `Sign in to ${result.name} and enroll its passkey` }))
+        showStatus('Organization created. Confirm your email in its sign-in page to establish your membership.', 'success')
+        return
+      }
       const isEmailRequest = form.hasAttribute('data-email-request')
       if (isEmailRequest) {
         showStatus(result.message || 'If this address can sign in, a link has been sent.', 'success')
@@ -353,7 +366,7 @@
         return
       }
       if (form.dataset.redirect) {
-        window.location.assign(localPath(form.dataset.redirect))
+        window.location.assign(organizationPath(localPath(form.dataset.redirect)))
         return
       }
       if (form.dataset.reload === 'true') {

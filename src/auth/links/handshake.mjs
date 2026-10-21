@@ -62,7 +62,7 @@ export async function link(ctx,{app,source,approvedBy,claimPerson=null,replacing
  const grant={name:app.name,key:app.key,callbacks:app.callbacks,version:app.version,source,approvedBy,claimPerson,continuity:kept,clientId:existing?.id??null,replaces};
  await run(ctx,'INSERT INTO auth_link_codes(code_hash,origin,interface,callback,sector_id,link,expires_at) VALUES(?,?,?,?,?,?,?)',await hash(code),app.origin,app.interface,app.origin+CALLBACK,app.sector,JSON.stringify(grant),now+60000);
  await run(ctx,'INSERT OR IGNORE INTO auth_origins_seen(origin,first_seen_at) VALUES(?,?)',app.origin,now);
- const {status,answer}=await postCallback(ctx,app.origin,{issuer:ctx.origin,interface:app.interface,code});
+ const {status,answer}=await postCallback(ctx,app.origin,{issuer:(ctx.issuer??ctx.origin),interface:app.interface,code});
  const redeemed=await one(ctx,'SELECT consumed_at FROM auth_link_codes WHERE code_hash=?',await hash(code));
  if(status!==200||answer?.linked!==true||!redeemed?.consumed_at) {
   await run(ctx,'UPDATE auth_link_codes SET expires_at=0 WHERE code_hash=? AND consumed_at IS NULL',await hash(code));
@@ -81,7 +81,7 @@ export async function link(ctx,{app,source,approvedBy,claimPerson=null,replacing
 async function notifyAdministrators(ctx,client,source) {
  if(!ctx.mail)return;
  const people=(await ctx.db.prepare("SELECT email FROM oa_operators WHERE role IN ('owner','admin') AND status='active'").all()).results;
- const text=`${SOURCES[source]}: ${client.name} (${client.origin}) can now sign people in with ${ctx.origin}. Review or remove it on ${ctx.origin}/app/apps.`;
+ const text=`${SOURCES[source]}: ${client.name} (${client.origin}) can now sign people in with ${(ctx.issuer??ctx.origin)}. Review or remove it on ${(ctx.issuer??ctx.origin)}/app/apps.`;
  for(const person of people){try{await ctx.mail({to:person.email,subject:`An app was linked to Auth: ${client.origin}`,text,html:`<p>${text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`});}catch{}}
 }
 
@@ -94,13 +94,13 @@ export async function redeem(ctx,request) {
  const grant=JSON.parse(row.link),sec=Math.floor(ctx.now()/1000);
  if(data.client_assertion_type!==JWT_BEARER||typeof data.client_assertion!=='string')fail('invalid_client',401);
  let claims;
- try{({payload:claims}=await jwtVerify(data.client_assertion,createLocalJWKSet({keys:[grant.key]}),{issuer:row.origin,subject:row.origin,audience:ctx.origin+REDEEM,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_client',401);}
+ try{({payload:claims}=await jwtVerify(data.client_assertion,createLocalJWKSet({keys:[grant.key]}),{issuer:row.origin,subject:row.origin,audience:(ctx.issuer??ctx.origin)+REDEEM,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_client',401);}
  if(claims.exp-claims.iat>60||claims.iat>sec+30||typeof claims.jti!=='string'||!claims.jti||claims.jti.length>256||claims.code!==data.code||claims.interface!==row.interface||claims.sector_id!==row.sector_id||claims.callback!==row.callback)fail('invalid_client',401);
  try{await run(ctx,'INSERT INTO auth_assertions(client_id,jti,expires_at) VALUES(?,?,?)','link:'+row.origin,claims.jti,claims.exp*1000);}catch{fail('invalid_client',401);}
  // One winner: concurrent redemptions of the same code race on this statement.
  if(!await one(ctx,'UPDATE auth_link_codes SET consumed_at=? WHERE code_hash=? AND consumed_at IS NULL AND expires_at>? RETURNING code_hash',ctx.now(),row.code_hash,ctx.now()))fail('invalid_grant');
  const clientId=await commitClient(ctx,row,grant);
- const answer={issuer:ctx.origin,interface:row.interface,origin:row.origin,callback:row.callback,sector_id:row.sector_id,client_id:clientId};
+ const answer={issuer:(ctx.issuer??ctx.origin),interface:row.interface,origin:row.origin,callback:row.callback,sector_id:row.sector_id,client_id:clientId};
  if(grant.continuity)answer.continuity=grant.continuity;
  const owner=grant.claimPerson?await installOwner(ctx,clientId,row.sector_id,grant.claimPerson):null;
  if(owner)answer.install_owner=owner;

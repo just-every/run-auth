@@ -35,10 +35,10 @@ export async function userinfo(ctx,request) {
  try {
   const token=await bearer(request);
   if(token.length>16384)return refusal();
-  ({payload}=await jwtVerify(token,createLocalJWKSet(await jwks(ctx)),{issuer:ctx.origin,audience:`${ctx.origin}/oidc/userinfo`,typ:'at+jwt',algorithms:SIGNING_ALGORITHMS,currentDate:new Date(ctx.now()),requiredClaims:['sub','client_id','sid','scope','jti','iat','exp']}));
+  ({payload}=await jwtVerify(token,createLocalJWKSet(await jwks(ctx)),{issuer:(ctx.issuer??ctx.origin),audience:`${(ctx.issuer??ctx.origin)}/oidc/userinfo`,typ:'at+jwt',algorithms:SIGNING_ALGORITHMS,currentDate:new Date(ctx.now()),requiredClaims:['sub','client_id','sid','scope','jti','iat','exp']}));
  }catch(error) {return error instanceof AuthError?refusal(error.message,error.status):refusal();}
  const now=Math.floor(ctx.now()/1000);
- if(payload.aud!==`${ctx.origin}/oidc/userinfo`||!['sub','client_id','sid','scope','jti'].every(k=>typeof payload[k]==='string'&&payload[k].length>0)||!Number.isInteger(payload.iat)||!Number.isInteger(payload.exp)||payload.iat>now||payload.exp-payload.iat>TOKEN_SECONDS)return refusal();
+ if(payload.aud!==`${(ctx.issuer??ctx.origin)}/oidc/userinfo`||!['sub','client_id','sid','scope','jti'].every(k=>typeof payload[k]==='string'&&payload[k].length>0)||!Number.isInteger(payload.iat)||!Number.isInteger(payload.exp)||payload.iat>now||payload.exp-payload.iat>TOKEN_SECONDS)return refusal();
  // A general SaaS client's token is checked against its own app and assignment.
  const generic=await genericClient(ctx,payload.client_id);if(generic)return genericUserinfo(ctx,request,payload,generic);
  const scopes=payload.scope.split(' ');

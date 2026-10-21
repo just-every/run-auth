@@ -1,4 +1,4 @@
-export type AuthPage = 'people' | 'move-in' | 'agents' | 'apps' | 'methods' | 'activity' | 'account'
+export type AuthPage = 'people' | 'move-in' | 'agents' | 'apps' | 'methods' | 'activity' | 'account' | 'organizations' | 'roles' | 'permissions' | 'erasure'
 
 export interface AuthUser {
   id: string
@@ -218,6 +218,13 @@ export interface ProfileModel {
 }
 
 export interface AuthPageModel {
+  roles?: { rank:number; permissions:Record<string,string>; roles:Array<{id:string;name:string;rank:number;permissions:string[]}>; ownGrants:Array<{id:string;roleId:string;permissions:string[]}>; grants:Array<{id:string;person_id:string;role_id:string;active:boolean}>; groups:Array<{id:string;name:string}>; apps:Array<{id:string;name:string}>; cases:Array<{id:string;person_id:string;state:string}> }
+  rolePeople?: Array<{id:string;email:string;name:string;canResetFactors:boolean}>
+  roleError?: string
+  resourceApis?: {apis:Array<{id:string;appId:string;name:string;audience:string;scopes:string[];roles:unknown[];resources:unknown[]}>;services:Array<{id:string;clientId:string;name:string;ownerId:string;purpose:string;scopes:string[];revokedAt:number|null}>}
+  erasure?: {policy:unknown;holds:unknown[];receipts:Array<Record<string,unknown>>}
+  organizations?: { current: {id:string;name:string}; memberships: Array<{id:string;name:string;role:string;path:string;active:boolean}>; canCreate:boolean }
+
   adminServices?: AdminService[];
   profile?: ProfileModel
   directory?: DirectoryModel

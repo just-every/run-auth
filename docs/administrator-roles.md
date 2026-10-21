@@ -1,0 +1,230 @@
+# Scoped administrator roles
+
+Scoped human administration uses the same passkey and local-email sessions as
+Auth. Each organization has its own `ctx.db`; role definitions, grants, cases,
+previews and directory reads stay in that selected database. A scoped grant
+never changes `oa_operators.role`. Existing owner/admin-only doors continue to
+require their existing authority. A scoped administrator uses the dedicated
+`/api/auth/roles` doors below.
+
+Every read requires a live hardware-passkey session (`hwk`). People and audit
+exports additionally require fresh local email and are audited writes. Every write,
+including filing a preview and recording case verification, also requires local
+email confirmation on that same session within ten minutes. Committing SQL
+checks live session methods/version, status, expiry, local-email age and an
+authority epoch. Directory membership/attribute changes, role/grant revisions,
+app changes, case changes and factor changes advance that epoch. A changed
+preview must be prepared again. D1 batches atomically claim an unpredictable
+operation marker, perform its guarded changes and store detailed activity.
+
+## Published built-in roles
+
+The permission catalogue is returned by `GET /api/auth/roles` and exported in
+`src/auth/roles/permissions.mjs`. Built-ins use exactly the same permissions and
+resource sets as custom roles; their definitions are fixed.
+
+| Role id | Rank | Permissions |
+| --- | ---: | --- |
+| `owner` | 100 | All published permissions; the legacy owner holds all resources implicitly |
+| `identity-administrator` | 80 | All published permissions except `roles.edit` and legacy-custody `admin-api.manage` |
+| `app-administrator` | 50 | `roles.view`, `roles.grant`, `apps.view`, `apps.edit`, `apps.assign` |
+| `group-owner` | 40 | `roles.view`, `roles.grant`, `people.view`, `groups.view`, `groups.edit`, `groups.rules.edit` |
+| `manager` | 30 | `roles.view`, `people.view`, `people.profile.edit`, `groups.view` |
+| `help-desk` | 20 | `roles.view`, `people.view`, `people.factors.reset`, `groups.view`, `cases.view`, `cases.open`, `cases.verify`, `recovery.approve`, `people.suspend`, `people.restore` |
+| `auditor` | 10 | `roles.view`, `people.view`, `people.export`, `groups.view`, `apps.view`, `cases.view`, `audit.view`, `audit.export` |
+| `employee` | 0 | No administration permissions; ordinary employee profile doors continue to apply |
+
+Legacy `admin` has implicit rank 90 and all published permissions/resources.
+The named `admin-api.manage` permission forwards to existing credential
+management only for a legacy owner/admin custodian. Scoped authority cannot
+create, change, or reassign that custody. No scoped owner grant can be issued: delegation must be strictly below the
+issuer's rank. Custom role ranks are integers 1–89. Only legacy owner/admin
+may create or revise custom role definitions, and built-ins cannot be changed.
+Revising a custom role invalidates its previous grants; explicitly grant the
+new revision to restore intended holders.
+
+## Resources and delegation
+
+A grant has separate `view` and `edit` objects. Each contains arrays named
+`people`, `groups`, `apps`, `cases`. Missing arrays are empty. `['*']` grants all
+resources of that kind; it cannot be combined with other ids. Every edit array
+must be a subset of the corresponding view array.
+
+People can be selected directly or through groups. Viewing a person requires
+one matching view selector. Editing requires a matching edit selector **and
+every current group of that person inside the same grant's edit groups**.
+Thus a help desk holder may view group B but edit only A; a person belonging
+to both A and B cannot be edited. Any person-targeted write refuses the actor
+and people of equal or higher current administrator rank. Factor reset is
+stricter: it refuses every legacy or scoped administrator, even a lower one.
+
+Membership is evaluated on every decision using the existing directory's
+normalized attribute rules, effective source precedence, manual memberships
+and explicit exclusions. Stale materialized rule memberships do not retain
+access after a source attribute changes. Source changes therefore affect the
+next decision without waiting for a job.
+
+Delegation requires `roles.grant`, a strictly lower role, a strictly lower
+recipient, and no recipient group outside the issuer's edit groups. The new
+role's permissions and all resource arrays must be subsets of **one** held
+grant; combining unrelated grants cannot create wider authority. App/case-only
+delegation to an ungrouped recipient does not require directory access. All
+named resources must exist in this organization. Scoped delegation records
+its sponsoring grant. Revoking that sponsor, changing its role revision, or
+removing its issuer's authority ends descendants at their next decision.
+A legacy grant issuer must remain an active owner/admin.
+
+Example: view A and B, edit A, no export permission:
+
+```json
+{
+  "kind": "grant",
+  "personId": "help-desk-person",
+  "roleId": "help-desk",
+  "resources": {
+    "view": {"groups": ["A", "B"]},
+    "edit": {"groups": ["A"]}
+  }
+}
+```
+
+Permissions do not imply one another. In particular `people.view` never grants
+`people.export`. App permissions apply to the workforce `auth_apps` resource.
+A case grant permits viewing/recording that review only; it does not authorize
+people profile edits, factor reset or administrator recovery.
+
+## HTTP API
+
+POST paths below are relative to `/api/auth`. All POST bodies are JSON with
+the selected issuer's `Origin` header and session cookie. The runtime parses
+its ordinary bounded input before calling `roleAction`.
+
+| Door | Request / result |
+| --- | --- |
+| `GET /api/auth/roles` | Permission catalogue, built-ins/custom roles, visible grants, own grants/rank, scoped groups/apps/cases, epoch |
+| `GET /api/auth/roles/people` | Scoped people with fields, visible group ids and edit/reset capabilities; optional `personId`, `groupId`, `q` filters |
+| `GET /api/auth/roles/export` | JSON attachment of scoped people; independently requires `people.export` and records export activity |
+| `POST /roles/preview` | One change below; returns `previewId`, exact `plan`, `epoch`, ten-minute `expiresAt` |
+| `POST /roles/apply` | `{ "previewId": "..." }`; commits the unchanged preview once, bound to its actor **and session** |
+| `POST /roles/reset-factors` | `{ "personId": "...", "reason": "...", "caseId": "optional" }` |
+| `POST /roles/profile` | `{ "personId": "...", "fields": { "title": "..." } }`; typed manual-source directory edits; null clears the manual value |
+| `POST /roles/group` | `{ "groupId": "...", "personId": "...", "action": "add" }` or `remove`; rule removals create exclusions |
+| `GET /api/auth/roles/audit` | Scoped role activity summaries; `audit.view` |
+| `GET /api/auth/roles/audit/export` | Scoped activity JSON attachment; `audit.export` and fresh local email |
+| `POST /roles/command` | `{ "action": "/company-apps/update", "params": { "id": "..." } }`; explicit native commands below |
+| `POST /roles/admin-service` | `{ "action": "existing admin-service action", "params": {} }`; legacy owner/admin custody only |
+| `POST /roles/app` | `{ "appId": "...", "name": "optional", "enabled": true }`; rename or enable/disable the assigned app |
+| `POST /roles/recovery-case` | Open, verify or close a case as described below |
+
+Preview kinds:
+
+```json
+{"kind":"role","role":{"name":"Regional help desk","rank":15,"permissions":["roles.view","people.view","people.factors.reset"]}}
+```
+
+An optional `role.id` revises an existing custom role. Grant previews use the
+resource example above. Revoke previews use
+`{"kind":"revoke","grantId":"..."}`. Apply takes only the saved preview id;
+changing role, grant, recipient, membership or relevant directory state between
+preview and apply returns a conflict instead of applying a revised effect.
+Detailed audit stores the exact plan and its prior role/grant state. The
+`effects` array lists each affected person and their actual `gained` and `lost`
+actions by permission and current resource id. It accounts for overlapping
+grants, role-revision invalidation and transitive sponsor revocation.
+
+A profile edit reuses directory type validation, source precedence and rule
+membership calculation; it refuses changes that move the target outside the
+holder's edit scope. It emits existing directory/provisioning events. Group
+changes also create the ordinary provisioning obligations. App changes bump
+the app version and reconcile ordinary provisioning.
+
+Recovery review cases are distinct from administrator recovery:
+
+```json
+{"action":"open","personId":"employee-person","reason":"Employee reported a lost passkey"}
+```
+
+Open requires `cases.open` and an editable non-administrator target. It returns
+a generated `caseId`, which an owner/admin can delegate as a case resource.
+An assigned verifier submits:
+
+```json
+{"action":"verify","caseId":"...","verification":{"method":"Live identity check","reference":"Internal case reference"}}
+```
+
+Verification requires `cases.verify` and `recovery.approve`, an explicit nonempty method/reference,
+a current hardware session and fresh local email. It records the verifier and
+session. `{"action":"close","caseId":"..."}` closes the review. These
+operations never approve an `auth_recoveries` request, shorten its waiting
+period or enroll replacement factors. If supplied to factor reset, the case
+must be verified, match the person, and be viewable by the resetter; ordinary
+people reset permission and edit scope remain mandatory.
+
+A successful factor reset deletes the non-administrator's passkeys, increments
+identity version, revokes every session, cancels pending ordinary recovery,
+records notices for the affected sessions, sends an email notice, and fences
+linked apps. It returns no factors, tokens or session secrets. The employee
+uses ordinary email sign-in and enrollment next. Administrator recovery stays
+on the existing protected recovery doors.
+
+## Native scoped commands
+
+`POST /api/auth/roles/command` accepts an `action` and `params` object. The
+model publishes the exact action registry. These are human session commands;
+admin service tokens and preparer keys never enter this route. Existing machine
+scope exclusions and credential/accountability rules are unchanged.
+
+| Permission | Commands |
+| --- | --- |
+| `apps.edit` | `/company-apps/create`, `/company-apps/update`, `/company-apps/remove`, `/catalog/add`, `/oidc-apps/create`, `/oidc-apps/update`, `/oidc-apps/rotate-secret`, `/provisioning/connect`, `/provisioning/rotate`, `/provisioning/disconnect` |
+| `apps.assign` | `/company-apps/assign`, `/company-apps/unassign` |
+| `groups.edit` | `/groups/create`, `/groups/delete` |
+| `groups.rules.edit` | `/groups/rule` |
+| `people.suspend` / `people.restore` | `/people/suspend` / `/people/restore` |
+| `policy.manage` | `/policy/domain-rule` |
+| `identity-providers.manage` | `/identity-providers/availability` |
+
+App creation requires wildcard edit app resources. Existing app configuration,
+credentials and connectors require the named app; SAML configuration uses the
+existing complete native settings payload. OIDC updates merge existing public
+settings with submitted redirect/JWKS/logout/PKCE/algorithm settings, validate
+through the existing client settings validator, and preserve the authentication
+method; a method change needs a new credential ceremony. OIDC creation and
+rotation preserve the existing one-time secret display and digest-only storage.
+The scoped audit records action/resource identifiers, never submitted secrets.
+
+Assignments use explicit `appId`, `principalType` (`person` or `group`) and
+`principalId`; form shorthand is refused. Both app and principal must be inside
+the holder's edit resources, and every affected person must meet the rank and
+all-group rule. Conflicting resource ids are refused. Group creation requires
+wildcard edit groups; delete and rule changes check every current and newly
+affected person. Rule normalization, lifecycle planning, events and provisioning
+remain the existing native implementations. Policy/provider availability
+commands require wildcard people, groups and apps since their effects are
+organization-wide. Provider changes only enable/disable already configured
+providers; they cannot replace provider identity or server credentials.
+
+`recovery.approve` applies to explicit scoped case verification, never to an
+administrator recovery request. `admin-api.manage` remains legacy human
+custody. Issuing a custom role containing either permission does not bypass
+those conditions.
+
+## Integration and schema
+
+`src/auth/roles/index.mjs` exports `ROLE_READS`, `roleModel(ctx,s)`,
+`isRoleAction(path)`, `roleAction(ctx,request,path,data)`,
+`roleRead(ctx,request,path)` and
+`requireRolePermission(ctx,s,permission,{personId,appId,groupId,caseId,write})`.
+The last function returns `{clause,args,state}`. A future caller **must append
+that clause and args to its committing SQL**, or atomically claim an operation
+under the guard before a transactional batch. An earlier JavaScript permission
+check alone is insufficient. `write` defaults from the permission catalogue.
+Ordinary reads need hardware; exports also require fresh email. No alternate admin cookie,
+API key, role column value or machine token is accepted by these doors.
+
+Migration `0039_auth_roles.sql` adds custom definitions (`auth_roles`), scoped
+memberships (`auth_role_grants`), saved exact previews (`auth_role_previews`),
+review cases (`auth_role_cases`), transaction claims (`auth_role_operations`),
+detailed audit (`auth_role_events`) and the triggered authority epoch
+(`auth_role_epoch`). Ordinary Activity receives the same committed events and
+details. It adds no user-facing secrets and changes no existing role column.

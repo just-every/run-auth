@@ -1,3 +1,4 @@
+import {invitationAdmitted} from './tenancy/routes.mjs';
 import {invokeHooks} from './hooks/index.mjs';
 import {permitsSession,requirePolicy,upstreamProof} from './domain-policy.mjs';
 import {framedPage,FRAME_SOURCES} from './page-frame.mjs';
@@ -9,7 +10,7 @@ export async function sendProof(ctx, person, bindingHash, amr = ['email'], retur
  if(upstreamProofId&&!await upstreamProof(ctx,person.id,upstreamProofId))fail('upstream_proof_expired',403);
  if(!await limit(ctx,`proof-mail:${person.id}`,5,3600000))return false;
  const token = await challenge(ctx,'email',person.id,bindingHash,{amr,upstreamProofId,hardwareSessionId,personVersion:person.version,returnTo:returnPath(returnTo)},900000);
- const link = `${ctx.origin}/auth/identity/email/confirm?token=${encodeURIComponent(token)}`;
+ const link = `${ctx.origin}${ctx.basePath??''}/auth/identity/email/confirm?token=${encodeURIComponent(token)}`;
  if (!ctx.mail) fail('mail_not_configured',503);
  await ctx.mail({to:person.email,subject:'Your Auth sign-in link',text:`Confirm your email in the browser where you requested this link: ${link}`,html:`<p>Confirm your email in the browser where you requested this link:</p><p><a href="${link}">Continue to Auth</a></p>`});
 }
@@ -22,7 +23,7 @@ async function startProof(ctx, request, data, address, bound) {
   await run(ctx,"INSERT OR IGNORE INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE EXISTS(SELECT 1 FROM auth_domains WHERE domain=?) AND NOT EXISTS(SELECT 1 FROM oa_domain_rules WHERE domain=?)",random(),address,extension.profile?.name??address,ctx.now(),address.split('@')[1],address.split('@')[1]);
   person=await one(ctx,'SELECT * FROM oa_operators WHERE email=?',address);
  }
- if(!person)return;
+ if(!person||!await invitationAdmitted(ctx,person))return;
  const current=await session(ctx,request),proofId=current?.person_id===person.id&&await upstreamProof(ctx,person.id,current.upstream_proof_id)?current.upstream_proof_id:null;
  const hardwareId=current?.person_id===person.id&&JSON.parse(current.amr).includes('hwk')?current.id:null;
  if(await permitsSession(ctx,person,proofId))try {await sendProof(ctx,person,bound,proofId?['oidc','email']:['email'],data.returnTo,proofId,hardwareId);}
@@ -40,7 +41,7 @@ export async function requestEmail(ctx, request, data) {
 export async function confirmEmail(ctx,request,data) {
  const proof=await consumeChallenge(ctx,data.token,'email',await binding(ctx,request));
  const person=await one(ctx,'SELECT * FROM oa_operators WHERE id=?',proof.person_id);
- if(!person||person.version!==proof.payload.personVersion)fail('email_proof_stale');
+ if(!person||!await invitationAdmitted(ctx,person)||person.version!==proof.payload.personVersion)fail('email_proof_stale');
  await requirePolicy(ctx,person,proof.payload.upstreamProofId);
  if(proof.payload.upstreamProofId&&!await upstreamProof(ctx,person.id,proof.payload.upstreamProofId))fail('upstream_proof_expired',403);
  // The browser challenge refers to existing authority, never a caller's method label.

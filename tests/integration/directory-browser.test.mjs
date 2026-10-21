@@ -104,3 +104,68 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
   await page.screenshot({path:join(directory,`directory-edit-${width}.png`)});await edit.getByRole('button',{name:'Cancel'}).click();}
  assert.deepEqual(errors,[]);
 });
+
+test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',async t=>{
+ const app=await openApp();t.after(()=>app.close());await app.claim();
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+ const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
+ const hardware=async(context,page)=>{const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});page.on('dialog',dialog=>dialog.accept());};
+ await hardware(context,page);
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ const saved=async(action,target=page)=>{const loaded=target.waitForEvent('load');await action();await loaded;};
+ const post=async(path,data,status=200,client=context)=>{const response=await client.request.post(app.origin+path,{data,headers:{origin:app.origin}});assert.equal(response.status(),status,path+' '+await response.text());return response.json();};
+ const signIn=async(target,email,prefix='',setup=false)=>{
+  await target.goto(app.origin+prefix+'/signin?returnTo='+encodeURIComponent(setup?'/setup':'/app/methods'));
+  await target.getByLabel('Email address',{exact:true}).fill(email);await target.getByRole('button',{name:'Email me a sign-in link'}).click();
+  await target.goto((await app.link(prefix)).href);await target.getByRole('button',{name:'Continue to Auth'}).click();
+  if(setup){await target.getByRole('checkbox').check();await target.getByRole('button',{name:'Finish setup'}).click();await target.goto(app.origin+'/app/methods');}
+  const response=target.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await target.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await response).status(),200);await target.waitForTimeout(450);
+ };
+ const shoot=async(name,target=page)=>{
+  for(const width of [1440,390]){await target.setViewportSize({width,height:1000});await target.emulateMedia({colorScheme:'light'});
+   await expect(target.locator('h1')).toBeVisible();
+   assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits '+width);
+   const axe=await new AxeBuilder({page:target}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],name+' '+width);
+   await target.screenshot({path:join(directory,`authority-${name}-${width}.png`),fullPage:true});
+  }await target.setViewportSize({width:1440,height:1000});
+ };
+ await signIn(page,app.vars.OWNER_EMAIL,'',true);
+ await page.goto(app.origin+'/app/organizations');await page.getByLabel('Organization name').fill('Northwind Manufacturing');await page.getByRole('button',{name:'Create organization',exact:true}).click();
+ const newOrg=page.getByRole('link',{name:'Sign in to Northwind Manufacturing and enroll its passkey'});await expect(newOrg).toBeVisible();
+ const prefix=new URL(await newOrg.getAttribute('href'),app.origin).pathname.replace('/signin','');
+ await shoot('organization-created');await signIn(page,app.vars.OWNER_EMAIL,prefix);
+ await page.goto(app.origin+prefix+'/app/organizations');await expect(page.getByText('owner · Active organization',{exact:true})).toBeVisible();await shoot('organization-memberships');
+ await page.getByRole('button',{name:'Switch to Installation'}).click();await expect(page).toHaveURL(app.origin+'/app/account');
+ const worker=await post('/api/auth/directory/onboard',{name:'Erin Park',email:'erin@northwind.example.com',kind:'employee',set:{department:'Engineering',location:'US'}},201);
+ const helper=await post('/api/auth/directory/onboard',{name:'Sam Rivera',email:'sam@northwind.example.com',kind:'employee',set:{department:'Support',location:'US'}},201);
+ const workerContext=await browser.newContext(),workerPage=await workerContext.newPage();await hardware(workerContext,workerPage);await signIn(workerPage,'erin@northwind.example.com');
+ const helperContext=await browser.newContext(),helperPage=await helperContext.newPage();await hardware(helperContext,helperPage);await signIn(helperPage,'sam@northwind.example.com');
+ const group=await post('/api/auth/groups/create',{name:'US engineering staff'},201);await post('/api/auth/groups/add',{groupId:group.id,personId:worker.id});
+ const appConfig=await post('/api/auth/company-apps/create',{name:'Engineering documents',entityId:'https://documents.example.com',acsUrl:'https://documents.example.com/acs'},201);
+ await page.goto(app.origin+'/app/roles');
+ const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');
+ for(const id of ['roles.view','people.view','people.factors.reset','groups.view'])await definition.locator(`input[value="${id}"]`).check();
+ await definition.getByRole('button',{name:'Preview role'}).click();await expect(definition.locator('[data-role-apply]')).toBeVisible();await shoot('role-preview');await saved(()=>definition.locator('[data-role-apply]').click());
+ const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.getByLabel('Role',{exact:true}).selectOption({label:'Engineering support'});
+ await grant.locator('[name="view.groups"]').selectOption(group.id);await grant.locator('[name="edit.groups"]').selectOption(group.id);
+ await grant.getByRole('button',{name:'Preview delegation'}).click();await expect(grant.locator('[data-role-preview]')).toContainText('sam@northwind.example.com');await shoot('delegation-preview');await saved(()=>grant.locator('[data-role-apply]').click());
+ await helperPage.goto(app.origin+'/app/roles');await expect(helperPage.getByRole('heading',{name:'Scoped factor resets'})).toBeVisible();await shoot('scoped-help-desk',helperPage);
+ await helperPage.getByLabel('Verification and reason').fill('Employee confirmed the request with the support desk');await saved(()=>helperPage.getByRole('button',{name:'Reset factors'}).click(),helperPage);assert.equal((await workerContext.request.get(app.origin+'/api/auth/me')).status(),401);
+ await page.goto(app.origin+'/app/permissions');
+ const apiForm=page.locator('[data-resource-form=register]');await apiForm.getByLabel('Company app').selectOption(appConfig.id);await apiForm.getByLabel('API name').fill('Documents API');await apiForm.getByLabel('Audience').fill('https://documents.example.com/api');await apiForm.getByLabel('Resource ID',{exact:true}).fill('document:budget');await saved(()=>apiForm.getByRole('button',{name:'Register API'}).click());
+ const assignment=page.locator('[data-resource-form=assign]');await assignment.getByLabel('Group').selectOption(group.id);await saved(()=>assignment.getByRole('button',{name:'Assign role to group'}).click());
+ const {generateKeyPair,exportJWK,SignJWT}=await import('jose'),pair=await generateKeyPair('ES256'),jwk={...await exportJWK(pair.publicKey),kid:'synthetic-auth-5',alg:'ES256',use:'sig'};
+ const serviceForm=page.locator('[data-resource-form=service-create]');await serviceForm.getByLabel('Service name').fill('Engineering search indexer');await serviceForm.getByLabel('Purpose').fill('Index the approved engineering document catalogue');await serviceForm.getByLabel('Accountable owner').selectOption(worker.id);await serviceForm.getByLabel('Resource IDs, separated by spaces').fill('document:budget');await serviceForm.getByLabel('Expires at').fill(new Date(Date.now()+86400000).toISOString().slice(0,16));await serviceForm.getByLabel('Public signing JWKS').fill(JSON.stringify({keys:[jwk]}));await saved(()=>serviceForm.getByRole('button',{name:'Register service'}).click());await shoot('resource-service');
+ const resources=await (await context.request.get(app.origin+'/api/auth/resource-apis')).json(),service=resources.services[0],api=resources.apis[0],now=Math.floor(Date.now()/1000);
+ const assertion=await new SignJWT({jti:crypto.randomUUID()}).setProtectedHeader({alg:'ES256',kid:jwk.kid}).setIssuer(service.clientId).setSubject(service.clientId).setAudience(app.origin+'/oidc/token').setIssuedAt(now).setExpirationTime(now+120).sign(pair.privateKey);
+ const issued=await context.request.post(app.origin+'/oidc/token',{form:{grant_type:'client_credentials',client_id:service.clientId,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:assertion,scope:'read'}});assert.equal(issued.status(),200);const token=(await issued.json()).access_token;
+ const decision=await context.request.post(app.origin+'/api/auth/resource-apis/check',{data:{apiId:api.id,action:'read',resource:'document:budget'},headers:{authorization:'Bearer '+token}});assert.equal((await decision.json()).allowed,true);
+ await saved(()=>page.getByRole('button',{name:'Revoke service'}).click());await shoot('service-revoked');
+ assert.equal((await context.request.post(app.origin+'/api/auth/resource-apis/check',{data:{apiId:api.id,action:'read',resource:'document:budget'},headers:{authorization:'Bearer '+token}})).status(),401);
+ await page.goto(app.origin+'/app/erasure');await page.locator('[data-erasure-policy] input').check();await saved(()=>page.getByRole('button',{name:'Confirm erasure policy'}).click());
+ const hold=page.locator('[data-erasure-hold]');await hold.getByLabel('Person',{exact:true}).selectOption(worker.id);await hold.getByLabel('Reason').fill('Awaiting employment records authorization');await saved(()=>hold.getByRole('button',{name:'Place legal hold'}).click());await shoot('legal-hold');await saved(()=>page.getByRole('button',{name:'Release hold'}).click());
+ const erase=page.locator('[data-erasure-preview]');await erase.getByLabel('Person',{exact:true}).selectOption(worker.id);await erase.getByRole('button',{name:'Preview erasure'}).click();await expect(erase.locator('[data-erasure-confirm]')).toBeVisible();await shoot('erasure-preview');await erase.getByLabel('Type the confirmation phrase').fill('ERASE');await erase.getByLabel('Authorize the listed remote deletion and revocation calls.').check();await saved(()=>erase.getByRole('button',{name:'Confirm erasure'}).click());
+ await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();await page.getByText('Per-store completion and remote removal').click();await shoot('erasure-receipt');
+ assert.ok(!(await (await context.request.get(app.origin+'/api/auth/people')).json()).some(p=>p.email==='erin@northwind.example.com'));assert.deepEqual(errors,[]);
+});

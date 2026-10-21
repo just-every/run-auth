@@ -1,3 +1,7 @@
+import { renderRolesPage } from './pages/roles.js'
+import { renderPermissionsPage } from './pages/permissions.js'
+import { renderErasurePage } from './pages/erasure.js'
+import { renderOrganizationsPage } from './pages/organizations.js'
 import type { AuthPage, AuthPageModel, SignInPageModel } from './model.js'
 import { pageCopy, renderShell } from './shell.js'
 import { renderPeoplePage } from './pages/people.js'
@@ -20,6 +24,10 @@ const pageRenderers: Record<AuthPage, (model: AuthPageModel) => string> = {
   methods: renderMethodsPage,
   activity: renderActivityPage,
   account: renderAccountPage,
+  organizations: renderOrganizationsPage,
+  roles: renderRolesPage,
+  permissions: renderPermissionsPage,
+  erasure: renderErasurePage,
 }
 
 export function renderAuthPage(model: AuthPageModel): string {

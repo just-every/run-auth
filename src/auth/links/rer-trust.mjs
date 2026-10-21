@@ -56,7 +56,7 @@ export async function trustAction(ctx,request,path,data) {
 export async function withdrawBySignature(ctx,request) {
  const data=await readBody(request),kid=String(data.kid||'');
  const known=(await rerTrust(ctx)).find(k=>k.kid===kid&&!k.withdrawn_at)||fail('rer_key_not_found',404);
- let claims;try{({payload:claims}=await jwtVerify(String(data.assertion||''),createLocalJWKSet({keys:[known.key]}),{audience:ctx.origin+WITHDRAW,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_rer_assertion',401);}
+ let claims;try{({payload:claims}=await jwtVerify(String(data.assertion||''),createLocalJWKSet({keys:[known.key]}),{audience:(ctx.issuer??ctx.origin)+WITHDRAW,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_rer_assertion',401);}
  if(claims.exp-claims.iat>300)fail('invalid_rer_assertion',401);
  try{await run(ctx,'INSERT INTO auth_rer_approvals(jti,kid,expires_at) VALUES(?,?,?)',claims.jti,kid,claims.exp*1000);}catch{fail('invalid_rer_assertion',401);}
  await run(ctx,"INSERT INTO auth_rer_withdrawals(kid,source,withdrawn_by,withdrawn_at) VALUES(?,?,'rer',?) ON CONFLICT(kid) DO NOTHING",kid,known.source,ctx.now());

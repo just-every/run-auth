@@ -50,7 +50,7 @@ export async function sso(ctx,request) {
  const {message,root,app,id}=await inbound(ctx,request,['AuthnRequest']);
  if(message.kind!=='SAMLRequest')fail('invalid_saml_message');
  const signed=await verifyMessage(ctx,app,message,root,Boolean(app.want_requests_signed));
- const destination=attr(root,'Destination');if((destination!==null||signed)&&destination!==ctx.origin+SSO_PATH)fail('wrong_destination');
+ const destination=attr(root,'Destination');if((destination!==null||signed)&&destination!==(ctx.issuer??ctx.origin)+SSO_PATH)fail('wrong_destination');
  const protocolBinding=attr(root,'ProtocolBinding'),binding=protocolBinding===null?null:Object.entries(BINDINGS).find(([,u])=>u===protocolBinding)?.[0]??fail('unsupported_binding');
  const requested=attr(root,'AssertionConsumerServiceURL');let url=null;if(requested!==null){try{url=new URL(requested).href;}catch{fail('acs_not_allowed');}}
  const acs=defaultAcs(app,{url,index:attr(root,'AssertionConsumerServiceIndex'),binding})||fail('acs_not_allowed');

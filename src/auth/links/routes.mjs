@@ -18,12 +18,12 @@ export const LINK_PATHS=['/.well-known/rer-provider','/.well-known/rer-dependenc
 async function dependencies(ctx) {
  await run(ctx,'INSERT INTO rer_dependency_installation(singleton,sector_id) VALUES(1,?) ON CONFLICT DO NOTHING',crypto.randomUUID());
  const installation=await one(ctx,'SELECT sector_id FROM rer_dependency_installation WHERE singleton=1');
- return {name:'Auth',version:1,origin:ctx.origin,sector_id:installation.sector_id,provides:[INTERFACE],dependencies:[],claim:false};
+ return {name:'Auth',version:1,origin:(ctx.issuer??ctx.origin),sector_id:installation.sector_id,provides:[INTERFACE],dependencies:[],claim:false};
 }
 
 export async function linkRoute(ctx,request,path) {
  if(request.method==='GET') {
-  if(path==='/.well-known/rer-provider')return json({issuer:ctx.origin,version:1,interface:INTERFACE,provides:[INTERFACE],initiate:ctx.origin+INITIATE,redeem:ctx.origin+REDEEM,deregister:ctx.origin+DEREGISTER,report:ctx.origin+REPORT});
+  if(path==='/.well-known/rer-provider')return json({issuer:(ctx.issuer??ctx.origin),version:1,interface:INTERFACE,provides:[INTERFACE],initiate:(ctx.issuer??ctx.origin)+INITIATE,redeem:(ctx.issuer??ctx.origin)+REDEEM,deregister:(ctx.issuer??ctx.origin)+DEREGISTER,report:(ctx.issuer??ctx.origin)+REPORT});
   if(path==='/.well-known/rer-dependencies')return json(await dependencies(ctx));
   fail('not_found',404);
  }
@@ -55,7 +55,7 @@ async function initiate(ctx,request) {
 async function deregister(ctx,request) {
  const data=await readBody(request);
  const client=await one(ctx,'SELECT * FROM auth_clients WHERE id=? AND origin=? AND disabled_at IS NULL',String(data.client_id||''),String(data.origin||''))||fail('invalid_client',401);
- let claims;try{({payload:claims}=await jwtVerify(String(data.client_assertion||''),createLocalJWKSet(JSON.parse(client.jwks)),{issuer:client.id,subject:client.id,audience:ctx.origin+DEREGISTER,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_client',401);}
+ let claims;try{({payload:claims}=await jwtVerify(String(data.client_assertion||''),createLocalJWKSet(JSON.parse(client.jwks)),{issuer:client.id,subject:client.id,audience:(ctx.issuer??ctx.origin)+DEREGISTER,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_client',401);}
  try{await run(ctx,'INSERT INTO auth_assertions(client_id,jti,expires_at) VALUES(?,?,?)',client.id,claims.jti,claims.exp*1000);}catch{fail('invalid_client',401);}
  await run(ctx,'UPDATE auth_clients SET disabled_at=? WHERE id=? AND disabled_at IS NULL',ctx.now(),client.id);
  await auditDetail(ctx,null,'app_deregistered',client.id,{origin:client.origin});
@@ -90,7 +90,7 @@ export async function appAction(ctx,request,path,data) {
   if(!minted.meta.changes){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}
   await auditDetail(ctx,s.person_id,'link_token_created',null,{origin});
   // The envelope `rer setup` reads from RER_LINK_TOKEN_FILE; shown once.
-  return json({token,issuer:ctx.origin,interface:INTERFACE,origin,callbacks,issuedAt:now,expiresAt:now+TOKEN_LIFETIME},201);
+  return json({token,issuer:(ctx.issuer??ctx.origin),interface:INTERFACE,origin,callbacks,issuedAt:now,expiresAt:now+TOKEN_LIFETIME},201);
  }
  if(path==='/apps/request') {
   const app=await pullApp(ctx,String(data.origin||''));

@@ -35,7 +35,7 @@ export async function jwks(ctx) {await run(ctx,'DELETE FROM auth_signing_keys WH
 export async function signToken(ctx,claims,{alg='ES256',typ='JWT',expiresAt=Math.floor(ctx.now()/1000)+TOKEN_SECONDS,published=false}={}) {
  const row=published?await one(ctx,"SELECT * FROM auth_signing_keys WHERE json_extract(public_jwk,'$.alg')=? AND retire_at IS NULL ORDER BY published_at DESC,kid DESC LIMIT 1",alg)||fail('signing_key_not_ready',503):await activeSigningKey(ctx,alg);
  const key=await importJWK(await decrypt(ctx,row),alg);
- return new SignJWT(claims).setProtectedHeader({alg,kid:row.kid,typ}).setIssuer(ctx.origin).setIssuedAt(Math.floor(ctx.now()/1000)).setExpirationTime(expiresAt).sign(key);
+ return new SignJWT(claims).setProtectedHeader({alg,kid:row.kid,typ}).setIssuer((ctx.issuer??ctx.origin)).setIssuedAt(Math.floor(ctx.now()/1000)).setExpirationTime(expiresAt).sign(key);
 }
 export async function pairwiseSubject(ctx,sector,person) {
  await run(ctx,"INSERT OR IGNORE INTO auth_settings(key,value) VALUES('pairwise_key',?)",random());

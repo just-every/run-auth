@@ -6,7 +6,7 @@ import {random,all,one,run} from '../core.mjs';
 import {signToken,ensureSigningKey} from '../keys.mjs';
 
 export async function rememberIssuer(ctx) {
- await run(ctx,"INSERT INTO auth_settings(key,value) VALUES('issuer',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE value!=excluded.value",ctx.origin);
+ await run(ctx,"INSERT INTO auth_settings(key,value) VALUES('issuer',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE value!=excluded.value",(ctx.issuer??ctx.origin));
 }
 export async function writeGrantMap(ctx) {
  const [clients,subjects,former]=await Promise.all([
@@ -17,9 +17,9 @@ export async function writeGrantMap(ctx) {
  const map={typ:'rer-grant-map',sectors:clients.map(c=>({sector_id:c.sector_id,client_id:c.id,origin:c.origin,removed:Boolean(c.disabled_at),subjects:subjects.filter(s=>s.sector_id===c.sector_id).map(s=>({person:s.person_id,email:s.email,sub:s.subject}))})),
   former_subjects:former.map(f=>({source:f.source_system,subject:f.subject,person:f.person_id,email:f.email}))};
  await ensureSigningKey(ctx);
- const now=Math.floor(ctx.now()/1000),jws=await signToken(ctx,{...map,aud:ctx.origin,jti:random()},{typ:'grant-map+jwt',expiresAt:now+365*86400,published:true});
+ const now=Math.floor(ctx.now()/1000),jws=await signToken(ctx,{...map,aud:(ctx.issuer??ctx.origin),jti:random()},{typ:'grant-map+jwt',expiresAt:now+365*86400,published:true});
  const id=random();
- await run(ctx,'INSERT INTO auth_grant_maps(id,issuer,created_at,map) VALUES(?,?,?,?)',id,ctx.origin,ctx.now(),jws);
+ await run(ctx,'INSERT INTO auth_grant_maps(id,issuer,created_at,map) VALUES(?,?,?,?)',id,(ctx.issuer??ctx.origin),ctx.now(),jws);
  return {id,sectors:map.sectors.length,subjects:subjects.length,former:former.length};
 }
 export const issuerOf=async ctx=>(await one(ctx,"SELECT value FROM auth_settings WHERE key='issuer'"))?.value??null;

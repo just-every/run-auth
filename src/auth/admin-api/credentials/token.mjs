@@ -22,10 +22,10 @@ async function record(ctx,app,clientId,scopes,result) {
 async function assertion(ctx,app,form) {
  let claims;
  try {
-  ({payload:claims}=await jwtVerify(form.get('client_assertion'),createLocalJWKSet(JSON.parse(app.jwks)),{issuer:app.client_id,subject:app.client_id,audience:ctx.origin+'/oidc/token',algorithms:['ES256','RS256'],currentDate:new Date(ctx.now()),requiredClaims:['exp','iat','jti']}));
+  ({payload:claims}=await jwtVerify(form.get('client_assertion'),createLocalJWKSet(JSON.parse(app.jwks)),{issuer:app.client_id,subject:app.client_id,audience:(ctx.issuer??ctx.origin)+'/oidc/token',algorithms:['ES256','RS256'],currentDate:new Date(ctx.now()),requiredClaims:['exp','iat','jti']}));
  }catch{fail('invalid_client',401);}
  const now=Math.floor(ctx.now()/1000);
- if(claims.aud!==ctx.origin+'/oidc/token'||typeof claims.jti!=='string'||!claims.jti||claims.jti.length>256||!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.iat>now+30||claims.iat<now-300||claims.exp>now+300||claims.exp<=now||claims.exp<=claims.iat||claims.exp-claims.iat>300)fail('invalid_client',401);
+ if(claims.aud!==(ctx.issuer??ctx.origin)+'/oidc/token'||typeof claims.jti!=='string'||!claims.jti||claims.jti.length>256||!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.iat>now+30||claims.iat<now-300||claims.exp>now+300||claims.exp<=now||claims.exp<=claims.iat||claims.exp-claims.iat>300)fail('invalid_client',401);
  const guard=liveGuard(ctx,app,app.expires_at);
  let consumed;
  try {
@@ -55,7 +55,7 @@ export async function adminToken(ctx,request) {
   // Admin tokens are accepted only by this issuer's REST API, whose verifier
   // reads the authoritative local JWKS on every call rather than a cached RP copy.
   await ensureSigningKey(ctx);
-  const accessToken=await signToken(ctx,{aud:ctx.origin+'/api/auth/admin/v1',sub:'admin-service:'+app.id,client_id:app.client_id,admin_service_app:app.id,revision:app.revision,scope:scopes.join(' '),jti:random()},{typ:'at+jwt',expiresAt,published:true});
+  const accessToken=await signToken(ctx,{aud:(ctx.issuer??ctx.origin)+'/api/auth/admin/v1',sub:'admin-service:'+app.id,client_id:app.client_id,admin_service_app:app.id,revision:app.revision,scope:scopes.join(' '),jti:random()},{typ:'at+jwt',expiresAt,published:true});
   // Signing awaits cryptography. Recheck live authority in the last committing
   // statement, so demotion, reassignment, revocation or expiry wins that race.
   const guard=liveGuard(ctx,app,expiresAt*1000);

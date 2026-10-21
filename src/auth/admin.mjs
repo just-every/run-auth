@@ -1,3 +1,8 @@
+import {roleModel,roleRead} from './roles/index.mjs';
+import {AuthError} from './core.mjs';
+import {grantModel} from './grants/index.mjs';
+import {erasureModel} from './erasure/index.mjs';
+import {tenancyModel} from './tenancy/routes.mjs';
 import {adminServicesModel} from './admin-api/credentials/index.mjs';
 import {hookModel} from './hooks/index.mjs';
 import {configuredProvider} from './domain-policy.mjs';
@@ -44,13 +49,21 @@ export async function model(ctx,request,page='account') {
   if(page==='people')result.directory=await directoryModel(ctx);
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
+ if(page==='roles') {
+  try { result.roles=await roleModel(ctx,s); }
+  catch(error) {if(!(error instanceof AuthError)||error.status!==403)throw error;result.roleError=error.message;}
+  if(result.roles)try{result.rolePeople=(await (await roleRead(ctx,request,'/api/auth/roles/people')).json()).people;}catch(error){if(!(error instanceof AuthError)||error.status!==403)throw error;result.rolePeople=[];}
+ }
+ if(page==='permissions'&&isAdmin){result.resourceApis=await grantModel(ctx);result.workforce=await workforceModel(ctx);}
+ if(page==='erasure'&&s.role==='owner'&&isAdmin)result.erasure=await erasureModel(ctx,request);
+ result.organizations=await tenancyModel(ctx,request,s);
  result.launcher=await launcher(ctx,s.person_id);
  if(page==='account')result.profile=await profileModel(ctx,s);
  return result;
 }
 // The one invitation message, from People and from move-in alike.
 export async function sendInvitation(ctx,address) {
- if(ctx.mail)await ctx.mail({to:address,subject:'You are invited to Auth',text:`Sign in to ${ctx.origin}/signin with your email address to accept your invitation.`,html:'<p>You are invited to Auth. Sign in with your email address to accept.</p>'});
+ if(ctx.mail)await ctx.mail({to:address,subject:'You are invited to Auth',text:`Sign in to ${ctx.origin}${ctx.basePath??''}/signin with your email address to accept your invitation.`,html:'<p>You are invited to Auth. Sign in with your email address to accept.</p>'});
 }
 const ADMIN_ACTIONS=['/people/invite','/people/domain','/domains/add','/people/domain-rule','/people/suspend'];
 const OWNER_ACTIONS=['/people/role','/keys/stage','/keys/retire'];

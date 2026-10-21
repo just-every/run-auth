@@ -32,7 +32,7 @@ export async function report(ctx,request) {
  const data=await readBody(request);
  if(!validVersion(data.version)||typeof data.client_id!=='string'||typeof data.client_assertion!=='string')fail('invalid_request');
  const client=await one(ctx,'SELECT * FROM auth_clients WHERE id=? AND disabled_at IS NULL',data.client_id)||fail('invalid_client',401);
- let claims;try{({payload:claims}=await jwtVerify(data.client_assertion,createLocalJWKSet(JSON.parse(client.jwks)),{issuer:client.id,subject:client.id,audience:ctx.origin+REPORT,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_client',401);}
+ let claims;try{({payload:claims}=await jwtVerify(data.client_assertion,createLocalJWKSet(JSON.parse(client.jwks)),{issuer:client.id,subject:client.id,audience:(ctx.issuer??ctx.origin)+REPORT,algorithms:['ES256'],currentDate:new Date(ctx.now()),requiredClaims:['iat','exp','jti']}));}catch{fail('invalid_client',401);}
  if(claims.exp-claims.iat>60||claims.version!==data.version)fail('invalid_client',401);
  try{await run(ctx,'INSERT INTO auth_assertions(client_id,jti,expires_at) VALUES(?,?,?)',client.id,claims.jti,claims.exp*1000);}catch{fail('invalid_client',401);}
  if(await downgrade(ctx,client.id,data.version)) {

@@ -1,3 +1,8 @@
+import {ERASURE_READS,isErasureAction,erasureRead,erasureAction} from './erasure/index.mjs';
+import {ROLE_READS,isRoleAction,roleRead,roleAction} from './roles/index.mjs';
+import {isGrantAction,grantAction,grantRead,resourceToken,grantCheck} from './grants/index.mjs';
+import {organizationRequest,organizationContext,organizationResponse,organizationError} from './tenancy/context.mjs';
+import {TENANCY_READ,isTenancyAction,tenancyAction,tenancyRead} from './tenancy/routes.mjs';
 import {resolveProviders} from './admin-api/providers.mjs';
 import {adminToken,isAdminServiceAction,adminServiceAction} from './admin-api/credentials/index.mjs';
 import {adminApi} from './admin-api/routes.mjs';
@@ -28,7 +33,7 @@ import {isEventsAction,eventsAction,eventsRead,EVENTS_READ} from './events/route
 export {stageSigningKey,retireSigningKey,ensureSigningKey} from './keys.mjs';
 export {maintainAuth} from './maintenance.mjs';
 export {installRecoveryToken} from './recovery.mjs';
-export function createAuthRuntime(options) {
+function scopedRuntime(options) {
  const ctx={...options,origin:new URL(options.origin).origin,now:options.now||Date.now,local:options.local===true};
  validateClientOrigin(ctx,ctx.origin);
  const resolved=()=>resolveProviders(ctx);
@@ -54,6 +59,10 @@ export function createAuthRuntime(options) {
     if(path==='/oidc/authorize')return await authorize(ctx,request);
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
+    if(ERASURE_READS.includes(path))return await erasureRead(ctx,request,path);
+    if(ROLE_READS.includes(path))return await roleRead(ctx,request,path);
+    if(path==='/api/auth/resource-apis')return await grantRead(ctx,request,path);
+    if(path===TENANCY_READ)return await tenancyRead(ctx,request);
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
     if(path==='/api/auth/hooks'){await requireSession(ctx,request,true);return json(await hookModel(ctx));}
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
@@ -67,8 +76,9 @@ export function createAuthRuntime(options) {
     }
    }
    if(request.method==='POST') {
-    if(path==='/oidc/token')return await adminToken(ctx,request)??await genericToken(ctx,request)??await token(ctx,request);
+    if(path==='/oidc/token')return await resourceToken(ctx,request)??await adminToken(ctx,request)??await genericToken(ctx,request)??await token(ctx,request);
     if(path==='/api/auth/move-in/stage')return await stage(ctx,request);
+    if(path==='/api/auth/resource-apis/check')return await grantCheck(ctx,request);
     const data=await input(ctx,request);
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);
     if(path==='/auth/identity/email/confirm')return await confirmEmail(ctx,request,{...data,token:data.token||url.searchParams.get('token')});
@@ -79,6 +89,10 @@ export function createAuthRuntime(options) {
     if(passkeyPath==='/auth/passkeys/authenticate/verify')return await authenticationVerify(ctx,request,data);
     if(path.startsWith('/api/auth/')) {
      const action=path.slice('/api/auth'.length);
+     if(isErasureAction(action))return await erasureAction(ctx,request,action,data);
+     if(isRoleAction(action))return await roleAction(ctx,request,action,data);
+     if(isGrantAction(action))return await grantAction(ctx,request,action,data);
+     if(isTenancyAction(action))return await tenancyAction(ctx,request,action,data);
      if(['/recovery/start','/recovery/request'].includes(action))return await startRecovery(ctx,request);
      if(['/recovery/cancel','/recovery/approve','/recovery/complete'].includes(action))return await changeRecovery(ctx,request,data,action.split('/').at(-1));
      if(action==='/recovery/token')return await redeemRecoveryToken(ctx,request,data);
@@ -105,4 +119,19 @@ export function createAuthRuntime(options) {
    return json({error:error.message,...(message?{message,error_description:message}:{})},error.status);
   }
  }};
+}
+
+// Every HTTP and page door selects its organization before touching product
+// storage. Credentials and identifiers from a different namespace never match.
+export function createAuthRuntime(options) {
+ const root={...options,origin:new URL(options.origin).origin,now:options.now||Date.now,local:options.local===true};
+ const select=async request=>{
+  const selected=organizationRequest(request),id=options.organizationId??selected.id;
+  return {request:selected.request,ctx:await organizationContext(root,id)};
+ };
+ return {context:root,
+  async upstreamProviders(){return scopedRuntime(await organizationContext(root,options.organizationId??'root')).upstreamProviders();},
+  async model(request,page){const selected=await select(request);return scopedRuntime(selected.ctx).model(selected.request,page);},
+  async fetch(request){return organizationError(async()=>{if(new URL(request.url).origin!==root.origin)fail('wrong_issuer',400);const selected=await select(request);return organizationResponse(selected.ctx,await scopedRuntime(selected.ctx).fetch(selected.request));});},
+ };
 }

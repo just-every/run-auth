@@ -20,7 +20,7 @@ async function hint(ctx,token) {
  try {
   const {payload}=await compactVerify(token,createLocalJWKSet(await jwks(ctx)),{algorithms:['ES256','RS256']});
   const claims=JSON.parse(new TextDecoder().decode(payload));
-  return claims.iss===ctx.origin&&typeof claims.aud==='string'?claims:null;
+  return claims.iss===(ctx.issuer??ctx.origin)&&typeof claims.aud==='string'?claims:null;
  } catch {return null;}
 }
 

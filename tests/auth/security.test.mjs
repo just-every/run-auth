@@ -108,3 +108,57 @@ test('wrangler-installed recovery token is owner-only and one use',async t=>{
  assert.equal((await r.call('/api/auth/me',{cookie:owner.cookie})).status,401);
  const replacement=await register(r,emailCookie);assert.equal((await r.call('/api/auth/people',{cookie:replacement.cookie})).status,200);
 });
+
+test('organizations isolate every existing HTTP family, admit expiring memberships and switch only between proven sessions',async t=>{
+ const r=await fixture(t),owner=await register(r,await emailSession(r,'owner@example.com'));
+ const command=async(client,cookie,path,data,status=200)=>{
+  const response=await client.call('/api/auth/'+path,post(data,cookie));assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();
+ };
+ assert.equal((await r.call('/api/auth/organizations/create',post({name:'Foreign'},await emailSession(r,'member@example.com')))).status,403);
+ const north=await command(r,owner.cookie,'organizations/create',{name:'Northwind Manufacturing'},201),south=await command(r,owner.cookie,'organizations/create',{name:'Contoso Research'},201);
+ const scoped=id=>({origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+id+path,options)});
+ const a=scoped(north.id),b=scoped(south.id),adminA=await register(a,await emailSession(a,'owner@example.com')),adminB=await register(b,await emailSession(b,'owner@example.com'));
+ const group=await command(a,adminA.cookie,'groups/create',{name:'Confidential Northwind'},201);
+ await command(a,adminA.cookie,'organizations/invite',{email:'contractor@example.com',name:'Cole Reed'},201);
+ await command(b,adminB.cookie,'organizations/invite',{email:'contractor@example.com',name:'Cole Reed'},201);
+ const memberA=await emailSession(a,'contractor@example.com'),memberB=await emailSession(b,'contractor@example.com');
+ const both=memberA+'; '+memberB;
+ const memberships=await (await a.call('/api/auth/organizations',{cookie:both})).json();
+ assert.deepEqual(memberships.memberships.map(m=>m.name).sort(),['Contoso Research','Northwind Manufacturing']);
+ const switched=await command(a,both,'organizations/switch',{organizationId:south.id});assert.equal(switched.redirect,'/org/'+south.id+'/app/account');
+ assert.equal((await a.call('/api/auth/organizations/switch',post({organizationId:south.id},memberA))).status,403);
+ for(const cookie of [owner.cookie,adminB.cookie,memberB])assert.equal((await a.call('/api/auth/me',{cookie})).status,401,'foreign session refused');
+ const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','directory/export'];
+ for(const path of reads) {
+  const response=await b.call('/api/auth/'+path,{cookie:adminB.cookie});
+  assert.ok([200,404].includes(response.status),path+' '+await response.clone().text());
+  assert.ok(!(await response.text()).includes('Confidential Northwind'),path+' cannot read another organization');
+ }
+ assert.equal((await b.call('/api/auth/groups/add',post({groupId:group.id,personId:(await (await b.call('/api/auth/me',{cookie:memberB})).json()).user.id},adminB.cookie))).status,404);
+ assert.equal((await b.call('/api/auth/roles/preview',post({kind:'grant',personId:(await (await b.call('/api/auth/me',{cookie:memberB})).json()).user.id,roleId:'app-administrator',resources:{view:{apps:[group.id]},edit:{apps:[group.id]}}},adminB.cookie))).status,404);
+ assert.equal((await a.call('/api/auth/organizations/invite',post({email:'escalated@example.com',role:'owner'},adminA.cookie))).status,403);
+ await command(a,adminA.cookie,'organizations/invite',{email:'expired@example.com',expiresAt:r.now+1},201);
+ r.now+=2;const before=(await r.mails()).length;await a.call('/auth/identity/email/request',post({email:'expired@example.com'}));assert.equal((await r.mails()).length,before,'expired admission sends no sign-in proof');
+ await command(a,adminA.cookie,'organizations/invite',{email:'cancelled@example.com'},201);
+ await command(a,adminA.cookie,'organizations/cancel-invitation',{email:'cancelled@example.com'});
+ const cancelledBefore=(await r.mails()).length;await a.call('/auth/identity/email/request',post({email:'cancelled@example.com'}));assert.equal((await r.mails()).length,cancelledBefore);
+ // The same contractor receives one app and one explicitly named recovery case.
+ const contractor=await register(a,memberA),contractorId=(await (await a.call('/api/auth/me',{cookie:contractor.cookie})).json()).user.id;
+ const appA=await command(a,adminA.cookie,'oidc-apps/create',{name:'Northwind wiki',authMethod:'none',redirectUris:['https://wiki.example.com/callback']},201);
+ const otherApp=await command(a,adminA.cookie,'oidc-apps/create',{name:'Restricted payroll',authMethod:'none',redirectUris:['https://payroll.example.com/callback']},201);
+ const delegate=async(roleId,resources)=>{const preview=await command(a,adminA.cookie,'roles/preview',{kind:'grant',personId:contractorId,roleId,resources});return command(a,adminA.cookie,'roles/apply',{previewId:preview.previewId});};
+ await delegate('app-administrator',{view:{apps:[appA.id]},edit:{apps:[appA.id]}});
+ await command(a,contractor.cookie,'roles/command',{action:'/oidc-apps/update',params:{appId:appA.id,name:'Northwind knowledge',redirectUris:['https://wiki.example.com/new-callback']}});
+ assert.equal((await a.call('/api/auth/roles/command',post({action:'/oidc-apps/update',params:{appId:otherApp.id,name:'Intrusion'}},contractor.cookie))).status,403);
+ assert.equal((await a.call('/api/auth/people/role',post({id:contractorId,role:'admin'},contractor.cookie))).status,403);
+ await command(a,adminA.cookie,'organizations/invite',{email:'recover@example.com',name:'Recovery employee'},201);
+ const worker=await register(a,await emailSession(a,'recover@example.com')),workerId=(await (await a.call('/api/auth/me',{cookie:worker.cookie})).json()).user.id;
+ const recovery=await command(a,adminA.cookie,'roles/recovery-case',{action:'open',personId:workerId,reason:'Employee reported a lost device'},201);
+ await delegate('help-desk',{view:{people:[workerId],cases:[recovery.caseId]},edit:{people:[workerId],cases:[recovery.caseId]}});
+ await command(a,contractor.cookie,'roles/recovery-case',{action:'verify',caseId:recovery.caseId,verification:{method:'employee-in-person',reference:'Recorded support appointment synthetic-auth-6'}});
+ await command(a,contractor.cookie,'roles/reset-factors',{personId:workerId,caseId:recovery.caseId,reason:'Verified replacement enrollment'});
+ assert.equal((await a.call('/api/auth/me',{cookie:worker.cookie})).status,401);
+ const discoveryA=await (await a.call('/.well-known/openid-configuration')).json(),discoveryB=await (await b.call('/.well-known/openid-configuration')).json();
+ assert.equal(discoveryA.issuer,r.origin+'/org/'+north.id);assert.equal(discoveryB.issuer,r.origin+'/org/'+south.id);
+ const keysA=await (await a.call('/oidc/jwks')).json(),keysB=await (await b.call('/oidc/jwks')).json();assert.ok(keysA.keys.every(ka=>keysB.keys.every(kb=>ka.kid!==kb.kid)),'issuer private keys are distinct');
+});

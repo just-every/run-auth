@@ -10,7 +10,7 @@ import {signElement,encryptElement} from './signing.mjs';
 import {FORMATS} from './apps.mjs';
 import {groupNames} from '../workforce/directory.mjs';
 
-export const idpEntity=ctx=>`${ctx.origin}/saml/metadata`;
+export const idpEntity=ctx=>`${(ctx.issuer??ctx.origin)}/saml/metadata`;
 export const iso=ms=>new Date(ms).toISOString().replace(/\.\d{3}Z$/,'Z');
 export const messageId=()=>'_'+[...crypto.getRandomValues(new Uint8Array(20))].map(b=>b.toString(16).padStart(2,'0')).join('');
 export const STATUS='urn:oasis:names:tc:SAML:2.0:status:';
