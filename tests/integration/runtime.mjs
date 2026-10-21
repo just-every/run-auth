@@ -35,12 +35,12 @@ export async function openApp({upstreamProviders,outboundService}={}) {
   // own trigger endpoint is deliberately not a public application listener.
   runtime=await productionRuntime(directory,origin,port,'127.0.0.1',outboundService);await runtime.ready;
  }catch(error){await runtime?.dispose();await rm(directory,{recursive:true,force:true});throw error;}
- const app={origin,vars,async close(){await runtime.dispose();await rm(directory,{recursive:true,force:true});},
+ const app={origin,vars,directory,async pause(){await runtime?.dispose();runtime=null;},async resume(){runtime=await productionRuntime(directory,origin,port,'127.0.0.1',outboundService);await runtime.ready;},async close(){await runtime?.dispose();await rm(directory,{recursive:true,force:true});},
   get:(path,headers={})=>fetch(origin+path,{headers,redirect:'manual'}),
   post:(path,data={},cookie)=>fetch(origin+path,{method:'POST',redirect:'manual',headers:{origin,'content-type':'application/json',...(cookie?{cookie}:{})},body:JSON.stringify(data)}),
   async claim(){const response=await app.post('/auth/bootstrap',{token:vars.SETUP_TOKEN,displayName:'Owner'});assert.equal(response.status,303);return cookieOf(response);},
   async link(prefix=''){const listing=await(await app.get(prefix+'/__dev/outbox',{'x-rer-dev-key':vars.RER_DEV_KEY})).text();const path=listing.match(/href="(\/__dev\/outbox\?message=[^"]+)"/)?.[1];assert.ok(path,'real outbox has a message');const detail=await(await app.get(prefix+path.replaceAll('&amp;','&'),{'x-rer-dev-key':vars.RER_DEV_KEY})).text();const value=detail.match(/href="([^"]*\/auth\/identity\/email\/confirm\?token=[^"]+)"/)?.[1];assert.ok(value,'outbox has Auth confirmation link');return new URL(value.replaceAll('&amp;','&'),origin);},
-  async signIn(returnTo='/app/account'){const response=await app.post('/auth/identity/email/request',{email:vars.OWNER_EMAIL,returnTo});assert.equal(response.status,202);const link=await app.link();const confirmed=await app.post('/auth/identity/email/confirm',{token:link.searchParams.get('token')},cookieOf(response));assert.equal(confirmed.status,200);return cookieOf(confirmed);}
+  async signIn(returnTo='/app/account',address=vars.OWNER_EMAIL){const response=await app.post('/auth/identity/email/request',{email:address,returnTo});assert.equal(response.status,202);const link=await app.link();const confirmed=await app.post('/auth/identity/email/confirm',{token:link.searchParams.get('token')},cookieOf(response));assert.equal(confirmed.status,200);return cookieOf(confirmed);}
  };
  return app;
 }

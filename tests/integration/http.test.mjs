@@ -35,3 +35,7 @@ test('emitted Auth protects private documents and Base authority seams; email pr
  await app.post('/api/auth/signout',{},cookie);
  assert.equal((await app.get('/api/auth/me',{cookie})).status,401);
 });
+
+test('owner erasure fences a pre-erasure rer archive with its later journal, restores anonymous evidence and resets the local installation',async t=>{
+ const {erasurePortability}=await import('./erasure-portability.mjs');await erasurePortability(t);
+});
