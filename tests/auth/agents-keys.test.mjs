@@ -130,7 +130,6 @@ test('a preparer key opens only the preparer API: it cannot approve, mint, revok
 
 test('admin service apps use private-key OAuth for scoped group and assignment writes; resource, IP, expiry, owner and ETag fences refuse automation while every scope excludes identity and credential custody',async t=>{
  const {generateKeyPair,exportJWK,SignJWT,decodeJwt}=await import('jose');
- const {SCOPES}=await import('../../src/auth/admin-api/credentials/index.mjs');
  const {r,owner}=await ownerInstall(t),admin=await passkeyPerson(r,'service-owner','sara@example.com','admin');
  const {publicKey,privateKey}=await generateKeyPair('ES256',{extractable:true}),jwk={...await exportJWK(publicKey),kid:'automation',alg:'ES256',use:'sig'};
  const settings={name:'Access reconciler',purpose:'Reconcile company groups and approved app assignments',ownerId:'service-owner',jwks:{keys:[jwk]},scopes:['groups.manage','assignments.manage'],allowedIps:['192.0.2.0/24'],expiresAt:r.now+86400000};
@@ -167,12 +166,21 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
  // The exclusion is checked separately under every issued scope, without a
  // wildcard credential or a rate-limit refusal obscuring the result.
  const excluded=['/people/service-owner/roles','/resource-sets','/people/service-owner/factors','/people/service-owner/recovery','/recovery/approve','/signing-keys','/admin-service-apps','/emergency-accounts','/admin-service-apps/self/policy'];
- for(const scope of SCOPES) {
+ for(const scope of Object.keys((await(await call('/openapi.json')).json())['x-scopes'])) {
   const scoped=await(await create({name:'Scope '+scope,scopes:[scope]})).json(),tokenResponse=await grant(scoped);assert.equal(tokenResponse.status,200);const token=(await tokenResponse.json()).access_token;
   const description=await call('/openapi.json',{token});assert.equal(description.status,200);const etag=description.headers.get('etag');
   for(const path of excluded)assert.equal((await call(path,{token,method:'PUT',data:{},headers:{'if-match':etag}})).status,403,`${scope} excludes ${path}`);
   for(const path of ['/api/auth/people/role','/api/auth/recovery/approve','/api/auth/keys/stage','/api/auth/admin-service-apps/create'])assert.equal((await r.call(path,{method:'POST',data:{},headers:{authorization:'Bearer '+token}})).status,401,`${scope} has no human door`);
  }
+ // Demotion and departure persist even if the human's role/state is restored.
+ const delegate=await passkeyPerson(r,'delegate','delegate@example.com','admin');
+ const delegated=await(await create({name:'Delegated task',ownerId:'delegate'})).json();assert.equal((await grant(delegated)).status,200);
+ assert.equal((await r.call('/api/auth/people/role',post({id:'delegate',role:'member'},owner.cookie))).status,200);assert.equal((await grant(delegated)).status,401);
+ assert.equal((await r.call('/api/auth/people/role',post({id:'delegate',role:'admin'},owner.cookie))).status,200);assert.equal((await grant(delegated)).status,401,'re-promotion cannot silently revive a service app');
+ assert.equal((await r.call('/api/auth/admin-service-apps/reassign',post({id:delegated.id,ownerId:'delegate'},owner.cookie))).status,200);assert.equal((await grant(delegated)).status,200);
+ assert.equal((await r.call('/api/auth/directory/edit',post({personId:'delegate',state:'terminated'},owner.cookie))).status,200);assert.equal((await grant(delegated)).status,401,'departure suspends the app');
+ assert.equal((await r.call('/api/auth/directory/edit',post({personId:'delegate',state:'active'},owner.cookie))).status,200);assert.equal((await grant(delegated)).status,401,'rehire needs an explicit accountable owner decision');
+
  // Provider management changes availability only. A callback begun before
  // disable cannot admit a person afterwards, even with a valid network-edge JWT.
  r.upstreamProviders=[{id:'company',preset:'google',clientId:'synthetic-auth-3',clientSecret:'synthetic-auth-4',tokenAuthMethod:'client_secret_basic'}];
@@ -196,7 +204,7 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
  assert.equal((await call('/groups')).status,401,'already-issued tokens stop on owner suspension');assert.equal((await grant()).status,401);
  assert.equal((await r.call('/api/auth/admin-service-apps/reassign',post({id:service.id,ownerId:'owner'},owner.cookie))).status,200);
  const reassigned=await grant();assert.equal(reassigned.status,200);assert.equal((await call('/groups')).status,401,'reassignment fences old revisions');
- const short=await(await create({name:'Short task',ownerId:'owner',expiresAt:r.now+1000})).json();r.now+=1001;assert.equal((await grant(short)).status,401,'app expiry refuses new grants');
+ const short=await(await create({name:'Short task',ownerId:'owner',expiresAt:r.now+1000})).json(),shortGrant=await grant(short);assert.equal(shortGrant.status,200);const shortToken=(await shortGrant.json()).access_token;r.now+=1001;assert.equal((await grant(short)).status,401,'app expiry refuses new grants');assert.equal((await call('/groups',{token:shortToken})).status,401,'app expiry also ends issued tokens');
  const records=(await r.db.prepare("SELECT d.detail FROM auth_activity a JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event='admin_api_call'").all()).results.map(x=>JSON.parse(x.detail));
  assert.ok(records.some(x=>x.serviceApp===service.id&&x.owner==='service-owner'&&x.scope.includes('groups.manage')&&x.result==='allowed'));
  assert.ok(records.some(x=>x.serviceApp===service.id&&x.result==='precondition_failed'));
