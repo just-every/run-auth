@@ -17,6 +17,7 @@ import {rememberIssuer} from './links/grant-map.mjs';
 import {isTrustAction,trustAction} from './links/rer-trust.mjs';
 import {samlRoute,isSamlPath} from './saml/routes.mjs';
 import {isWorkforceAction,workforceAction,workforceRead,WORKFORCE_READS} from './workforce/routes.mjs';
+import {isProfileAction,profileAction,profileRead,PROFILE_READS} from './profiles/routes.mjs';
 import {isDirectoryAction,directoryAction,directoryRead,DIRECTORY_READS} from './workforce/people/routes.mjs';
 import {isEventsAction,eventsAction,eventsRead,EVENTS_READ} from './events/routes.mjs';
 export {stageSigningKey,retireSigningKey,ensureSigningKey} from './keys.mjs';
@@ -49,6 +50,7 @@ export function createAuthRuntime(options) {
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
     if(DIRECTORY_READS.includes(path))return await directoryRead(ctx,request,path);
+    if(PROFILE_READS.includes(path))return await profileRead(ctx,request);
     // The event cursor reads its own read key, never a cookie.
     if(path===EVENTS_READ)return await eventsRead(ctx,request);
     if(path.startsWith('/api/auth/')) {
@@ -77,6 +79,7 @@ export function createAuthRuntime(options) {
      if(action==='/signout-everywhere')return await signOutEverywhere(ctx,request);
      if(isAppAction(action))return await appAction(ctx,request,action,data);
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);
+     if(isProfileAction(action))return await profileAction(ctx,request,action,data,{upstreams});
      if(isDirectoryAction(action))return await directoryAction(ctx,request,action,data,{notify:sendInvitation});
      if(isWorkforceAction(action))return await workforceAction(ctx,request,action,data);
      if(isEventsAction(action))return await eventsAction(ctx,request,action,data);

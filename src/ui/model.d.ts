@@ -207,7 +207,16 @@ export interface DirectoryGroup {
 }
 export interface DirectoryModel { people: DirectoryPerson[]; groups: DirectoryGroup[]; attributes: DirectoryAttribute[] }
 
+export interface ProfileField { key: string; label: string; type: string; choices: string[] | null; value: string | null; editable: boolean; protectedBy?: string }
+export interface ProfileModel {
+  person: { id: string; email: string; name: string }
+  fields: ProfileField[]
+  links: { providerId: string | null; label: string }[]
+  providers: { id: string; label: string; linked: boolean }[]
+}
+
 export interface AuthPageModel {
+  profile?: ProfileModel
   directory?: DirectoryModel
   page: AuthPage | string
   issuer?: string

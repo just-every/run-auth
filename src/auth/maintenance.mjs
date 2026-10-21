@@ -18,6 +18,7 @@ export async function maintainAuth(ctx) {
   ctx.db.prepare('DELETE FROM auth_saml_requests WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_saml_logouts WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_oidc_codes WHERE expires_at<=?').bind(now),
+  ctx.db.prepare('DELETE FROM auth_link_intents WHERE expires_at<=?').bind(now),
  ]);
  await deliverLogouts(ctx);
  await deliverGenericLogouts(ctx);

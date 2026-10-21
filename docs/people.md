@@ -8,6 +8,24 @@ Choose **Invite person**, enter their name and email and send it. They receive a
 
 Instead of inviting everyone one by one, choose **Allow a domain** and enter your company's domain, such as `example.com`. Anyone with an address there can then request an account from the sign-in page and confirm it by email. Allowed domains are listed under **Allowed domains**.
 
+## Onboard a worker
+
+**Onboard worker** adds an employee, a contractor or a service identity with their work email, worker type, employment (W-2 or 1099), job title, department, location, manager, start and end dates and any custom attributes you defined. They get one invitation, and every group whose rule matches them is evaluated at once. An address that already belongs to someone is refused, never merged: a former worker's address asks you to rehire that person instead.
+
+## Edit people, and what overrides what
+
+**Edit** changes a person's name, email, state and values. Each value remembers its source: your own edit (an override), the HR system, the directory feed, or the employee. The highest wins in that order, and when sources disagree the person's row shows **Source conflict**, with the values side by side, until you accept a source's value. People keep one stable identifier through renames, transfers, email changes, suspension, termination and rehire; an email change ends their sessions until they prove the new address.
+
+Sources identify people by their own id, bound once and never changed. The admin API `POST /api/auth/directory/source` takes `{source: "hr" | "directory", records: [{sourceId, personId?, email?, fields}]}`; a record whose id is new, even with a matching email, waits for you to say which person it is.
+
+## Bulk edits
+
+**Bulk edit** chooses people by state, worker type, department or location, then a change (department, location, title or state). **Preview** lists each person, what changes, the groups and apps they gain or lose, and what is refused. **Apply preview** applies exactly that preview; if the directory moved in between, it asks you to preview again.
+
+## Groups and rules
+
+A group is static (you add people) or follows a rule on directory values. Under **Groups and rules** every member shows why they are in: added by an administrator, or the rule condition they match. Removing someone a rule matches excludes them so the rule does not add them back. Groups have owners and show the apps and app roles assigned to them.
+
 ## Roles
 
 There are three roles:

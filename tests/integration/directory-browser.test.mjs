@@ -11,13 +11,13 @@ const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 test('directory journey: an administrator onboards a worker, edits and bulk-moves people with a preview, sets a group rule, terminates and rehires, at desktop/mobile in both themes',async t=>{
  const app=await openApp();t.after(()=>app.close());await app.claim();
  const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
- const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),primary=page;
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- const shoot=async name=>{for(const [width,theme] of views){
+ const shoot=async (name,page=primary)=>{for(const [width,theme] of views){
   await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();
   await expect(page.locator('h1')).toBeVisible();
   const results=await new AxeBuilder({page}).analyze();
@@ -26,7 +26,7 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
   await page.screenshot({path:join(directory,`directory-${name}-${width}-${theme}.png`),fullPage:true});
  }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});};
  const row=name=>page.locator('[data-person-row]',{hasText:name});
- const saved=async action=>{await action();await expect(page.locator('[data-auth-status]').first()).toContainText(/Refreshing|Saved|Applied|Rule saved/);await page.waitForLoadState('load');};
+ const saved=async action=>{const loaded=page.waitForEvent('load');await action();await loaded;};
 
  // Owner: browser email link, setup, hardware passkey.
  await page.goto(app.origin+'/signin?returnTo=%2Fsetup');
@@ -40,7 +40,7 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  // Onboard a W-2 employee and a contractor through the dialog.
  await page.goto(app.origin+'/app/people');
  const onboard=async(name,email,kind,employment,department,location)=>{
-  await page.getByRole('button',{name:'Onboard worker'}).click();
+  await page.locator('[data-open-dialog="onboard-dialog"]').click();
   const dialog=page.locator('#onboard-dialog');
   await dialog.getByLabel('Name',{exact:true}).fill(name);await dialog.getByLabel('Work email').fill(email);await dialog.getByLabel('Worker type').selectOption(kind);await dialog.getByLabel('Employment').selectOption(employment);
   await dialog.getByLabel('Department').fill(department);await dialog.getByLabel('Location').fill(location);
@@ -79,6 +79,15 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  await page.setViewportSize({width:1440,height:1000});
  await saved(()=>bulk.getByRole('button',{name:'Apply preview'}).click());
  await expect(row('Erin Park')).toContainText('Employee · Platform · US');await expect(page.locator('.group-row',{hasText:'Engineering staff'})).toContainText('No members');
+ // The employee's own profile: she edits her name; then the HR system takes it and the page says so.
+ const mine=await employee.newPage();await mine.goto(app.origin+'/app/account');
+ await mine.getByLabel('Name',{exact:true}).fill('Erin P. Park');
+ const edited=mine.waitForEvent('load');await mine.getByRole('button',{name:'Save profile'}).click();await edited;
+ await expect(mine.getByLabel('Name',{exact:true})).toHaveValue('Erin P. Park');await expect(mine.getByRole('heading',{name:'Erin P. Park'})).toBeVisible();
+ const erinId=(await (await context.request.get(app.origin+'/api/auth/directory?q=erin@northwind')).json()).people[0].id;
+ const fed=await context.request.post(app.origin+'/api/auth/directory/source',{data:{source:'hr',records:[{sourceId:'E-1',personId:erinId,fields:{name:'Erin Park-Lee'}}]},headers:{origin:app.origin}});assert.equal(fed.status(),200);
+ await mine.reload();await expect(mine.getByText('Managed by your HR system')).toBeVisible();await expect(mine.getByLabel('Name',{exact:true})).toHaveCount(0);await expect(mine.getByRole('heading',{name:'Erin Park-Lee'})).toBeVisible();
+ await shoot('account',mine);
  // Terminate and rehire the active employee: her session ends, the account and id stay.
  const status=async()=>(await employee.request.get(app.origin+'/api/auth/me')).status();assert.equal(await status(),200);
  await row('Erin Park').getByRole('button',{name:'Edit Erin Park'}).click();await edit.getByLabel('State').selectOption('terminated');

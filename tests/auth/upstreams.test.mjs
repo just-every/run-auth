@@ -4,6 +4,7 @@ import {randomBytes} from 'node:crypto';
 import {generateKeyPair,exportJWK,SignJWT} from 'jose';
 import {openRuntime,cookieOf,emailSession} from './runtime.mjs';
 import {register,authenticate} from './webauthn.mjs';
+import {passkeyPerson,mint,preparer} from './agents-helpers.mjs';
 import {issueClient,beginPasskey,finishPasskey,requestProof,finishProof,sessionCookie,browserCookie} from './policy-helpers.mjs';
 // Google trusts a verified address only at gmail.com (or with a matching hd claim),
 // so the owner's address is a fresh gmail.com mailbox name generated per run.
@@ -20,6 +21,7 @@ async function fixture(t,preset='google',subjectEmails={}) {
   r.upstream.tokens={id_token:await new SignJWT({...claims,nonce:location.searchParams.get('nonce')}).setProtectedHeader({alg:'RS256',kid:'upstream'}).setIssuer(issuer).setAudience('auth-upstream').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+120).sign(keys.privateKey)};
   return r.call(`/auth/oidc/${provider}/callback?`+new URLSearchParams({code:'upstream-code',state:location.searchParams.get('state'),iss:issuer}),{cookie:cookieOf(started)});
  };
+ r.keys=keys;r.issuer=issuer;
  return r;
 }
 test('Google verified gmail is trusted; unhosted business email is refused and upstream never grants admin',async t=>{
@@ -189,4 +191,96 @@ test('new exact-domain Microsoft and Okta people complete the bound Auth email p
   assert.equal(confirmation.status,200);
   const enrolled=await register(r,sessionCookie(confirmation));assert.equal((await r.call('/api/auth/me',{cookie:enrolled.cookie})).status,200);
  }
+});
+
+// Google (company) and Okta (work) at their own network edges, for people who connect a second identity.
+async function twoUpstreams(t) {
+ const r=await fixture(t,'google'),oktaKeys=await generateKeyPair('RS256'),jwk={...await exportJWK(oktaKeys.publicKey),kid:'work-upstream',alg:'RS256',use:'sig'},oktaIssuer='https://company.okta.com/oauth2/default';
+ const people={'okta-member':'member@company.example','okta-bob':'bob@company.example','okta-erin':'erin@company.example'};
+ r.upstreamProviders.push({id:'work',preset:'okta',issuer:oktaIssuer,clientId:'auth-work',tokenAuthMethod:'client_secret_basic',clientSecret:'test-edge-only',subjectEmails:people});
+ const edge={discovery:{issuer:oktaIssuer,authorization_endpoint:oktaIssuer+'/authorize',token_endpoint:oktaIssuer+'/token',jwks_uri:oktaIssuer+'/keys',response_types_supported:['code'],id_token_signing_alg_values_supported:['RS256'],token_endpoint_auth_methods_supported:['client_secret_basic'],authorization_response_iss_parameter_supported:true},jwks:{keys:[jwk]}};
+ r.upstreams={'https://company.okta.com':edge};
+ await r.person('bob','bob@company.example');await r.person('erin','erin@company.example');await r.person('carol','carol@company.example');
+ // Start connecting a provider from a signed-in browser, then answer as that provider would.
+ r.connect=async(cookie,provider,claims,{extra={},confirm=true}={})=>{
+  const started=await r.call('/api/auth/profile/links/start',post({providerId:provider,confirm},cookie));
+  if(started.status!==200)return {started};
+  const location=new URL((await started.json()).redirect),jar=[cookie,...started.headers.getSetCookie().map(c=>c.split(';')[0])].join('; ');
+  const work=provider==='work',issuer=work?oktaIssuer:r.issuer,edgeOf=work?edge:r.upstream;
+  edgeOf.tokens={id_token:await new SignJWT({...claims,nonce:location.searchParams.get('nonce')}).setProtectedHeader({alg:'RS256',kid:work?'work-upstream':'upstream'}).setIssuer(issuer).setAudience(work?'auth-work':'auth-upstream').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+120).sign(work?oktaKeys.privateKey:r.keys.privateKey)};
+  const callback=r.call(`/auth/oidc/${provider}/callback?`+new URLSearchParams({code:'upstream-code',state:location.searchParams.get('state'),iss:issuer}),{cookie:jar,...extra});
+  return {started,jar,callback,response:extra.barrier?undefined:await callback};
+ };
+ return r;
+}
+const bindings=async(r,personId)=>(await r.db.prepare('SELECT issuer,subject FROM oa_external_identities WHERE operator_id=?').bind(personId).all()).results;
+const linkedTo=async(r,cookie)=>(await (await r.call('/api/auth/profile',{cookie})).json()).links.map(l=>l.providerId);
+
+test('a signed-in person connects a second proven identity after confirming, and disconnects it; an email collision, a foreign subject, a replay and a concurrent binding are refused',async t=>{
+ const r=await twoUpstreams(t),member=await emailSession(r,'member@company.example'),bob=await emailSession(r,'bob@company.example');
+ // Each door needs a session, the explicit confirmation, a fresh local email proof and a configured provider.
+ assert.equal((await r.call('/api/auth/profile/links/start',post({providerId:'work',confirm:true}))).status,401);
+ for(const [data,status,error] of [[{providerId:'work'},400,'confirmation_required'],[{providerId:'nowhere',confirm:true},400,'unknown_provider']]){const refused=await r.call('/api/auth/profile/links/start',post(data,member));assert.deepEqual([refused.status,(await refused.json()).error],[status,error]);}
+ r.now+=11*60000;const stale=await r.call('/api/auth/profile/links/start',post({providerId:'work',confirm:true},member));assert.equal(stale.status,403);assert.equal((await stale.json()).error,'local_email_step_up_required');r.now-=11*60000;
+ // The address Okta proves is Bob's: connecting it to someone else's account is refused and nothing is bound.
+ const collision=await r.connect(member,'work',{sub:'okta-bob'});assert.equal(collision.response.headers.get('location'),'/app/account?link=upstream_email_collision');
+ assert.deepEqual(await bindings(r,'member'),[]);
+ // Bob connects his own identity; Member then cannot take that subject, whatever address it carries.
+ const bobs=await r.connect(bob,'work',{sub:'okta-bob'});assert.equal(bobs.response.status,303);assert.equal(bobs.response.headers.get('location'),'/app/account?link=connected');
+ assert.equal(bobs.response.headers.getSetCookie().some(c=>/auth_session=[^;]/.test(c)),false,'connecting never starts a session');
+ assert.deepEqual(await linkedTo(r,bob),['work']);
+ const foreign=await r.connect(member,'work',{sub:'okta-bob'});assert.equal(foreign.response.headers.get('location'),'/app/account?link=upstream_subject_bound');
+ assert.deepEqual(await bindings(r,'member'),[]);
+ // Member's own: connected once. The provider's answer replayed finds the request spent.
+ const own=await r.connect(member,'work',{sub:'okta-member'});assert.equal(own.response.headers.get('location'),'/app/account?link=connected');
+ assert.deepEqual(await linkedTo(r,member),['work']);
+ const replay=await r.call(`/auth/oidc/work/callback?`+new URLSearchParams({code:'upstream-code',state:'x',iss:'https://company.okta.com/oauth2/default'}),{cookie:own.jar});assert.notEqual(replay.headers.get('location'),'/app/account?link=connected');
+ assert.equal((await bindings(r,'member')).length,1);
+ const again=await r.connect(member,'work',{sub:'okta-member'});assert.equal(again.response.headers.get('location'),'/app/account?link=already_linked');
+ // Disconnecting needs the confirmation too, and ends exactly that binding.
+ assert.equal((await r.call('/api/auth/profile/links/unlink',post({providerId:'work'},member))).status,400);
+ assert.equal((await r.call('/api/auth/profile/links/unlink',post({providerId:'work',confirm:true},member))).status,200);
+ assert.deepEqual(await bindings(r,'member'),[]);assert.deepEqual(await linkedTo(r,bob),['work']);
+ assert.equal((await r.call('/api/auth/profile/links/unlink',post({providerId:'work',confirm:true},member))).status,404);
+ const trail=(await r.db.prepare("SELECT a.event,a.actor_id,d.detail FROM auth_activity a LEFT JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event LIKE 'identity_%' ORDER BY a.id").all()).results;
+ assert.deepEqual(trail.map(e=>[e.event,e.actor_id,e.event==='identity_link_refused'?JSON.parse(e.detail).reason:null]),[['identity_link_refused','member','upstream_email_collision'],['identity_linked','bob',null],['identity_link_refused','member','upstream_subject_bound'],['identity_linked','member',null],['identity_link_refused','member','already_linked'],['identity_unlinked','member',null]]);
+ // Two people answering with the same Google subject at once: one binding.
+ const carol=await emailSession(r,'carol@company.example');
+ const racers=await Promise.all([[member,'member@company.example'],[carol,'carol@company.example']].map(async([cookie,address])=>{
+  const started=await r.call('/api/auth/profile/links/start',post({providerId:'company',confirm:true},cookie)),location=new URL((await started.json()).redirect);
+  return {jar:[cookie,...started.headers.getSetCookie().map(c=>c.split(';')[0])].join('; '),location,address};
+ }));
+ const answers=[];
+ for(const racer of racers) {
+  r.upstream.tokens={id_token:await new SignJWT({sub:'shared-google-subject',email:racer.address,email_verified:true,hd:'company.example',nonce:racer.location.searchParams.get('nonce')}).setProtectedHeader({alg:'RS256',kid:'upstream'}).setIssuer(r.issuer).setAudience('auth-upstream').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+120).sign(r.keys.privateKey)};
+  answers.push(r.call('/auth/oidc/company/callback?'+new URLSearchParams({code:'upstream-code',state:racer.location.searchParams.get('state'),iss:r.issuer}),{cookie:racer.jar,barrier:{name:'link-race',size:2}}));
+ }
+ const outcomes=await Promise.all(answers);assert.deepEqual(outcomes.map(x=>x.headers.get('location')).sort(),['/app/account?link=connected','/app/account?link=upstream_subject_bound']);
+ assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM oa_external_identities WHERE subject='shared-google-subject'").first()).n,1);
+});
+
+test('an agent proposal, imported metadata or a matching email never connects an identity, and the last usable sign-in cannot be disconnected',async t=>{
+ const r=await twoUpstreams(t),ownerCookie=await emailSession(r,ownerGmail),owner=await register(r,ownerCookie);
+ // An agent can suggest administration, but "link this identity" is not something it can file.
+ const key=await mint(r,owner.cookie,'Directory agent');
+ const filed=await preparer(r,key,{method:'POST',data:{kind:'link_identity',target:'member@company.example',reason:'matches an Okta user'}});assert.equal(filed.status,400);
+ // Staged and imported rows with a provider's id data bind nothing.
+ const imported=await r.call('/api/auth/directory/source',post({source:'hr',records:[{sourceId:'W-1',email:'member@company.example',fields:{department:'Sales',issuer:'https://company.okta.com/oauth2/default',subject:'okta-member'}}]},owner.cookie));
+ assert.deepEqual((await imported.json()).outcomes.map(o=>o.outcome),['review_required']);
+ assert.deepEqual(await bindings(r,'member'),[]);
+ // Erin signs in with Google, which her domain requires: her only way in is that provider.
+ const upstream=sessionCookie(await r.login(googlePerson('erin@company.example','erin-google')));
+ const confirmed=await finishProof(r,await requestProof(r,'erin@company.example',upstream)),erin=sessionCookie(confirmed);
+ await r.db.prepare("INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) VALUES('company.example','company','owner',?)").bind(r.now).run();
+ assert.equal((await r.call('/api/auth/me',{cookie:erin})).status,200);
+ const last=await r.call('/api/auth/profile/links/unlink',post({providerId:'company',confirm:true},erin));assert.equal(last.status,409);assert.equal((await last.json()).error,'last_sign_in');
+ assert.equal((await bindings(r,'erin')).length,1);
+ // A second identity can be connected and removed; the required one stays.
+ const second=await r.connect(erin,'work',{sub:'okta-erin'});assert.equal(second.response.headers.get('location'),'/app/account?link=connected');assert.equal((await bindings(r,'erin')).length,2);
+ assert.equal((await r.call('/api/auth/profile/links/unlink',post({providerId:'work',confirm:true},erin))).status,200);
+ assert.equal((await r.call('/api/auth/profile/links/unlink',post({providerId:'company',confirm:true},erin))).status,409);
+ // With no required provider her email address is still a way in, so the last binding can go.
+ await r.db.prepare('DELETE FROM oa_domain_rules').run();
+ assert.equal((await r.call('/api/auth/profile/links/unlink',post({providerId:'company',confirm:true},erin))).status,200);
+ assert.deepEqual(await bindings(r,'erin'),[]);
 });

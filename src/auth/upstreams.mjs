@@ -5,12 +5,16 @@ import {trustedEmail} from '../modules/operator-auth/identity/principal.mjs';
 import {one,run,random,hash,cookie,bindingName,createSession,EMAIL_MAX_AGE,returnPath,fail,audit,SESSION_MAX_AGE} from './core.mjs';
 import {sendProof} from './email.mjs';
 import {pendingAuthorizationLogin} from './authorization-login.mjs';
+import {openIntent,completeLink} from './profiles/links.mjs';
 export function createUpstreams(ctx) {
  const configured=ctx.upstreamProviders||[];
  if(configured.some(p=>!['google','microsoft','okta'].includes(p.preset)))fail('unsupported_upstream',503);
  const admission={async admit(request,principal,{returnTo}={}) {
   // Only the maintained Base verifier invokes this closed-over admission adapter.
   // subjectEmails is trusted server configuration, never a token email assertion.
+  // An open request from the signed-in account to connect this identity is a link, never a sign-in.
+  const intent=await openIntent(ctx,request);
+  if(intent)return completeLink(ctx,request,principal,intent);
   const provider=configuredProvider(ctx,principal.provider);
   if(!provider||!await matchesConfiguredPin(ctx,provider,principal.issuer))fail('upstream_configuration_changed',403);
   const proven=trustedEmail(principal,ctx.now()),associated=principal.associatedEmail;

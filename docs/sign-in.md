@@ -27,3 +27,10 @@ If your company signs in with Google, Microsoft or Okta, Auth can require that p
 On **My account**, **Request passkey recovery** starts a recovery. It waits 72 hours unless another administrator approves it sooner, and every active session is notified, so a stranger cannot take over quietly. When it is ready, **Complete recovery** replaces the account's passkeys and you register a new one.
 
 If you are the only administrator and you lose your passkey, see [Backup and restore](/docs/backup-and-restore#locked-out).
+
+## Your profile and connected providers
+
+**My account** shows your profile. You can change the details your company lets you change, such as your name or a preference an administrator made editable. A detail your HR system or an administrator holds shows who holds it, and only they can change it.
+
+If your administrator configured providers such as Google, Microsoft or Okta, **Connect** adds one to your account. Auth asks you to confirm your email in this browser, then to sign in with the provider. It refuses an address that belongs to another person and an identity already connected to someone, and **Disconnect** refuses to remove the last way you can sign in.
+

@@ -53,12 +53,13 @@ function planState(ctx,dir,person,actorId,to) {
 }
 
 // One edit: {personId, source?, set?, email?, state?, bind?}. The entry is the preview.
-export async function planEdit(ctx,dir,edit,actorId) {
+export async function planEdit(ctx,dir,edit,actorId,{self=false}={}) {
  const person=dir.people.get(String(edit.personId||''));
  if(!person)return {personId:String(edit.personId||''),refusals:['person_not_found']};
  const source=edit.source??'manual',refusals=[];
- if(!SOURCES.includes(source))refusals.push('invalid_source');
- const set=await planFields(ctx,dir,person,SOURCES.includes(source)?source:'manual',edit.set);refusals.push(...set.refusals);
+ // Only the employee's own door writes the employee's own entry; administrators and feeds never do.
+ if(!(self?source==='self':SOURCES.includes(source)))refusals.push('invalid_source');
+ const set=await planFields(ctx,dir,person,source,edit.set);refusals.push(...set.refusals);
  const mail=edit.email!==undefined?planEmail(ctx,dir,person,actorId,edit.email):{};if(mail.refusal)refusals.push(mail.refusal);
  const state=edit.state!==undefined?planState(ctx,dir,person,actorId,edit.state):{};if(state.refusal)refusals.push(state.refusal);
  const bind=edit.bind&&FEED_SOURCES.includes(edit.bind.source)?edit.bind:null;
@@ -89,10 +90,10 @@ export async function planEdit(ctx,dir,edit,actorId) {
 }
 
 // Digest of the exact plan: the people, their versions and values it was read against, and every effect.
-export async function planEdits(ctx,dir,edits,actorId) {
+export async function planEdits(ctx,dir,edits,actorId,options) {
  if(!Array.isArray(edits)||!edits.length||edits.length>MAX_EDITS)throw new AuthError('invalid_edits');
  const entries=[];
- for(const edit of edits)entries.push(await planEdit(ctx,dir,edit,actorId));
+ for(const edit of edits)entries.push(await planEdit(ctx,dir,edit,actorId,options));
  const seen=new Set();
  for(const e of entries){if(seen.has(e.personId+':'+e.source))e.refusals.push('duplicate_edit');seen.add(e.personId+':'+e.source);}
  const basis=entries.map(e=>({...e,version:dir.people.get(e.personId)?.version??null,held:JSON.stringify([...(dir.people.get(e.personId)?.fields??[])])}));

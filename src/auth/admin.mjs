@@ -9,6 +9,7 @@ import {fencePerson} from './links/logout.mjs';
 import {personChanged} from './provisioning/obligations.mjs';
 import {workforceModel} from './workforce/routes.mjs';
 import {directoryModel} from './workforce/people/model.mjs';
+import {profileModel} from './profiles/routes.mjs';
 import {launcher} from './workforce/directory.mjs';
 import {emit,personSubject} from './events/store.mjs';
 import {eventsModel} from './events/routes.mjs';
@@ -42,6 +43,7 @@ export async function model(ctx,request,page='account') {
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);}
  }
  result.launcher=await launcher(ctx,s.person_id);
+ if(page==='account')result.profile=await profileModel(ctx,s);
  return result;
 }
 // The one invitation message, from People and from move-in alike.
