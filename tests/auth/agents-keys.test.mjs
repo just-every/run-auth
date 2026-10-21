@@ -146,7 +146,7 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
  const signed=await assertion(),once=await grant(service,{client_assertion:signed});assert.equal(once.status,200,await once.clone().text());
  assert.equal((await grant(service,{client_assertion:signed})).status,401,'assertions cannot replay');
  const access=await once.json(),claims=decodeJwt(access.access_token);assert.ok(claims.exp-claims.iat<=900);for(const key of ['role','amr','sid'])assert.equal(claims[key],undefined);
- const call=(path,{token=access.access_token,headers={},method='GET',data}={})=>r.call('/api/auth/admin/v1'+path,{method,data,headers:{authorization:'Bearer '+token,...headers}});
+ const call=(path,{token=access.access_token,headers={},method='GET',data}={})=>r.call('/api/auth/admin/v1'+path,{method,data,headers:{authorization:'Bearer '+token,...(data!==undefined?{'content-type':'application/json'}:{}),...headers}});
  assert.equal((await call('/groups',{headers:{'cf-connecting-ip':'198.51.100.20'}})).status,403,'bearer IP is rechecked');
  const made=await call('/groups',{method:'POST',data:{name:'App operators'}});assert.equal(made.status,201,await made.clone().text());const group=await made.json(),oldTag=made.headers.get('etag');
  const appResponse=await r.call('/api/auth/company-apps/create',post({name:'Service Desk',entityId:'https://desk.example.com/saml',acsUrl:'https://desk.example.com/acs',idpInitiated:true},owner.cookie));assert.equal(appResponse.status,201);const app=await appResponse.json();
