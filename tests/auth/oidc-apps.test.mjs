@@ -215,5 +215,11 @@ test('inline hooks add only approved token and SAML fields, deny registration an
  await disable(sh.id);
  // Ordinary sessions, signed-out callers and stale administrator email proof cannot configure hooks.
  for(const cookie of [undefined,r.ada])assert.equal((await r.call('/api/auth/hooks/register',{method:'POST',cookie,data:{point:'registration',url:'https://hooks.example.com/registration'}})).status,cookie?403:401);
+ // Revocation while a remote hook is running is rechecked before any token is signed.
+ let entered,release;const started=new Promise(done=>{entered=done;}),held=new Promise(done=>{release=done;});
+ edge.responses.set('/held',async()=>{entered();await held;return {body:{claims:{cost_center:'CC-42'}}};});
+ const heldHook=await create({point:'token',appId:app.id,url:'https://hooks.example.com/held',allowedFields:['cost_center']});
+ const pendingFlow=await signIn(r,config,{redirect:`${RP}/hooks`}),pendingGrant=pendingFlow.grant();
+ await started;assert.equal((await r.admin('people/suspend',{personId:'ada'})).status,200);release();await assert.rejects(pendingGrant);await disable(heldHook.id);
  r.tick=()=>{r.now=Date.now()+660000;};assert.equal((await r.admin('hooks/register',{point:'registration',url:'https://hooks.example.com/registration'})).status,403);
 });
