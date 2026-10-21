@@ -4,8 +4,8 @@ import {promisify} from 'node:util';
 import {symlink,writeFile,lstat} from 'node:fs/promises';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {openApp} from './runtime.mjs';
-import {register} from '../auth/webauthn.mjs';
+import {openApp,cookieOf} from './runtime.mjs';
+import {register,authenticate} from '../auth/webauthn.mjs';
 const execute=promisify(execFile),root=fileURLToPath(new URL('../../',import.meta.url));
 const varsText=vars=>Object.entries(vars).map(([key,value])=>`${key}=${value}`).join('\n')+'\n';
 
@@ -42,8 +42,9 @@ export async function erasurePortability(t) {
  await writeFile(join(app.directory,'.dev.vars'),varsText(app.vars),{mode:0o600});
  const refused=await cli(['import','--input','exports/before-erasure.rer','--journal','exports/after-erasure.rer','--yes'],4);assert.match(refused,/erasure_epoch/);
  await cli(['import','--input','exports/after-erasure.rer','--yes']);await app.resume();
- const cookie=await app.signIn();const me=await app.get('/api/auth/me',{cookie});assert.equal(me.status,200);
- const newOwner=await register(runtime,cookie);
- const people=await (await app.get('/api/auth/people',{cookie:newOwner.cookie})).json();assert.ok(people.some(p=>p.email==='owner@example.com'));assert.ok(!people.some(p=>p.email==='worker@northwind.example.com'));
+ const authenticated=await authenticate(runtime,owner.key);assert.equal(authenticated.response.status,200);
+ const proof=await app.post('/auth/identity/email/request',{email:app.vars.OWNER_EMAIL},cookieOf(authenticated.response)),link=await app.link();
+ const confirmed=await app.post('/auth/identity/email/confirm',{token:link.searchParams.get('token')},cookieOf(proof));assert.equal(confirmed.status,200);
+ const people=await (await app.get('/api/auth/people',{cookie:cookieOf(confirmed)})).json();assert.ok(people.some(p=>p.email==='owner@example.com'));assert.ok(!people.some(p=>p.email==='worker@northwind.example.com'));
  return {beforeEpoch:before.epoch,afterEpoch:after.epoch};
 }
