@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
+import {generateKeyPair,exportJWK} from 'jose';
 import {openRuntime,cookieOf,emailSession} from './runtime.mjs';
 import {authenticator,register,authenticate} from './webauthn.mjs';
 import {requestProof,finishProof,beginPasskey,finishPasskey,sessionCookie} from './policy-helpers.mjs';
@@ -28,6 +29,9 @@ test('every sensitive action refuses a stale local email proof without change an
  // An agent key and two proposals, made while the proof was fresh.
  const agentKey=await mint(r,admin.cookie),keyId=await value(r,'SELECT id AS v FROM auth_agent_keys');
  const rejectable=await file(r,agentKey,{kind:'invite_person',target:'later@example.com',reason:'New starter'}),approvable=await file(r,agentKey,{kind:'suspend_person',target:'leaver@example.com',reason:'Left'});
+ const serviceKeys=await generateKeyPair('ES256'),serviceJwk={...await exportJWK(serviceKeys.publicKey),kid:'admin-service',alg:'ES256',use:'sig'};
+ const serviceConfig={name:'Directory reconciler',purpose:'Maintain approved groups',ownerId:'admin',jwks:{keys:[serviceJwk]},scopes:['groups.manage'],expiresAt:r.now+86400000};
+ const serviceResponse=await r.call('/api/auth/admin-service-apps/create',post(serviceConfig,admin.cookie));assert.equal(serviceResponse.status,201);const service=await serviceResponse.json();
  r.now+=11*60000;
  const hardware=async(address,cookie)=>{const confirmed=await finishProof(r,await requestProof(r,address,cookie));assert.equal(confirmed.status,200);return sessionCookie(confirmed);};
  const fresh={owner:await hardware('owner@example.com',owner.cookie),admin:await hardware('admin@example.com',admin.cookie),member:await emailSession(r,'member@example.com'),ownerEmail:await emailSession(r,'owner@example.com'),newcomer:await emailSession(r,'newcomer@example.com')};
@@ -47,6 +51,9 @@ test('every sensitive action refuses a stale local email proof without change an
   ['required provider removal','admin',cookie=>r.call('/api/auth/people/domain-rule',post({domain:'company.example',providerId:''},cookie)),()=>value(r,'SELECT count(*) AS v FROM oa_domain_rules')],
   ['signing key staging','owner',cookie=>r.call('/api/auth/keys/stage',post({},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_signing_keys')],
   ['staged signing key retirement','owner',async cookie=>r.call('/api/auth/keys/retire',post({kid:await key()},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_signing_keys WHERE retire_at IS NOT NULL')],
+  ['admin service app creation','admin',cookie=>r.call('/api/auth/admin-service-apps/create',post(serviceConfig,cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_admin_service_apps')],
+  ['admin service app reassignment','admin',cookie=>r.call('/api/auth/admin-service-apps/reassign',post({id:service.id,ownerId:'owner'},cookie)),()=>value(r,'SELECT revision AS v FROM auth_admin_service_apps WHERE id=?',service.id)],
+  ['admin service app revocation','admin',cookie=>r.call('/api/auth/admin-service-apps/revoke',post({id:service.id},cookie)),()=>value(r,'SELECT revoked_at AS v FROM auth_admin_service_apps WHERE id=?',service.id)],
   ['agent key minting','admin',cookie=>r.call('/api/auth/agents/mint',post({label:'Second'},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_agent_keys')],
   ['agent key renewal','admin',cookie=>r.call('/api/auth/agents/renew',post({keyId},cookie)),()=>value(r,'SELECT expires_at AS v FROM auth_agent_keys WHERE id=?',keyId)],
   ['proposal rejection','admin',cookie=>r.call('/api/auth/agents/reject',post({proposalId:rejectable},cookie)),()=>value(r,'SELECT status AS v FROM auth_agent_proposals WHERE id=?',rejectable)],

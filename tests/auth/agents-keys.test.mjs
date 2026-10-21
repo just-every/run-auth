@@ -135,6 +135,7 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
  const settings={name:'Access reconciler',purpose:'Reconcile company groups and approved app assignments',ownerId:'service-owner',jwks:{keys:[jwk]},scopes:['groups.manage','assignments.manage'],allowedIps:['192.0.2.0/24'],expiresAt:r.now+86400000};
  const create=async(extra={},cookie=owner.cookie)=>r.call('/api/auth/admin-service-apps/create',post({...settings,...extra},cookie));
  assert.equal((await create({},null)).status,401);
+ assert.equal((await create({},await emailSession(r,'owner@example.com'))).status,403,'email-only sign-in cannot create an admin credential');
  assert.equal((await create({jwks:{keys:[{...jwk,...await exportJWK(privateKey)}]}})).status,400,'private keys never enter credential custody');
  assert.equal((await create({expiresAt:r.now+366*86400000})).status,400);
  const created=await create();assert.equal(created.status,201,await created.clone().text());const service=await created.json();assert.equal(service.clientSecret,undefined);
