@@ -4,6 +4,7 @@ import {all,json,fail} from '../core.mjs';
 import {definitions,valuesByPerson,effective} from '../workforce/people/fields.mjs';
 import {configuredProvider} from '../domain-policy.mjs';
 import {SCOPES} from './credentials/config.mjs';
+import {scopedRead} from './scoped-authority.mjs';
 
 const families=new Set(['people','groups','apps','assignments','policies','idps','domains','logs']);
 const scopeFor=(p,family)=>{
@@ -71,7 +72,7 @@ function requestAudit(row,p) {
  // Request subjects are relative REST paths. Refuse unknown/excluded surfaces
  // and require all resource kinds to be unrestricted for collection requests.
  const path=String(detail?.path??'').split('?')[0],parts=path.split('/').filter(Boolean),family=parts[0];
- if(!families.has(family)||family==='logs')return null;
+ if(!families.has(family)||family==='logs'||!['people','groups','apps','assignments'].includes(family)&&!p.globalRead)return null;
  if(['people','groups','apps'].includes(family)) {
   if(parts[1]?!p.permits(family,parts[1]):!p.resources[family]?.includes('*'))return null;
   if(parts.length>2&&!(family==='groups'&&parts[2]==='rule'&&parts.length===3)&&!(family==='groups'&&parts[2]==='members'&&parts.length<=4&&(!parts[3]||p.permits('people',parts[3]))))return null;
@@ -91,6 +92,7 @@ async function logs(ctx,p) {
  const rows=await all(ctx,`SELECT a.id,a.event,a.subject_id,a.created_at,d.detail FROM auth_activity a LEFT JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event IN (${events.map(()=>'?').join(',')}) ORDER BY a.id DESC`,...events);
  return rows.flatMap(row=>{
   const kind=eventKinds.get(row.event);let request;
+  if(kind&&!['people','groups','apps'].includes(kind)&&!p.globalRead)return [];
   if(kind&&['people','groups','apps'].includes(kind)&&!p.permits(kind,row.subject_id))return [];
   if(!kind){request=requestAudit(row,p);if(!request)return [];}
   return [{id:row.id,event:row.event,subject:request?.subject??row.subject_id,time:row.created_at,...(request?{detail:request.detail}:{})}];
@@ -103,6 +105,7 @@ export async function readAdmin(ctx,principal,path,url) {
  if(!families.has(family)||!/^\/(people|groups|apps|assignments|policies|idps|domains|logs)(?:\/[^/]+)?(?:\/members)?$/.test(path))return null;
  if(parts.length>1&&!['people','groups','apps'].includes(family)||parts.length===3&&(family!=='groups'||parts[2]!=='members'))return null;
  scopeFor(principal,family);
+ principal=scopedRead(principal,family);
  const id=parts[1];let value;
  if(family==='people')value=await people(ctx,principal,id);
  if(family==='groups') {
@@ -112,7 +115,7 @@ export async function readAdmin(ctx,principal,path,url) {
  if(family==='apps')value=await apps(ctx,principal,id);
  if(family==='assignments') {
   const rows=await all(ctx,'SELECT app_id,principal_type,principal_id,role FROM auth_app_assignments ORDER BY app_id,principal_type,principal_id');
-  value=rows.filter(r=>principal.permits('apps',r.app_id)&&principal.permits(r.principal_type==='person'?'people':'groups',r.principal_id)).map(r=>({appId:r.app_id,principalType:r.principal_type,principalId:r.principal_id,role:r.role}));
+  value=rows.filter(r=>principal.permits('apps',r.app_id)&&principal.permits(r.principal_type==='person'?'people':'groups',r.principal_id)&&principal.ownerAllows('apps.view',{appId:r.app_id,[r.principal_type==='person'?'personId':'groupId']:r.principal_id,write:false})).map(r=>({appId:r.app_id,principalType:r.principal_type,principalId:r.principal_id,role:r.role}));
  }
  if(family==='policies')value=(await all(ctx,'SELECT domain,provider_id FROM oa_domain_rules ORDER BY domain')).map(r=>({domain:r.domain,providerId:r.provider_id,available:Boolean(configuredProvider(ctx,r.provider_id))}));
  if(family==='idps')value=(ctx.configuredUpstreamProviders??ctx.upstreamProviders??[]).map(r=>({id:r.id,label:r.label||r.preset,preset:r.preset,available:Boolean(configuredProvider(ctx,r.id))})).sort((a,b)=>a.id.localeCompare(b.id));

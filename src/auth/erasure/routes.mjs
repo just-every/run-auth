@@ -1,3 +1,4 @@
+import {resetConsentAction} from './reset-consent.mjs';
 import {initializePortability} from './portability.mjs';
 import {all,one,run,random,requireSession,fail,json} from '../core.mjs';
 import {requireLocalEmail} from '../local-email.mjs';
@@ -6,13 +7,13 @@ import {planErasure,publicPlan} from './plan.mjs';
 import {commitErasure} from './execute.mjs';
 import {executeRemote} from './remote.mjs';
 import {deletionConsent,consentRemote,abandonRemote} from './consent.mjs';
-import {selectErasureContext,ownerWrite} from './authorization.mjs';
+import {selectErasureContext,ownerWrite,assertOwnerProof} from './authorization.mjs';
 import {signedJournal} from './export.mjs';
 import {receiptContext,savedJournal,journalIntegrity} from './integrity.mjs';
 import {organizationOf} from './journal.mjs';
 import {receiptModel,retainedReceipts,retryRetained} from './retained.mjs';
 
-const ACTIONS=['/erasure/preview','/erasure/confirm','/erasure/hold','/erasure/policy','/erasure/retry','/erasure/abandon'];
+const ACTIONS=['/erasure/reset-preview','/erasure/reset-consent','/erasure/preview','/erasure/confirm','/erasure/hold','/erasure/policy','/erasure/retry','/erasure/abandon'];
 export const ERASURE_READS=['/api/auth/erasure/receipts','/api/auth/erasure/journal','/api/auth/erasure/integrity'];
 export const isErasureAction=path=>ACTIONS.includes(path);
 async function owner(ctx,request,write=false) {
@@ -25,20 +26,20 @@ async function guarded(ctx,s,sql,args) {
 const validKind=kind=>{if(!['person','app','organization','installation'].includes(kind))fail('invalid_erasure_kind');return kind;};
 const targetOf=(ctx,data)=>String(data.target||data.personId||data.appId||(['organization','installation'].includes(data.kind)?organizationOf(ctx):''));
 export async function erasureModel(ctx,request) {
- await owner(ctx,request);
+ const s=await owner(ctx,request);
  const [policy,holds,receipts,retained]=await Promise.all([
   one(ctx,'SELECT * FROM auth_erasure_policy WHERE singleton=1'),
   all(ctx,'SELECT id,kind,target,reason,created_at,released_at FROM auth_erasure_holds ORDER BY created_at DESC'),
-  receiptModel(ctx),retainedReceipts(ctx),
+  receiptModel(ctx),retainedReceipts(ctx,s),
  ]);
- return {policy:policy?{configured:Boolean(policy.configured),...JSON.parse(policy.policy)}:{configured:false},holds,
+ return {resetOrganizations:ctx.organizationId==='root'?await all(ctx,"SELECT id,name FROM auth_organizations WHERE status='active' ORDER BY created_at"):null,policy:policy?{configured:Boolean(policy.configured),...JSON.parse(policy.policy)}:{configured:false},holds,
   receipts:[...receipts,...retained]};
 }
 export async function erasureRead(ctx,request,path=new URL(request.url).pathname) {
- await owner(ctx,request);
+ const s=await owner(ctx,request);
  if(path==='/api/auth/erasure/receipts')return json(await erasureModel(ctx,request));
  const query=new URL(request.url).searchParams;
- ctx=await receiptContext(ctx,query.get('organizationId'));
+ ctx=await receiptContext(ctx,query.get('receiptId'),s);
  if(path==='/api/auth/erasure/journal'||path==='/api/auth/erasure/integrity') {
   const saved=await savedJournal(ctx,query.get('receiptId'));
   return json(path.endsWith('/integrity')?await journalIntegrity(ctx,saved):saved??await signedJournal(ctx));
@@ -49,6 +50,7 @@ export async function erasureAction(ctx,request,path,data) {
  if(!isErasureAction(path))fail('not_found',404);
  const s=await owner(ctx,request,true);
  if(!data||typeof data!=='object'||Array.isArray(data))fail('invalid_erasure_request');
+ if(path==='/erasure/reset-preview'||path==='/erasure/reset-consent')return resetConsentAction(ctx,s,path,data);
  ctx=await selectErasureContext(ctx,s,path,data);
  if(path==='/erasure/policy') {
   if(data.confirm!==true||data.automaticDeletion!==false||data.honorLegalHolds!==true)fail('explicit_erasure_policy_required');
@@ -79,10 +81,10 @@ export async function erasureAction(ctx,request,path,data) {
  if(path==='/erasure/retry'||path==='/erasure/abandon') {
   if(typeof data.receiptId!=='string')fail('invalid_erasure_receipt');
   const abandon=path==='/erasure/abandon';
-  if(data.organizationId){await retryRetained(ctx,s,data,abandon);return json(await erasureModel(ctx,request));}
+  if(data.retained===true){await retryRetained(ctx,s,data,abandon);return json(await erasureModel(ctx,request));}
   await guarded(ctx,s,'UPDATE auth_erasure_receipts SET status=status WHERE id=?',[data.receiptId]);
   if(abandon)await abandonRemote(ctx,data.receiptId,data,build=>ownerWrite(ctx,s,build));
-  else {await consentRemote(ctx,data.receiptId,data,build=>ownerWrite(ctx,s,build));await executeRemote(ctx,data.receiptId);}
+  else {await consentRemote(ctx,data.receiptId,data,build=>ownerWrite(ctx,s,build));await executeRemote(ctx,data.receiptId,{assertAuthority:()=>assertOwnerProof(ctx,s)});}
   await run(ctx,"INSERT INTO auth_activity(actor_id,event,subject_id,created_at) VALUES(?,?,?,?)",s.person_id,abandon?'erasure_remote_abandoned':'erasure_remote_retry',data.receiptId,ctx.now());
   return json(await erasureModel(ctx,request));
  }
@@ -91,5 +93,6 @@ export async function erasureAction(ctx,request,path,data) {
  const plan=await planErasure(ctx,preview.kind,preview.target);
  if(plan.fingerprint!==preview.digest)fail('erasure_preview_changed',409);
  if(data.confirmation!==plan.confirmation)fail('erasure_confirmation_required');
- return json(await commitErasure(ctx,s,plan,preview.id,deletionConsent(plan,data)));
+ if(plan.installationReset&&(data.destinations?.length||data.confirmRemoteDeletion===true))fail('organization_consent_required',403);
+ return json(await commitErasure(ctx,s,plan,preview.id,plan.installationReset?(plan.resetConsent?.destinations??[]):deletionConsent(plan,data)));
 }

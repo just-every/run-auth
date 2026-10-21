@@ -3,8 +3,9 @@
 Scoped human administration uses the same passkey and local-email sessions as
 Auth. Each organization has its own `ctx.db`; role definitions, grants, cases,
 previews and directory reads stay in that selected database. A scoped grant
-never changes `oa_operators.role`. Existing owner/admin-only doors continue to
-require their existing authority. A scoped administrator uses the dedicated
+never changes `oa_operators.role`. Existing directory/signing owner/admin-only doors continue to
+require their existing authority. Admin service custody has its own scoped
+permission gate. A scoped administrator uses the dedicated
 `/api/auth/roles` doors below.
 
 Every read requires a live hardware-passkey session (`hwk`). People and audit
@@ -26,7 +27,7 @@ resource sets as custom roles; their definitions are fixed.
 | Role id | Rank | Permissions |
 | --- | ---: | --- |
 | `owner` | 100 | All published permissions; the legacy owner holds all resources implicitly |
-| `identity-administrator` | 80 | All published permissions except `roles.edit` and legacy-custody `admin-api.manage` |
+| `identity-administrator` | 80 | All published permissions except `roles.edit` and `admin-api.manage` |
 | `security-policy-administrator` | 80 | `roles.view`, `roles.grant`, `people.view`, `people.export`, `policy.manage`, `identity-providers.manage`, `audit.view`, `audit.export`, `cases.view` |
 | `app-administrator` | 50 | `roles.view`, `roles.grant`, `apps.view`, `apps.edit`, `apps.assign` |
 | `group-owner` | 0 | `roles.view`, `people.view`, `groups.view`, `groups.edit`, `groups.rules.edit` |
@@ -51,11 +52,16 @@ sessions and exports of that person's data. Equal or higher accounts cannot be
 administered; this does not prohibit everyday app/group decisions.
 
 Legacy `admin` has implicit rank 90 and all published permissions/resources.
-The named `admin-api.manage` permission forwards to existing credential
-management only for a legacy owner/admin custodian. Scoped authority cannot
-create, change, or reassign that custody. This owner/admin restriction is an
-interim custody rule, not a permanent exclusion of custom permissions; a service
-app cannot exceed the current authority of its accountable human owner. No scoped owner grant can be issued: delegation must be strictly below the
+The published `admin-api.manage` permission permits scoped credential custody.
+A custom custodian creates and revokes their own service apps through Roles;
+only legacy owner/admin custodians may reassign a service to another person.
+Every credential's named resources and scopes must fit one current role grant,
+including its view/edit limits. Scoped credentials require explicit resource IDs
+and cannot use all-resource wildcards or organization-wide policy/provider
+scopes. Tokens and native decisions recheck the accountable person's current
+permissions, rank and resources. Sponsor loss, role revision, scope loss,
+suspension or revocation ends authority; stored machine scopes never substitute
+for the human owner's current authority. No scoped owner grant can be issued: delegation must be strictly below the
 issuer's rank. Custom role ranks are integers 1–89, strictly below the chooser's active rank,
 with permissions no wider than the chooser can delegate. The chooser is the
 installation owner, an installation admin within an installation-operated
@@ -140,7 +146,7 @@ its ordinary bounded input before calling `roleAction`.
 | `GET /api/auth/roles/audit` | Scoped role activity summaries; `audit.view` |
 | `GET /api/auth/roles/audit/export` | Scoped activity JSON attachment; `audit.export` and fresh local email |
 | `POST /roles/command` | `{ "action": "/company-apps/update", "params": { "id": "..." } }`; explicit native commands below |
-| `POST /roles/admin-service` | `{ "action": "existing admin-service action", "params": {} }`; legacy owner/admin custody only |
+| `POST /roles/admin-service` | `{ "action": "existing admin-service action", "params": {} }`; scoped self custody; legacy owner/admin may reassign |
 | `POST /roles/app` | `{ "appId": "...", "name": "optional", "enabled": true }`; rename or enable/disable the assigned app |
 | `POST /roles/recovery-case` | Open, verify or close a case as described below |
 
@@ -233,9 +239,9 @@ organization-wide. Provider changes only enable/disable already configured
 providers; they cannot replace provider identity or server credentials.
 
 `recovery.approve` applies to explicit scoped case verification, never to an
-administrator recovery request. `admin-api.manage` remains legacy human
-custody. Issuing a custom role containing either permission does not bypass
-those conditions.
+administrator recovery request. `admin-api.manage` authorizes only the
+credential custody covered by the person's current permission/resource grant;
+it never bypasses machine scope exclusions or permits wider automation.
 
 ## Integration and schema
 

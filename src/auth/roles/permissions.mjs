@@ -19,7 +19,7 @@ export const PERMISSIONS=Object.freeze({
  'identity-providers.manage':'Enable or disable configured identity providers',
  'audit.view':'View scoped administrator audit events',
  'audit.export':'Export scoped administrator audit events with fresh email',
- 'admin-api.manage':'Manage admin API credentials under legacy human custody',
+ 'admin-api.manage':'Manage scoped admin API credentials within current human authority',
  'groups.view':'View groups within view resources',
  'groups.edit':'Add or remove group members within edit resources',
  'apps.view':'View app identity and enabled state within view resources',

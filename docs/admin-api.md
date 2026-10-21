@@ -98,3 +98,14 @@ Every machine call is audited with service app, accountable owner, scope and res
 Admin access tokens are accepted only by this issuer’s Admin API. Its verifier reads the current local JWKS on every request, so these tokens can use a newly published issuer key immediately; external OIDC ID/access tokens keep their existing JWKS cache warm-up.
 
 For domain-policy rows, Base’s `created_by` foreign key records the accountable human custodian. The committing guard is the machine’s own authority, and Activity separately identifies the actual service app, current accountable owner, scope and result. No human session or proof is manufactured.
+
+
+Scoped human custodians with `admin-api.manage` can create and revoke their own
+service apps from Roles. Their service's scopes and explicit people/group/app
+IDs must fit one current role grant, including separate view/edit resources.
+Scoped custody does not allow wildcard resources, organization-wide policy or
+provider scopes, or reassignment to another owner. Legacy owner/admin custodians
+retain reassignment. Tokens and native operations always recheck the human
+owner's live authority; stored service scopes cannot preserve revoked human
+permissions or widen them. The Roles form offers only scopes covered by a held
+custody grant and requires explicit resource JSON with empty arrays for none.

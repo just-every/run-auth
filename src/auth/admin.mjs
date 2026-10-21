@@ -1,5 +1,6 @@
 import {roleModel,roleRead} from './roles/index.mjs';
 import {requireAccountRank} from './ranks.mjs';
+import {ownerState,SCOPE_PERMISSIONS} from './admin-api/scoped-authority.mjs';
 import {AuthError} from './core.mjs';
 import {grantModel} from './grants/index.mjs';
 import {erasureModel} from './erasure/index.mjs';
@@ -54,6 +55,13 @@ export async function model(ctx,request,page='account') {
   try { result.roles=await roleModel(ctx,s); }
   catch(error) {if(!(error instanceof AuthError)||error.status!==403)throw error;result.roleError=error.message;}
   if(result.roles)try{result.rolePeople=(await (await roleRead(ctx,request,'/api/auth/roles/people')).json()).people;}catch(error){if(!(error instanceof AuthError)||error.status!==403)throw error;result.rolePeople=[];}
+  if(result.roles?.ownGrants.some(grant=>grant.permissions.includes('admin-api.manage'))) {
+   const custody=await ownerState(ctx,s.person_id);
+   result.adminServices=(await adminServicesModel(ctx)).filter(app=>custody.legacy||app.ownerId===s.person_id);
+   const globalScopes=new Set(['policies.read','policies.manage','idps.read','idps.manage','domains.read']);
+   result.adminServiceCustody={scopes:custody.legacy?Object.keys(SCOPE_PERMISSIONS):Object.entries(SCOPE_PERMISSIONS).filter(([scope,permissions])=>!globalScopes.has(scope)&&custody.entries.some(entry=>entry.role.permissions.includes('admin-api.manage')&&permissions.every(permission=>entry.role.permissions.includes(permission)))).map(([scope])=>scope)};
+  }
+
  }
  if(page==='permissions'&&isAdmin){result.resourceApis=await grantModel(ctx);result.workforce=await workforceModel(ctx);}
  if(page==='erasure'&&s.role==='owner'&&isAdmin)result.erasure=await erasureModel(ctx,request);

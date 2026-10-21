@@ -34,7 +34,7 @@ const groups = {
  transient: [
   'auth_admin_api_commits', 'auth_admin_service_assertions', 'auth_agent_proposals',
   'auth_assertions', 'auth_challenges', 'auth_codes', 'auth_erasure_commits',
-  'auth_erasure_previews', 'auth_event_deliveries', 'auth_import_rows', 'auth_limits',
+  'auth_erasure_previews', 'auth_erasure_reset_consents', 'auth_event_deliveries', 'auth_import_rows', 'auth_limits',
   'auth_link_codes', 'auth_link_intents', 'auth_link_requests', 'auth_link_tokens',
   'auth_logout_deliveries', 'auth_notices', 'auth_oidc_codes', 'auth_oidc_logouts',
   'auth_oidc_sessions', 'auth_provisioning', 'auth_recoveries', 'auth_rer_approvals',

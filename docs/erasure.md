@@ -1,104 +1,145 @@
 # Owner-authorized erasure
 
-Erasure is a separate owner action from suspension. A company owner erases
-people and app connections only in that company. The installation owner uses
-the root door to erase a whole employer or the installation; ordinary
-installation roles do not gain directory access to isolated employers. The owner signs in with a
-passkey and confirms their email in that session within ten minutes. Every
-erasure write rechecks that live authority in its transaction.
+A company owner erases people and app connections in that company. The
+installation owner uses the root door to reset an organization or the local
+installation. Installation roles gain no directory access to an isolated
+employer through this reset authority. Erasure requires a hardware passkey and
+email confirmation in that session within ten minutes, rechecked at commit.
+Suspension and termination remain separate administrative actions.
 
-First record an explicit policy with `POST /api/auth/erasure/policy`:
+First configure the policy through `POST /api/auth/erasure/policy`:
 
 ```json
 {"confirm":true,"automaticDeletion":false,"honorLegalHolds":true}
 ```
 
-The default is unconfigured: data is not automatically deleted and confirmation
-is refused until the owner records this policy. This erasure policy does not
-set the separate audit-retention schedule. It always preserves anonymized
-event/decision history and refuses an applicable active legal hold.
+An unconfigured policy refuses erasure confirmation. Applicable active legal
+holds refuse the whole erasure. Erasure is never scheduled; this does not
+suppress the separate employer-configured expiry under AUTH-RETENTION-001.
+No legal retention period is inferred.
 
-`POST /api/auth/erasure/hold` takes `kind`, `target` and a reason. Supported kinds
-are `person`, `app`, `organization`, and `installation`. Release a hold with
-`{"id":"the-hold-id","release":true}` through the same owner door. Organization
-and installation holds protect all records in their selected namespace.
+`POST /api/auth/erasure/hold` accepts `kind`, `target` and a reason. Supported
+kinds are `person`, `app`, `organization`, and `installation`. Release a hold
+through the same owner door with `{"id":"hold-id","release":true}`.
+Organization and installation holds protect their selected namespace.
 
-1. `POST /api/auth/erasure/preview` with `{"kind":"person","target":"person-id"}`
-   lists per-store removal/anonymization counts, remote work, applicable holds
-   and named limits. An app target is its company-app or linked-client ID.
-2. Review the preview. It expires after ten minutes and changes to underlying
-   state require another preview.
-3. `POST /api/auth/erasure/confirm` with `previewId`, `confirmation:"ERASE"` and
-   `destinations:["https://scim.example.com"]` and
-   `confirmRemoteDeletion:true` authorize deletion at exactly those listed
-   destinations. Local access ends and back-channel/SCIM revocation is attempted
-   independently of downstream deletion consent. Missing destinations authorize
-   no deletion; a broad boolean alone authorizes nothing. A prior preview alone never
-   authorizes external destruction.
-4. Save the response's receipt reference and signed `journal`. The receipt
-   records local completion separately from outstanding remote work.
+1. Call `POST /api/auth/erasure/preview` with
+   `{"kind":"person","target":"person-id"}`. An app target is its company-app
+   or linked-client ID. Review the per-store counts, remote work and holds.
+2. Within ten minutes, call `POST /api/auth/erasure/confirm` with `previewId`
+   and `confirmation:"ERASE"`. Changed underlying state requires a new preview.
+3. To authorize downstream data deletion, also send the exact selected
+   `destinations` array from that preview and `confirmRemoteDeletion:true`.
+   Missing destinations authorize no deletion; a broad boolean alone grants
+   no deletion authority.
+4. Save the receipt reference. It separates local completion from unfinished
+   remote work. Ordinary company-owned receipts also have a signed JSON journal.
 
-`GET /api/auth/erasure/receipts` shows policy, holds and receipts with per-store
-counts and remote status. `GET /api/auth/erasure/journal` returns the latest
-signed journal. Both require an owner session with passkey proof.
+Access revocation proceeds regardless of deletion consent: local sessions,
+tokens and factors end, back-channel revocation is attempted, SCIM users are
+deactivated and managed group membership is cleared. Deactivation is verified
+by a read showing an inactive account or absence; group clearing is verified
+by an empty membership read or absence. Consented SCIM deletion is verified by
+absence. These outcomes remain distinct from deletion of independently held
+provider data.
 
-SCIM removal is verified by a read returning 404. Provider denials, outages and
-unverified removal remain blocked or failed. The minimum account identifier
-and connector credential required for unfinished work remain sealed under the
-installation key; they are erased after verification and never appear in the
-receipt, journal or ordinary export. Explicitly authorize another attempt with
-`POST /api/auth/erasure/retry` and
-`{"receiptId":"receipt-id","destinations":["https://scim.example.com"],"confirmRemoteDeletion":true}`. Existing local
-sessions, factors and grants are removed even when the provider is unavailable.
+The connector credential and signing private key are never copied into pending
+work, even in encrypted form. Initial post-commit dispatch uses a transient
+in-memory connection. Later ordinary company retries can use a still-current,
+matching connector or signing key in that company. Unfinished work retains only
+the minimum destination/account identifiers and tenant binding, sealed to the
+installation. A missing connection, refusal, outage or unverified result stays
+visible as blocked or failed; sending a request never proves completion.
 
-Linked applications receive an identity fence when the saved callback and
-subject are available. This revokes Auth-issued authority; it does not prove
-that the application deleted its independent database. Every affected linked
-app is therefore also named as a partner deletion task. Ask the partner to
-remove its independently held profile, credentials, exports and delivered
-messages, and retain its confirmation. Already delivered email/SMS and data
-independently held by Google, Microsoft, Okta or another provider cannot be
-recalled by deleting local Auth records. Local outbox copies are removed.
+A company owner can retry through `POST /api/auth/erasure/retry` with
+`receiptId`, selected `destinations` and `confirmRemoteDeletion:true`. Every new
+destination consent is exact and the owner's live authority is rechecked.
+Already authorized destination consent remains effective. To abandon company
+work, select its exact destinations and type `ABANDON` through
+`POST /api/auth/erasure/abandon`.
 
-The last active owner cannot be erased as an ordinary person. Transfer ownership
-first, or have the installation owner choose the protected organization reset
-at the root erasure endpoint: preview `kind:"organization"` with the selected
-organization's ID as `target`, then confirm with that `organizationId`, the
-preview ID, destination choices and the exact phrase
-`RESET <issuer>`. This removes that namespace's records, including owners,
-while retaining anonymized evidence, receipts and the journal. Download the
-confirm response: the session used to reset the organization no longer exists.
-The erased issuer remains unavailable. The root installation owner can still
-read its anonymous receipts in Erasure and explicitly retry unfinished remote
-work with `organizationId` plus `receiptId` at the root retry endpoint. This
-requires the installation owner’s own hardware and fresh email proof, is audited,
-and never exposes sealed credentials or restores the employer’s identity data.
+Linked applications receive authority fences when the recorded subject and
+callback are available. Ask each application's owner to delete independent
+profiles, credentials, exports and delivered messages, and retain their
+confirmation. Mailbox/provider owners control delivered email/SMS; installation
+owners control exported archives and backups; external audit receiver owners
+control their sink copies. Auth does not report these outside copies as erased.
+Local outbox copies are removed.
 
-A root local installation can similarly preview `kind:"installation"`; hosted
-installation deletion is refused. If other organizations exist, the API refuses
-root-namespace reset and directs the owner to the whole-installation CLI path;
-it never reports those other organizations as erased. For removal of every local organization and
-private installation settings, save the receipt/journal and resolve outstanding
-remote work before using the existing `rer reset --yes` command. Reset removes
-the wrapping key too, so unfinished remote work cannot be retried afterwards.
+The last active owner cannot be erased as an ordinary person. Transfer
+ownership first, or use the protected organization-reset path. Before a reset,
+the company owner can authorize downstream deletion in their own organization:
 
-Receipts bind retained anonymous audit rows with signed SHA-256 commitments.
-The owner can call `GET /api/auth/erasure/integrity?receiptId=<id>`; erased
-employer receipts additionally name `organizationId`. The corresponding journal
-download accepts the same parameters. Later audit appends do not invalidate a
-snapshot. Another erasure can legitimately redact older rows again: use the
-latest signed receipt to check the current projection, and retain earlier
-downloads and their public verification keys as historical snapshots. This is
-a signed erasure snapshot, not the complete audit investigation service of
-AUTH-AUDIT-001.
+1. Call `POST /org/<id>/api/auth/erasure/reset-preview` and review the exact
+   destinations and remote objects.
+2. Call `POST /org/<id>/api/auth/erasure/reset-consent` with that `previewId`,
+   `confirmation:"AUTHORIZE DELETION"`, the selected `destinations`, and
+   `confirmRemoteDeletion:true`. This consent expires after ten minutes and is
+   bound to the current remote objects and the consenting owner's authority.
 
-To abandon unfinished work, explicitly select its destinations and type
-`ABANDON` through `POST /api/auth/erasure/abandon`. This destroys retained sealed
-identifiers/credentials and records `remote_abandoned`; it never claims the
-provider deleted its data or revoked access. The receipt remains visible.
+This authorizes downstream deletion only. The installation owner separately
+uses the root `POST /api/auth/erasure/preview` with
+`{"kind":"organization","target":"<id>"}`, then confirms with the returned
+`organizationId`, `previewId` and exact `RESET <issuer>` phrase. The root reset
+request cannot choose deletion destinations or supply new deletion consent.
+It can use only the employer owner's still-valid pre-reset consent. Without
+that consent, local reset and access revocation proceed while deletion remains
+blocked. Retained deletion consent is frozen after reset.
 
-Retention expiry is governed separately by AUTH-RETENTION-001. No automatic
-erasure does not disable that clause's configured retention obligations.
+Reset ends every organization owner, administrator, member, session, service
+app, preparer key and invitation. The issuer answers not found. No employer
+connector credential or signing private key survives. Anonymous receipts and
+outcomes, plus separately sealed unfinished identifiers, pass to the root
+installation owner alone. Installation administrators have no custody. The
+retained work never attaches to a newly created organization, even one with the
+same name, domain or people.
+
+The root owner sees an item's opaque ID, application label, operation, state
+and outcome. Retained responses expose no organization ID, person identifier
+or destination. Root view, retry, connection and abandonment actions are audited
+in the installation. Receipts are selected through their opaque `receiptId`,
+not an organization ID.
+
+For a retained retry, call the root `POST /api/auth/erasure/retry` with
+`retained:true`, `receiptId`, one `workId`, and `confirmRetry:true`. A SCIM retry
+can additionally supply a fresh `connection:{token:...}`. Keep that token
+private: it is used for this one piece of work, never persisted, returned or
+placed in audit text. The server uses its sealed endpoint and account binding;
+the caller cannot substitute a URL, tenant or remote account. Before mutation,
+a GET must return the recorded remote ID and external ID. A mismatch or 404
+fails qualification, and live root authority is rechecked before mutation.
+Without a qualified connection the item stays blocked. A fence whose issuer
+signing key was destroyed stays blocked when no qualified retry recipe exists.
+The root owner cannot add deletion consent or retry unconsented deletion.
+
+To abandon retained work, call the root `POST /api/auth/erasure/abandon` with
+`retained:true`, `receiptId`, the exact opaque `workIds` array and
+`confirmation:"ABANDON"`. Completion or abandonment destroys the sealed
+identifier. Abandonment keeps an anonymous `remote_abandoned` outcome and never
+claims remote deletion or revocation completed. A request already sent may
+still finish. Partner deletion instructions remain visible without revealing
+the destination; contact the application's owner using independently held records.
+
+`GET /api/auth/erasure/receipts` shows ordinary company receipts and, for the
+root owner, anonymous retained receipts. The journal and integrity endpoints
+accept `receiptId`; retained requests use no organization-ID parameter. The
+root retained journal contains only anonymous counts and a commitment
+authenticated with the installation key using HMAC. It exposes no original
+organization public key, issuer, journal rows or audit content. The original
+journal remains sealed internally; integrity checks unseal it server-side and
+verify the original signed audit commitments. Normal company owners retain
+access to their own ordinary signed journal. Later audit appends do not
+invalidate a snapshot; a later erasure may legitimately redact earlier rows,
+so use the latest receipt when checking the current projection.
+
+A root local installation can preview `kind:"installation"`; hosted
+installation deletion is refused. When other organizations exist, the API
+refuses a partial root-namespace reset and directs the owner to the complete
+local CLI reset. Save the receipt and a post-erasure archive outside the
+installation and resolve or explicitly abandon unfinished remote work before
+`rer reset --yes`. The CLI removes every declared local organization, local
+state and private settings, including the wrapping key; pending work cannot be
+retried afterwards.
 
 After erasure, create a new portability archive with `rer export --output exports/after-erasure.rer`. Keep it outside any installation that you will reset. This later archive carries Base's installation-wide erasure checkpoint, including erasures in an employer namespace. Restore uses the existing public command:
 

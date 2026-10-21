@@ -2,6 +2,7 @@ import {fail,hash,random} from '../core.mjs';
 import {snapshot,erasureTable} from './schema.mjs';
 import {anonymous,contains,isEvidence,referenceColumns} from './scrub.mjs';
 import {sourceOf,organizationOf} from './journal.mjs';
+import {resetConsent} from './reset-policy.mjs';
 
 const rowId=(table,index)=>table+':'+index;
 const serialized=new Set(['detail','data','subject','params','effect','target_state','reason','outcome','undo_report','metadata','message','payload','resources','program','plan','verification','policy']);
@@ -11,7 +12,7 @@ const text=v=>typeof v==='string'&&v.length>0;
 export async function planErasure(ctx,kind,target,reference='erased:'+random()) {
  if(!['person','app','organization','installation'].includes(kind))fail('invalid_erasure_kind');
  if(typeof target!=='string'||!target||target.length>512)fail('invalid_erasure_target');
- if(kind==='organization'&&ctx.organizationId!=='root'&&!ctx.installationAuthority)fail('installation_owner_required',403);
+ if(kind==='organization'&&ctx.organizationId!=='root'&&!ctx.installationAuthority&&!ctx.organizationOwnerConsent)fail('installation_owner_required',403);
  if(kind==='organization'&&target!==organizationOf(ctx))fail('wrong_erasure_organization',403);
  if(kind==='installation'&&(!ctx.local||ctx.organizationId&&ctx.organizationId!=='root'))fail('local_installation_reset_required',403);
  const reset=['organization','installation'].includes(kind),stores=await snapshot(ctx);
@@ -93,12 +94,12 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  for(const account of values(stores,'auth_scim_accounts'))if(reset||kind==='person'&&identifiers.has(account.subject_id)||kind==='app'&&account.app_id===target) {
   if(account.state==='deleted')continue;
   const connector=values(stores,'auth_scim_connectors').find(c=>c.app_id===account.app_id);
-  remote.push({kind:'scim-delete',partner:connector?new URL(connector.base_url).origin:'connector unavailable',work:connector?{connector,remoteId:account.remote_id,resource:account.subject_type==='group'?'Groups':'Users'}:null});
+  remote.push({kind:'scim-delete',appLabel:values(stores,'auth_apps').find(a=>a.id===account.app_id)?.name||'SCIM app',partner:connector?new URL(connector.base_url).origin:'connector unavailable',work:connector?{connector,remoteId:account.remote_id,resource:account.subject_type==='group'?'Groups':'Users'}:null});
  }
  // Linked-app fences are authority revocation; independently held app data is
  // a named partner deletion task rather than a claimed remote deletion.
  for(const client of values(stores,'auth_clients'))if(reset||kind==='app'&&client.id===target||kind==='person'&&values(stores,'auth_grants').some(g=>g.client_id===client.id&&g.person_id===target)) {
-  remote.push({kind:'partner-delete',partner:client.origin,work:null});
+  remote.push({kind:'partner-delete',appLabel:client.name||'Linked app',partner:client.origin,work:null});
  }
  for(const company of values(stores,'auth_apps')) {
   const groups=new Set(values(stores,'auth_group_members').filter(m=>m.person_id===target).map(m=>m.group_id));
@@ -106,7 +107,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   const held=values(stores,'auth_scim_accounts').some(a=>a.app_id===company.id&&a.subject_id===target);
   if(reset||kind==='app'&&company.id===target||kind==='person'&&(assigned||held)) {
    let partner=company.name;try{partner=new URL(company.launch_url||company.acs).origin;}catch{}
-   remote.push({kind:'partner-delete',partner,work:null});
+   remote.push({kind:'partner-delete',appLabel:company.name||'Company app',partner,work:null});
   }
  }
  // Delivered event/hook copies are independently held processor data. A
@@ -120,12 +121,13 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   const deleted=table.rows.filter((_,i)=>removed.has(rowId(table.name,i))).length,anonymized=table.rows.filter((_,i)=>updates.has(rowId(table.name,i))&&!removed.has(rowId(table.name,i))).length;
   counts.push({store:table.name,examined:table.rows.length,deleted,anonymized,status:'complete'});
  }
- const fingerprint=await hash(JSON.stringify([...stores].map(([name,t])=>[name,t.rows])));
- return {kind,target,reference,reset,stores,removed,updates,identifiers,names,holds,policy,counts,remote,decisions,fingerprint,
+ const consent=ctx.installationAuthority?await resetConsent(ctx,{remote}):null;
+ const fingerprint=await hash(JSON.stringify([[...stores].map(([name,t])=>[name,t.rows]),...(ctx.installationAuthority?[consent]:[])]));
+ return {kind,target,reference,reset,installationReset:Boolean(ctx.installationAuthority),resetConsent:consent,stores,removed,updates,identifiers,names,holds,policy,counts,remote,decisions,fingerprint,
   confirmation:reset?`RESET ${sourceOf(ctx)}`:'ERASE',source:sourceOf(ctx),organization:organizationOf(ctx)};
 }
 export const keyOf=rowId;
 export const publicPlan=plan=>({kind:plan.kind,target:plan.target,confirmation:plan.confirmation,stores:plan.counts,
- remote:plan.remote.map(r=>({kind:r.kind,partner:r.partner,state:r.work?'awaiting-confirmation':'partner-action-required'})),
- holds:plan.holds.map(h=>({id:h.id,kind:h.kind,reason:h.reason})),policyConfigured:Boolean(plan.policy?.configured),
+ remote:plan.remote.map(r=>({kind:r.kind,...(plan.installationReset?{app:r.appLabel||'Connected app',deletionPreauthorized:Boolean(plan.resetConsent?.destinations.includes(r.partner))}:{partner:r.partner}),state:r.work?'awaiting-confirmation':'partner-action-required'})),
+ holds:plan.holds.map(h=>({id:h.id,kind:h.kind,...(plan.installationReset?{}:{reason:h.reason})})),policyConfigured:Boolean(plan.policy?.configured),
  limits:['Mailbox/provider owners must delete already delivered messages; Auth cannot recall them.','Installation owners must delete exported archive/backup copies or supply the later erasure journal on restore.','External audit receiver owners must delete delivered event copies; Auth cannot verify that independent storage.','Ask every named partner to delete its independently held copies and confirm completion.','Save the receipt and signed erasure journal before local reset; an old archive cannot discover a later journal.']});

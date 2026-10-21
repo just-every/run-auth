@@ -254,3 +254,53 @@ test('machine directory and company-app commands share native lifecycle planning
  assert.equal((await call('/apps/'+samlApp.id,'DELETE',undefined,await tag())).status,200);
  assert.equal((await call('/groups/'+group.id,'DELETE',undefined,await tag())).status,200);
 });
+
+test('scoped credential custodians own exact automation whose tokens and native decisions track current permissions, dynamic resources and revocation',async t=>{
+ const {generateKeyPair,exportJWK,SignJWT}=await import('jose'),{r,owner}=await ownerInstall(t);
+ const custodian=await passkeyPerson(r,'synthetic-auth-custodian','custodian@example.com','member');
+ await r.person('synthetic-auth-worker','worker@example.com');
+ const admin=async(path,data,cookie=owner.cookie)=>r.call('/api/auth/'+path,post(data,cookie));
+ const created=async(path,data)=>{const response=await admin(path,data);assert.equal(response.status,201,await response.clone().text());return response.json();};
+ const group=await created('groups/create',{name:'Engineering'}),app=await created('company-apps/create',{name:'Scoped board',entityId:'https://scoped-board.example.com/saml',acsUrl:'https://scoped-board.example.com/acs'});
+ assert.equal((await admin('directory/edit',{personId:'synthetic-auth-worker',set:{department:'Engineering'}})).status,200);
+ assert.equal((await admin('groups/rule',{groupId:group.id,rule:{conditions:[{field:'department',op:'eq',value:'Engineering'}]}})).status,200);
+ const change=async data=>{
+  const preview=await admin('roles/preview',data);assert.equal(preview.status,200,await preview.clone().text());
+  const response=await admin('roles/apply',{previewId:(await preview.json()).previewId});assert.equal(response.status,200,await response.clone().text());return (await response.json()).plan;
+ };
+ const role=await change({kind:'role',role:{name:'Scoped automation custodian',rank:35,permissions:['roles.view','admin-api.manage','people.view','groups.view','groups.edit','groups.rules.edit','apps.view','apps.assign']}});
+ const sets={people:[],groups:[group.id],apps:[app.id],cases:[]};
+ const assigned=await change({kind:'grant',personId:'synthetic-auth-custodian',roleId:role.role.id,resources:{view:sets,edit:sets}});
+ const keys=await generateKeyPair('ES256',{extractable:true}),jwk={...await exportJWK(keys.publicKey),kid:'synthetic-auth-custody',alg:'ES256',use:'sig'};
+ const settings={name:'Scoped reconciler',purpose:'Maintain this approved app and group only',ownerId:'synthetic-auth-custodian',jwks:{keys:[jwk]},scopes:['groups.manage','assignments.manage'],resources:{people:['synthetic-auth-worker'],groups:[group.id],apps:[app.id]},expiresAt:r.now+86400000};
+ const create=extra=>admin('admin-service-apps/create',{...settings,...extra},custodian.cookie);
+ const legacyAdmin=await passkeyPerson(r,'synthetic-auth-admin','legacy-admin@example.com','admin');
+ assert.equal((await admin('admin-service-apps/create',{...settings,ownerId:'owner'},legacyAdmin.cookie)).status,403,'an administrator cannot publish higher-ranked owner authority');
+ assert.equal((await admin('admin-service-apps/create',{...settings,ownerId:'synthetic-auth-admin'},owner.cookie)).status,201,'the owner can publish lower administrator authority');
+ assert.equal((await create({ownerId:'owner'})).status,403,'a scoped custodian cannot publish another human owner');
+ assert.equal((await create({scopes:['people.manage']})).status,403,'a broad scope cannot manufacture missing profile/status permissions');
+ assert.equal((await create({resources:{people:['synthetic-auth-worker'],groups:[group.id],apps:['synthetic-auth-foreign-app']}})).status,403);
+ assert.equal((await create({resources:{people:['*'],groups:[group.id],apps:[app.id]}})).status,403,'scoped custody requires exact named resources');
+ const response=await create({});assert.equal(response.status,201,await response.clone().text());const service=await response.json();
+ const token=async svc=>{
+  const assertion=await new SignJWT({}).setProtectedHeader({alg:'ES256',kid:jwk.kid}).setIssuer(svc.clientId).setSubject(svc.clientId).setAudience(r.origin+'/oidc/token').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+60).setJti(crypto.randomUUID()).sign(keys.privateKey);
+  return r.call('/oidc/token',{method:'POST',form:{grant_type:'client_credentials',client_id:svc.clientId,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:assertion}});
+ };
+ const issued=await token(service);assert.equal(issued.status,200,await issued.clone().text());const bearer=(await issued.json()).access_token;
+ const call=(path,method='GET',data,etag)=>r.call('/api/auth/admin/v1'+path,{method,data,headers:{authorization:'Bearer '+bearer,...(data!==undefined?{'content-type':'application/json'}:{}),...(etag?{'if-match':etag}:{})}});
+ const initial=await call('/groups');assert.equal(initial.status,200);assert.deepEqual((await initial.json()).items.map(g=>g.id),[group.id]);
+ const update=await call(`/assignments/${app.id}/person/synthetic-auth-worker`,'PUT',{role:'reader'},initial.headers.get('etag'));assert.equal(update.status,200,await update.clone().text());
+ assert.equal((await r.db.prepare("SELECT role FROM auth_app_assignments WHERE app_id=? AND principal_id='synthetic-auth-worker'").bind(app.id).first()).role,'reader');
+ assert.equal((await call('/groups','POST',{name:'Outside named custody'})).status,403);
+ assert.equal((await call('/people/synthetic-auth-worker','PATCH',{state:'suspended'},update.headers.get('etag'))).status,403);
+ assert.equal((await admin('admin-service-apps/reassign',{id:service.id,ownerId:'owner'},custodian.cookie)).status,403);
+ const other=await admin('admin-service-apps/create',{...settings,ownerId:'owner'});assert.equal(other.status,201);
+ assert.equal((await admin('admin-service-apps/revoke',{id:(await other.json()).id},custodian.cookie)).status,403);
+ const revocableResponse=await create({name:'Revocable scoped task'});assert.equal(revocableResponse.status,201);const revocable=await revocableResponse.json();assert.equal((await token(revocable)).status,200);
+ assert.equal((await admin('admin-service-apps/revoke',{id:revocable.id},custodian.cookie)).status,200);assert.equal((await token(revocable)).status,401);
+ assert.equal((await admin('directory/edit',{personId:'synthetic-auth-worker',set:{department:'Support'}})).status,200);
+ assert.equal((await call('/groups')).status,401,'the human edit set immediately loses a worker who left its dynamic group');assert.equal((await token(service)).status,401);
+ assert.equal((await admin('directory/edit',{personId:'synthetic-auth-worker',set:{department:'Engineering'}})).status,200);assert.equal((await token(service)).status,200);
+ await change({kind:'revoke',grantId:assigned.id});
+ assert.equal((await token(service)).status,401,'removing current custody authority stops the next token');assert.equal((await call('/groups')).status,401,'already-issued machine claims do not retain the removed human role');
+});

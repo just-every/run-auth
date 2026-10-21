@@ -226,6 +226,7 @@ export interface AuthPageModel {
   organizations?: { current: {id:string;name:string}; memberships: Array<{id:string;name:string;role:string;path:string;active:boolean}>; canCreate:boolean }
 
   adminServices?: AdminService[];
+  adminServiceCustody?: {scopes:string[]};
   profile?: ProfileModel
   directory?: DirectoryModel
   page: AuthPage | string

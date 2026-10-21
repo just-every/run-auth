@@ -1,12 +1,15 @@
 import {installationFence} from './portability.mjs';
 import {batchWithInstallation} from '../tenancy/storage.mjs';
-import {fail,random} from '../core.mjs';
+import {seal} from '../keys.mjs';
+import {consentGuard} from './reset-policy.mjs';
+import {all,fail,random} from '../core.mjs';
 import {ownerProof,assertOwnerProof} from './authorization.mjs';
 import {quoted,rowKey,deletionOrder,erasureTable} from './schema.mjs';
 import {keyOf} from './plan.mjs';
 import {hashesFor,recordHash} from './journal.mjs';
 import {remoteWork,executeRemote} from './remote.mjs';
 import {signedJournal} from './export.mjs';
+import {sanitizeJournal} from './integrity.mjs';
 import {auditCommitments} from './audit.mjs';
 
 export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
@@ -14,9 +17,11 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  if(!plan.policy?.configured)fail('erasure_policy_configuration_required',409);
  const id=random(),latch=random(),proof=ownerProof(ctx,s),guard=proof.guard,tasks=await remoteWork(ctx,plan,destinations);
  const hashes=await hashesFor(ctx,plan.identifiers),now=ctx.now();
+ const consent=consentGuard(plan.resetConsent,now);
  const statements=[ctx.db.prepare(`INSERT INTO auth_erasure_commits(id,kind) SELECT ?,? WHERE ${guard.clause}
+  AND ${consent.clause}
   AND EXISTS(SELECT 1 FROM auth_erasure_previews WHERE id=? AND actor_id=? AND expires_at>?)
-  AND NOT EXISTS(SELECT 1 FROM auth_erasure_holds WHERE released_at IS NULL AND (kind IN ('organization','installation') OR ?=1 OR target=?))`).bind(latch,plan.kind,...guard.args,previewId,s.person_id,now,plan.reset?1:0,plan.target)];
+  AND NOT EXISTS(SELECT 1 FROM auth_erasure_holds WHERE released_at IS NULL AND (kind IN ('organization','installation') OR ?=1 OR target=?))`).bind(latch,plan.kind,...guard.args,...consent.args,previewId,s.person_id,now,plan.reset?1:0,plan.target)];
  // Check the actual snapshot inside the atomic batch, before any data write.
  // Concurrent enrollments, imported rows, changed holds and provider work all
  // invalidate the preview; no newly created dependent row can escape erasure.
@@ -40,9 +45,10 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
   records.push({table:table.name,columns,key:await recordHash(plan.source,plan.organization,table.name,columns,row),action:plan.removed.has(key)?'delete':'anonymize',...(changes&&!plan.removed.has(key)?{changes:portableChanges}: {})});
  }
  const journal=await signedJournal(ctx,{id,source:plan.source,organization:plan.organization,kind:plan.kind,reference:plan.reference,hashes,records,createdAt:now},await auditCommitments(plan));
- statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_receipts(id,reference,kind,actor_ref,created_at,stores,limitations,decisions,status,journal) SELECT ?,?,?,?,?,?,?,?,'remote_unfinished',? WHERE ${held}`).bind(id,plan.reference,plan.kind,plan.reset||plan.identifiers.has(s.person_id)?plan.reference:s.person_id,now,JSON.stringify(plan.counts),JSON.stringify(['Mailbox/provider owners must delete delivered messages; Auth cannot recall them.','Installation owners must delete exported archives/backups or supply the later erasure journal on restore.','External audit receiver owners and named app/provider owners must delete independently held copies and retain their confirmations.']),JSON.stringify(plan.decisions),JSON.stringify(journal),latch));
+ const storedJournal=plan.reset?{format:'auth-sealed-erasure-journal',version:1,sealed:await seal(ctx,'erasure-journal:'+id,journal)}:journal;
+ statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_receipts(id,reference,kind,actor_ref,created_at,stores,limitations,decisions,status,journal) SELECT ?,?,?,?,?,?,?,?,'remote_unfinished',? WHERE ${held}`).bind(id,plan.reference,plan.kind,plan.reset||plan.identifiers.has(s.person_id)?plan.reference:s.person_id,now,JSON.stringify(plan.counts),JSON.stringify(['Mailbox/provider owners must delete delivered messages; Auth cannot recall them.','Installation owners must delete exported archives/backups or supply the later erasure journal on restore.','External audit receiver owners and named app/provider owners must delete independently held copies and retain their confirmations.']),JSON.stringify(plan.decisions),JSON.stringify(storedJournal),latch));
  statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_journal(id,source,organization,kind,reference,hashes,records,created_at) SELECT ?,?,?,?,?,?,?,? WHERE ${held}`).bind(id,plan.source,plan.organization,plan.kind,plan.reference,JSON.stringify(hashes),JSON.stringify(records),now,latch));
- for(const task of tasks)statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_remote(id,receipt_id,kind,partner,sealed_work,state,created_at,updated_at,consented_at) SELECT ?,?,?,?,?,?,?,?,? WHERE ${held}`).bind(task.id,id,task.kind,task.partner,task.sealed,task.sealed?'pending':'blocked',now,now,task.consented?now:null,latch));
+ for(const task of tasks)statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_remote(id,receipt_id,kind,partner,sealed_work,state,created_at,updated_at,consented_at,app_label) SELECT ?,?,?,?,?,?,?,?,?,? WHERE ${held}`).bind(task.id,id,task.kind,task.storedPartner,task.sealed,task.sealed?'pending':'blocked',now,now,task.consented?now:null,task.appLabel,latch));
  for(const table of plan.stores.values())for(const [index,row] of table.rows.entries()) {
   const key=keyOf(table.name,index),changes=plan.updates.get(key);if(!changes||plan.removed.has(key))continue;
   const where=rowKey(table,row),columns=Object.keys(changes);
@@ -56,12 +62,22 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  }
  // Earlier previews and provenance must not keep a removed person's identity.
  if(plan.reset) {
+  for(const prior of await all(ctx,'SELECT id,journal FROM auth_erasure_receipts')) {
+   const value=JSON.parse(prior.journal);
+   if(value.format!=='auth-sealed-erasure-journal') {
+    const sealed={format:'auth-sealed-erasure-journal',version:1,sealed:await seal(ctx,'erasure-journal:'+prior.id,value)};
+    statements.push(statement('UPDATE auth_erasure_receipts SET journal=? WHERE id=? AND journal=?',[JSON.stringify(sealed),prior.id,prior.journal]));
+   }
+  }
+  statements.push(statement("UPDATE auth_erasure_remote SET partner='opaque:'||lower(hex(randomblob(16))) WHERE receipt_id!=?",[id]));
   statements.push(statement("DELETE FROM auth_erasure_previews WHERE 1"));
+  statements.push(statement("DELETE FROM auth_erasure_reset_consents WHERE 1"));
   statements.push(statement("UPDATE auth_erasure_policy SET updated_by=?,updated_at=? WHERE singleton=1",[plan.reference,now]));
   statements.push(statement('UPDATE auth_erasure_receipts SET actor_ref=? WHERE id!=?',[plan.reference,id]));
   statements.push(statement("UPDATE auth_erasure_holds SET target=?,reason=?,created_by=?,released_by=? WHERE released_at IS NOT NULL",[plan.reference,'Retained hold release evidence',plan.reference,plan.reference]));
  }else {
   statements.push(statement('DELETE FROM auth_erasure_previews WHERE target=? OR actor_id=?',[plan.target,plan.target]));
+  statements.push(statement('DELETE FROM auth_erasure_reset_consents WHERE actor_id=?',[plan.target]));
   statements.push(statement('UPDATE auth_erasure_receipts SET actor_ref=? WHERE actor_ref=?',[plan.reference,plan.target]));
   statements.push(statement('UPDATE auth_erasure_policy SET updated_by=? WHERE updated_by=?',[plan.reference,plan.target]));
   statements.push(statement('UPDATE auth_erasure_holds SET target=?,reason=?,created_by=?,released_by=? WHERE released_at IS NOT NULL AND (target=? OR created_by=? OR released_by=?)',[plan.reference,'Retained hold release evidence',plan.reference,plan.reference,plan.target,plan.target,plan.target]));
@@ -75,7 +91,7 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  const batch=await batchWithInstallation(ctx.db,statements,[...global,...proof.after],proof.before),results=batch.slice(proof.before.length);
  const saved=results[1+[...plan.stores.values()].reduce((n,t)=>n+1+t.rows.length,0)];
  if(!results[0].meta.changes||!saved?.meta.changes){await assertOwnerProof(ctx,s);fail('erasure_conflict',409);}
- await executeRemote(ctx,id);
+ await executeRemote(ctx,id,{connections:new Map(tasks.map(task=>[task.id,task.connection]))});
  const receipt=await ctx.db.prepare('SELECT stores,status,limitations FROM auth_erasure_receipts WHERE id=?').bind(id).first();
- return {id,reference:plan.reference,local:'complete',journalRequired:true,journal,receipt:{stores:JSON.parse(receipt.stores),status:receipt.status,limitations:JSON.parse(receipt.limitations)}};
+ return {id,reference:plan.reference,local:'complete',journalRequired:true,journal:plan.installationReset?await sanitizeJournal(ctx.installationAuthority.context,journal,id):journal,receipt:{stores:JSON.parse(receipt.stores),status:receipt.status,limitations:JSON.parse(receipt.limitations)}};
 }

@@ -20,9 +20,13 @@ export async function authenticateAdmin(ctx,request,scope,resource) {
  const granted=[...new Set(tokenScopes.filter(s=>registered.includes(s)&&SCOPES.includes(s)))];
  try {
   if(app.revision!==claims.revision)fail('admin_service_token_refused',401);
-  await requireLive(ctx,app,request,claims.exp*1000);
+  let state;
+  try{state=await requireLive(ctx,app,request,claims.exp*1000);}catch(error){
+   if(error instanceof AuthError&&error.message!=='admin_service_ip_refused')fail('admin_service_token_refused',401);
+   throw error;
+  }
   if(!tokenScopes.length||tokenScopes.some(s=>!SCOPES.includes(s)))fail('admin_service_token_refused',401);
-  const principal=principalFor(ctx,app,granted,claims.exp*1000);
+  const principal=await principalFor(ctx,app,granted,claims.exp*1000,state);
   if(scope&&!principal.scopes.includes(scope))fail('admin_service_scope_required',403);
   if(resource&&!principal.permits(resource.kind,resource.id))fail('admin_service_resource_refused',403);
   return principal;

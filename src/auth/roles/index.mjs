@@ -77,8 +77,7 @@ export async function roleAction(ctx,request,path,data) {
  if(request.headers.get('origin')!==ctx.origin)fail('origin_required',403);
  const s=await requireSession(ctx,request);
  if(path==='/roles/admin-service') {
-  const guard=await requireRolePermission(ctx,s,'admin-api.manage',{write:true});
-  if(!guard.state.legacy)fail('legacy_admin_custody_required',403);
+  await requireRolePermission(ctx,s,'admin-api.manage',{write:true});
   if(!isAdminServiceAction(data.action))fail('role_command_excluded',403);
   return adminServiceAction(ctx,request,data.action,data.params??{});
  }
