@@ -41,6 +41,16 @@
     second_administrator_required: 'Another administrator must approve a change to your own account.',
     invalid_passkey: 'That passkey could not approve this proposal.',
     invalid_label: 'Enter a label of up to 80 characters.',
+    invalid_admin_service_name: 'Enter a service app name of up to 80 characters.',
+    invalid_admin_service_purpose: 'Describe the service app’s purpose in up to 1,000 characters.',
+    invalid_admin_service_owner: 'Choose an active administrator or owner for this service app.',
+    invalid_admin_service_scopes: 'Select at least one supported Admin API scope.',
+    invalid_admin_service_jwks: 'Paste a public JWKS containing one to five RS256 or ES256 signing keys. Do not include private key material.',
+    invalid_admin_service_resources: 'Enter resource limits as a JSON object with people, groups or apps arrays of IDs. Use ["*"] for all, or [] for none.',
+    invalid_admin_service_ips: 'Enter exact IPv4/IPv6 addresses or CIDR ranges, one per line.',
+    invalid_admin_service_expiry: 'Choose an expiry in the future, within 365 days.',
+    admin_service_conflict: 'This service app or your authority changed. Refresh the page before trying again.',
+    admin_service_not_found: 'This service app is no longer available. Refresh the page.',
   }
   const requestJSON = async (path, payload) => {
     const response = await fetch(path, {
@@ -319,6 +329,21 @@
     }
     showStatus('Sending request…')
     try {
+      if (form.hasAttribute('data-admin-service-create')) {
+        payload.scopes = new FormData(form).getAll('scopes')
+        if (!payload.scopes.length) throw new Error(friendlyErrors.invalid_admin_service_scopes)
+        try { payload.jwks = JSON.parse(payload.jwks) }
+        catch { throw new Error('Public signing keys must be valid JWKS JSON.') }
+        if (!Array.isArray(payload.jwks?.keys) || !payload.jwks.keys.length || payload.jwks.keys.some(key => !key || typeof key !== 'object' || ['d', 'p', 'q', 'dp', 'dq', 'qi', 'oth', 'k'].some(part => Object.hasOwn(key, part)))) throw new Error(friendlyErrors.invalid_admin_service_jwks)
+        if (String(payload.resources || '').trim()) {
+          try { payload.resources = JSON.parse(payload.resources) }
+          catch { throw new Error('Resource limits must be valid JSON, or leave the field blank for unrestricted resources.') }
+        } else delete payload.resources
+        payload.allowedIps = String(payload.allowedIps || '').split(/[\s,]+/).filter(Boolean)
+        const expiry = new Date(payload.expiresAt).getTime(), now = Date.now()
+        if (!Number.isFinite(expiry) || expiry <= now || expiry > now + 365 * 86400000) throw new Error(friendlyErrors.invalid_admin_service_expiry)
+        payload.expiresAt = new Date(expiry).toISOString()
+      }
       const result = await requestJSON(form.action, payload)
       const isEmailRequest = form.hasAttribute('data-email-request')
       if (isEmailRequest) {

@@ -18,15 +18,18 @@ export function ruleDelta(dir,group,rule) {
  return {added,removed};
 }
 
-export async function setRule(ctx,s,guard,dir,data) {
+export function setRule(ctx,s,guard,dir,data) {
+ return setAuthorizedRule(ctx,{actorId:s.person_id,assertAuthority:()=>requireAuthority(ctx,s,guard)},guard,dir,data);
+}
+export async function setAuthorizedRule(ctx,actor,guard,dir,data) {
  const group=dir.groups.find(g=>g.id===String(data.groupId||''))??fail('group_not_found',404);
  const rule=data.rule===null||data.rule===undefined?null:normalizeRule(dir.defs,data.rule),delta=ruleDelta(dir,group,rule);
  if(data.preview===true)return {preview:true,rule,...delta};
  const statements=[ctx.db.prepare(`UPDATE auth_groups SET rule=? WHERE id=? AND ${guard.clause}`).bind(rule?JSON.stringify(rule):null,group.id,...guard.args),
-  ...delta.added.map(p=>addRuleMember(ctx,guard,group.id,p.id,s.person_id)),...delta.removed.map(p=>dropRuleMember(ctx,guard,group.id,p.id))];
- const done=await ctx.db.batch(statements);
- if(!done[0].meta.changes){await requireAuthority(ctx,s,guard);fail('group_not_found',404);}
- await auditDetail(ctx,s.person_id,rule?'group_rule_set':'group_rule_cleared',group.id,{name:group.name,rule,added:delta.added.map(p=>p.email),removed:delta.removed.map(p=>p.email)});
+  ...delta.added.map(p=>addRuleMember(ctx,guard,group.id,p.id,actor.actorId)),...delta.removed.map(p=>dropRuleMember(ctx,guard,group.id,p.id))];
+ const done=await (actor.commit??(statements=>ctx.db.batch(statements)))(statements);
+ if(!done[0].meta.changes){await actor.assertAuthority();fail('group_not_found',404);}
+ await auditDetail(ctx,actor.actorId,rule?'group_rule_set':'group_rule_cleared',group.id,{name:group.name,rule,added:delta.added.map(p=>p.email),removed:delta.removed.map(p=>p.email)});
  for(const p of delta.added)await emit(ctx,'group.member_added',{type:'person',id:p.id,email:p.email},{group:group.id,via:'rule'});
  for(const p of delta.removed)await emit(ctx,'group.member_removed',{type:'person',id:p.id,email:p.email},{group:group.id,via:'rule'});
  await groupChanged(ctx,group.id,[...delta.added,...delta.removed].map(p=>p.id),'group_rule_changed');

@@ -1,5 +1,6 @@
 import type { AgentEffect, AgentKey, AgentProposal, AuthPageModel } from '../model.js'
 import { asArray, csrfField, emptyState, escape, noticeBox, replacementText, timeElement } from '../helpers.js'
+import { adminServicesPanel } from './admin-services.js'
 
 const kindNames: Record<string, string> = {
   suspend_person: 'Suspend a person', restore_person: 'Restore a person', invite_person: 'Invite a person',
@@ -90,5 +91,5 @@ export function renderAgentsPage(model: AuthPageModel): string {
   const mint = `<form class="inline-form" method="post" action="/api/auth/agents/mint" data-agent-mint>${csrfField(model.csrf)}<div class="field"><label for="agent-key-label">Key label</label><input id="agent-key-label" name="label" maxlength="80" placeholder="Directory review agent" required></div><button type="submit">Mint a key</button></form><div class="agent-secret" data-agent-secret hidden><label for="agent-secret-value">Copy this key now. Auth keeps only its digest and will not show it again.</label><input id="agent-secret-value" readonly data-agent-secret-value></div>`
   const keyPanel = `<section class="panel" aria-labelledby="keys-heading"><div class="panel-header"><div><h2 id="keys-heading">Preparer keys</h2><p>A key lets an agent read the people inventory and file proposals through the preparer API. It cannot sign in, open these pages, approve, or change anything itself, and it is not an app access token. Each key expires 30 days after minting or renewal and stops at once when revoked or when its accountable administrator loses that role. Minting, renewing and revoking need an email confirmation in this browser within ten minutes.</p></div></div>${mint}${keyRows(keys, model, now)}</section>`
   const proposalPanel = `<section class="panel" aria-labelledby="proposals-heading"><div class="panel-header"><div><h2 id="proposals-heading">Proposals</h2><p>What agents asked for, with the effect Auth computed when they filed. Nothing changes until a person approves; proposals expire after 24 hours.</p></div><span class="pill">${pending} waiting</span></div>${proposalRows(proposals)}</section>`
-  return `${agents.proposal ? `<div class="toolbar"><a class="action" href="/app/agents">All proposals and keys</a></div>${review(model, agents.proposal)}` : ''}${proposalPanel}${keyPanel}`
+  return `${agents.proposal ? `<div class="toolbar"><a class="action" href="/app/agents">All proposals and keys</a></div>${review(model, agents.proposal)}` : ''}${proposalPanel}${keyPanel}${adminServicesPanel(model)}`
 }

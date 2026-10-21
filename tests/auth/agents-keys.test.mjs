@@ -127,3 +127,62 @@ test('a preparer key opens only the preparer API: it cannot approve, mint, revok
  // The administrator still can, which shows the refusals were the key's.
  assert.equal((await approve(r,owner,proposalId)).status,200);
 });
+
+test('admin service apps use private-key OAuth for scoped group and assignment writes; resource, IP, expiry, owner and ETag fences refuse automation while every scope excludes identity and credential custody',async t=>{
+ const {generateKeyPair,exportJWK,SignJWT,decodeJwt}=await import('jose');
+ const {SCOPES}=await import('../../src/auth/admin-api/credentials/index.mjs');
+ const {r,owner}=await ownerInstall(t),admin=await passkeyPerson(r,'service-owner','sara@example.com','admin');
+ const {publicKey,privateKey}=await generateKeyPair('ES256'),jwk={...await exportJWK(publicKey),kid:'automation',alg:'ES256',use:'sig'};
+ const settings={name:'Access reconciler',purpose:'Reconcile company groups and approved app assignments',ownerId:'service-owner',jwks:{keys:[jwk]},scopes:['groups.manage','assignments.manage'],allowedIps:['192.0.2.0/24'],expiresAt:r.now+86400000};
+ const create=async(extra={},cookie=owner.cookie)=>r.call('/api/auth/admin-service-apps/create',post({...settings,...extra},cookie));
+ assert.equal((await create({},null)).status,401);
+ assert.equal((await create({jwks:{keys:[{...jwk,...await exportJWK(privateKey)}]}})).status,400,'private keys never enter credential custody');
+ assert.equal((await create({expiresAt:r.now+366*86400000})).status,400);
+ const created=await create();assert.equal(created.status,201,await created.clone().text());const service=await created.json();assert.equal(service.clientSecret,undefined);
+ const assertion=async(app=service)=>new SignJWT({}).setProtectedHeader({alg:'ES256',kid:jwk.kid}).setIssuer(app.clientId).setSubject(app.clientId).setAudience(r.origin+'/oidc/token').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+60).setJti(crypto.randomUUID()).sign(privateKey);
+ const grant=async(app=service,extra={},headers={})=>r.call('/oidc/token',{method:'POST',form:{grant_type:'client_credentials',client_id:app.clientId,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:await assertion(app),...extra},headers});
+ assert.equal((await grant(service,{client_secret:'synthetic-auth-1'})).status,401,'no secret option');
+ assert.equal((await grant(service,{}, {'cf-connecting-ip':'198.51.100.20'})).status,401,'token IP is bounded');
+ const signed=await assertion(),once=await grant(service,{client_assertion:signed});assert.equal(once.status,200,await once.clone().text());
+ assert.equal((await grant(service,{client_assertion:signed})).status,401,'assertions cannot replay');
+ const access=await once.json(),claims=decodeJwt(access.access_token);assert.ok(claims.exp-claims.iat<=900);for(const key of ['role','amr','sid'])assert.equal(claims[key],undefined);
+ const call=(path,{token=access.access_token,headers={},method='GET',data}={})=>r.call('/api/auth/admin/v1'+path,{method,data,headers:{authorization:'Bearer '+token,...headers}});
+ assert.equal((await call('/groups',{headers:{'cf-connecting-ip':'198.51.100.20'}})).status,403,'bearer IP is rechecked');
+ const made=await call('/groups',{method:'POST',data:{name:'App operators'}});assert.equal(made.status,201,await made.clone().text());const group=await made.json(),oldTag=made.headers.get('etag');
+ const appResponse=await r.call('/api/auth/company-apps/create',post({name:'Service Desk',entityId:'https://desk.example.com/saml',acsUrl:'https://desk.example.com/acs',idpInitiated:true},owner.cookie));assert.equal(appResponse.status,201);const app=await appResponse.json();
+ const groups=await call('/groups?limit=1');assert.equal(groups.status,200);assert.equal((await groups.json()).items[0].id,group.id);assert.ok(groups.headers.has('ratelimit-remaining'));
+ assert.equal((await call(`/assignments/${app.id}/group/${group.id}`,{method:'PUT',data:{},headers:{'if-match':oldTag}})).status,412,'UI edits invalidate a machine ETag');
+ let tag=groups.headers.get('etag');
+ assert.equal((await call(`/assignments/${app.id}/group/${group.id}`,{method:'PUT',data:{},headers:{'if-match':tag}})).status,200,'an assignment uses its granted scope');
+ assert.equal((await call(`/assignments/${app.id}/group/${group.id}`,{method:'DELETE',headers:{'if-match':tag}})).status,412,'a replayed stale ETag cannot overwrite the new state');
+ assert.equal((await call('/policies/example.com',{method:'PUT',data:{providerId:'other'},headers:{'if-match':(await call('/groups')).headers.get('etag')}})).status,403,'wrong scope never reaches policy validation');
+ assert.equal((await call(`/groups/${group.id}`,{method:'DELETE'})).status,428,'existing mutations require a precondition');
+ assert.equal((await call('/groups',{headers:{authorization:'Preparer synthetic-auth-2'}})).status,401);
+ assert.equal((await r.call('/oidc/userinfo',{headers:{authorization:'Bearer '+access.access_token}})).status,401,'machine tokens carry no interactive sign-in proof');
+
+ const narrowed=(await (await create({name:'Narrow reconciler',resources:{groups:[group.id],apps:[],people:[]}})).json()),narrowToken=(await(await grant(narrowed)).json()).access_token;
+ assert.equal((await call('/groups',{token:narrowToken,method:'POST',data:{name:'Outside its grant'}})).status,403);
+ assert.equal((await call(`/assignments/${app.id}/group/${group.id}`,{token:narrowToken,method:'DELETE',headers:{'if-match':(await call('/groups',{token:narrowToken})).headers.get('etag')}})).status,403);
+
+ // The exclusion is checked separately under every issued scope, without a
+ // wildcard credential or a rate-limit refusal obscuring the result.
+ const excluded=['/people/service-owner/roles','/resource-sets','/people/service-owner/factors','/people/service-owner/recovery','/recovery/approve','/signing-keys','/admin-service-apps','/emergency-accounts','/admin-service-apps/self/policy'];
+ for(const scope of SCOPES) {
+  const scoped=await(await create({name:'Scope '+scope,scopes:[scope]})).json(),tokenResponse=await grant(scoped);assert.equal(tokenResponse.status,200);const token=(await tokenResponse.json()).access_token;
+  const description=await call('/openapi.json',{token});assert.equal(description.status,200);const etag=description.headers.get('etag');
+  for(const path of excluded)assert.equal((await call(path,{token,method:'PUT',data:{},headers:{'if-match':etag}})).status,403,`${scope} excludes ${path}`);
+  for(const path of ['/api/auth/people/role','/api/auth/recovery/approve','/api/auth/keys/stage','/api/auth/admin-service-apps/create'])assert.equal((await r.call(path,{method:'POST',data:{},headers:{authorization:'Bearer '+token}})).status,401,`${scope} has no human door`);
+ }
+ const beforeOwnerChange=await grant();assert.equal(beforeOwnerChange.status,200);
+ assert.equal((await r.call('/api/auth/people/suspend',post({personId:'service-owner'},owner.cookie))).status,200);
+ assert.equal((await call('/groups')).status,403,'already-issued tokens stop on owner suspension');assert.equal((await grant()).status,401);
+ assert.equal((await r.call('/api/auth/admin-service-apps/reassign',post({id:service.id,ownerId:'owner'},owner.cookie))).status,200);
+ const reassigned=await grant();assert.equal(reassigned.status,200);assert.equal((await call('/groups')).status,401,'reassignment fences old revisions');
+ const short=await(await create({name:'Short task',ownerId:'owner',expiresAt:r.now+1000})).json();r.now+=1001;assert.equal((await grant(short)).status,401,'app expiry refuses new grants');
+ const records=(await r.db.prepare("SELECT d.detail FROM auth_activity a JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event='admin_api_call'").all()).results.map(x=>JSON.parse(x.detail));
+ assert.ok(records.some(x=>x.serviceApp===service.id&&x.owner==='service-owner'&&x.scope.includes('groups.manage')&&x.result==='allowed'));
+ assert.ok(records.some(x=>x.serviceApp===service.id&&x.result==='precondition_failed'));
+ assert.ok(records.some(x=>x.result==='admin_service_scope_required'));
+ assert.ok(records.every(x=>'serviceApp'in x&&'owner'in x&&'scope'in x&&'result'in x));
+ const stored=await everyRow(r);assert.ok(!stored.includes(access.access_token)&&!stored.includes(signed)&&!stored.includes(await exportJWK(privateKey).then(x=>x.d)),'assertions, tokens and private material never enter storage or audit');
+});

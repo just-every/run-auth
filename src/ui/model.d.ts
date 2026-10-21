@@ -216,6 +216,7 @@ export interface ProfileModel {
 }
 
 export interface AuthPageModel {
+  adminServices?: AdminService[];
   profile?: ProfileModel
   directory?: DirectoryModel
   page: AuthPage | string
@@ -285,3 +286,5 @@ export interface SignInPageModel {
   csrf?: string
   providers?: AuthProvider[]
 }
+
+export interface AdminService { id:string;clientId:string;name:string;purpose:string;ownerId:string;ownerEmail:string|null;ownerName:string|null;jwks:{keys:Array<{kid?:string;alg?:string;kty:string}>};scopes:string[];resources:Record<'people'|'groups'|'apps',string[]>;allowedIps:string[];revision:number;createdAt:number;expiresAt:number;revokedAt:number|null;suspendedAt:number|null;lastUsedAt:number|null;suspensionReason:string|null;status:'active'|'suspended'|'expired'|'revoked' }

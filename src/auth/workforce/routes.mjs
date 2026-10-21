@@ -28,27 +28,38 @@ export async function workforceAction(ctx,request,path,data) {
  const s=await requireSession(ctx,request,true),owner=OWNER_ACTIONS.includes(path);
  if(owner&&s.role!=='owner')fail('owner_required',403);
  requireLocalEmail(ctx,s);
- const guard=authority(ctx,s,owner?['owner']:['owner','admin']),g=guard.clause,ga=guard.args;
- const held=async result=>{if(!result.meta.changes){await requireAuthority(ctx,s,guard);return false;}return true;};
- const log=(event,subject,detail)=>auditDetail(ctx,s.person_id,event,subject,detail);
+ const guard=authority(ctx,s,owner?['owner']:['owner','admin']);
+ return workforceCommand(ctx,{kind:owner?'human-owner':'human',actorId:s.person_id,guard,assertAuthority:()=>requireAuthority(ctx,s,authority(ctx,s,owner?['owner']:['owner','admin']))},path,data);
+}
+
+// Native commands share their validation and committing statements. A machine
+// principal supplies its own live authority; it never becomes a person/session.
+export async function workforceCommand(ctx,actor,path,data) {
+ if(!isWorkforceAction(path))fail('not_found',404);
+ if(OWNER_ACTIONS.includes(path)&&actor.kind!=='human-owner')fail('owner_required',403);
+ const guard=actor.guard,g=guard.clause,ga=guard.args;
+ const commit=actor.commit??(statements=>ctx.db.batch(statements));
+ const run=async(_ctx,sql,...args)=>(await commit([ctx.db.prepare(sql).bind(...args)]))[0];
+ const held=async result=>{if(!result.meta.changes){await actor.assertAuthority();return false;}return true;};
+ const log=(event,subject,detail)=>auditDetail(ctx,actor.actorId,event,subject,detail);
  // Reads that still need the administrator's current authority.
- const authorized=async()=>{if(!(await one(ctx,`SELECT ${g} AS held`,...ga)).held)await requireAuthority(ctx,s,guard);};
+ const authorized=()=>actor.assertAuthority();
  const app=async id=>appOf(await one(ctx,'SELECT * FROM auth_apps WHERE id=? AND disabled_at IS NULL',String(id||'')))||fail('app_not_found',404);
 
- if(path==='/saml-keys/stage'){const staged=await stageSamlKey(ctx,guard);if(!staged){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}await log('saml_key_staged',staged.kid,{});return json({kid:staged.kid,state:staged.state},201);}
- if(path==='/saml-keys/activate'){await ensureSamlKey(ctx);if(!await activateSamlKey(ctx,String(data.kid||''),guard)){await requireAuthority(ctx,s,guard);fail('saml_key_not_staged',409);}await log('saml_key_activated',data.kid,{});return json({ok:true});}
- if(path==='/saml-keys/retire'){if(!await retireSamlKey(ctx,String(data.kid||''),guard)){await requireAuthority(ctx,s,guard);fail('saml_key_not_found',404);}await log('saml_key_retired',data.kid,{});return json({ok:true});}
+ if(path==='/saml-keys/stage'){const staged=await stageSamlKey(ctx,guard);if(!staged){await actor.assertAuthority();fail('session_authority_changed',403);}await log('saml_key_staged',staged.kid,{});return json({kid:staged.kid,state:staged.state},201);}
+ if(path==='/saml-keys/activate'){await ensureSamlKey(ctx);if(!await activateSamlKey(ctx,String(data.kid||''),guard)){await actor.assertAuthority();fail('saml_key_not_staged',409);}await log('saml_key_activated',data.kid,{});return json({ok:true});}
+ if(path==='/saml-keys/retire'){if(!await retireSamlKey(ctx,String(data.kid||''),guard)){await actor.assertAuthority();fail('saml_key_not_found',404);}await log('saml_key_retired',data.kid,{});return json({ok:true});}
 
  if(path==='/groups/create') {
   const id=random(),name=text(data.name,80,'invalid_group_name');
   if(await one(ctx,'SELECT 1 FROM auth_groups WHERE name=?',name))fail('group_exists',409);
-  if(!await held(await run(ctx,`INSERT INTO auth_groups(id,name,created_by,created_at) SELECT ?,?,?,? WHERE ${g}`,id,name,s.person_id,ctx.now(),...ga)))fail('session_authority_changed',403);
+  if(!await held(await run(ctx,`INSERT INTO auth_groups(id,name,created_by,created_at) SELECT ?,?,?,? WHERE ${g}`,id,name,actor.actorId,ctx.now(),...ga)))fail('session_authority_changed',403);
   await log('group_created',id,{name});return json({id,name},201);
  }
  if(path==='/groups/delete') {
   const group=await one(ctx,'SELECT id,name FROM auth_groups WHERE id=?',String(data.id||''))||fail('group_not_found',404);
   const members=(await all(ctx,'SELECT person_id FROM auth_group_members WHERE group_id=?',group.id)).map(m=>m.person_id),apps=await all(ctx,"SELECT app_id FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?",group.id);
-  const [,,,, done]=await ctx.db.batch([
+  const [,,,, done]=await commit([
    ctx.db.prepare(`DELETE FROM auth_app_assignments WHERE principal_type='group' AND principal_id=? AND ${g}`).bind(group.id,...ga),
    ctx.db.prepare(`DELETE FROM auth_group_members WHERE group_id=? AND ${g}`).bind(group.id,...ga),
    ctx.db.prepare(`DELETE FROM auth_group_exclusions WHERE group_id=? AND ${g}`).bind(group.id,...ga),
@@ -66,17 +77,17 @@ export async function workforceAction(ctx,request,path,data) {
   const adding=path==='/groups/add';let changed;
   if(adding) {
    // An administrator's addition pins the person, and lifts an earlier exclusion from a rule's group.
-   const [added,lifted]=await ctx.db.batch([
-    ctx.db.prepare(`INSERT INTO auth_group_members(group_id,person_id,added_by,added_at) SELECT ?,?,?,? WHERE ${g} ON CONFLICT(group_id,person_id) DO UPDATE SET source='manual',added_by=excluded.added_by,added_at=excluded.added_at WHERE auth_group_members.source='rule'`).bind(group.id,person.id,s.person_id,ctx.now(),...ga),
+   const [added,lifted]=await commit([
+    ctx.db.prepare(`INSERT INTO auth_group_members(group_id,person_id,added_by,added_at) SELECT ?,?,?,? WHERE ${g} ON CONFLICT(group_id,person_id) DO UPDATE SET source='manual',added_by=excluded.added_by,added_at=excluded.added_at WHERE auth_group_members.source='rule'`).bind(group.id,person.id,actor.actorId,ctx.now(),...ga),
     ctx.db.prepare(`DELETE FROM auth_group_exclusions WHERE group_id=? AND person_id=? AND ${g}`).bind(group.id,person.id,...ga),
    ]);
    changed={meta:{changes:added.meta.changes+lifted.meta.changes}};
   } else {
    // Removing someone a rule matches excludes them, so the rule does not add them back.
    const dir=group.rule?await loadDirectory(ctx):null,rule=group.rule&&JSON.parse(group.rule),excluded=Boolean(rule&&matches(rule,dir.values(dir.people.get(person.id))));
-   const [removed,exclusion]=await ctx.db.batch([
+   const [removed,exclusion]=await commit([
     ctx.db.prepare(`DELETE FROM auth_group_members WHERE group_id=? AND person_id=? AND ${g}`).bind(group.id,person.id,...ga),
-    ctx.db.prepare(`INSERT INTO auth_group_exclusions(group_id,person_id,reason,set_by,set_at) SELECT ?,?,?,?,? WHERE ${excluded?'1':'0'} AND ${g} ON CONFLICT DO NOTHING`).bind(group.id,person.id,data.reason?String(data.reason).slice(0,200):null,s.person_id,ctx.now(),...ga),
+    ctx.db.prepare(`INSERT INTO auth_group_exclusions(group_id,person_id,reason,set_by,set_at) SELECT ?,?,?,?,? WHERE ${excluded?'1':'0'} AND ${g} ON CONFLICT DO NOTHING`).bind(group.id,person.id,data.reason?String(data.reason).slice(0,200):null,actor.actorId,ctx.now(),...ga),
    ]);
    changed={meta:{changes:removed.meta.changes+exclusion.meta.changes}};
   }
@@ -91,9 +102,9 @@ export async function workforceAction(ctx,request,path,data) {
   const r=path==='/catalog/add'?recipe(String(data.recipe||'')):null;
   const settings=appSettings(ctx,r?{...data,...r.saml(data),name:data.name||r.name}:data),id=random(),now=ctx.now();
   if(await one(ctx,'SELECT 1 FROM auth_apps WHERE entity_id=?',settings.entityId))fail('entity_id_in_use',409);
-  const statements=[ctx.db.prepare(`INSERT INTO auth_apps(id,recipe,${SETTINGS_SQL},created_by,created_at,updated_at) SELECT ?,?,${settingsColumns(settings).map(()=>'?').join(',')},?,?,? WHERE ${g}`).bind(id,r?.id??null,...settingsColumns(settings),s.person_id,now,now,...ga)];
-  if(r&&r.provisioning.kind==='scim'&&data.token)statements.push(ctx.db.prepare(`INSERT INTO auth_scim_connectors(app_id,base_url,sealed_token,deprovision,push_groups,created_by,created_at) SELECT ?,?,?,?,?,?,? WHERE ${g}`).bind(id,scimBase(ctx,r.provisioning.base(data)),await seal(ctx,'scim:'+id,text(data.token,4096,'invalid_scim_token')),'deactivate',r.provisioning.groups?1:0,s.person_id,now,...ga));
-  const [created]=await ctx.db.batch(statements);
+  const statements=[ctx.db.prepare(`INSERT INTO auth_apps(id,recipe,${SETTINGS_SQL},created_by,created_at,updated_at) SELECT ?,?,${settingsColumns(settings).map(()=>'?').join(',')},?,?,? WHERE ${g}`).bind(id,r?.id??null,...settingsColumns(settings),actor.actorId,now,now,...ga)];
+  if(r&&r.provisioning.kind==='scim'&&data.token)statements.push(ctx.db.prepare(`INSERT INTO auth_scim_connectors(app_id,base_url,sealed_token,deprovision,push_groups,created_by,created_at) SELECT ?,?,?,?,?,?,? WHERE ${g}`).bind(id,scimBase(ctx,r.provisioning.base(data)),await seal(ctx,'scim:'+id,text(data.token,4096,'invalid_scim_token')),'deactivate',r.provisioning.groups?1:0,actor.actorId,now,...ga));
+  const [created]=await commit(statements);
   if(!await held(created))fail('session_authority_changed',403);
   await log(r?'catalog_app_added':'company_app_created',id,{name:settings.name,entityId:settings.entityId,recipe:r?.id??null});
   return json({id,name:settings.name,notes:settings.notes,provisioning:statements.length>1},201);
@@ -102,11 +113,11 @@ export async function workforceAction(ctx,request,path,data) {
   const c=clientSettings(ctx,data),name=text(data.name,120,'invalid_name'),attributes=parseAttributes(data.attributes??[]),id=random(),clientId=random(),now=ctx.now();
   const secret=c.authMethod.startsWith('client_secret')?random():null;
   const statements=[
-   ctx.db.prepare(`INSERT INTO auth_apps(id,name,entity_id,acs,name_id_format,sign,digest,attributes,launch_url,protocol,created_by,created_at,updated_at) SELECT ?,?,?,'[]','persistent','response','sha256',?,?,'oidc',?,?,? WHERE ${g}`).bind(id,name,'oidc:'+clientId,JSON.stringify(attributes),data.launchUrl?endpoint(ctx,data.launchUrl,'launch_url'):null,s.person_id,now,now,...ga),
+   ctx.db.prepare(`INSERT INTO auth_apps(id,name,entity_id,acs,name_id_format,sign,digest,attributes,launch_url,protocol,created_by,created_at,updated_at) SELECT ?,?,?,'[]','persistent','response','sha256',?,?,'oidc',?,?,? WHERE ${g}`).bind(id,name,'oidc:'+clientId,JSON.stringify(attributes),data.launchUrl?endpoint(ctx,data.launchUrl,'launch_url'):null,actor.actorId,now,now,...ga),
    ctx.db.prepare(`INSERT INTO auth_oidc_clients(app_id,client_id,auth_method,jwks,redirect_uris,post_logout_redirect_uris,require_pkce,subject_type,legacy_flows,frontchannel_logout_uri,backchannel_logout_uri,id_token_alg) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${g}`).bind(id,clientId,c.authMethod,c.jwks?JSON.stringify(c.jwks):null,JSON.stringify(c.redirectUris),JSON.stringify(c.postLogout),c.requirePkce?1:0,c.subjectType,c.legacyFlows?1:0,c.frontchannel,c.backchannel,c.alg,...ga),
   ];
   if(secret)statements.push(ctx.db.prepare(`INSERT INTO auth_oidc_secrets(id,client_id,secret_hash,created_at) SELECT ?,?,?,? WHERE ${g}`).bind(random(),clientId,await hash(secret),now,...ga));
-  const [created]=await ctx.db.batch(statements);
+  const [created]=await commit(statements);
   if(!await held(created))fail('session_authority_changed',403);
   await log('oidc_app_created',id,{name,authMethod:c.authMethod,redirectUris:c.redirectUris});
   // The secret is shown once; Auth keeps only its digest.
@@ -116,7 +127,7 @@ export async function workforceAction(ctx,request,path,data) {
   const client=await one(ctx,"SELECT c.client_id,c.auth_method FROM auth_oidc_clients c JOIN auth_apps a ON a.id=c.app_id WHERE c.app_id=? AND a.disabled_at IS NULL",String(data.appId||''))||fail('app_not_found',404);
   if(!client.auth_method.startsWith('client_secret'))fail('app_has_no_secret',409);
   const overlap=overlapOf(data.overlapHours),secret=random(),now=ctx.now();
-  const [,added]=await ctx.db.batch([
+  const [,added]=await commit([
    ctx.db.prepare(`UPDATE auth_oidc_secrets SET expires_at=? WHERE client_id=? AND expires_at IS NULL AND ${g}`).bind(now+overlap,client.client_id,...ga),
    ctx.db.prepare(`INSERT INTO auth_oidc_secrets(id,client_id,secret_hash,created_at) SELECT ?,?,?,? WHERE ${g}`).bind(random(),client.client_id,await hash(secret),now,...ga),
   ]);
@@ -146,7 +157,7 @@ export async function workforceAction(ctx,request,path,data) {
   if(!target)fail(`${type}_not_found`,404);
   const role=data.role?text(data.role,80,'invalid_role'):null;
   const changed=path==='/company-apps/assign'
-   ?await run(ctx,`INSERT INTO auth_app_assignments(app_id,principal_type,principal_id,role,created_by,created_at) SELECT ?,?,?,?,?,? WHERE ${g} ON CONFLICT(app_id,principal_type,principal_id) DO UPDATE SET role=excluded.role`,current.id,type,principal,role,s.person_id,ctx.now(),...ga)
+   ?await run(ctx,`INSERT INTO auth_app_assignments(app_id,principal_type,principal_id,role,created_by,created_at) SELECT ?,?,?,?,?,? WHERE ${g} ON CONFLICT(app_id,principal_type,principal_id) DO UPDATE SET role=excluded.role`,current.id,type,principal,role,actor.actorId,ctx.now(),...ga)
    :await run(ctx,`DELETE FROM auth_app_assignments WHERE app_id=? AND principal_type=? AND principal_id=? AND ${g}`,current.id,type,principal,...ga);
   if(!await held(changed))return json({ok:true,changed:false});
   await log(path==='/company-apps/assign'?'app_assigned':'app_unassigned',current.id,{[type]:target.name,role});
@@ -161,7 +172,7 @@ export async function workforceAction(ctx,request,path,data) {
   const current=await app(data.appId),token=text(data.token,4096,'invalid_scim_token');
   if(path==='/provisioning/connect') {
    const base=scimBase(ctx,data.baseUrl),deprovision=data.deprovision==='delete'?'delete':'deactivate',groups=[true,'true','on','1'].includes(data.pushGroups)?1:0;
-   if(!await held(await run(ctx,`INSERT INTO auth_scim_connectors(app_id,base_url,sealed_token,deprovision,push_groups,created_by,created_at) SELECT ?,?,?,?,?,?,? WHERE ${g} ON CONFLICT(app_id) DO UPDATE SET base_url=excluded.base_url,sealed_token=excluded.sealed_token,deprovision=excluded.deprovision,push_groups=excluded.push_groups,rotated_at=excluded.created_at`,current.id,base,await seal(ctx,'scim:'+current.id,token),deprovision,groups,s.person_id,ctx.now(),...ga)))fail('session_authority_changed',403);
+   if(!await held(await run(ctx,`INSERT INTO auth_scim_connectors(app_id,base_url,sealed_token,deprovision,push_groups,created_by,created_at) SELECT ?,?,?,?,?,?,? WHERE ${g} ON CONFLICT(app_id) DO UPDATE SET base_url=excluded.base_url,sealed_token=excluded.sealed_token,deprovision=excluded.deprovision,push_groups=excluded.push_groups,rotated_at=excluded.created_at`,current.id,base,await seal(ctx,'scim:'+current.id,token),deprovision,groups,actor.actorId,ctx.now(),...ga)))fail('session_authority_changed',403);
    await log('provisioning_connected',current.id,{baseUrl:base,deprovision,groups:Boolean(groups)});
    await queueApp(ctx,current.id,'connector_connected');
    return json({ok:true},201);

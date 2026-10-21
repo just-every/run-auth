@@ -1,3 +1,4 @@
+import {adminServicesModel} from './admin-api/credentials/index.mjs';
 import {hookModel} from './hooks/index.mjs';
 import {configuredProvider} from './domain-policy.mjs';
 import {freshLocalEmail,requireLocalEmail,authority,requireAuthority} from './local-email.mjs';
@@ -39,7 +40,7 @@ export async function model(ctx,request,page='account') {
   result.policyProviders=(ctx.upstreamProviders||[]).map(p=>({id:p.id,label:p.label||p.preset}));
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
-  if(page==='agents')Object.assign(result,await agentsModel(ctx,request));
+  if(page==='agents'){Object.assign(result,await agentsModel(ctx,request));result.adminServices=await adminServicesModel(ctx);}
   if(page==='people')result.directory=await directoryModel(ctx);
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }

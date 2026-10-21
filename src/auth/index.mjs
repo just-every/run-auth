@@ -1,3 +1,5 @@
+import {adminToken,isAdminServiceAction,adminServiceAction} from './admin-api/credentials/index.mjs';
+import {adminApi} from './admin-api/routes.mjs';
 import {isHookAction,hookAction,hookModel} from './hooks/index.mjs';
 import {isMappingAction,mappingAction} from './mapping/routes.mjs';
 import {AuthError,input,json,fail,requireSession,validateClientOrigin} from './core.mjs';
@@ -42,6 +44,7 @@ export function createAuthRuntime(options) {
    if(LINK_PATHS.includes(path))return await linkRoute(ctx,request,path);
    if(path===END_SESSION&&['GET','POST'].includes(request.method))return await endSession(ctx,request);
    // The preparer API reads only its key, never a cookie.
+   if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
     if(path==='/.well-known/openid-configuration'){await ensureSigningKey(ctx);await rememberIssuer(ctx);return json(discovery(ctx));}
@@ -62,7 +65,7 @@ export function createAuthRuntime(options) {
     }
    }
    if(request.method==='POST') {
-    if(path==='/oidc/token')return await genericToken(ctx,request)??await token(ctx,request);
+    if(path==='/oidc/token')return await adminToken(ctx,request)??await genericToken(ctx,request)??await token(ctx,request);
     if(path==='/api/auth/move-in/stage')return await stage(ctx,request);
     const data=await input(ctx,request);
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);
@@ -79,6 +82,7 @@ export function createAuthRuntime(options) {
      if(action==='/recovery/token')return await redeemRecoveryToken(ctx,request,data);
      if(action.startsWith('/move-in/'))return await moveInAction(ctx,request,action,data);
      if(action.startsWith('/agents/'))return await agentsAction(ctx,request,action,data);
+     if(isAdminServiceAction(action))return await adminServiceAction(ctx,request,action,data);
      if(action==='/signout-everywhere')return await signOutEverywhere(ctx,request);
      if(isAppAction(action))return await appAction(ctx,request,action,data);
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);

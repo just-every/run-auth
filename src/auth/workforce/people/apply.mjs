@@ -54,28 +54,34 @@ async function afterwards(ctx,actorId,e,bulk) {
  await auditDetail(ctx,actorId,e.state?`person_${e.state.kind==='terminate'?'terminated':e.state.kind==='suspend'?'suspended':e.state.kind==='rehire'?'rehired':'restored'}`:'directory_person_updated',id,{source:e.source,bulk,changes:e.changes,state:e.state,email:e.emailChange,groups:{added:e.groups.added.map(g=>g.name),removed:e.groups.removed.map(g=>g.name)},apps:e.apps});
 }
 
-export async function applyPlan(ctx,s,guard,dir,planned,{bulk=false}={}) {
+export function applyPlan(ctx,s,guard,dir,planned,options) {
+ return applyAuthorizedPlan(ctx,{actorId:s.person_id,assertAuthority:()=>requireAuthority(ctx,s,guard)},guard,dir,planned,options);
+}
+export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=false}={}) {
  const results=[];
  for(const e of planned.entries) {
   if(!touched(e)){results.push({personId:e.personId,changed:false});continue;}
-  const {statements,stateAt}=entryStatements(ctx,guard,s.person_id,dir,e);
+  const {statements,stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e);
   let done;
-  try {done=await ctx.db.batch(statements);}
+  try {done=await (actor.commit??(statements=>ctx.db.batch(statements)))(statements);}
   catch(error) {
-   await requireAuthority(ctx,s,guard);
+   await actor.assertAuthority();
    if(/UNIQUE|constraint/i.test(String(error?.message)))fail(e.emailChange?'email_in_use':'source_id_in_use',409);
    throw error;
   }
-  await requireAuthority(ctx,s,guard);
+  await actor.assertAuthority();
   if(stateAt>=0&&!done[stateAt].meta.changes)fail('person_changed',409);
-  await afterwards(ctx,s.person_id,e,bulk);
+  await afterwards(ctx,actor.actorId,e,bulk);
   results.push({personId:e.personId,changed:true});
  }
  return results;
 }
 
 // A new person: Base's invited member row, the values the administrator gave, and the groups their values put them in.
-export async function onboardPerson(ctx,s,guard,dir,data,notify) {
+export function onboardPerson(ctx,s,guard,dir,data,notify) {
+ return onboardAuthorizedPerson(ctx,{actorId:s.person_id,assertAuthority:()=>requireAuthority(ctx,s,guard)},guard,dir,data,notify);
+}
+export async function onboardAuthorizedPerson(ctx,actor,guard,dir,data,notify) {
  const address=String(data.email??'');
  const probe={id:random(),email:address.trim().toLowerCase(),name:String(data.name||address).replace(/\s+/g,' ').trim().slice(0,160),role:'member',status:'invited',state:'invited',fields:new Map()};
  const taken=dir.byEmail.get(probe.email);
@@ -83,16 +89,16 @@ export async function onboardPerson(ctx,s,guard,dir,data,notify) {
  dir.people.set(probe.id,probe);dir.byEmail.set(probe.email,probe);
  const set={...data.set};if(data.kind!==undefined)set.kind=data.kind;
  delete set.name;
- const e=await planEdit(ctx,dir,{personId:probe.id,source:data.source??'manual',set,email:probe.email,bind:data.sourceId?{source:data.source,sourceId:String(data.sourceId).trim().slice(0,128)}:null},s.person_id);
+ const e=await planEdit(ctx,dir,{personId:probe.id,source:data.source??'manual',set,email:probe.email,bind:data.sourceId?{source:data.source,sourceId:String(data.sourceId).trim().slice(0,128)}:null},actor.actorId);
  if(!probe.email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(probe.email)||(!ctx.local&&/\.(localhost|test|invalid)$/.test(probe.email)))e.refusals.push('invalid_email');
  if(data.sourceId&&!['hr','directory'].includes(data.source))e.refusals.push('invalid_source');
  if(e.refusals.length)return {refused:e.refusals,plan:e};
- const {statements}=entryStatements(ctx,guard,s.person_id,dir,{...e,emailChange:null});
+ const {statements}=entryStatements(ctx,guard,actor.actorId,dir,{...e,emailChange:null});
  const insert=ctx.db.prepare(`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${guard.clause} AND NOT EXISTS(SELECT 1 FROM oa_operators WHERE email=?)`).bind(probe.id,probe.email,probe.name,ctx.now(),...guard.args,probe.email);
- try {await ctx.db.batch([insert,...statements]);}
- catch(error) {await requireAuthority(ctx,s,guard);if(/UNIQUE|constraint/i.test(String(error?.message)))fail(data.sourceId?'source_id_in_use':'person_exists',409);throw error;}
- await requireAuthority(ctx,s,guard);
- await auditDetail(ctx,s.person_id,'person_onboarded',probe.id,{email:probe.email,source:e.source,fields:e.writes.map(w=>w.field),groups:e.groups.added.map(g=>g.name)});
+ try {await (actor.commit??(statements=>ctx.db.batch(statements)))([insert,...statements]);}
+ catch(error) {await actor.assertAuthority();if(/UNIQUE|constraint/i.test(String(error?.message)))fail(data.sourceId?'source_id_in_use':'person_exists',409);throw error;}
+ await actor.assertAuthority();
+ await auditDetail(ctx,actor.actorId,'person_onboarded',probe.id,{email:probe.email,source:e.source,fields:e.writes.map(w=>w.field),groups:e.groups.added.map(g=>g.name)});
  await emit(ctx,'person.invited',{type:'person',id:probe.id,email:probe.email},{name:probe.name,source:e.source});
  for(const gr of e.groups.added){await emit(ctx,'group.member_added',{type:'person',id:probe.id,email:probe.email},{group:gr.id,via:'rule'});await groupChanged(ctx,gr.id,[probe.id],'group_member_added');}
  if(data.invite!==false)await notify(ctx,probe.email);
