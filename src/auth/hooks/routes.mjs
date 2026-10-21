@@ -19,6 +19,7 @@ export async function hookAction(ctx,request,path,data) {
  }
  if(path!=='/hooks/register')fail('not_found',404);
  if(Object.keys(data).some(k=>!['point','url','appId','clientId','allowedFields','timeoutMs','failClosed'].includes(k))||!POINTS.includes(data.point))fail('invalid_hook_config');
+ if(data.point==='password_import')fail('hook_point_unavailable',409);
  const point=data.point,appId=identifier(data.appId),clientId=identifier(data.clientId);
  if(data.appId!=null&&!appId||data.clientId!=null&&!clientId)fail('invalid_hook_scope');
  if(point==='token'?Boolean(appId)===Boolean(clientId):point==='saml'?!appId||Boolean(clientId):Boolean(appId||clientId))fail('invalid_hook_scope');
@@ -41,5 +42,5 @@ export async function hookAction(ctx,request,path,data) {
 
 export async function hookModel(ctx) {
  const rows=await all(ctx,'SELECT id,point,url,app_id,client_id,allowed_fields,timeout_ms,fail_closed,created_at,disabled_at FROM auth_hooks ORDER BY created_at,id');
- return {points:POINTS,hooks:rows.map(row=>({id:row.id,point:row.point,url:row.url,appId:row.app_id,clientId:row.client_id,allowedFields:JSON.parse(row.allowed_fields),timeoutMs:row.timeout_ms,failClosed:Boolean(row.fail_closed),createdAt:row.created_at,status:row.disabled_at?'stopped':'active'}))};
+ return {points:POINTS.filter(p=>p!=='password_import'),hooks:rows.map(row=>({id:row.id,point:row.point,url:row.url,appId:row.app_id,clientId:row.client_id,allowedFields:JSON.parse(row.allowed_fields),timeoutMs:row.timeout_ms,failClosed:Boolean(row.fail_closed),createdAt:row.created_at,status:row.disabled_at?'stopped':'active'}))};
 }

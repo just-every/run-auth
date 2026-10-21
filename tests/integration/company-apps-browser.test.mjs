@@ -141,6 +141,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  await employeePage.goto(sp.origin+'/login');
  await expect(employeePage.getByRole('heading',{name:`Signed in as ${EMPLOYEE} (approver)`})).toBeVisible();await expect(employeePage.getByText('Cost center CC-42')).toBeVisible();
  await hooks.getByRole('button',{name:'Stop hook'}).click();await expect(hooks.getByText('No inline hooks yet.')).toBeVisible();
+ for(const width of [1440,390]){await page.setViewportSize({width,height:1100});await hooks.evaluate(el=>el.scrollIntoView({block:'start'}));await page.screenshot({path:join(directory,`company-apps-hooks-stopped-${width}.png`)});}
  await page.goto(app.origin+'/app/activity');
  await expect(page.locator('.activity-row',{hasText:'Inline Hook Called'}).first()).toContainText('Latency:');
  for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await page.screenshot({path:join(directory,`company-apps-hook-activity-${width}.png`)});}

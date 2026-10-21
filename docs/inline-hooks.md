@@ -31,7 +31,7 @@ The endpoint receives only the following projected data, when available:
 | `saml` | `personId`, `appId` | `{"attributes":{"cost_center":"synthetic-auth-2"}}` |
 | `registration` | `email`, `name` | `{"allow":true,"profile":{"name":"Synthetic person"}}` |
 | `user_import` | `sourceId`, `email`, `name` | `{"allow":true}` |
-| `password_import` | `personId`, `sourceId` | `{"allow":true}` |
+
 
 No token, password, credential, signing key, session proof, existing claim set,
 imported authority or MFA state is forwarded. A hook can use its own directory
@@ -58,12 +58,18 @@ bounded strings or arrays of strings. Null and nested objects are refused.
 Registration and user import may allow-list only `name`; name changes require
 that explicit field and stay bounded to 160 characters. Email, source identity,
 account matching and all authority remain Auth decisions. `{"allow":false}`
-refuses the operation. Password-import hooks accept no profile fields and never
-receive a password: this protocol alone does not implement password verification
-or progressive migration. The future AUTH-MIGRATION-002 path must supply its own
-documented credential verification protocol. User-import hooks currently veto or
-adjust the name of an ordinary invitation; they do not implement custom identity
-matching. Those limits must remain visible in clause status until implemented.
+refuses the operation. Current import doors are staged move-in admission and the
+source-id-matched directory feed. Auth keeps their reviewed identity bindings;
+the hook cannot turn an email match into identity proof or rebind a subject.
+
+The current-capability boundary names every shipping door above. The future
+password-verification/first-login bridge in AUTH-MIGRATION-002, and new match or
+create doors in AUTH-HRIS-001, AUTH-HRIS-002 and AUTH-SCIM-002, inherit the complete
+AUTH-HOOKS-001 signature, payload minimization, timeout, fail policy, protected
+identity, destination and audit obligations before shipping. Password-hook
+registration currently refuses with hook_point_unavailable; this implementation
+never collects, stores or forwards a migrating password or pretends to verify one.
+The future bridge must document its credential-verification payload separately.
 
 Responses must be 2xx JSON, at most 32 KiB, with exactly the documented keys.
 Unknown keys, reserved or unallowlisted fields, malformed responses, explicit
@@ -81,7 +87,7 @@ response bodies and the signing secret are excluded from audit.
 ## Destination validation
 
 Endpoints must use HTTPS, including local installs, and cannot contain userinfo
-or fragments. Auth applies its outbound hostname restrictions and resolves A and
+or fragments or query parameters. Auth applies its outbound hostname restrictions and resolves A and
 AAAA records through Cloudflare's public DNS-over-HTTPS JSON endpoint both at
 registration and before each send. Empty, truncated, failed and nonpublic results
 are refused. Every returned address must be public; mixed public/private answers

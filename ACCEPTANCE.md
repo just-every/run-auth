@@ -180,15 +180,18 @@ Existing evidence and limits: src/auth/provisioning/; src/auth/workforce/; tests
 
 **AUTH-SCIM-002 — Inbound directory synchronization (partial).** Connect each named directory and a generic SCIM client through setup, import paginated users/groups, apply a mover and deactivate a leaver. Send a foreign-tenant request, duplicate event and incomplete/full-empty snapshot; verify isolation, stable IDs and a held destructive change pending confirmation.
 
-Existing evidence and limits: src/auth/upstreams.mjs; src/auth/move-in/sources.mjs; tests/auth/upstreams.test.mjs; tests/auth/move-in-staging.test.mjs — upstream OIDC and staged exports exist; continuous SCIM/directory reconciliation is missing.
+Existing evidence and limits: src/auth/upstreams.mjs; src/auth/move-in/sources.mjs; tests/auth/upstreams.test.mjs; tests/auth/move-in-staging.test.mjs — upstream OIDC and staged exports exist; continuous SCIM/directory reconciliation is missing. Its future password-verification or match/create import doors inherit every AUTH-HOOKS-001 signature, minimal-payload, timeout/fail-policy, protected-identity, destination and audited-call obligation before shipping.
+
 
 **AUTH-HRIS-001 — HR-driven identity sources (missing).** Connect each of the ten named HR sources in an authorized tenant; synchronize a future hire, US employment start, department/manager move, scheduled termination and rehire, and measure each change's arrival against its event or polling bound. Exercise DST/timezone effective times, conflicting sources, duplicate/out-of-order events and a stale feed; verify resulting access and unresolved source errors.
 
-Existing evidence and limits: No implementing product path or acceptance test yet.
+Existing evidence and limits: No implementing product path or acceptance test yet. Its future password-verification or match/create import doors inherit every AUTH-HOOKS-001 signature, minimal-payload, timeout/fail-policy, protected-identity, destination and audited-call obligation before shipping.
+
 
 **AUTH-HRIS-002 — Scheduled HR file feeds (missing).** Configure an SFTP feed with a mapping, deliver a file with a hire, a move and a termination and see the preview and resulting access; deliver a malformed file, an empty file and one terminating 20% of workers and see each held; skip a delivery and see the stale flag and follow-up. Refuse a wrong SFTP key and a file for another employer.
 
-Existing evidence and limits: No implementing product path or acceptance test yet.
+Existing evidence and limits: No implementing product path or acceptance test yet. Its future password-verification or match/create import doors inherit every AUTH-HOOKS-001 signature, minimal-payload, timeout/fail-policy, protected-identity, destination and audited-call obligation before shipping.
+
 
 **AUTH-LIFECYCLE-001 — Complete joiner, mover and leaver execution (partial).** From HR/admin doors, onboard a sales hire across Workspace, Slack and Salesforce, move them to engineering/GitHub, then terminate while one provider is unavailable. Restart the worker, inspect deadlines and approvals, restore the provider and confirm each remote outcome with its timestamps; local access must remain denied throughout.
 
@@ -240,9 +243,9 @@ Existing evidence and limits: src/auth/links/routes.mjs; src/auth/protocol.mjs; 
 
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
-**AUTH-HOOKS-001 — Inline hooks for custom sign-in logic (missing).** Register a token hook that adds a cost-center claim and see it in the ID token; a registration hook that denies an outside domain; and a hook that tries to add an administrator role and change the subject, and see both changes refused. Let a fail-closed hook time out and see the sign-in refused with a clear error, then a fail-open hook time out and see sign-in continue with the event logged. Refuse a hook URL that resolves to a private address.
+**AUTH-HOOKS-001 — Inline hooks for custom sign-in logic (done).** Register a token hook that adds a cost-center claim and see it in the ID token; a registration hook that denies an outside domain; and a hook that tries to add an administrator role and change the subject, and see both changes refused. Let a fail-closed hook time out and see the sign-in refused with a clear error, then a fail-open hook time out and see sign-in continue with the event logged. Refuse a hook URL that resolves to a private address.
 
-Existing evidence and limits: No implementing product path or acceptance test yet.
+Existing evidence: `tests/auth/oidc-apps.test.mjs` ("inline hooks add only approved token and SAML fields, deny registration and imports, enforce signed minimal payloads and timeout choices, and refuse private DNS and protected identity changes": cost-center ID token and independent SP assertion, registration/import denial, subject/admin-role/MFA/policy refusal, real fail-closed/fail-open timeouts with public error and audit, private DNS at registration and invocation, revocation during the call); `tests/auth/protocol.test.mjs` ("code flow preserves ES256 ID token claims and adds a userinfo access token": strict RER hook and unchanged proof claims); `tests/auth/move-in-admission.test.mjs` ("admission is the ordinary invitation: administrators only, no proof, right, session or mail, and existing people never rebound": signed import denial and creation); `tests/integration/company-apps-browser.test.mjs` ("company apps journey: the owner adds a SAML app from its metadata, an OpenID Connect app, a group and assignments; an employee signs in through Auth, and loses both when removed, at desktop/mobile in both themes": register/refuse/stop hook and Activity latency/outcome at 1440/390); `docs/inline-hooks.md`. Exact current-door semantics cover strict RER/general OIDC issuance, SAML, self-registration, staged move-in and source-id-matched imports. Subjects, roles, MFA, policy and reviewed identity bindings remain protected, and live authority is rechecked after each remote call. AUTH-MIGRATION-002 inherits the password-verification/first-login hook; new match/create doors in AUTH-HRIS-001, AUTH-HRIS-002 and AUTH-SCIM-002 inherit every hook protection before shipping. Password-hook registration currently refuses; no password-verification or general identity-matching bridge is claimed.
 
 **AUTH-REQUESTS-001 — Access requests and time-bound grants (missing).** Request Salesforce access and temporary AWS elevation from the launcher, have the required independent people approve, provision only those roles, and let the grant expire while a connector fails. Reject self/stale/concurrent approvals and verify revocation/escalation before closing the request.
 
@@ -280,7 +283,8 @@ Existing evidence and limits: src/auth/move-in/sources.mjs; src/auth/move-in/rou
 
 **AUTH-MIGRATION-002 — Custom-directory and progressive move-in (partial).** Import Google and Auth0 records, migrate one eligible legacy worker at first login through the real bridge, and compare downstream subject mapping before/after. Refuse a wrong password, email collision and disabled worker; interrupt migration and prove an idempotent outcome and a cleanly disabled bridge.
 
-Existing evidence and limits: src/auth/move-in/sources.mjs; tests/auth/move-in-staging.test.mjs; tests/auth/move-in-admission.test.mjs — Google/Auth0 staged imports exist; first-login database migration does not.
+Existing evidence and limits: src/auth/move-in/sources.mjs; tests/auth/move-in-staging.test.mjs; tests/auth/move-in-admission.test.mjs — Google/Auth0 staged imports exist; first-login database migration does not. Its future password-verification or match/create import doors inherit every AUTH-HOOKS-001 signature, minimal-payload, timeout/fail-policy, protected-identity, destination and audited-call obligation before shipping.
+
 
 **AUTH-MIGRATION-003 — Cutover enrollment campaign (partial).** In an authorized Okta test tenant with 20 staged employees, run a campaign: all 20 enroll through Okta-federated proof with no help-desk action while the dashboard counts down. Leave 3 unenrolled and see them named as overdue with manager reminders and in the export. Refuse a person whose email matches but whose Okta subject differs, an unstaged person, proof after the campaign window and campaign proof for an administrator. Bridge one employee's Okta password and sign in with it at RADIUS after cutover. Repeat the enrollment proof with Entra ID and JumpCloud as upstreams.
 

@@ -157,6 +157,7 @@ test('inline hooks add only approved token and SAML fields, deny registration an
  const config=await relyingParty(r,app.clientId,oidc.ClientSecretBasic(app.clientSecret));
  const create=async data=>{const response=await r.admin('hooks/register',data);assert.equal(response.status,201);return response.json();};
  const disable=async id=>assert.equal((await r.admin('hooks/disable',{id})).status,200);
+ assert.equal((await r.admin('hooks/register',{point:'password_import',url:'https://hooks.example.com/password'})).status,409);
  const tokenHook=await create({point:'token',appId:app.id,url:'https://hooks.example.com/token',allowedFields:['cost_center']});
  const issued=await (await signIn(r,config,{redirect:`${RP}/hooks`})).grant();assert.equal(issued.claims().cost_center,'CC-42');
  assert.ok(verifiedHook(tokenHook.secret,edge.received[0]));
