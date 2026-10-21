@@ -145,7 +145,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const group=await post('/api/auth/groups/create',{name:'US engineering staff'},201);await post('/api/auth/groups/add',{groupId:group.id,personId:worker.id});
  const appConfig=await post('/api/auth/company-apps/create',{name:'Engineering documents',entityId:'https://documents.example.com',acsUrl:'https://documents.example.com/acs'},201);
  await page.goto(app.origin+'/app/roles');
- const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');
+ const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');await definition.getByText('Choose permissions',{exact:true}).click();
  for(const id of ['roles.view','people.view','people.factors.reset','groups.view'])await definition.locator(`input[value="${id}"]`).check();
  await definition.getByRole('button',{name:'Preview role'}).click();await expect(definition.locator('[data-role-apply]')).toBeVisible();await shoot('role-preview');await saved(()=>definition.locator('[data-role-apply]').click());
  const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.getByLabel('Role',{exact:true}).selectOption({label:'Engineering support'});
