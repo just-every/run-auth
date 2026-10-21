@@ -143,9 +143,9 @@ async function scopeMetadata(db, namespace, schema) {
  * and bring newly added tables into the namespace before obtaining the facade.
  * The registry's namespace must be derived from its validated organization id.
  */
-export function scopedDatabase(db, organization) {
+export function scopedDatabase(db, organization, retained = false) {
  const namespace = namespaceFor(organization.id);
- if (organization.namespace !== namespace || organization.status !== 'active') throw new Error('organization_not_ready');
+ if (organization.namespace !== namespace || organization.status !== (retained ? 'erased' : 'active')) throw new Error('organization_not_ready');
  const schema = schemas.get(organization);
  if (!schema) throw new Error('organization_schema_required');
  const names = schema.names;
@@ -195,6 +195,18 @@ export async function organizationDatabase(db, id) {
  if (seed.length) await db.batch(seed);
  schemas.set(organization, schema);
  return {db: scopedDatabase(db, organization), organization};
+}
+
+// Erased issuers never reopen their public routes. Installation-owner erasure
+// custody uses this internal handle only for anonymous receipts and sealed retry
+// work; it neither provisions a schema nor creates a new identity/session.
+export async function erasedOrganizationDatabase(db, id) {
+ if (typeof id !== 'string' || !/^[0-9a-f]{32}$/.test(id)) return null;
+ const organization = await db.prepare("SELECT id,namespace,status FROM auth_organizations WHERE id=? AND status='erased'").bind(id).first();
+ if (!organization) return null;
+ const schema = await currentSchema(db, organization.namespace);
+ schemas.set(organization, schema);
+ return {db: scopedDatabase(db, organization, true), organization};
 }
 
 /** Reserve a unique id before DDL, then publish readiness only after every

@@ -6,8 +6,29 @@
   if(!response.ok)throw new Error(body.error==='local_email_step_up_required'?'Confirm your email in Sign-in methods, then try again.':body.error)
   return body
  }
+ const text=(tag,value)=>{const element=document.createElement(tag);element.textContent=value;return element}
+ const renderEffects=(output,effects)=>{
+  output.replaceChildren()
+  if(!effects.length){output.textContent='No person gains or loses actions in the current directory.';return}
+  const list=document.createElement('ul')
+  list.className='bulk-entries'
+  for(const effect of effects) {
+   const item=document.createElement('li')
+   item.append(text('strong',effect.email || effect.personId),text('p',`Person ID: ${effect.personId}`))
+   for(const [label,actions] of [['Gains',effect.gained],['Loses',effect.lost]]) {
+    for(const action of actions) {
+     const resource=action.resourceKind===undefined?'':` · ${action.resourceKind}: ${action.resourceId}`
+     item.append(text('p',`${label} ${action.permission}${resource}`))
+    }
+   }
+   list.append(item)
+  }
+  output.append(list)
+ }
  for(const form of document.querySelectorAll('[data-role-form]')) {
-  const apply=form.querySelector('[data-role-apply]'),output=form.querySelector('[data-role-preview]')
+  const apply=form.querySelector('[data-role-apply]'),placeholder=form.querySelector('[data-role-preview]'),output=document.createElement('div')
+  for(const attribute of placeholder.attributes)output.setAttribute(attribute.name,attribute.value)
+  placeholder.replaceWith(output)
   form.addEventListener('input',()=>{apply.hidden=true})
   form.addEventListener('submit',async event=>{
    event.preventDefault();apply.hidden=true
@@ -18,7 +39,7 @@
    if(kind==='revoke')data.grantId=fields.get('grantId')
    try {
     const preview=await post('preview',data),effects=preview.plan.effects || []
-    output.textContent=effects.length?effects.map(effect=>`${effect.email}: gains ${effect.gained.length} actions; loses ${effect.lost.length} actions.`).join(' '):'Role definition prepared. No person gains authority until it is delegated.'
+    renderEffects(output,effects)
     apply.hidden=false
     apply.onclick=async()=>{apply.disabled=true;try{await post('apply',{previewId:preview.previewId});location.reload()}catch(error){output.textContent=error.message;apply.hidden=true;apply.disabled=false}}
    }catch(error){output.textContent=error.message}

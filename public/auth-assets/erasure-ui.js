@@ -6,6 +6,7 @@
   return body
  }
  const bind=(selector,action,fields)=>{for(const form of document.querySelectorAll(selector))form.addEventListener('submit',async event=>{event.preventDefault();try{await post(action,fields(Object.fromEntries(new FormData(form))));location.reload()}catch(error){form.querySelector('[data-erasure-result]').textContent=error.message}})}
+ bind('[data-erasure-retry]','retry',data=>({receiptId:data.receiptId,organizationId:data.organizationId,confirmRemoteDeletion:data.consent==='on'}))
  bind('[data-erasure-policy]','policy',()=>({confirm:true,automaticDeletion:false,honorLegalHolds:true}))
  bind('[data-erasure-hold]','hold',data=>({...data,kind:'person'}))
  bind('[data-erasure-release]','hold',data=>({...data,release:true}))

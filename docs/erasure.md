@@ -60,6 +60,11 @@ with the selected organization's ID, then confirm the exact phrase
 `RESET <issuer>`. This removes that namespace's records, including owners,
 while retaining anonymized evidence, receipts and the journal. Download the
 confirm response: the session used to reset the organization no longer exists.
+The erased issuer remains unavailable. The root installation owner can still
+read its anonymous receipts in Erasure and explicitly retry unfinished remote
+work with `organizationId` plus `receiptId` at the root retry endpoint. This
+requires the installation owner’s own hardware and fresh email proof, is audited,
+and never exposes sealed credentials or restores the employer’s identity data.
 
 A root local installation can similarly preview `kind:"installation"`; hosted
 installation deletion is refused. If other organizations exist, the API refuses

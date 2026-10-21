@@ -4,9 +4,10 @@ import {authority,requireLocalEmail,requireAuthority} from '../local-email.mjs';
 import {ensureSigningKey} from '../keys.mjs';
 import {planErasure,publicPlan} from './plan.mjs';
 import {commitErasure} from './execute.mjs';
-import {publicRemote,executeRemote} from './remote.mjs';
+import {executeRemote} from './remote.mjs';
 import {signedJournal} from './export.mjs';
 import {organizationOf} from './journal.mjs';
+import {receiptModel,retainedReceipts,retryRetained} from './retained.mjs';
 
 const ACTIONS=['/erasure/preview','/erasure/confirm','/erasure/hold','/erasure/policy','/erasure/retry'];
 export const ERASURE_READS=['/api/auth/erasure/receipts','/api/auth/erasure/journal'];
@@ -25,14 +26,13 @@ const validKind=kind=>{if(!['person','app','organization','installation'].includ
 const targetOf=(ctx,data)=>String(data.target||data.personId||data.appId||(['organization','installation'].includes(data.kind)?organizationOf(ctx):''));
 export async function erasureModel(ctx,request) {
  await owner(ctx,request);
- const [policy,holds,receipts,remote]=await Promise.all([
+ const [policy,holds,receipts,retained]=await Promise.all([
   one(ctx,'SELECT * FROM auth_erasure_policy WHERE singleton=1'),
   all(ctx,'SELECT id,kind,target,reason,created_at,released_at FROM auth_erasure_holds ORDER BY created_at DESC'),
-  all(ctx,'SELECT id,reference,kind,actor_ref,created_at,stores,limitations,decisions,status FROM auth_erasure_receipts ORDER BY created_at DESC'),
-  all(ctx,'SELECT * FROM auth_erasure_remote ORDER BY created_at DESC'),
+  receiptModel(ctx),retainedReceipts(ctx),
  ]);
  return {policy:policy?{configured:Boolean(policy.configured),...JSON.parse(policy.policy)}:{configured:false},holds,
-  receipts:receipts.map(r=>({id:r.id,reference:r.reference,kind:r.kind,actor:r.actor_ref,createdAt:r.created_at,stores:JSON.parse(r.stores),limitations:JSON.parse(r.limitations),decisions:JSON.parse(r.decisions),local:'complete',status:r.status,remote:remote.filter(d=>d.receipt_id===r.id).map(publicRemote)}))};
+  receipts:[...receipts,...retained]};
 }
 export async function erasureRead(ctx,request,path=new URL(request.url).pathname) {
  await owner(ctx,request);
@@ -79,6 +79,7 @@ export async function erasureAction(ctx,request,path,data) {
  }
  if(path==='/erasure/retry') {
   if(data.confirmRemoteDeletion!==true||typeof data.receiptId!=='string')fail('remote_erasure_confirmation_required');
+  if(data.organizationId){await retryRetained(ctx,s,data);return json(await erasureModel(ctx,request));}
   await guarded(ctx,s,'UPDATE auth_erasure_receipts SET status=status WHERE id=?',[data.receiptId]);
   await executeRemote(ctx,data.receiptId);return json(await erasureModel(ctx,request));
  }
