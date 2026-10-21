@@ -1,6 +1,6 @@
 import {createLocalJWKSet,decodeJwt,jwtVerify} from 'jose';
 import {AuthError,auditDetail,fail,hash,json,limit,random,run} from '../../core.mjs';
-import {signToken} from '../../keys.mjs';
+import {signToken,ensureSigningKey} from '../../keys.mjs';
 import {CLIENT_PREFIX,SCOPES} from './config.mjs';
 import {serviceRow,requireLive,liveGuard} from './authority.mjs';
 
@@ -52,7 +52,10 @@ export async function adminToken(ctx,request) {
   await assertion(ctx,app,form);
   const now=Math.floor(ctx.now()/1000),expiresAt=Math.min(now+300,Math.floor(app.expires_at/1000));
   if(expiresAt<=now)fail('invalid_client',401);
-  const accessToken=await signToken(ctx,{aud:ctx.origin+'/api/auth/admin/v1',sub:'admin-service:'+app.id,client_id:app.client_id,admin_service_app:app.id,revision:app.revision,scope:scopes.join(' '),jti:random()},{typ:'at+jwt',expiresAt});
+  // Admin tokens are accepted only by this issuer's REST API, whose verifier
+  // reads the authoritative local JWKS on every call rather than a cached RP copy.
+  await ensureSigningKey(ctx);
+  const accessToken=await signToken(ctx,{aud:ctx.origin+'/api/auth/admin/v1',sub:'admin-service:'+app.id,client_id:app.client_id,admin_service_app:app.id,revision:app.revision,scope:scopes.join(' '),jti:random()},{typ:'at+jwt',expiresAt,published:true});
   // Signing awaits cryptography. Recheck live authority in the last committing
   // statement, so demotion, reassignment, revocation or expiry wins that race.
   const guard=liveGuard(ctx,app,expiresAt*1000);

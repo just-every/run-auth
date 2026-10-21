@@ -14,13 +14,21 @@ export async function authenticateAdmin(ctx,request,scope,resource) {
  }catch(error){if(error instanceof AuthError)throw error;fail('admin_service_token_refused',401);}
  const sec=Math.floor(ctx.now()/1000);
  if(header.typ!=='at+jwt'||claims.aud!==ctx.origin+'/api/auth/admin/v1'||typeof claims.admin_service_app!=='string'||!claims.admin_service_app||claims.admin_service_app.length>256||claims.sub!=='admin-service:'+claims.admin_service_app||!Number.isSafeInteger(claims.revision)||claims.revision<1||typeof claims.scope!=='string'||claims.scope.length>2048||!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.iat>sec+30||claims.exp-claims.iat>300||claims.amr!==undefined||claims.sid!==undefined||claims.role!==undefined)fail('admin_service_token_refused',401);
- const app=await one(ctx,'SELECT * FROM auth_admin_service_apps WHERE id=? AND revision=?',claims.admin_service_app,claims.revision);
+ const app=await one(ctx,'SELECT * FROM auth_admin_service_apps WHERE id=?',claims.admin_service_app);
  if(!app)fail('admin_service_token_refused',401);
- await requireLive(ctx,app,request,claims.exp*1000);
  const tokenScopes=claims.scope.split(' ').filter(Boolean),registered=JSON.parse(app.scopes);
- if(!tokenScopes.length||tokenScopes.some(s=>!SCOPES.includes(s)))fail('admin_service_token_refused',401);
- const principal=principalFor(ctx,app,[...new Set(tokenScopes.filter(s=>registered.includes(s)))],claims.exp*1000);
- if(scope&&!principal.scopes.includes(scope))fail('admin_service_scope_required',403);
- if(resource&&!principal.permits(resource.kind,resource.id))fail('admin_service_resource_refused',403);
- return principal;
+ const granted=[...new Set(tokenScopes.filter(s=>registered.includes(s)&&SCOPES.includes(s)))];
+ try {
+  if(app.revision!==claims.revision)fail('admin_service_token_refused',401);
+  await requireLive(ctx,app,request,claims.exp*1000);
+  if(!tokenScopes.length||tokenScopes.some(s=>!SCOPES.includes(s)))fail('admin_service_token_refused',401);
+  const principal=principalFor(ctx,app,granted,claims.exp*1000);
+  if(scope&&!principal.scopes.includes(scope))fail('admin_service_scope_required',403);
+  if(resource&&!principal.permits(resource.kind,resource.id))fail('admin_service_resource_refused',403);
+  return principal;
+ }catch(error) {
+  // Only signature-verified machine claims can name the failed call's actor.
+  if(error instanceof AuthError)error.adminAudit={id:app.id,ownerId:app.owner_id,scopes:granted};
+  throw error;
+ }
 }

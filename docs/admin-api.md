@@ -94,3 +94,5 @@ Successful REST responses other than log reads carry a strong `ETag`. Read an au
 Error bodies include `error`; directory validation may also return `refusals`. REST responses include `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` and `RateLimit-Policy`. Rate-limited responses include `Retry-After` in seconds. The token endpoint has its own rate window and returns OAuth-style errors.
 
 Every machine call is audited with service app, accountable owner, scope and result. No admin scope can assign or change administrator roles or resource sets, modify a person's factors or recovery, approve recovery, manage signing keys, create or edit admin service apps, change emergency accounts or widen its own policy. Those actions remain with interactive administrators under their normal proof requirements.
+
+Admin access tokens are accepted only by this issuer’s Admin API. Its verifier reads the current local JWKS on every request, so these tokens can use a newly published issuer key immediately; external OIDC ID/access tokens keep their existing JWKS cache warm-up.

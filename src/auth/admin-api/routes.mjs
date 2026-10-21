@@ -1,4 +1,3 @@
-import {decodeJwt} from 'jose';
 import {AuthError,one,hash,json,fail,auditDetail} from '../core.mjs';
 import {authenticateAdmin} from './credentials/index.mjs';
 import {readAdmin} from './reads.mjs';
@@ -19,7 +18,7 @@ async function quota(ctx,key) {
  return one(ctx,'INSERT INTO auth_limits(bucket,count,expires_at) VALUES(?,1,?) ON CONFLICT(bucket) DO UPDATE SET count=CASE WHEN expires_at<=? THEN 1 ELSE count+1 END, expires_at=CASE WHEN expires_at<=? THEN excluded.expires_at ELSE expires_at END RETURNING count,expires_at','admin-rest:'+key,ctx.now()+WINDOW,ctx.now(),ctx.now());
 }
 export async function adminApi(ctx,request) {
- const url=new URL(request.url),path=url.pathname.slice(BASE.length);let principal=null,response,result='server_error',rate=null;
+ const url=new URL(request.url),path=url.pathname.slice(BASE.length);let principal=null,identity=null,response,result='server_error',rate=null;
  try {
   if(!url.pathname.startsWith(BASE+'/')&&url.pathname!==BASE)fail('not_found',404);
   principal=await authenticateAdmin(ctx,request);
@@ -38,17 +37,11 @@ export async function adminApi(ctx,request) {
   } else fail('method_not_allowed',405);
   result=response.ok?'allowed':`http_${response.status}`;
  } catch(error) {
-  result=error instanceof AuthError?error.message:'server_error';
+  result=error instanceof AuthError?error.message:'server_error';identity=error.adminAudit??null;
   response=json({error:result},error instanceof AuthError?error.status:500);
  }
- // Identity hints are used only in the audit after failed authentication and
- // are marked unauthenticated; a claimed subject never authorizes a command.
- let app=null;
- if(!principal) {
-  const token=/^Bearer (\S+)$/i.exec(request.headers.get('authorization')||'')?.[1];
-  if(token&&token.length<=16384)try{const id=decodeJwt(token).admin_service_app;if(typeof id==='string'&&id.length<=256)app=await one(ctx,'SELECT id,owner_id FROM auth_admin_service_apps WHERE id=?',id);}catch{}
- }
- await auditDetail(ctx,principal?.actorId??null,'admin_api_call',principal?.id??app?.id??null,{serviceApp:principal?.id??app?.id??null,owner:principal?.ownerId??app?.owner_id??null,scope:principal?.scopes.join(' ')??'',result,authenticated:Boolean(principal),method:request.method,path});
+ const actor=principal??identity;
+ await auditDetail(ctx,actor?'admin-service:'+actor.id:null,'admin_api_call',actor?.id??null,{serviceApp:actor?.id??null,owner:actor?.ownerId??null,scope:actor?.scopes.join(' ')??'',result,authenticated:Boolean(principal),method:request.method,path});
  if(!rate)rate=await quota(ctx,'untrusted:'+await hash(request.headers.get('cf-connecting-ip')||'unknown'));
  response.headers.set('ratelimit-limit',String(RATE));response.headers.set('ratelimit-remaining',String(Math.max(0,RATE-rate.count)));response.headers.set('ratelimit-reset',String(Math.max(0,Math.ceil((rate.expires_at-ctx.now())/1000))));response.headers.set('ratelimit-policy',`${RATE};w=60`);
  if(response.status===429)response.headers.set('retry-after','60');
