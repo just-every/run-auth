@@ -29,11 +29,11 @@ export async function adminApi(ctx,request) {
    if(!response)fail('not_found',404);
    await principal.assertAuthority();
    if(before!==await epoch(ctx))fail('resource_changed',409);
-   if(path!=='/logs')response.headers.set('etag',entityTag(principal,before));
+   if(path!=='/logs')response.headers.set('etag',await entityTag(ctx,principal,before));
   } else if(['POST','PUT','PATCH','DELETE'].includes(request.method)) {
    const data=await body(request),version=await precondition(ctx,request,principal,!(request.method==='POST'&&['/groups','/apps','/people'].includes(path)));
    response=await writeAdmin(ctx,transactionPrincipal(ctx,principal,version),path,request.method,data);
-   response.headers.set('etag',entityTag(principal,await epoch(ctx)));
+   response.headers.set('etag',await entityTag(ctx,principal,await epoch(ctx)));
   } else fail('method_not_allowed',405);
   result=response.ok?'allowed':`http_${response.status}`;
  } catch(error) {

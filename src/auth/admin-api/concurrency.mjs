@@ -1,11 +1,16 @@
-import {one,random,fail} from '../core.mjs';
+import {one,random,fail,hash} from '../core.mjs';
 
 export const epoch=async ctx=>(await one(ctx,'SELECT version FROM auth_admin_api_epoch WHERE id=1')).version;
-export const entityTag=(principal,version)=>`"auth-v1-${principal.id}-${principal.revision}-${version}"`;
+export async function entityTag(ctx,principal,version) {
+ // Owner configuration is outside D1's mutation triggers. Include its public
+ // identity/settings, never secrets, so a config redeploy invalidates old tags.
+ const config=(ctx.configuredUpstreamProviders??ctx.upstreamProviders??[]).map(p=>[p.id,p.label??p.preset,p.preset,p.issuer??null,p.tenant??null,p.clientId]);
+ return `"auth-v1-${principal.id}-${principal.revision}-${version}-${await hash(JSON.stringify(config))}"`;
+}
 export async function precondition(ctx,request,principal,required) {
  const version=await epoch(ctx),given=request.headers.get('if-match');
  if(required&&!given)fail('precondition_required',428);
- if(given&&given!==entityTag(principal,version))fail('precondition_failed',412);
+ if(given&&given!==await entityTag(ctx,principal,version))fail('precondition_failed',412);
  return version;
 }
 // First native commit atomically claims the expected epoch and live service
