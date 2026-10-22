@@ -75,7 +75,9 @@ export async function continuityDrill(t) {
  // must fail just like the consumed emergency token and the two lost factors.
  const pending=await app.post('/auth/identity/email/request',{email:ownerEmail}),pendingLink=await app.link();
  const completed=await app.post('/api/auth/recovery/token',{token:recovery},restored);assert.equal(completed.status,200);
+ const emergencyNotices=await(await app.get('/api/auth/notices',{cookie:restored})).json();assert.ok(emergencyNotices.some(n=>n.recovery_id===null),'emergency recovery retains a credential-free notice');
  assert.equal((await app.post('/api/auth/recovery/token',{token:recovery},restored)).status,400);
+ assert.equal((await(await app.get('/api/auth/notices',{cookie:restored})).json()).length,emergencyNotices.length,'replayed emergency authority sends no second notice');
  assert.equal((await app.post('/auth/identity/email/confirm',{token:pendingLink.searchParams.get('token')},cookieOf(pending))).status,400);
  for(const key of [owner.key,spare.key])assert.equal((await authenticate(runtime,key)).response.status,400,'restored lost hardware cannot sign in after owner recovery');
  assert.equal((await app.get('/api/auth/people',{cookie:restored})).status,403,'emergency redemption still needs replacement hardware enrollment');
@@ -84,5 +86,5 @@ export async function continuityDrill(t) {
  const people=await peopleResponse.json();assert.ok(people.some(p=>p.email===ownerEmail)&&people.some(p=>p.email===workerEmail),'owner can administer the restored root directory');
  assert.equal((await authenticate(runtime,replacement.key)).response.status,200);
  t.diagnostic('MEASURED root-only CLI archive/reset/restore, separate private configuration custody, real outbox email proof, owner-only local recovery, replacement hardware, dead archived sessions, old-token and lost-factor replay refusal');
- t.diagnostic('UNMEASURED isolated employer-owner archive/restore (AUTH-TRANSFER-002), independent approval of local owner recovery, and remotely hosted issuer disaster recovery; this rehearsal grants no new recovery authority');
+ t.diagnostic('UNMEASURED isolated employer-owner archive/restore (AUTH-TRANSFER-002), remotely hosted issuer disaster recovery (AUTH-OPS-001); AUTH-IDENTITY-001 explicitly permits the local owner emergency token, and this rehearsal grants no new recovery authority');
 }

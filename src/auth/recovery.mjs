@@ -1,4 +1,5 @@
 import {syncObligations} from './obligations/sources.mjs';
+import {recoveryNotice,recoveryEmail} from './recovery-notices.mjs';
 import {DAY,random,hash,one,all,run,requireSession,audit,json,fail} from './core.mjs';
 import {requireLocalEmail,authority,requireAuthority} from './local-email.mjs';
 import {emit} from './events/store.mjs';
@@ -18,11 +19,17 @@ export async function changeRecovery(ctx,request,data,action) {
  if(action==='approve') {
   if(r.person_id===s.person_id)fail('distinct_admin_required',403);
   requireLocalEmail(ctx,s);const guard=await requireAccountRank(ctx,s,r.person_id,authority(ctx,s,['owner','admin']));
-  const result=await run(ctx,`UPDATE auth_recoveries SET approved_by=? WHERE id=? AND cancelled_at IS NULL AND completed_at IS NULL AND ${guard.clause}`,s.person_id,id,...guard.args);
+  const [result]=await ctx.db.batch([
+   ctx.db.prepare(`UPDATE auth_recoveries SET approved_by=? WHERE id=? AND cancelled_at IS NULL AND completed_at IS NULL AND ${guard.clause}`).bind(s.person_id,id,...guard.args),
+   recoveryNotice(ctx,(sql,...args)=>ctx.db.prepare(sql).bind(...args),r.person_id,id,action,{clause:'changes()>0',args:[]}),
+  ]);
   if(!result.meta.changes){await requireAuthority(ctx,s,guard);fail('recovery_changed',409);}
  } else if(action==='cancel') {
   if(r.person_id!==s.person_id)fail('forbidden',403);
-  const result=await run(ctx,'UPDATE auth_recoveries SET cancelled_at=? WHERE id=? AND completed_at IS NULL',ctx.now(),id);if(!result.meta.changes)fail('recovery_changed',409);
+  const [result]=await ctx.db.batch([
+   ctx.db.prepare('UPDATE auth_recoveries SET cancelled_at=? WHERE id=? AND completed_at IS NULL').bind(ctx.now(),id),
+   recoveryNotice(ctx,(sql,...args)=>ctx.db.prepare(sql).bind(...args),r.person_id,id,action,{clause:'changes()>0',args:[]}),
+  ]);if(!result.meta.changes)fail('recovery_changed',409);
  } else {
   if(r.person_id!==s.person_id)fail('requesting_session_required',403);
   if(!JSON.parse(s.amr).includes('email'))fail('email_proof_required',403);
@@ -31,6 +38,7 @@ export async function changeRecovery(ctx,request,data,action) {
   // Conditional D1 transaction makes cancellation and completion mutually exclusive.
   const results=await ctx.db.batch([
    ctx.db.prepare(`UPDATE auth_recoveries SET completed_at=?,completion_marker=? WHERE id=? AND cancelled_at IS NULL AND completed_at IS NULL AND (ready_at<=? OR approved_by IS NOT NULL) AND ${guard.clause}`).bind(now,marker,id,now,...guard.args),
+   recoveryNotice(ctx,(sql,...args)=>ctx.db.prepare(sql).bind(...args),s.person_id,id,action,{clause:'EXISTS(SELECT 1 FROM auth_recoveries WHERE id=? AND completion_marker=?)',args:[id,marker]}),
    ctx.db.prepare('DELETE FROM auth_passkeys WHERE person_id=? AND EXISTS(SELECT 1 FROM auth_recoveries WHERE id=? AND completion_marker=?)').bind(s.person_id,id,marker),
    ctx.db.prepare('UPDATE oa_operators SET version=version+1 WHERE id=? AND EXISTS(SELECT 1 FROM auth_recoveries WHERE id=? AND completion_marker=?)').bind(s.person_id,id,marker),
    ctx.db.prepare("UPDATE auth_sessions SET person_version=(SELECT version FROM oa_operators WHERE id=?),amr=? WHERE id=? AND EXISTS(SELECT 1 FROM auth_recoveries WHERE id=? AND completion_marker=?)").bind(s.person_id,JSON.stringify([...(ctx.local?['dev']:[]),...(s.upstream_proof_id?['oidc']:[]),'email']),s.id,id,marker),
@@ -41,6 +49,7 @@ export async function changeRecovery(ctx,request,data,action) {
  await audit(ctx,s.person_id,`recovery_${action}`,id);
  const owner=await one(ctx,'SELECT id,email FROM oa_operators WHERE id=?',r.person_id);
  await emit(ctx,{approve:'recovery.approved',cancel:'recovery.cancelled',complete:'recovery.completed'}[action],{type:'person',id:owner.id,email:owner.email},{recovery:id});
+ await recoveryEmail(ctx,r.person_id,action);
  return json({ok:true});
 }
 // CLI adapter generates token locally, sends only this SHA-256 digest via wrangler D1 execute,
@@ -52,9 +61,10 @@ export async function redeemRecoveryToken(ctx,request,data) {
  const tokenHash=await hash(String(data.token||'')),now=ctx.now(),marker=random(),guard=authority(ctx,s,['owner']);
  const results=await ctx.db.batch([
   ctx.db.prepare(`UPDATE auth_recovery_tokens SET consumed_at=?,consumption_marker=? WHERE token_hash=? AND consumed_at IS NULL AND ${guard.clause}`).bind(now,marker,tokenHash,...guard.args),
+  recoveryNotice(ctx,(sql,...args)=>ctx.db.prepare(sql).bind(...args),s.person_id,null,'emergency',{clause:'EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)',args:[tokenHash,marker]}),
   ctx.db.prepare('DELETE FROM auth_passkeys WHERE person_id=? AND EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)').bind(s.person_id,tokenHash,marker),
   ctx.db.prepare('UPDATE oa_operators SET version=version+1 WHERE id=? AND EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)').bind(s.person_id,tokenHash,marker),
   ctx.db.prepare("UPDATE auth_sessions SET person_version=(SELECT version FROM oa_operators WHERE id=?),amr=? WHERE id=? AND EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)").bind(s.person_id,JSON.stringify(ctx.local?['dev','email']:['email']),s.id,tokenHash,marker),
   ctx.db.prepare('UPDATE auth_sessions SET revoked_at=? WHERE person_id=? AND id!=? AND EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)').bind(now,s.person_id,s.id,tokenHash,marker),
- ]);if(!results[0].meta.changes){await requireAuthority(ctx,s,guard);fail('invalid_recovery_token');}await audit(ctx,s.person_id,'emergency_recovery');return json({ok:true});
+ ]);if(!results[0].meta.changes){await requireAuthority(ctx,s,guard);fail('invalid_recovery_token');}await audit(ctx,s.person_id,'emergency_recovery');await recoveryEmail(ctx,s.person_id,'emergency');return json({ok:true});
 }

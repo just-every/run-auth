@@ -4,15 +4,15 @@ on:
   pull_request:
 jobs:
   verify:
-    # Four parallel shards keep a push's Verify well inside 15 minutes;
-    # together they run everything `rer verify` runs.
+    # Native checks and the browser job together run every rer verify check.
+    # The browser image already contains the pinned browser and OS dependencies.
     name: verify (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [app, protocol, workforce, browser]
+        shard: [app, protocol, workforce]
     permissions:
       contents: read
     env:
@@ -39,8 +39,6 @@ jobs:
           node-version: 22.20.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - if: matrix.shard == 'browser'
-        run: pnpm exec playwright install --with-deps chromium
       - if: matrix.shard == 'app'
         run: pnpm exec rer check --profile first-party
       - run: pnpm run build
@@ -50,5 +48,29 @@ jobs:
         run: pnpm run test:auth:protocol
       - if: matrix.shard == 'workforce'
         run: pnpm run test:auth:workforce
-      - if: matrix.shard == 'browser'
-        run: pnpm run test:browser
+  browser:
+    name: verify (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.1-noble
+      options: --ipc=host --init
+    permissions:
+      contents: read
+    env:
+      CI: 'true'
+      RER_SERVER_JOURNEY: '1'
+      WRANGLER_SEND_METRICS: 'false'
+      X_LOCAL_EXPLORER: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.20.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run test:browser
