@@ -161,8 +161,25 @@ async function followupRolesAtWidth({app,browser,owner,page,shoot,width,fixtureB
   for(const rootActor of [{context:owner,page},installationAdmin,manager]) {
    await rootActor.page.setViewportSize({width,height:1000});
    const refused=await rootActor.context.request.post(app.origin+prefix+'/api/auth/followup/settings',{data:{...rootPolicy,confirm:true},headers:{origin:app.origin}});
-   assert.ok([401,403].includes(refused.status()),`installation authority cannot write employer policy at ${width}px`);
+   assert.equal(refused.status(),401,`an installation session is not an employer session at ${width}px`);
   }
+  // The installation's follow-up coordinator joins this employer as an
+  // ordinary member. A local passkey and fresh email proof still carry no
+  // installation role into the employer's policy door.
+  await body(await orgPost('/api/auth/organizations/invite',{email:manager.address,name:'Jordan Rivera'}),201);
+  const memberPost=(path,data)=>manager.context.request.post(app.origin+prefix+path,{data,headers:{origin:app.origin}});
+  assert.equal((await memberPost('/auth/identity/email/request',{email:manager.address})).status(),202);
+  assert.equal((await memberPost('/auth/identity/email/confirm',{token:(await app.link(prefix)).searchParams.get('token')})).status(),200);
+  await manager.page.goto(app.origin+prefix+'/app/methods');
+  const memberRegistered=manager.page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
+  await manager.page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await memberRegistered).status(),200);
+  const memberWrite=await memberPost('/api/auth/followup/settings',{...rootPolicy,confirm:true});
+  assert.equal(memberWrite.status(),403);assert.equal((await memberWrite.json()).error,'role_permission_required','an installation role is not an employer role');
+  assert.equal((await body(await manager.context.request.get(app.origin+prefix+'/api/auth/followup'))).canManage,false);
+  await manager.page.goto(app.origin+prefix+'/app/account');
+  await expect(manager.page.locator('[data-followup-panel]')).toBeVisible();
+  await expect(manager.page.locator('[data-followup-settings]')).toHaveCount(0);
+  await shoot('followup-installation-role-member',manager.page);
   const unchanged=await body(await orgContext.request.get(app.origin+prefix+'/api/auth/followup'));
   assert.deepEqual(unchanged.policy,orgPolicy.policy,'isolated employer policy remains unchanged');
   await orgPage.goto(app.origin+prefix+'/app/account');
