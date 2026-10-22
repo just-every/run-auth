@@ -1,6 +1,8 @@
 # Follow-up
 
-Activity records unresolved enrollment, recovery and provisioning work independently of reminder delivery. The source action decides completion, cancellation or expiry. A sent reminder never proves that access was granted or removed.
+Activity records unresolved enrollment, recovery, provisioning, app setup and delegated assignment work independently of reminder delivery. The source action decides completion, cancellation or expiry. A sent reminder never proves that access was granted or removed.
+
+App setup completes only after the actual link callback confirms it. A human-approved proposal remains visible if its callback fails; revoking a preparer key does not end a proposal already entrusted to people. Delegated assignment follow-up tracks employee consent, independent approval and exact execution, and stops with the task’s authority. It never claims downstream access from local assignment completion.
 
 The current slice sends escalation email only to explicitly approved, currently active organization owners and administrators. It does not yet send employee, decider or help-desk reminders. Slack, Teams, Oncall, chat decisions, generic access requests and reviews remain unfinished under AUTH-FOLLOWUP-001.
 

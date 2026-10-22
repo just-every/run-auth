@@ -229,7 +229,7 @@ export interface DelegatedTask {
 export interface FollowupModel {
  obligationsPage?: {hasMore:boolean;nextCursor:string|null};historyPage?: {hasMore:boolean;nextCursor:string|null}
  policy: {enabled:boolean;calendar:{timezone:string;weekdays:number[];holidays:string[];at:string};reminderBusinessDays:number;deadlineBusinessDays:number;recipients:string[];escalationRecipients:string[];escalation:string}
- obligations: Array<{id:string;kind:string;person_id:string|null;owner_id:string|null;next_action:string;calendar:string;deadline_at:number;next_due_at:number;state:string;last_error:string|null;delivery_error:string|null;reminders_stopped_at:number|null}>
+ obligations: Array<{id:string;kind:string;source_id:string;person_id:string|null;owner_id:string|null;next_action:string;calendar:string;deadline_at:number;next_due_at:number;state:string;last_error:string|null;delivery_error:string|null;reminders_stopped_at:number|null}>
  history: Array<{obligation_id:string;event:string;created_at:number;error:string|null}>
  limitations:string[]
 }
