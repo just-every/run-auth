@@ -27,6 +27,7 @@ test('agents journey: mint a key, an agent files a suspension, a person approves
   await expect(page.locator('h1')).toBeVisible();await accessible(`${width} ${theme} ${name}`,page);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
   await page.screenshot({path:join(directory,`agents-${name}-${width}-${theme}.png`),fullPage:true});
+  if(name.startsWith('followup'))await page.locator('[data-followup-panel]').screenshot({path:join(directory,`agents-${name}-${width}-${theme}-panel.png`)});
  }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});};
 
  // First owner: browser email link, setup, hardware passkey.

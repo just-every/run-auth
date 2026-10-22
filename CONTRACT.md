@@ -444,8 +444,8 @@ AUTH-TENANCY-001, AUTH-ROLES-001, AUTH-GRANTS-001 and AUTH-ERASURE-001 pass at `
 | Clauses | Done | Partial | Missing | Total |
 | --- | ---: | ---: | ---: | ---: |
 | Published | 13 | 0 | 0 | 13 |
-| Target and push further | 14 | 33 | 31 | 78 |
-| All | 27 | 33 | 31 | 91 |
+| Target and push further | 15 | 32 | 31 | 78 |
+| All | 28 | 32 | 31 | 91 |
 
 | Clause | Title | Kind | Status | Evidence | Gap |
 | --- | --- | --- | --- | --- | --- |
@@ -522,7 +522,7 @@ AUTH-TENANCY-001, AUTH-ROLES-001, AUTH-GRANTS-001 and AUTH-ERASURE-001 pass at `
 | `AUTH-TERRAFORM-001` | Terraform provider | target | missing |  | No implementing product path in audited src/ and tests/; acceptance journey remains to be built. |
 | `AUTH-MOBILE-001` | Native employee and administrator access | target | partial | `src/ui/pages/account.ts`; `tests/integration/browser.test.mjs` | responsive account/admin web exists; native apps, mobile SDKs and launcher do not. |
 | `AUTH-EVENTS-001` | Reliable lifecycle events and webhooks | target | done | `src/auth/events/`; `src/auth/outbound.mjs`; `tests/auth/events.test.mjs`; `COMPANY-APPS.md` |  |
-| `AUTH-FOLLOWUP-001` | Follow-through until access is resolved | target | partial | `tests/auth/provisioning.test.mjs` — "durable follow-up dispatches on the employer business calendar across DST and restart, escalates unresolved revocation and stops on source completion, cancellation and expiry"; `tests/integration/agents-browser.test.mjs` — "agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes" includes Activity follow-up settings, scheduling and source completion; `docs/follow-up.md` | Pre-0047 legacy-policy escalation, recovery missing-approval visibility and AUTH-TIMING-001 15-minute escalation are being asserted. Recipients, channels and request/review/stale sources are AUTH-FOLLOWUP-002/003/004. |
+| `AUTH-FOLLOWUP-001` | Follow-through until access is resolved | target | done | `tests/auth/provisioning.test.mjs` — "durable follow-up dispatches on the employer business calendar across DST and restart, escalates unresolved revocation and stops on source completion, cancellation and expiry": invitation, recovery awaiting distinct-admin approval and failed deprovision across weekend/DST/restart; due actions and reminders; legacy policy recipient-recheck escalation (including a stopped pre-0047 deadline); exact 15-minute downstream escalation outside business hours, concurrent/restart deduplication; normal-door completion/cancellation/expiry stops with retained history; policy refusals and credential-free mail. `tests/integration/agents-browser.test.mjs` — "agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes": Activity policy/scheduling, pending recovery restart and cancellation, enrollment completion and retained history at 1440/390 in both themes. `docs/follow-up.md` |  |
 | `AUTH-FOLLOWUP-002` | Role-derived recipients, manage-follow-up authority and early send | target | missing |  | Recipients are admin-chosen owner/admin IDs only; no permission, no early send. |
 | `AUTH-FOLLOWUP-003` | Access-request, review and stale-source obligations | target | missing |  | No request, review or stale-source obligations (depends on REQUESTS-001, REVIEWS-001, DECISIONS-001, SCIM-002, HRIS). |
 | `AUTH-FOLLOWUP-004` | Slack, Teams and Oncall follow-up channels | target | missing |  | Email only; no chat or Oncall adapters (depends on CHAT-001). |
