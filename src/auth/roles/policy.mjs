@@ -10,7 +10,7 @@ export function personInScope(state,scope,id,write=false) {
  const held=contains(scope.people,id)||[...groups].some(g=>contains(scope.groups,g));
  return held&&(!write||[...groups].every(g=>contains(scope.groups,g)));
 }
-export function permitted(state,permission,target={}) {
+function permissionAllowed(state,permission,target,checkRank) {
  const write=permission==='people.export'||(target.write??writePermission(permission)),kind=permissionKind(permission),mode=write?'edit':'view';
  const personId=target.personId??(accountPermission(permission)&&target.caseId?state.cases.find(c=>c.id===target.caseId)?.person_id:null);
  return state.entries.some(entry=>{
@@ -23,10 +23,14 @@ export function permitted(state,permission,target={}) {
   if(kind&&!target.personId&&!target.groupId&&!target.appId&&!target.caseId)return Object.values(scope).some(ids=>ids.length);
   // Rank follows permission and scope, and only fences administration of an
   // account. Group membership and app assignments are ordinary decisions.
-  if(personId&&accountPermission(permission)&&!lowerAccountRank(state,personId))return false;
+  if(checkRank&&personId&&accountPermission(permission)&&!lowerAccountRank(state,personId))return false;
   return true;
  });
 }
+export const permitted=(state,permission,target={})=>permissionAllowed(state,permission,target,true);
+// Machine adapters check actual permission/scope before reporting the separate
+// account-rank fence. This predicate grants no committing authority by itself.
+export const permittedWithinScope=(state,permission,target={})=>permissionAllowed(state,permission,target,false);
 export function assertPermission(state,permission,target={}) {
  if(!permitted(state,permission,target))fail('role_permission_required',403);
 }

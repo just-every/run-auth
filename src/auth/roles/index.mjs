@@ -23,7 +23,7 @@ export async function roleModel(ctx,s) {
  requireHardware(s);
  const state=await roleState(ctx,s);
  assertPermission(state,'roles.view');
- const model={commands:ROLE_COMMANDS,epoch:state.epoch,rank:state.rank,permissions:PERMISSIONS,builtinRoles:BUILTINS,
+ const model={commands:ROLE_COMMANDS,epoch:state.epoch,rank:state.rank,canDesignRoles:state.canDesignRoles,permissions:PERMISSIONS,builtinRoles:BUILTINS,
   roles:[...state.roles.values()],
   grants:state.grants.filter(g=>state.legacy||g.person_id===s.person_id||g.granted_by===s.person_id).map(g=>({...g,resources:JSON.parse(g.resources),active:state.activeGrants.some(a=>a.id===g.id)})),
   ownGrants:state.entries.map(e=>({id:e.id,roleId:e.role.id,rank:e.role.rank,permissions:e.role.permissions,resources:e.resources})),

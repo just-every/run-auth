@@ -6,6 +6,7 @@ import {generateKeyPair,exportJWK,SignJWT} from 'jose';
 import {chromium,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {openApp} from './runtime.mjs';
+import {delegatedAssignmentJourney} from './helpers/delegation-journey.mjs';
 
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 const LEAVER='leaver@northwind.example.com';
@@ -13,14 +14,14 @@ const LEAVER='leaver@northwind.example.com';
 test('agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes',async t=>{
  const app=await openApp();t.after(()=>app.close());await app.claim();
  const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
- const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),primary=page;
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  const accessible=async label=>{const results=await new AxeBuilder({page}).analyze();assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],label);};
- const shoot=async name=>{for(const [width,theme] of views){
+ const shoot=async (name,page=primary)=>{for(const [width,theme] of views){
   await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();
   await expect(page.locator('h1')).toBeVisible();await accessible(`${width} ${theme} ${name}`);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
@@ -103,5 +104,6 @@ test('agents journey: mint a key, an agent files a suspension, a person approves
  await expect(page.getByText('Service app Northwind access reconciler · Accountable: owner@example.com').first()).toBeVisible();
  await shoot('activity');
  assert.ok(!(await page.content()).includes(key),'Activity never shows the key');
+ await delegatedAssignmentJourney({app,browser,owner:context,page,shoot});
  assert.deepEqual(errors,[],'no browser runtime errors');
 });

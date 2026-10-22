@@ -195,11 +195,20 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  const ada=await register(r,r.ada);const bob=await register(r,r.bob);
  const plan=async(data,cookie=r.owner.cookie)=>{
   const response=await r.call('/api/auth/roles/preview',{method:'POST',cookie,data});assert.equal(response.status,200,await response.clone().text());
-  const preview=await response.json(),saved=await r.call('/api/auth/roles/apply',{method:'POST',cookie,data:{previewId:preview.previewId}});assert.equal(saved.status,200,await saved.clone().text());return (await saved.json()).plan;
+  const preview=await response.json(),saved=await r.call('/api/auth/roles/apply',{method:'POST',cookie,data:{previewId:preview.previewId}});assert.equal(saved.status,200,await saved.clone().text());assert.deepEqual((await saved.json()).plan,preview.plan);return preview.plan;
  };
+ const refusedPlan=async(data,cookie,status,error)=>{
+  const response=await r.call('/api/auth/roles/preview',{method:'POST',cookie,data});assert.equal(response.status,status,await response.clone().text());assert.equal((await response.json()).error,error);
+ };
+ for(const rank of [90,100])await refusedPlan({kind:'role',role:{name:'Too powerful',rank,permissions:['people.view']}},r.owner.cookie,400,'invalid_role');
  const role=await plan({kind:'role',role:{name:'Regional recovery specialists',rank:25,permissions:['roles.view','roles.grant','people.view','people.factors.reset','groups.view','cases.view','cases.open','cases.verify']}});
  const resources={view:{groups:[a.id,b.id]},edit:{groups:[a.id]}};
  const granted=await plan({kind:'grant',personId:'helper',roleId:role.role.id,resources});
+ const action=(permission,resourceId,resourceKind='people')=>({permission,...(resourceId?{resourceKind,resourceId}:{})});
+ const ordered=actions=>actions.map(a=>JSON.stringify(a)).sort();
+ assert.equal(granted.effects.length,1);assert.equal(granted.effects[0].personId,'helper');assert.equal(granted.effects[0].email,'helper@example.com');
+ assert.deepEqual(granted.effects[0].lost,[]);
+ assert.deepEqual(ordered(granted.effects[0].gained),ordered([action('roles.view'),action('roles.grant'),action('people.view','ada'),action('people.view','bob'),action('people.factors.reset','ada'),action('groups.view',a.id,'groups'),action('groups.view',b.id,'groups')]),'preview names the exact recipient, permissions and resources gained');
  const command=async(data)=>r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{reason:'Employee requested a verified factor reset',...data}});
  const visible=await (await r.call('/api/auth/roles/people',{cookie:helper.cookie})).json();assert.deepEqual(visible.people.map(p=>p.id).sort(),['ada','bob']);
  assert.equal((await r.call('/api/auth/roles/people?personId=bob',{cookie:helper.cookie})).status,200,'view B succeeds');
@@ -221,6 +230,35 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  const trail=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(trail.some(e=>e.event==='roles.factors.reset'));
  const noEmail=await r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{personId:'bob',reason:'Still refused'}});assert.equal(noEmail.status,403);
  // Revocation is live, rather than a session-embedded permission.
- await plan({kind:'revoke',grantId:granted.id});assert.equal((await r.call('/api/auth/roles/people',{cookie:helper.cookie})).status,403);
+ const revoked=await plan({kind:'revoke',grantId:granted.id});assert.equal((await r.call('/api/auth/roles/people',{cookie:helper.cookie})).status,403);
+ assert.equal(revoked.effects.length,1);assert.equal(revoked.effects[0].personId,'helper');assert.equal(revoked.effects[0].email,'helper@example.com');assert.deepEqual(revoked.effects[0].gained,[]);
+ assert.deepEqual(ordered(revoked.effects[0].lost),ordered([action('roles.view'),action('roles.grant'),action('people.view','bob'),action('people.view','senior'),action('groups.view',a.id,'groups'),action('groups.view',b.id,'groups')]),'revocation preview names current actions lost after live membership changed');
  assert.equal((await r.call('/api/auth/me',{cookie:bob.cookie})).status,200);
+ // Legacy administrators cannot create their equal or a higher rank. A scoped
+ // holder cannot author roles even when explicitly delegated roles.edit.
+ const senior=await register(r,await emailSession(r,'senior@example.com'));
+ for(const rank of [90,91])await refusedPlan({kind:'role',role:{name:'At or above chooser',rank,permissions:['people.view']}},senior.cookie,400,'invalid_role');
+ const author=await plan({kind:'role',role:{name:'Delegated role author',rank:5,permissions:['roles.view','roles.edit']}});
+ const all={view:{people:['*'],groups:['*'],apps:['*'],cases:['*']},edit:{people:['*'],groups:['*'],apps:['*'],cases:['*']}};
+ await plan({kind:'grant',personId:'helper',roleId:author.role.id,resources:all});
+ await refusedPlan({kind:'role',role:{name:'Unauthorized custom role',rank:1,permissions:['roles.view']}},helper.cookie,403,'owner_admin_required');
+ // Security/policy administration can delegate a rank-79 subset, but not an
+ // otherwise identical rank-80 role. Rank alone supplies no extra permission.
+ const lower=await plan({kind:'role',role:{name:'Lower directory reviewer',rank:79,permissions:['roles.view','people.view']}}),equal=await plan({kind:'role',role:{name:'Equal directory reviewer',rank:80,permissions:['roles.view','people.view']}});
+ await plan({kind:'grant',personId:'helper',roleId:'security-policy-administrator',resources:all});
+ await plan({kind:'grant',personId:'ada',roleId:lower.role.id,resources:all},helper.cookie);
+ await refusedPlan({kind:'grant',personId:'bob',roleId:equal.role.id,resources:all},helper.cookie,403,'role_grant_wider_than_holder');
+ assert.equal((await r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{personId:'bob',reason:'Policy rank does not grant recovery'}})).status,403);
+ // The auditor can view higher administrators and export a rank-9 person;
+ // exporting a peer auditor at rank 10 remains an account-administration fence.
+ await r.person('junior-reviewer','junior-reviewer@example.com');await r.person('peer-auditor','peer-auditor@example.com');
+ const junior=await plan({kind:'role',role:{name:'Junior reviewer',rank:9,permissions:['people.view']}});
+ await plan({kind:'grant',personId:'junior-reviewer',roleId:junior.role.id,resources:all});
+ await plan({kind:'grant',personId:'peer-auditor',roleId:'auditor',resources:all});
+ await plan({kind:'grant',personId:'bob',roleId:'auditor',resources:all});
+ for(const personId of ['senior','helper']){
+  const read=await r.call('/api/auth/roles/people?personId='+personId,{cookie:bob.cookie});assert.equal(read.status,200);assert.deepEqual((await read.json()).people.map(p=>p.id),[personId],'auditor views a higher administrator');
+ }
+ const exported=await r.call('/api/auth/roles/export?personId=junior-reviewer',{cookie:bob.cookie});assert.equal(exported.status,200);assert.deepEqual((await exported.json()).people.map(p=>p.id),['junior-reviewer']);
+ assert.equal((await r.call('/api/auth/roles/export?personId=peer-auditor',{cookie:bob.cookie})).status,403,'auditor cannot export an equal administrator');
 });

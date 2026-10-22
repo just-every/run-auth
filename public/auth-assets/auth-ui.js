@@ -193,6 +193,19 @@
     }
   }
 
+  const confirmDelegatedTask = async (button, action) => {
+    if (!navigator.credentials?.get || !window.PublicKeyCredential) return showStatus('This browser does not support passkeys.', 'error')
+    button.disabled = true
+    try {
+      const task = { grantId: button.dataset.delegationApprove || button.dataset.delegationConsent, effectDigest: button.dataset.effectDigest }
+      const started = await requestJSON(action === 'consent' ? '/api/auth/delegations/consent/options' : '/api/auth/delegations/approval/options', task)
+      const credential = await navigator.credentials.get({ publicKey: requestOptions(started.options) })
+      if (!credential) throw new Error('No passkey was selected.')
+      await requestJSON('/api/auth/delegations/' + action, { ...task, ...(action === 'consent' ? {decision:'consent'} : {}), transaction: started.transaction, response: credentialJSON(credential) })
+      window.location.reload()
+    } catch (error) { showStatus(passkeyError(error), 'error'); button.disabled = false }
+  }
+
   const storedTheme = (() => {
     try { return localStorage.getItem('auth-theme') } catch { return null }
   })()
@@ -233,11 +246,34 @@
     if (enrollButton) void enrollPasskey(enrollButton)
     const loginButton = event.target.closest('[data-passkey-authenticate]')
     if (loginButton) void authenticatePasskey(loginButton)
+    const delegationButton = event.target.closest('[data-delegation-approve]')
+    if (delegationButton) void confirmDelegatedTask(delegationButton, 'approve')
+    const consentButton = event.target.closest('[data-delegation-consent]')
+    if (consentButton) void confirmDelegatedTask(consentButton, 'consent')
     const approveButton = event.target.closest('[data-proposal-approve]')
     if (approveButton) void approveProposal(approveButton)
   })
 
   document.addEventListener('submit', async event => {
+    const registration = event.target.closest('form[data-delegated-agent-register]')
+    if (registration) {
+      event.preventDefault()
+      const button = registration.querySelector('button[type=submit],button:not([type])')
+      if (button) button.disabled = true
+      const output = registration.querySelector('[data-task-agent-result]')
+      try {
+        const fields = new FormData(registration)
+        const payload = Object.fromEntries(fields)
+        payload.appIds = fields.getAll('appIds')
+        payload.personIds = fields.getAll('personIds')
+        payload.jwks = JSON.parse(payload.jwks)
+        payload.expiresAt = new Date(payload.expiresAt).valueOf()
+        await requestJSON('/api/auth/delegations/agents/register', payload)
+        window.location.reload()
+      } catch (error) { output.textContent = error.message; if (button) button.disabled = false }
+      return
+    }
+
     const upload = event.target.closest('form[data-move-in-upload]')
     if (upload) {
       event.preventDefault()

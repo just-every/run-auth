@@ -1,4 +1,5 @@
 import {roleModel,roleRead} from './roles/index.mjs';
+import {delegationInventory,delegationConsentView} from './agents/delegation/index.mjs';
 import {requireAccountRank} from './ranks.mjs';
 import {ownerState,SCOPE_PERMISSIONS} from './admin-api/scoped-authority.mjs';
 import {AuthError} from './core.mjs';
@@ -68,6 +69,12 @@ export async function model(ctx,request,page='account') {
  result.organizations=await tenancyModel(ctx,request,s);
  result.launcher=await launcher(ctx,s.person_id);
  if(page==='account')result.profile=await profileModel(ctx,s);
+ if(page==='account'||page==='agents') {
+  result.delegations=await (await delegationInventory(ctx,request)).json();
+  const selected=new URL(request.url).searchParams.get('delegation');
+  if(selected)result.delegation=await (await delegationConsentView(ctx,request,selected)).json();
+  if(page==='agents'&&s.role==='owner'&&isAdmin)result.delegationApps=await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL ORDER BY name');
+ }
  return result;
 }
 // The one invitation message, from People and from move-in alike.

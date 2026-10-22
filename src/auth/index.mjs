@@ -1,4 +1,5 @@
 import {ERASURE_READS,isErasureAction,erasureRead,erasureAction} from './erasure/index.mjs';
+import {isDelegationPath,delegationRoute} from './agents/delegation/index.mjs';
 import {ROLE_READS,isRoleAction,roleRead,roleAction} from './roles/index.mjs';
 import {isGrantAction,grantAction,grantRead,resourceToken,grantCheck} from './grants/index.mjs';
 import {organizationRequest,organizationContext,organizationResponse,organizationError} from './tenancy/context.mjs';
@@ -12,7 +13,7 @@ import {AuthError,input,json,fail,requireSession,validateClientOrigin} from './c
 import {requestEmail,confirmEmail,confirmationPage} from './email.mjs';
 import {registrationOptions,registrationVerify,authenticationOptions,authenticationVerify} from './passkeys.mjs';
 import {startRecovery,changeRecovery,redeemRecoveryToken} from './recovery.mjs';
-import {discovery,authorize,resumeAuthorization,token} from './protocol.mjs';
+import {discovery,authorize,resumeAuthorization,token,delegationToken} from './protocol.mjs';
 import {userinfo} from './userinfo.mjs';
 import {genericToken} from './oidc-apps/flow.mjs';
 import {jwks,JWKS_CACHE_SECONDS,ensureSigningKey} from './keys.mjs';
@@ -51,6 +52,7 @@ function scopedRuntime(options) {
    if(LINK_PATHS.includes(path))return await linkRoute(ctx,request,path);
    if(path===END_SESSION&&['GET','POST'].includes(request.method))return await endSession(ctx,request);
    // The preparer API reads only its key, never a cookie.
+   if(isDelegationPath(path))return await delegationRoute(ctx,request,path);
    if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
@@ -76,7 +78,7 @@ function scopedRuntime(options) {
     }
    }
    if(request.method==='POST') {
-    if(path==='/oidc/token')return await resourceToken(ctx,request)??await adminToken(ctx,request)??await genericToken(ctx,request)??await token(ctx,request);
+    if(path==='/oidc/token')return await delegationToken(ctx,request)??await resourceToken(ctx,request)??await adminToken(ctx,request)??await genericToken(ctx,request)??await token(ctx,request);
     if(path==='/api/auth/move-in/stage')return await stage(ctx,request);
     if(path==='/api/auth/resource-apis/check')return await grantCheck(ctx,request);
     const data=await input(ctx,request);

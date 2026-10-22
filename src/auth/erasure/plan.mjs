@@ -31,6 +31,8 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  for(const name of ['auth_person_sources','auth_former_subjects','oa_external_identities'])for(const row of values(stores,name))if(reset||row.person_id===target||row.operator_id===target)for(const field of ['source_id','subject'])if(text(row[field]))identifiers.add(row[field]);
  // Session/factor/grant identifiers can occur in copies without the person's ID.
  for(const name of ['auth_sessions','oa_sessions','auth_passkeys','auth_agent_keys','auth_admin_service_apps'])for(const row of values(stores,name))if(reset||row.person_id===target||row.operator_id===target||row.owner_id===target)for(const field of ['id','client_id'])if(text(row[field]))identifiers.add(row[field]);
+ for(const row of values(stores,'auth_delegated_agents'))if(reset||row.registered_by===target||identifiers.has(row.client_id)){identifiers.add(row.id);identifiers.add(row.client_id);}
+ for(const row of values(stores,'auth_delegated_tasks'))if(reset||contains(row,identifiers))identifiers.add(row.id);
  if(kind==='app')for(const row of values(stores,'auth_oidc_clients'))if(row.app_id===target)identifiers.add(row.client_id);
  const holds=values(stores,'auth_erasure_holds').filter(h=>!h.released_at&&(reset||h.kind==='installation'||h.kind==='organization'&&h.target===organizationOf(ctx)||h.kind===kind&&identifiers.has(h.target)));
  const policy=values(stores,'auth_erasure_policy')[0];
@@ -40,6 +42,11 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  for(const table of stores.values())for(const [index,row] of table.rows.entries()) {
   const key=rowId(table.name,index),name=table.name;
   if(erasureTable(name)||['rer_portability_state','rer_portability_journal','rer_portability_epochs'].includes(name))continue;
+  // Immutable task effects are authority, not editable provenance. Preserve
+  // their anonymous decision before removing the exact grant and its bindings.
+  if(name==='auth_delegated_tasks'&&(reset||identifiers.has(row.id)||contains(row,identifiers))) {
+   removed.add(key);decisions.push({kind:'delegated_assignment',status:row.state,createdAt:row.created_at,decidedAt:row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});continue;
+  }
   const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&canMatch('auth_activity',a));
   const matched=relatedActivity||canMatch(name,row),discardMap=name==='auth_grant_maps',discardStage=staging.has(name);
   if(isEvidence(name)) {
@@ -86,7 +93,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
     if(column?.notnull&&!steward)fail('erasure_custody_transfer_required',409);
     updates.set(key,changed);
    }else {removed.add(key);updates.delete(key);added=true;
-    if(isEvidence(table.name))decisions.push({kind:row.kind||row.event||row.type,status:row.status,createdAt:row.created_at||row.occurred_at,decidedAt:row.decided_at,reference});
+    if(isEvidence(table.name)||table.name==='auth_delegated_tasks')decisions.push({kind:table.name==='auth_delegated_tasks'?'delegated_assignment':row.kind||row.event||row.type,status:row.status??row.state,createdAt:row.created_at||row.occurred_at,decidedAt:row.decided_at??row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});
    }
   }
  }}

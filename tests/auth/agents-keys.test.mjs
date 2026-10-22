@@ -225,6 +225,21 @@ test('machine directory and company-app commands share native lifecycle planning
  const granted=await r.call('/oidc/token',{method:'POST',form:{grant_type:'client_credentials',client_id:app.clientId,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:assertion}});assert.equal(granted.status,200);const token=(await granted.json()).access_token;
  const call=(path,method='GET',data,etag)=>r.call('/api/auth/admin/v1'+path,{method,data,headers:{authorization:'Bearer '+token,...(data!==undefined?{'content-type':'application/json'}:{}),...(etag?{'if-match':etag}:{})}});
  const tag=async()=>(await call('/openapi.json')).headers.get('etag');
+ const rankOwner=await passkeyPerson(r,'synthetic-auth-machine-admin','machine-admin@example.com','admin');
+ await r.person('synthetic-auth-machine-peer','machine-peer@example.com','admin');await r.person('synthetic-auth-machine-worker','machine-worker@example.com');
+ const rankConfig=await r.call('/api/auth/admin-service-apps/create',post({name:'Rank-fenced directory task',purpose:'Edit approved directory profiles subject to the accountable administrator rank',ownerId:'synthetic-auth-machine-admin',jwks:{keys:[jwk]},scopes:['people.manage'],resources:{people:['owner','synthetic-auth-machine-peer','synthetic-auth-machine-worker'],groups:[],apps:[]},expiresAt:r.now+86400000},owner.cookie));assert.equal(rankConfig.status,201);const rankService=await rankConfig.json();
+ const rankAssertion=await new SignJWT({}).setProtectedHeader({alg:'ES256',kid:'workforce'}).setIssuer(rankService.clientId).setSubject(rankService.clientId).setAudience(r.origin+'/oidc/token').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+60).setJti(crypto.randomUUID()).sign(keys.privateKey);
+ const rankGrant=await r.call('/oidc/token',{method:'POST',form:{grant_type:'client_credentials',client_id:rankService.clientId,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:rankAssertion}});assert.equal(rankGrant.status,200);const rankToken=(await rankGrant.json()).access_token;
+ const rankCall=(path,method='GET',data,etag)=>r.call('/api/auth/admin/v1'+path,{method,data,headers:{authorization:'Bearer '+rankToken,...(data!==undefined?{'content-type':'application/json'}:{}),...(etag?{'if-match':etag}:{})}});
+ const lower=await rankCall('/people/synthetic-auth-machine-worker','PATCH',{set:{department:'Rank-approved department'}},(await rankCall('/openapi.json')).headers.get('etag'));assert.equal(lower.status,200,await lower.clone().text());
+ assert.equal((await (await rankCall('/people/synthetic-auth-machine-worker')).json()).profile.department,'Rank-approved department','the credential has the actual profile permission and named resources');
+ for(const personId of ['synthetic-auth-machine-peer','owner']) {
+  const before=await r.db.prepare('SELECT * FROM oa_operators WHERE id=?').bind(personId).first(),fields=(await r.db.prepare('SELECT * FROM auth_person_fields WHERE person_id=?').bind(personId).all()).results;
+  const refused=await rankCall('/people/'+personId,'PATCH',{set:{department:'Forbidden rank change'}},(await rankCall('/openapi.json')).headers.get('etag'));
+  assert.equal(refused.status,403);assert.equal((await refused.json()).error,'lower_rank_required','equal/higher account administration is refused by rank after permission and resources');
+  assert.deepEqual(await r.db.prepare('SELECT * FROM oa_operators WHERE id=?').bind(personId).first(),before);assert.deepEqual((await r.db.prepare('SELECT * FROM auth_person_fields WHERE person_id=?').bind(personId).all()).results,fields);
+ }
+ assert.equal((await r.call('/api/auth/me',{cookie:rankOwner.cookie})).status,200,'machine refusals preserve the accountable administrator');
  const mailCount=(await r.mails()).length;
  const onboard=await call('/people','POST',{email:'worker@example.com',name:'Willa Worker',kind:'contractor',set:{department:'Engineering'}});assert.equal(onboard.status,201,await onboard.clone().text());const worker=await onboard.json();assert.equal((await r.mails()).length,mailCount,'record creation sends no automatic invitation');
  const workerRead=await call('/people/'+worker.id);assert.equal(workerRead.status,200);const safe=await workerRead.json();assert.equal(safe.state,'invited');assert.equal(safe.profile.department,'Engineering');assert.equal(safe.role,undefined);assert.equal(safe.amr,undefined);
@@ -239,7 +254,7 @@ test('machine directory and company-app commands share native lifecycle planning
  assert.deepEqual((await(await call(`/groups/${group.id}/members`)).json()).items,[],'the same profile planner removes obsolete group access');
  assert.equal((await call('/people/'+worker.id,'PATCH',{role:'admin'},await tag())).status,403);
  assert.equal((await r.db.prepare('SELECT role FROM oa_operators WHERE id=?').bind(worker.id).first()).role,'member');
- assert.equal((await call('/people/owner','PATCH',{state:'suspended'},await tag())).status,403,'a service cannot change an emergency owner');
+ const ownerRefused=await call('/people/owner','PATCH',{state:'suspended'},await tag());assert.equal(ownerRefused.status,403,'a service cannot change an emergency owner');assert.equal((await ownerRefused.json()).error,'lower_rank_required');
  const oidc=await call('/apps','POST',{protocol:'oidc',name:'Time tracking',authMethod:'private_key_jwt',jwks:{keys:[jwk]},redirectUris:['https://time.example.com/callback']});assert.equal(oidc.status,201,await oidc.clone().text());const oidcApp=await oidc.json();assert.equal(oidcApp.clientSecret,null);
  const apps=(await(await call('/apps')).json()).items;assert.ok(apps.some(a=>a.id===oidcApp.id&&a.protocol==='oidc'));assert.ok(apps.every(a=>!('clientSecret'in a)&&!('jwks'in a)));
  assert.equal((await call('/apps/'+samlApp.id,'PATCH',{name:'Project board renamed',entityId:'https://board.example.com/saml',acsUrl:'https://board.example.com/acs'},await tag())).status,200);

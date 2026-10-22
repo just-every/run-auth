@@ -41,7 +41,7 @@ export async function adminServiceAction(ctx,request,path,data) {
  }
  const id=data.id??data.serviceAppId;
  if(typeof id!=='string'||!id||id.length>256)fail('invalid_admin_service');
- const app=await one(ctx,'SELECT * FROM auth_admin_service_apps WHERE id=?',id);if(!app)fail('admin_service_not_found',404);
+ const app=await one(ctx,'SELECT * FROM auth_admin_service_apps WHERE id=? AND client_id LIKE ?',id,CLIENT_PREFIX+'%');if(!app)fail('admin_service_not_found',404);
  if(!custody.state.legacy&&app.owner_id!==s.person_id)fail('admin_service_self_owner_required',403);
  if(path==='/admin-service-apps/revoke') {
   const guard=custody;
@@ -59,7 +59,7 @@ export async function adminServiceAction(ctx,request,path,data) {
  return json({ok:true,id,clientId:app.client_id});
 }
 export async function adminServicesModel(ctx) {
- const rows=await all(ctx,'SELECT a.*,p.email AS owner_email,p.display_name AS owner_name,p.status AS owner_status,p.role AS owner_role FROM auth_admin_service_apps a LEFT JOIN oa_operators p ON p.id=a.owner_id ORDER BY a.created_at DESC,a.id');
+ const rows=await all(ctx,'SELECT a.*,p.email AS owner_email,p.display_name AS owner_name,p.status AS owner_status,p.role AS owner_role FROM auth_admin_service_apps a LEFT JOIN oa_operators p ON p.id=a.owner_id WHERE a.client_id LIKE ? ORDER BY a.created_at DESC,a.id',CLIENT_PREFIX+'%');
  return Promise.all(rows.map(async a=>{
   let held=true;try{await authorityState(ctx,a);}catch(error){if(!(error instanceof AuthError))throw error;held=false;}
   return ({

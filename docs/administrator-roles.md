@@ -65,8 +65,9 @@ for the human owner's current authority. No scoped owner grant can be issued: de
 issuer's rank. Custom role ranks are integers 1–89, strictly below the chooser's active rank,
 with permissions no wider than the chooser can delegate. The chooser is the
 installation owner, an installation admin within an installation-operated
-organization, or that organization's owner. Only legacy owner/admin
-may create or revise custom role definitions, and built-ins cannot be changed.
+organization, or that organization's owner. In the current isolated employers,
+only the employer owner may create or revise custom role definitions; the
+installation itself also permits its own legacy owner/admin. Built-ins cannot be changed.
 Revising a custom role invalidates its previous authority grants; explicitly
 grant the new revision to restore intended authority. Any unrevoked assigned
 administrator role still protects its holder's account while suspended, after

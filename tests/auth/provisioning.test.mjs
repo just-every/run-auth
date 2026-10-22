@@ -126,6 +126,17 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
  const held=await command('erasure/preview',{kind:'person',target:'ada'});assert.equal(held.holds.length,1);
  await command('erasure/confirm',{previewId:held.id,confirmation:'ERASE',confirmRemoteDeletion:true},409);assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,200);
  await command('erasure/hold',{release:true,id:hold.id});
+ const stalePerson=await command('erasure/preview',{kind:'person',target:'ada'});
+ await command('directory/source',{source:'hr',records:[{sourceId:'synthetic-auth-2',personId:'ada',fields:{department:'Platform'}}]});
+ const staleReply=await command('erasure/confirm',{previewId:stalePerson.id,confirmation:'ERASE',destinations:[]},409);
+ assert.equal(staleReply.error,'erasure_preview_changed');assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,200,'a stale person preview cannot revoke or partially erase its target');
+ const recognized=await command('erasure/preview',{kind:'person',target:'ada'});
+ await r.db.exec('CREATE TABLE auth_unclassified_personal_copy (id TEXT PRIMARY KEY,person_id TEXT NOT NULL)');
+ try {
+  const unknown=await command('erasure/preview',{kind:'person',target:'ada'},503);assert.equal(unknown.error,'erasure_unknown_store');
+  const refused=await command('erasure/confirm',{previewId:recognized.id,confirmation:'ERASE',destinations:[]},503);assert.equal(refused.error,'erasure_unknown_store');
+  assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,200,'an unclassified managed store refuses the whole operation');
+ }finally{await r.db.exec('DROP TABLE auth_unclassified_personal_copy');}
  const plan=await command('erasure/preview',{kind:'person',target:'ada'});assert.ok(plan.stores.find(s=>s.store==='auth_passkeys').deleted>=2);assert.ok(plan.stores.find(s=>s.store==='auth_import_rows').deleted);
  await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:true,destinations:['https://unapproved.example.com']},400);
  const erased=await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:false,destinations:[]});assert.equal(erased.local,'complete');assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,401);
@@ -147,13 +158,15 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
  const activity=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(activity.some(row=>row.subject_id===erased.reference));assert.ok(activity.some(row=>row.event==='erasure_completed'));
  assert.equal((await r.call('/api/auth/move-in/subjects.csv?batch='+staged.batchId,{cookie:r.owner.cookie})).status,200);
  const later=await r.db.prepare('SELECT epoch FROM rer_portability_state').first();assert.ok(later.epoch>0);assert.ok((await r.db.prepare('SELECT COUNT(*) AS n FROM rer_portability_journal').first()).n>0);
+ for(const [pattern,limit] of [[/mailbox.*delivered/i,'delivered messages'],[/installation.*archive.*backup/i,'exported archives and backups'],[/audit receiver/i,'external audit sinks']])assert.ok(receipt.limitations.some(text=>pattern.test(text)),limit+' retains a named outside custodian and deletion limit');
+ assert.ok(receipt.remote.filter(task=>task.state==='blocked').every(task=>/consent|connection|owner|provider/i.test(task.instruction)),'blocked work carries actionable partner or authority instructions');
  assert.ok(receipt.remote.some(task=>task.kind==='scim-delete'&&task.consentRequired));
  scim.fail(1,403);await command('erasure/retry',{receiptId:erased.id,confirmRemoteDeletion:true,destinations:['https://scim.example.com']});
  const refused=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.ok(refused.remote.some(task=>task.kind==='scim-delete'&&task.lastStatus===403));
  await command('erasure/retry',{receiptId:erased.id,confirmRemoteDeletion:true,destinations:['https://scim.example.com']});assert.equal(remote(scim,'ada'),undefined);
  const complete=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(complete.status,'remote_unfinished');assert.ok(complete.remote.some(task=>task.kind==='scim-delete'&&task.state==='verified'));assert.ok(complete.remote.some(task=>task.kind==='partner-delete'&&task.state==='blocked'),'independently held partner data remains explicitly unresolved');
  await command('erasure/abandon',{receiptId:erased.id,confirmation:'ABANDON',destinations:complete.remote.filter(x=>x.state!=='verified').map(x=>x.partner)});
- const abandoned=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(abandoned.status,'remote_abandoned');assert.ok(abandoned.remote.some(x=>x.state==='abandoned'));assert.ok((await r.db.prepare('SELECT sealed_work FROM auth_erasure_remote WHERE receipt_id=?').bind(erased.id).all()).results.every(x=>x.sealed_work===null));
+ const abandoned=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.equal(abandoned.status,'remote_abandoned');assert.ok(abandoned.remote.some(x=>x.state==='abandoned'));assert.ok(abandoned.remote.filter(x=>x.state==='abandoned').every(x=>/owner|partner/i.test(x.instruction)&&/not claimed/i.test(x.instruction)),'abandonment retains partner instructions and never claims external completion');assert.ok((await r.db.prepare('SELECT sealed_work FROM auth_erasure_remote WHERE receipt_id=?').bind(erased.id).all()).results.every(x=>x.sealed_work===null));
  const integrityPath='/api/auth/erasure/integrity?receiptId='+erased.id;let verified=await (await r.call(integrityPath,{cookie:r.owner.cookie})).json();assert.equal(verified.valid,true);assert.ok(verified.checked>0);
  const committedEvent=await r.db.prepare('SELECT id FROM auth_activity ORDER BY id LIMIT 1').first();await r.db.prepare("UPDATE auth_activity SET event='tampered' WHERE id=?").bind(committedEvent.id).run();verified=await (await r.call(integrityPath,{cookie:r.owner.cookie})).json();assert.equal(verified.valid,false);assert.ok(verified.changed>0);
 });
@@ -161,7 +174,8 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
 test('app erasure removes connector custody and protected organization reset retains only installation-owner anonymous outcomes and credential-free pending work',async t=>{
  const {r,scim,app,connect}=await provisioned(t,{pushGroups:false});await connect();
  const {register}=await import('./webauthn.mjs'),{emailSession}=await import('./runtime.mjs');
- const {passkeyPerson,signInAgain}=await import('./agents-helpers.mjs'),{unseal}=await import('../../src/auth/keys.mjs');
+ const {passkeyPerson,signInAgain,preparer}=await import('./agents-helpers.mjs'),{unseal}=await import('../../src/auth/keys.mjs');
+ const {generateKeyPair,exportJWK,SignJWT}=await import('jose');
  const command=async(client,cookie,path,data,status=200)=>{const response=await client.call('/api/auth/'+path,{method:'POST',data,cookie});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
  const admin=(path,data,status)=>command(r,r.owner.cookie,path,data,status);
  const receipts=async()=>{const response=await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie});assert.equal(response.status,200);return (await response.json()).receipts;};
@@ -175,11 +189,41 @@ test('app erasure removes connector custody and protected organization reset ret
  const scoped=id=>({origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+id+path,options)});
  const selected=scoped(org.id),kept=scoped(other.id);
  let owner=await register(selected,await emailSession(selected,'owner@example.com')),keptOwner=await register(kept,await emailSession(kept,'owner@example.com'));
+ await command(selected,owner.cookie,'erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ await command(selected,owner.cookie,'organizations/invite',{email:'ada@example.com',name:'Isolated employer contractor'},201);
+ const member=await register(selected,await emailSession(selected,'ada@example.com'));
+ const memberId=(await (await selected.call('/api/auth/me',{cookie:member.cookie})).json()).user.id;
+ assert.notEqual(memberId,'ada','matching email does not reuse the installation identity');
+ const memberships=async()=>{const response=await r.call('/api/auth/organizations',{cookie:r.ada+'; '+member.cookie});assert.equal(response.status,200);return (await response.json()).memberships;};
+ assert.ok((await memberships()).some(membership=>membership.id===org.id),'independently proved organization membership is visible before erasure');
+ const temporary=await command(selected,owner.cookie,'company-apps/create',{name:'Temporary isolated app',entityId:'https://temporary.example.com',acsUrl:'https://temporary.example.com/acs'},201);
+ await command(selected,owner.cookie,'company-apps/assign',{appId:temporary.id,principalType:'person',principalId:memberId});
+ const memberPreview=await command(selected,owner.cookie,'erasure/preview',{kind:'person',target:memberId});
+ await command(selected,owner.cookie,'erasure/confirm',{previewId:memberPreview.id,confirmation:'ERASE',destinations:[]});
+ assert.equal((await selected.call('/api/auth/me',{cookie:member.cookie})).status,401,'organization person erasure ends that membership');
+ assert.ok(!(await memberships()).some(membership=>membership.id===org.id),'the erased membership is absent from the public switcher');
+ assert.equal((await r.call('/api/auth/me',{cookie:r.ada})).status,200,'organization erasure does not erase the separately proved installation identity');
+ const appPreview=await command(selected,owner.cookie,'erasure/preview',{kind:'app',target:temporary.id});
+ await command(selected,owner.cookie,'erasure/confirm',{previewId:appPreview.id,confirmation:'ERASE',destinations:[]});
+ const remainingApps=await (await selected.call('/api/auth/company-apps',{cookie:owner.cookie})).json();assert.ok(!remainingApps.companyApps.some(app=>app.id===temporary.id),'the organization owner erases their app connection through its ordinary door');
  const subsidiaryApp=await command(selected,owner.cookie,'company-apps/create',{name:'Subsidiary CRM',entityId:'https://subsidiary-crm.example.com',acsUrl:'https://subsidiary-crm.example.com/acs'},201);
  const originalToken=scim.token;
  await command(selected,owner.cookie,'provisioning/connect',{appId:subsidiaryApp.id,baseUrl:BASE,token:originalToken,pushGroups:false},201);
  const employee=(await (await selected.call('/api/auth/me',{cookie:owner.cookie})).json()).user.id;
  await command(selected,owner.cookie,'company-apps/assign',{appId:subsidiaryApp.id,principalType:'person',principalId:employee,role:'employee'});
+ const noConsentScim=await scimServer(t,'synthetic-auth-11');r.edges={'https://no-consent-scim.example.com':noConsentScim.url};
+ const revocationApp=await command(selected,owner.cookie,'company-apps/create',{name:'Revocation-only application',entityId:'https://revocation-app.example.com',acsUrl:'https://revocation-app.example.com/acs'},201);
+ await command(selected,owner.cookie,'provisioning/connect',{appId:revocationApp.id,baseUrl:'https://no-consent-scim.example.com/scim/v2',token:noConsentScim.token,pushGroups:false},201);
+ await command(selected,owner.cookie,'company-apps/assign',{appId:revocationApp.id,principalType:'person',principalId:employee});assert.equal(remote(noConsentScim,employee).active,true);
+ const keyPair=await generateKeyPair('ES256'),keyId='synthetic-auth-13';
+ const machine=await command(selected,owner.cookie,'admin-service-apps/create',{name:'Reset-test automation',purpose:'Read the employer directory',ownerId:employee,jwks:{keys:[{...await exportJWK(keyPair.publicKey),kid:keyId,alg:'ES256',use:'sig'}]},scopes:['people.read'],expiresAt:r.now+3600000},201);
+ const issueMachine=async()=>selected.call('/oidc/token',{method:'POST',form:{grant_type:'client_credentials',client_id:machine.clientId,scope:'people.read',client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:await new SignJWT({jti:crypto.randomUUID()}).setProtectedHeader({alg:'ES256',kid:keyId}).setIssuer(machine.clientId).setSubject(machine.clientId).setAudience(r.origin+'/org/'+org.id+'/oidc/token').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+120).sign(keyPair.privateKey)}});
+ const machineIssued=await issueMachine();assert.equal(machineIssued.status,200,await machineIssued.clone().text());let machineToken=(await machineIssued.json()).access_token;
+ const machineRead=()=>selected.call('/api/auth/admin/v1/people',{headers:{authorization:'Bearer '+machineToken}});assert.equal((await machineRead()).status,200);
+ const agent=await command(selected,owner.cookie,'agents/mint',{label:'Employer reset preparer'},201);assert.equal((await preparer(selected,agent.key)).status,200);
+ await command(selected,owner.cookie,'organizations/invite',{email:'pending-reset@example.com',name:'Pending employer member'},201);
+ let pendingEmail=await selected.call('/auth/identity/email/request',{method:'POST',data:{email:'pending-reset@example.com'}});assert.equal(pendingEmail.status,202);
+ let pendingToken=new URL((await r.mails()).at(-1).text.match(/https?:\/\/\S+$/)[0]).searchParams.get('token');assert.ok(pendingToken,'the pending invitation had usable email authority before reset');
  await command(selected,owner.cookie,'erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
  const orgKeys=await (await selected.call('/oidc/jwks')).json();assert.ok(orgKeys.keys.length);
  await command(selected,owner.cookie,'erasure/preview',{kind:'organization',target:org.id},403);
@@ -192,25 +236,30 @@ test('app erasure removes connector custody and protected organization reset ret
  };
  const expired=await consent();r.now=expired.expiresAt+1;
  r.owner=await signInAgain(r,r.owner,'owner@example.com');owner=await signInAgain(selected,owner,'owner@example.com');keptOwner=await signInAgain(kept,keptOwner,'owner@example.com');
+ const liveMachine=await issueMachine();assert.equal(liveMachine.status,200);machineToken=(await liveMachine.json()).access_token;assert.equal((await machineRead()).status,200,'the service token is live immediately before reset');assert.equal((await preparer(selected,agent.key)).status,200,'the preparer key is live immediately before reset');
+ pendingEmail=await selected.call('/auth/identity/email/request',{method:'POST',data:{email:'pending-reset@example.com'}});assert.equal(pendingEmail.status,202);pendingToken=new URL((await r.mails()).at(-1).text.match(/https?:\/\/\S+$/)[0]).searchParams.get('token');
  const expiredPreview=await admin('erasure/preview',{kind:'organization',target:org.id});assert.ok(expiredPreview.remote.every(x=>x.deletionPreauthorized===false),'expired employer consent cannot authorize a root deletion');
  await consent();
  preview=await admin('erasure/preview',{kind:'organization',target:org.id});
  assert.ok(preview.remote.some(x=>x.deletionPreauthorized===true));assert.ok(preview.remote.every(x=>!Object.hasOwn(x,'partner')),'root reset preview discloses no destination');
  await admin('erasure/confirm',{organizationId:org.id,previewId:preview.id,confirmation:'ERASE'},400);
  await admin('erasure/confirm',{organizationId:org.id,previewId:preview.id,confirmation:'RESET '+r.origin+'/org/'+org.id,destinations:['https://scim.example.com'],confirmRemoteDeletion:true},403);
- const resetStart=scim.log.length;scim.fail(2,403); // Both initial revocation PATCH and consented DELETE are refused.
+ const resetStart=scim.log.length;scim.fail(2,403);noConsentScim.fail(1,403); // Both initial revocation PATCH and consented DELETE are refused.
  const reset=await admin('erasure/confirm',{organizationId:org.id,previewId:preview.id,confirmation:'RESET '+r.origin+'/org/'+org.id});assert.equal(reset.local,'complete');assert.ok(reset.journal.proof);assert.ok(reset.receipt.stores.find(s=>s.store==='oa_operators').deleted);
  assert.ok(scim.log.slice(resetStart).some(x=>x.method==='PATCH'));assert.ok(scim.log.slice(resetStart).some(x=>x.method==='DELETE'));assert.ok(remote(scim,employee),'provider refusal does not fabricate completed deletion');
  const doors=[['/'],['/signin'],['/app/account'],['/.well-known/openid-configuration'],['/oidc/jwks'],['/oidc/authorize'],['/oidc/userinfo'],['/oidc/token','POST'],['/oidc/logout'],['/saml/metadata'],['/saml/sso'],['/saml/slo'],['/api/auth/me'],['/api/auth/profile'],['/api/auth/roles'],['/api/auth/erasure/receipts'],['/api/auth/admin/v1/openapi.json'],['/api/auth/preparer'],['/auth/identity/email/request','POST'],['/auth/passkeys/authenticate/options','POST']];
  for(const [path,method='GET'] of doors)assert.equal((await selected.call(path,{method,cookie:owner.cookie,...(method==='POST'?{data:{email:'owner@example.com'}}:{})})).status,404,'erased issuer stays absent at '+path);
+ assert.equal((await machineRead()).status,404,'an actually issued admin service token cannot reach the erased issuer');assert.equal((await issueMachine()).status,404,'a real service app cannot issue a new token after reset');
+ assert.equal((await preparer(selected,agent.key)).status,404,'an actually minted preparer key cannot inventory the erased organization');
+ assert.equal((await selected.call('/auth/identity/email/confirm',{method:'POST',data:{token:pendingToken},cookie:pendingEmail.headers.get('set-cookie')?.split(';')[0]})).status,404,'a pending invitation email challenge cannot complete after reset');
  assert.equal((await kept.call('/api/auth/me',{cookie:keptOwner.cookie})).status,200);assert.equal((await r.call('/api/auth/me',{cookie:r.owner.cookie})).status,200);
  const registry=await r.db.prepare('SELECT * FROM auth_organizations WHERE id=?').bind(org.id).first();assert.equal(registry.status,'erased');assert.equal(registry.name,reset.reference);
  let retained=(await receipts()).find(x=>x.id===reset.id);assert.equal(retained.retained,true);assert.equal(retained.organizationId,undefined);assert.equal(retained.status,'remote_unfinished');
- const removal=retained.remote.find(x=>x.kind==='scim-delete'),revocation=retained.remote.find(x=>x.kind==='scim-deactivate'),unconsented=retained.remote.find(x=>x.kind==='partner-delete'&&x.consentRequired);
+ const removal=retained.remote.find(x=>x.kind==='scim-delete'&&x.appLabel==='Subsidiary CRM renamed'),revocation=retained.remote.find(x=>x.kind==='scim-deactivate'&&x.appLabel==='Subsidiary CRM renamed'),unconsented=retained.remote.find(x=>x.kind==='partner-delete'&&x.consentRequired);
  assert.ok(removal&&revocation&&unconsented);assert.equal(removal.state,'blocked');assert.equal(revocation.state,'blocked');
  const rootProjection=value=>{
   const rendered=JSON.stringify(value);
-  for(const secret of [originalToken,employee,org.id,r.origin+'/org/'+org.id,'owner@example.com','https://scim.example.com','https://subsidiary-crm.example.com',...orgKeys.keys.map(k=>k.kid)])assert.ok(!rendered.includes(secret),'root projection excludes employer identity, destination, credentials and keys');
+  for(const secret of [originalToken,'synthetic-auth-11','https://no-consent-scim.example.com',employee,org.id,r.origin+'/org/'+org.id,'owner@example.com','https://scim.example.com','https://subsidiary-crm.example.com',...orgKeys.keys.map(k=>k.kid)])assert.ok(!rendered.includes(secret),'root projection excludes employer identity, destination, credentials and keys');
   assert.doesNotMatch(rendered,/sealed_work|sealed_token|encrypted_private/);
  };
  rootProjection(retained);rootProjection(reset.journal);assert.ok(retained.remote.every(x=>x.partner===undefined&&x.appLabel));
@@ -224,9 +273,19 @@ test('app erasure removes connector custody and protected organization reset ret
  }
  const allRows=async()=>{
   const tables=(await r.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'").all()).results;
-  return JSON.stringify(await Promise.all(tables.map(({name})=>r.db.prepare('SELECT * FROM "'+name.replaceAll('"','""')+'"').all().then(result=>result.results))));
+  const rows=[];
+  for(let offset=0;offset<tables.length;offset+=8)rows.push(...await Promise.all(tables.slice(offset,offset+8).map(({name})=>r.db.prepare('SELECT * FROM "'+name.replaceAll('"','""')+'"').all().then(result=>result.results))));
+  return JSON.stringify(rows);
  };
- assert.ok(!(await allRows()).includes(originalToken),'the employer connector credential has been destroyed everywhere in persistence');
+ assert.ok(!(await allRows()).includes(originalToken),'the employer connector credential has been destroyed everywhere in persistence');assert.ok(!(await allRows()).includes('synthetic-auth-11'),'the unconsented destination credential is also destroyed');
+ const revocationOnly=retained.remote.find(item=>item.kind==='scim-deactivate'&&item.appLabel==='Revocation-only application'),unapprovedDelete=retained.remote.find(item=>item.kind==='scim-delete'&&item.appLabel==='Revocation-only application');
+ assert.ok(revocationOnly&&unapprovedDelete);assert.equal(unapprovedDelete.consentRequired,true);
+ noConsentScim.token='synthetic-auth-12';const revocationStart=noConsentScim.log.length;
+ const revoked=await admin('erasure/retry',{retained:true,receiptId:reset.id,workId:revocationOnly.id,confirmRetry:true,connection:{token:noConsentScim.token}});
+ const revokedReceipt=revoked.receipts.find(item=>item.id===reset.id);assert.equal(revokedReceipt.remote.find(item=>item.id===revocationOnly.id).state,'verified');assert.equal(remote(noConsentScim,employee).active,false);
+ assert.ok(noConsentScim.log.slice(revocationStart).some(item=>item.method==='PATCH'));assert.ok(noConsentScim.log.slice(revocationStart).every(item=>item.method!=='DELETE'),'root retries revocation successfully without adding deletion consent');
+ assert.equal(revokedReceipt.remote.find(item=>item.id===unapprovedDelete.id).consentRequired,true);assert.equal(revokedReceipt.remote.find(item=>item.id===unapprovedDelete.id).state,'blocked');
+ assert.ok(!(await allRows()).includes(noConsentScim.token),'a successful one-purpose revocation connection is never persisted');
  const retry={retained:true,receiptId:reset.id,workId:removal.id,confirmRetry:true};
  await command(kept,keptOwner.cookie,'erasure/retry',retry,403);await command(r,r.ada,'erasure/retry',retry,403);
  const freshAdmin=await signInAgain(r,installationAdmin,'admin@example.com');

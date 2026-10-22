@@ -138,6 +138,19 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const prefix=new URL(await newOrg.getAttribute('href'),app.origin).pathname.replace('/signin','');
  await shoot('organization-created');await signIn(page,app.vars.OWNER_EMAIL,prefix);
  await page.goto(app.origin+prefix+'/app/organizations');await expect(page.getByText('owner · Active organization',{exact:true})).toBeVisible();await shoot('organization-memberships');
+ // An isolated employer's legacy administrator can delegate within authority,
+ // but only that employer's owner may design custom ranks.
+ await post(prefix+'/api/auth/organizations/invite',{email:'avery@northwind.example.com',name:'Avery Brooks'},201);
+ const isolatedAdmin=await browser.newContext(),isolatedPage=await isolatedAdmin.newPage();await hardware(isolatedAdmin,isolatedPage);
+ await post(prefix+'/auth/identity/email/request',{email:'avery@northwind.example.com'},202,isolatedAdmin);
+ await post(prefix+'/auth/identity/email/confirm',{token:(await app.link(prefix)).searchParams.get('token')},200,isolatedAdmin);
+ const isolatedPerson=(await (await isolatedAdmin.request.get(app.origin+prefix+'/api/auth/me')).json()).user;
+ await post(prefix+'/api/auth/people/role',{personId:isolatedPerson.id,role:'admin'});
+ await signIn(isolatedPage,'avery@northwind.example.com',prefix);
+ await isolatedPage.goto(app.origin+prefix+'/app/roles');
+ await expect(isolatedPage.locator('[data-role-form=role]')).toHaveCount(0);
+ await expect(isolatedPage.locator('[data-role-form=grant]')).toBeVisible();
+ await shoot('isolated-administrator-roles',isolatedPage);await isolatedAdmin.close();
  await page.getByRole('button',{name:'Switch to Installation'}).click();await expect(page).toHaveURL(app.origin+'/app/account');
  const worker=await post('/api/auth/directory/onboard',{name:'Erin Park',email:'erin@northwind.example.com',kind:'employee',set:{department:'Engineering',location:'US'}},201);
  const helper=await post('/api/auth/directory/onboard',{name:'Sam Rivera',email:'sam@northwind.example.com',kind:'employee',set:{department:'Support',location:'US'}},201);

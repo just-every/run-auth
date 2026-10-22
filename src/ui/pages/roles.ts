@@ -9,7 +9,7 @@ const preview = '<p data-role-preview role="status"></p><button class="secondary
 export function renderRolesPage(model: AuthPageModel): string {
  const roles=model.roles
  if(!roles)return '<section class="availability"><strong>Scoped administrator access required.</strong><p>Sign in with your hardware passkey. An owner must explicitly delegate the permissions and resources you need.</p></section>'
- const held=new Set(roles.ownGrants.flatMap(g=>g.permissions)),canGrant=(model.isAdmin||held.has('roles.grant'))&&roles.rank>0,canCreate=model.isAdmin
+ const held=new Set(roles.ownGrants.flatMap(g=>g.permissions)),canGrant=(model.isAdmin||held.has('roles.grant'))&&roles.rank>0,canCreate=roles.canDesignRoles
  const people=model.rolePeople || [],current=model.user ?? model.me
  const holder=(id:string)=>people.find(p=>p.id===id)?.email || (current?.id===id?current.email:id)
  const definition=canCreate?`<section class="panel"><div class="panel-header"><div><h2>Create a custom role</h2><p>Preview the exact permission change before committing it.</p></div></div><form class="directory-form" data-role-form="role"><div class="field-grid"><label class="field">Role name<input name="name" required maxlength="80"></label><label class="field">Authority rank<input name="rank" type="number" min="1" max="89" value="20" required></label></div><details><summary>Choose permissions</summary><div class="field-grid">${Object.entries(roles.permissions).map(([id,label])=>`<label><input type="checkbox" name="permissions" value="${escape(id)}"> ${escape(label)}</label>`).join('')}</div></details><button class="primary-button">Preview role</button>${preview}</form></section>`:''

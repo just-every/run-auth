@@ -217,8 +217,20 @@ export interface ProfileModel {
   providers: { id: string; label: string; linked: boolean }[]
 }
 
+export interface DelegatedTask {
+  id:string;grantId:string;agentName?:string;personName?:string;personEmail?:string;appName?:string
+  organizationId:string;state:string;authorityCurrent:boolean;effectDigest:string;expiresAt:number
+  task:{personId:string;purpose:string;audience:string;apiId:string;scopes:string[];appId:string;role:string;expiresAt:number}
+  before:{role:string|null};after:{role:string};requiredApprovals:string[]
+  reversalRequest?:{id:string;state:string;createdAt:number}|null;canRequestReversal?:boolean
+  revocationReach:{local:string;completedEffect:string;downstream:string}
+}
+
 export interface AuthPageModel {
-  roles?: { rank:number; permissions:Record<string,string>; roles:Array<{id:string;name:string;rank:number;permissions:string[]}>; ownGrants:Array<{id:string;roleId:string;permissions:string[]}>; grants:Array<{id:string;person_id:string;role_id:string;active:boolean}>; groups:Array<{id:string;name:string}>; apps:Array<{id:string;name:string}>; cases:Array<{id:string;person_id:string;state:string}> }
+  delegations?: {organizationId:string;targetApi:string;grants:DelegatedTask[];agents:Array<{id:string;clientId:string;name:string;state:string;expiresAt:number}>;hasMore:boolean;nextCursor:string|null}
+  delegation?: DelegatedTask & {canConsent:boolean;canApprove:boolean}
+  delegationApps?: Array<{id:string;name:string}>
+  roles?: { canDesignRoles:boolean; rank:number; permissions:Record<string,string>; roles:Array<{id:string;name:string;rank:number;permissions:string[]}>; ownGrants:Array<{id:string;roleId:string;permissions:string[]}>; grants:Array<{id:string;person_id:string;role_id:string;active:boolean}>; groups:Array<{id:string;name:string}>; apps:Array<{id:string;name:string}>; cases:Array<{id:string;person_id:string;state:string}> }
   rolePeople?: Array<{id:string;email:string;name:string;canResetFactors:boolean}>
   roleError?: string
   resourceApis?: {apis:Array<{id:string;appId:string;name:string;audience:string;scopes:string[];roles:unknown[];resources:unknown[]}>;services:Array<{id:string;clientId:string;name:string;ownerId:string;purpose:string;scopes:string[];revokedAt:number|null}>}
