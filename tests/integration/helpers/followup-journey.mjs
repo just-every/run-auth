@@ -9,6 +9,21 @@ export async function followupJourney({app,browser,owner,page,shoot}) {
   const response=await anonymous.request.get(app.origin+'/app/activity',{maxRedirects:0});
   assert.equal(response.status(),303);assert.equal(response.headers().location,'/signin?returnTo=%2Fapp%2Factivity');
  }finally{await anonymous.close();}
+ // A real recovery cannot self-approve. Its next action survives restarting
+ // the emitted Worker, and the normal cancellation door stops its reminders.
+ const started=await post(owner,'/api/auth/recovery/start',{});assert.equal(started.status(),201);const recovery=await started.json();
+ assert.equal((await post(owner,'/api/auth/recovery/approve',{id:recovery.id})).status(),403);
+ assert.equal((await post(owner,'/api/auth/recovery/complete',{id:recovery.id})).status(),403);
+ await page.goto(app.origin+'/app/activity');
+ const recoveryCard=page.locator('[data-followup-panel] article',{hasText:'wait or request distinct admin approval'});
+ await expect(recoveryCard).toHaveCount(1);await expect(recoveryCard.locator('[data-followup-state]')).toHaveText('open');
+ await shoot('followup-recovery-approval',page);
+ await app.pause();await app.resume();await page.reload();
+ await expect(recoveryCard).toHaveCount(1);await expect(recoveryCard.locator('[data-followup-state]')).toHaveText('open');
+ await shoot('followup-recovery-restarted',page);
+ assert.equal((await post(owner,'/api/auth/recovery/cancel',{id:recovery.id})).status(),200);
+ await page.reload();await expect(page.locator('[data-followup-panel] article',{hasText:'Recovery'}).locator('[data-followup-state]')).toHaveText('cancelled');
+ await shoot('followup-recovery-cancelled',page);
  const address='taylor@northwind.example.com';
  assert.equal((await post(owner,'/api/auth/people/invite',{email:address,name:'Taylor Kim'})).status(),201);
  await page.goto(app.origin+'/app/activity');
