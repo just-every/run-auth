@@ -18,6 +18,8 @@ export async function retentionFlow(t) {
  const calendarCutoff=Date.parse('2025-09-23T12:00:00Z');
  for(const [event,at] of [['synthetic_default_expired',calendarCutoff],['synthetic_default_kept',calendarCutoff+DAY]])await r.db.prepare('INSERT INTO auth_activity(event,created_at) VALUES(?,?)').bind(event,at).run();
  const defaultPreview=JSON.stringify((await read('/preview')).preview);assert.match(defaultPreview,/synthetic_default_expired/);assert.doesNotMatch(defaultPreview,/synthetic_default_kept/,'default audit expiry uses thirteen calendar months');
+ const unconfigured=await admin('preview',{});assert.ok(unconfigured.run);r.now+=8*DAY;await r.restart();await r.call('/',{action:'maintain'});owner=await signInAgain(r,owner,address);
+ const withoutConsent=await(await r.call('/api/auth/activity',{cookie:owner.cookie})).json();assert.match(JSON.stringify(withoutConsent),/synthetic_default_expired/,'preview and default periods never authorize destructive cleanup without an explicitly saved policy');
  await admin('settings',null,400);
  await admin('settings',{confirm:true,classes:periods('days',30)},400);
  await admin('settings',{confirm:true,classes:periods('years',8)},400);

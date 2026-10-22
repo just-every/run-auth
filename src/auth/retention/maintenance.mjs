@@ -12,7 +12,11 @@ export async function queueRetention(ctx,policy=undefined,guard=null) {
  return one(ctx,"SELECT * FROM auth_retention_runs WHERE status='queued'");
 }
 export async function maintainRetention(ctx) {
- const policy=await retentionPolicy(ctx),pending=await one(ctx,"SELECT * FROM auth_retention_runs WHERE status='queued'");
+ const policy=await retentionPolicy(ctx);
+ // Publishing default periods and exporting a preview do not consent to
+ // destructive expiry. An audited policy write is required first.
+ if(!policy.configured)return;
+ const pending=await one(ctx,"SELECT * FROM auth_retention_runs WHERE status='queued'");
  if(!pending){await queueRetention(ctx,policy);return;}
  if(pending.policy_revision!==policy.revision) {
   await ctx.db.prepare("UPDATE auth_retention_runs SET status='cancelled',completed_at=?,plan=NULL WHERE id=? AND status='queued'").bind(ctx.now(),pending.id).run();

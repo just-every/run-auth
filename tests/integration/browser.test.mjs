@@ -82,8 +82,12 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
     const overflowing=await region.evaluate(element=>element.scrollWidth>element.clientWidth);
     {
      await page.locator('body').click({position:{x:2,y:2}});
-     let focused=false;for(let tabs=0;tabs<30&&!focused;tabs++){await page.keyboard.press('Tab');focused=await region.evaluate(element=>element===document.activeElement);}
-     assert.ok(focused,`${section} scroll region reachable by Tab`);
+     // Review/retention controls precede Activity history. Its public skip link
+     // keeps the history reachable without traversing every settings field.
+     const destination=section==='activity'?page.getByRole('link',{name:'Skip to activity history'}):region;
+     let focused=false;for(let tabs=0;tabs<30&&!focused;tabs++){await page.keyboard.press('Tab');focused=await destination.evaluate(element=>element===document.activeElement);}
+     assert.ok(focused,`${section} history or scroll region reachable by Tab`);
+     if(section==='activity'){await page.keyboard.press('Enter');assert.ok(await region.evaluate(element=>element===document.activeElement),'Activity skip link focuses its scroll region');}
      if(overflowing){await page.keyboard.press('ArrowRight');await page.waitForTimeout(150);
       assert.ok(await region.evaluate(element=>element.scrollLeft>0),`${section} scrolls horizontally from keyboard`);}
      await region.evaluate(element=>element.scrollLeft=0);

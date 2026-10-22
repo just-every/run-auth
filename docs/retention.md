@@ -10,7 +10,7 @@ writes recheck this authority in their committing statement.
 
 `GET /api/auth/retention` publishes the policy, class list, active holds and the
 latest 100 accountable cleanup runs. New installations retain every class for
-13 calendar months. Policies accept days (90–2555), calendar months (4–84), or
+13 calendar months. Default periods and previews do not authorize deletion: an owner/admin must explicitly confirm and save the policy before scheduled expiry begins. Policies accept days (90–2555), calendar months (4–84), or
 calendar years (1–7). Ninety days is the floor; seven calendar years is the
 maximum. Three calendar months can be shorter than ninety days and are refused.
 Calendar subtraction clamps month-end and leap dates without converting months
