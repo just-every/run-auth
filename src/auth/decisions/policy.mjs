@@ -52,7 +52,7 @@ export async function decisionTarget(ctx,s,data) {
  return {...canonical,privileged,guard,epoch:state.epoch,digest:await hash(JSON.stringify(snapshot)),snapshot};
 }
 export async function decisionsModel(ctx,s) {
- const state=await roleState(ctx,s),canManage=state.legacy,owned=new Set((await all(ctx,'SELECT group_id FROM auth_group_owners WHERE person_id=?',s.person_id)).map(g=>g.group_id));
+ const state=await roleState(ctx,s),canManage=state.legacy&&JSON.parse(s.amr).includes('hwk'),owned=new Set((await all(ctx,'SELECT group_id FROM auth_group_owners WHERE person_id=?',s.person_id)).map(g=>g.group_id));
  const groups=[];
  for(const g of state.dir.groups)if(canManage||owned.has(g.id))groups.push({id:g.id,name:g.name,owner:owned.has(g.id),privileged:await privilegedGroup(ctx,g.id),members:[...state.memberships].filter(([,ids])=>ids.has(g.id)).map(([id])=>({id,email:state.dir.people.get(id)?.email,name:state.dir.people.get(id)?.name}))});
  const visible=new Set(groups.flatMap(g=>g.members.map(p=>p.id)));

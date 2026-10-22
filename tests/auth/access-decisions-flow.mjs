@@ -22,6 +22,8 @@ export async function accessDecisionsFlow(t) {
  const session=await r.db.prepare("SELECT local_email_verified_at FROM auth_sessions WHERE person_id='manager' ORDER BY created_at DESC,rowid DESC LIMIT 1").first();assert.equal(session.local_email_verified_at,null);
  const group=await result(await r.admin('groups/create',{name:'Product operations'},),201);
  await result(await r.admin('groups/owners/add',{groupId:group.id,personId:'manager'}));
+ const {emailSession}=await import('./runtime.mjs'),emailOwner=await emailSession(r,'owner@example.com');
+ const limited=await result(await r.call('/api/auth/decisions',{cookie:emailOwner}));assert.equal(limited.canManage,false);assert.deepEqual(limited.groups,[]);assert.deepEqual(limited.people,[]);
  const params={kind:'group',targetId:group.id,personId:'ada@example.com',operation:'add',reason:'Project delivery access'};
  assert.equal((await r.call('/api/auth/decisions/options',post(params,r.bob))).status,403,'email alone is not a decision proof');
  await result(await decide(r,manager,params));
