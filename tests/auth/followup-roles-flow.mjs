@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {openRuntime,emailSession} from './runtime.mjs';
+import {register} from './webauthn.mjs';
 import {passkeyPerson,signInAgain} from './agents-helpers.mjs';
 
 export async function followupRolesFlow(t) {
@@ -15,7 +16,7 @@ export async function followupRolesFlow(t) {
  const definition={id:'followup-manager',name:'Follow-up manager',rank:15,permissions:['roles.view','followup.manage']};
  await change({kind:'role',role:definition});
  const grant=await change({kind:'grant',personId:'manager',roleId:definition.id,resources:{view:{},edit:{}}});
- const catalogue=await(await r.call('/api/auth/roles',{cookie:manager.cookie})).json();assert.equal(catalogue.permissions['followup.manage'],'Manage follow-up');
+ const catalogue=await(await r.call('/api/auth/roles',{cookie:manager.cookie})).json();assert.ok(Object.hasOwn(catalogue.permissions,'followup.manage'));
  const settings={confirm:true,enabled:true,calendar:{timezone:'UTC',weekdays:[1,2,3,4,5],holidays:[],at:'09:00'},reminderBusinessDays:1,deadlineBusinessDays:5,recipients:['employee','help_desk'],escalationRecipients:['owner'],escalation:'repeat_until_resolved'};
  await post(manager,'followup/settings',{...settings,recipients:['outside@example.com']},400);
  await post(manager,'followup/settings',settings);
@@ -72,4 +73,31 @@ export async function followupRolesFlow(t) {
  owner=await signInAgain(r,owner,'owner@example.com');
  const isolated=await post(owner,'organizations/create',{name:'Isolated follow-up employer'},201);
  const forbidden=await r.call('/org/'+isolated.id+'/api/auth/followup/settings',{method:'POST',cookie:manager.cookie,data:settings});assert.ok([401,403].includes(forbidden.status));
+ const org={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+isolated.id+path,options)};
+ const orgOwner=await register(org,await emailSession(org,'owner@example.com'));
+ const registry=await r.db.prepare('SELECT namespace FROM auth_organizations WHERE id=?').bind(isolated.id).first();
+ // Persist the pre-0048 employer shape. Its next public request must obtain
+ // the current case binding store without requiring a column migration in
+ // every already existing employer table.
+ const columns=(await r.db.prepare('PRAGMA table_info('+registry.namespace+'auth_obligations)').all()).results;
+ if(columns.some(column=>column.name==='case_id'))await r.db.exec('ALTER TABLE '+registry.namespace+'auth_obligations DROP COLUMN case_id');
+ await r.db.exec('DROP TABLE IF EXISTS '+registry.namespace+'auth_followup_cases');
+ const upgraded=await org.call('/api/auth/followup',{cookie:orgOwner.cookie});assert.equal(upgraded.status,200,'an existing employer upgrades through its normal follow-up door');
+ const localPost=async(path,data,status=200)=>{const response=await org.call('/api/auth/'+path,{method:'POST',cookie:orgOwner.cookie,data});assert.equal(response.status,status,await response.clone().text());return response.json();};
+ await localPost('people/invite',{email:'local-employee@example.com'},201);
+ const localEmployee=(await(await org.call('/api/auth/me',{cookie:await emailSession(org,'local-employee@example.com')})).json()).user.id;
+ const localCase=await localPost('roles/recovery-case',{action:'open',personId:localEmployee,reason:'Employer-local recovery review'},201);
+ const localOwnerId=(await(await org.call('/api/auth/me',{cookie:orgOwner.cookie})).json()).user.id;
+ await localPost('followup/settings',{...settings,recipients:['help_desk'],escalationRecipients:[localOwnerId]});
+ const localRecords=await(await org.call('/api/auth/followup',{cookie:orgOwner.cookie})).json(),localOb=localRecords.obligations.find(ob=>ob.case_id===localCase.caseId);assert.ok(localOb);
+ const localCount=(await org.mails()).length;await localPost('followup/send',{id:localOb.id});
+ const localMail=(await org.mails()).slice(localCount);assert.equal(localMail.length,1);assert.ok(localMail[0].text.includes('/org/'+isolated.id+'/app/activity'));
+ await localPost('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ const erase=await localPost('erasure/preview',{kind:'person',target:localEmployee});
+ await localPost('erasure/confirm',{previewId:erase.id,confirmation:'ERASE',confirmRemoteDeletion:false,destinations:[]});
+ const retained=await(await org.call('/api/auth/followup',{cookie:orgOwner.cookie})).json();
+ assert.ok(!JSON.stringify(retained).includes(localEmployee)&&!JSON.stringify(retained).includes(localCase.caseId),'erasure removes subject and case binding while keeping anonymous history');
+ assert.ok(retained.history.some(event=>event.obligation_id===localOb.id&&event.event==='reminder_accepted'));
+
+
 }

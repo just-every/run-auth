@@ -1,3 +1,4 @@
+import {caseProjection} from './records.mjs';
 import {one,run,random,fail,json} from '../core.mjs';
 import {authority,requireLocalEmail,requireAuthority} from '../local-email.mjs';
 import {roleState} from '../roles/state.mjs';
@@ -10,7 +11,7 @@ import {dispatchOccurrence} from './dispatch.mjs';
 export async function sendEarly(ctx,s,data) {
  requireLocalEmail(ctx,s);
  await syncObligations(ctx);
- const ob=await one(ctx,"SELECT * FROM auth_obligations WHERE id=? AND state='open' AND reminders_stopped_at IS NULL",String(data.id??''));
+ const ob=await one(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE id=? AND state='open' AND reminders_stopped_at IS NULL`,String(data.id??''));
  if(!ob)fail('followup_unavailable',404);
  if(!await holdsObligation(ctx,s,ob))fail('followup_holder_required',403);
  if(!(await policy(ctx)).enabled)fail('followup_policy_disabled',409);
@@ -21,7 +22,7 @@ export async function sendEarly(ctx,s,data) {
  if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('followup_changed',409);}
  const current=async()=>{
   const live=await one(ctx,`SELECT 1 WHERE ${authority(ctx,s).clause}`,...authority(ctx,s).args);
-  const latest=await one(ctx,'SELECT * FROM auth_obligations WHERE id=?',ob.id);
+  const latest=await one(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE id=?`,ob.id);
   return Boolean(live&&latest&&latest.next_due_at===ob.next_due_at&&await holdsObligation(ctx,s,latest));
  };
  try {

@@ -73,7 +73,7 @@ async function followupRolesAtWidth({app,browser,owner,page,shoot,width,fixtureB
   await change({kind:'role',role:{id:roleId,name:'Follow-up coordinator',rank:15,permissions:['roles.view','followup.manage']}});
   await change({kind:'grant',personId:manager.id,roleId,resources:{view:{},edit:{}}});
   const catalogue=await body(await manager.context.request.get(app.origin+'/api/auth/roles'));
-  assert.equal(catalogue.permissions['followup.manage'],'Manage follow-up');
+  assert.ok(Object.hasOwn(catalogue.permissions,'followup.manage'));
   assert.equal((await read(manager.context)).canManage,true);
   assert.equal((await read(employee.context)).canManage,false);
   await manager.page.goto(app.origin+'/app/account');

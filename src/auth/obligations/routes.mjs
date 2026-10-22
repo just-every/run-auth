@@ -1,3 +1,4 @@
+import {caseProjection} from './records.mjs';
 import {followupAccess} from './access.mjs';
 import {sendEarly} from './early.mjs';
 import {holdsObligation,holdsCase} from './recipients.mjs';
@@ -15,7 +16,7 @@ export async function followupRead(ctx,request) {
  await syncObligations(ctx);
  const access=await followupAccess(ctx,s),filter=access.filter;
  const [obligations,history]=await Promise.all([
-  obligationPage(ctx,request,{table:'auth_obligations',columns:'id,kind,source_id,case_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at',prefix:'obligation',defaultLimit:200,filter}),
+  obligationPage(ctx,request,{table:'auth_obligations',columns:`id,kind,source_id,${caseProjection},owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at`,prefix:'obligation',defaultLimit:200,filter}),
   obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100,filter:{clause:`obligation_id IN (SELECT id FROM auth_obligations WHERE ${filter.clause})`,args:filter.args}}),
  ]);
  for(const ob of obligations.items)ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);
@@ -37,7 +38,7 @@ export async function followupAction(ctx,request,path,data) {
   return json({ok:true,policy:p});
  }
  await syncObligations(ctx);
- const ob=await one(ctx,"SELECT * FROM auth_obligations WHERE id=? AND state='open'",String(data.id??''));if(!ob)fail('followup_unavailable',404);
+ const ob=await one(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE id=? AND state='open'`,String(data.id??''));if(!ob)fail('followup_unavailable',404);
  const owner=await one(ctx,"SELECT id,role FROM oa_operators WHERE id=? AND status='active'",String(data.ownerId??''));if(!owner||!['owner','admin'].includes(owner.role)&&!(ob.case_id&&await holdsCase(ctx,owner.id,ob.case_id)))fail('followup_owner_requires_admin');
  for(const key of ['dueBusinessDays','deadlineBusinessDays'])if(!Number.isInteger(data[key])||data[key]<1||data[key]>90)fail('invalid_followup_schedule');
  if(data.deadlineBusinessDays<data.dueBusinessDays)fail('invalid_followup_schedule');

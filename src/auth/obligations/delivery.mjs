@@ -1,3 +1,4 @@
+import {caseProjection} from './records.mjs';
 import {all,run,random} from '../core.mjs';
 import {policy} from './policy.mjs';
 import {businessDue,deliveryWindow} from './calendar.mjs';
@@ -13,7 +14,7 @@ export async function maintainObligations(ctx) {
   const {lastError}=await dispatchOccurrence(ctx,ob,claim,{timing:true});
   await finishTiming(ctx,ob,claim,lastError);
  }
- for(const ob of await all(ctx,"SELECT * FROM auth_obligations WHERE state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=? ORDER BY next_due_at,id LIMIT 50",ctx.now(),ctx.now())) {
+ for(const ob of await all(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=? ORDER BY next_due_at,id LIMIT 50`,ctx.now(),ctx.now())) {
   const c=JSON.parse(ob.calendar);if(!deliveryWindow(ctx.now(),c))continue;
   const claim=random(),claimed=await run(ctx,"UPDATE auth_obligations SET claim_id=?,claimed_until=? WHERE id=? AND state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=?",claim,ctx.now()+LEASE,ob.id,ctx.now(),ctx.now());
   if(!claimed.meta.changes)continue;
