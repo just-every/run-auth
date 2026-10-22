@@ -1,5 +1,5 @@
 // Shared by erasure previews/commits and the Base export/restore adapter. Every
-// installed logical store in migrations/core/0001..0046 is classified here.
+// installed logical store in migrations/core/0001..0047 is classified here.
 // A new managed store requires an explicit decision before either operation.
 const groups = {
  portable: [
