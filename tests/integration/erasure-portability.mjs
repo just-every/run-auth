@@ -35,7 +35,7 @@ export async function erasurePortability(t) {
  await command('provisioning/connect',{appId:company.id,baseUrl:edge.url+'/scim/v2',token:'synthetic-auth-20'},201);
  await command('provisioning/rotate',{appId:company.id,token:'synthetic-auth-21'});edge.token='synthetic-auth-21';
  const stagedKey=await command('keys/stage',{},201);assert.ok(stagedKey.kid);
- const now=Date.now();await command('reviews/create',{name:'Portable quarterly snapshot',reviewerId:'owner',periodStart:now-86400000,periodEnd:now-1000,dueAt:now+86400000,intervalMonths:3},201);
+ const now=Date.now(),ownerId=(await (await app.get('/api/auth/me',{cookie:commandCookie})).json()).user.id;await command('reviews/create',{name:'Portable quarterly snapshot',reviewerId:ownerId,periodStart:now-86400000,periodEnd:now-1000,dueAt:now+86400000,intervalMonths:3},201);
  for(const path of ['/api/auth/activity','/auth-assets/auth-ui.js','/auth-assets/decisions-ui.js','/auth-assets/retention-ui.js']) {
   const response=await app.get(path,{cookie:commandCookie});assert.equal(response.status,200);const body=await response.text();
   for(const secret of ['synthetic-auth-20','synthetic-auth-21'])assert.ok(!body.includes(secret),'rotation credentials absent from logs and assets');
