@@ -67,7 +67,7 @@ export async function followupFlow(t) {
  // reads back the denied account. The real development outbox is the mail edge.
  r.now=Date.parse('2026-03-10T13:00:00Z');count=(await r.mails()).length;await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count,'holiday emits no reminder');
  r.now=Date.parse('2026-03-11T13:00:00Z');await r.restart();await r.call('/',{action:'maintain'});reminders=(await r.mails()).slice(count);assert.equal(reminders.length,1);assert.equal(reminders[0].subject,'Auth follow-up deadline reached');
- r.owner=await signInAgain(r,r.owner,'owner@example.com');scim.fail(0);await admin('provisioning/retry',{appId:app.id});assert.equal(remote().active,false);
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');scim.faults.length=0;await admin('provisioning/retry',{appId:app.id});assert.equal(remote().active,false);
  let done=await read();assert.equal(done.obligations.find(o=>o.id===failed.id).state,'completed');
  const history=done.history.filter(h=>h.obligation_id===failed.id);assert.ok(history.some(h=>h.event==='reminder_accepted'));assert.ok(history.some(h=>h.event==='escalation_accepted'));assert.ok(history.some(h=>h.event==='completed'));
  r.now=Date.parse('2026-03-12T13:00:00Z');count=(await r.mails()).length;await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count,'completed, cancelled and expired sources remain silent after another restart');
