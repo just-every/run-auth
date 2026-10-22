@@ -4,7 +4,7 @@
 const groups = {
  portable: [
   'auth_app_denials', 'auth_privileged_resources', 'auth_decision_operations',
-  'auth_reviews', 'auth_review_items', 'auth_review_events',
+  'auth_reviews', 'auth_review_items', 'auth_review_events', 'auth_review_schedules',
   'auth_retention_expiry', 'auth_retention_policy', 'auth_retention_holds', 'auth_request_policies', 'auth_access_requests',
   'auth_obligations', 'auth_obligation_history', 'auth_followup_cases',
   'auth_activity', 'auth_activity_details', 'auth_app_assignments', 'auth_apps',
@@ -23,7 +23,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
-  'auth_review_schedules', 'auth_retention_runs',
+  'auth_retention_runs',
   'auth_followup_settings', 'auth_admin_api_epoch', 'auth_admin_service_apps', 'auth_resource_services',
   'auth_delegated_agents', 'auth_delegated_tasks',
   'auth_delegation_reversals',

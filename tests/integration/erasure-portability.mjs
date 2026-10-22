@@ -28,6 +28,18 @@ export async function erasurePortability(t) {
   assert.equal(result.code,expected,'rer '+args[0]+' exit '+result.code+' expected '+expected+'; '+String(result.stdout+'\n'+result.stderr).replace(/[A-Za-z0-9_+\/-]{35,}/g,'[value]').slice(-1400));
   return result.stdout+'\n'+result.stderr;
  };
+ // Rotation and archive custody use real public doors; only the remote SCIM
+ // service is a test edge. Neither the old nor replacement secret is portable.
+ const {scimServer}=await import('../auth/scim-server.mjs'),edge=await scimServer(t,'synthetic-auth-20');
+ const company=await command('company-apps/create',{name:'Archive credential custody',entityId:'https://archive.example.com',acsUrl:'https://archive.example.com/acs'},201);
+ await command('provisioning/connect',{appId:company.id,baseUrl:edge.url+'/scim/v2',token:'synthetic-auth-20'},201);
+ await command('provisioning/rotate',{appId:company.id,token:'synthetic-auth-21'});edge.token='synthetic-auth-21';
+ const stagedKey=await command('keys/stage',{});assert.ok(stagedKey.kid);
+ const now=Date.now();await command('reviews/create',{name:'Portable quarterly snapshot',reviewerId:'owner',periodStart:now-86400000,periodEnd:now-1000,dueAt:now+86400000,intervalMonths:3},201);
+ for(const path of ['/api/auth/activity','/auth-assets/auth-ui.js','/auth-assets/decisions-ui.js','/auth-assets/retention-ui.js']) {
+  const response=await app.get(path,{cookie:commandCookie});assert.equal(response.status,200);const body=await response.text();
+  for(const secret of ['synthetic-auth-20','synthetic-auth-21'])assert.ok(!body.includes(secret),'rotation credentials absent from logs and assets');
+ }
  await app.pause();await cli(['export','--output','exports/before-erasure.rer']);await app.resume();
  const preview=await command('erasure/preview',{kind:'person',target:worker.id});await command('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true});
  await app.pause();await cli(['export','--output','exports/after-erasure.rer']);
@@ -36,6 +48,10 @@ export async function erasurePortability(t) {
  for await(const record of fileRecords(join(app.directory,'exports/before-erasure.rer')))if(record.kind==='manifest')before=record;
  const archived=[];
  for await(const record of fileRecords(join(app.directory,'exports/after-erasure.rer'))){if(record.kind==='manifest')after=record;if(record.kind==='part')archived.push(...record.items);}
+ for(const secret of ['synthetic-auth-20','synthetic-auth-21'])assert.ok(!JSON.stringify(archived).includes(secret),'rotated credentials absent from the real archive');
+ const credentialColumns=new Set(['private_key','encrypted_private','sealed_work','sealed_token','sealed_secret','sealed_secrets','secret_hash','token_hash']);
+ for(const table of after.tables)assert.ok(table.columns.every(column=>!credentialColumns.has(column.name)),'private custody columns excluded from every portable store');
+ assert.ok(after.tables.some(table=>table.name==='auth_review_schedules'),'review parents travel with their snapshots');
  assert.equal(before.sourceIdentity,after.sourceIdentity);assert.ok(after.epoch>before.epoch);assert.ok(after.journal.length);
  assert.ok(!JSON.stringify(archived).includes('worker@northwind.example.com'),'every exported store omits erased email');
  assert.ok(archived.some(item=>item.table==='auth_activity'&&item.row.event==='erasure_completed'),'anonymous accountability is portable');
