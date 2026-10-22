@@ -38,7 +38,7 @@ const valueText = (value: unknown): string => {
   if (value == null) return 'Not recorded'
   if (Array.isArray(value)) return value.length ? value.map(valueText).join('; ') : 'None'
   if (typeof value === 'object') return Object.entries(value).map(([key, entry]) => `${key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ')}: ${valueText(entry)}`).join('; ')
-  return String(value)
+  return typeof value === 'string' && /^[a-z]+(?:_[a-z]+)+$/.test(value) ? value.replace(/_/g, ' ') : String(value)
 }
 const evidence = (snapshot: unknown): string => {
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return `<p class="issuer-host">${escape(valueText(snapshot))}</p>`
@@ -52,7 +52,7 @@ function itemRow(item: AccessReviewItem, data: AccessReviewsModel, reviewOpen: b
   const delegates = data.people.filter(person => person.id !== item.subject_id)
   const delegate = reviewOpen && data.canManage && !item.decision && delegates.length ? `<details><summary>Delegate this review item</summary><form class="directory-form" method="post" action="/api/auth/reviews/delegate" data-access-form="review-delegate">${csrfField(csrf)}<input type="hidden" name="itemId" value="${escape(item.id)}"><label class="field">Reviewer<select name="reviewerId" required>${peopleOptions(delegates, item.reviewer_id)}</select></label><label class="field">Delegation reason<input name="reason" required maxlength="500"></label><button class="secondary-button" type="submit">Delegate item</button><p data-access-result role="status"></p></form></details>` : ''
   const remediation = item.remediation == null || item.remediation === '' ? '' : `<p class="issuer-host">Remediation: ${escape(valueText(item.remediation))}</p>`
-  return `<div class="data-row" data-review-item="${escape(item.id)}"><div><h4 class="issuer-host">${escape(item.subject_name)} · ${escape(item.app_name)}</h4><p>Role: ${escape(item.role || 'No role')} · Reviewer: ${escape(reviewer?.name || reviewer?.email || item.reviewer_id)}</p><p>${item.decision ? `Decision: ${escape(item.decision)}${item.reason ? ` · ${escape(item.reason)}` : ''}` : 'Awaiting decision'}${item.drift ? ' · Access changed since the snapshot.' : ''}</p>${remediation}<details><summary>Access evidence at review creation</summary>${evidence(item.snapshot)}</details>${decision}${delegate}</div></div>`
+  return `<div class="data-row issuer-host" data-review-item="${escape(item.id)}"><div><h4 class="issuer-host">${escape(item.subject_name)} · ${escape(item.app_name)}</h4><p>Role: ${escape(item.role || 'No role')} · Reviewer: ${escape(reviewer?.name || reviewer?.email || item.reviewer_id)}</p><p>${item.decision ? `Decision: ${escape(item.decision)}${item.reason ? ` · ${escape(item.reason)}` : ''}` : 'Awaiting decision'}${item.drift ? ' · Access changed since the snapshot.' : ''}</p>${remediation}<details><summary>Access evidence at review creation</summary>${evidence(item.snapshot)}</details>${decision}${delegate}</div></div>`
 }
 
 export function reviewsPanel(model: { reviews?: AccessReviewsModel; csrf?: string }): string {

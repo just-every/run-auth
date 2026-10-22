@@ -19,12 +19,13 @@ export async function decisionTarget(ctx,s,data) {
  if(kind==='group') {
   if(!['add','remove'].includes(operation))fail('invalid_group_decision');
   const group=await one(ctx,'SELECT * FROM auth_groups WHERE id=?',targetId)??fail('group_not_found',404);
+  const owns=await one(ctx,'SELECT 1 FROM auth_group_owners WHERE group_id=? AND person_id=?',targetId,s.person_id);
+  if(!owns)assertPermission(state,'groups.edit',{groupId:targetId,write:true});
   personId=String(data.personId??'');
   const person=await one(ctx,"SELECT id,email,status,version FROM oa_operators WHERE (id=? OR email=?) AND status='active'",personId,personId.toLowerCase())??fail('person_not_found',404);
   personId=person.id;
   if(operation==='add'&&personId===s.person_id)fail('self_approval_refused',403);
   privileged=await privilegedGroup(ctx,targetId);
-  const owns=await one(ctx,'SELECT 1 FROM auth_group_owners WHERE group_id=? AND person_id=?',targetId,s.person_id);
   if(!owns)assertPermission(state,'groups.edit',{groupId:targetId,personId,write:true});
   const member=await one(ctx,'SELECT * FROM auth_group_members WHERE group_id=? AND person_id=?',targetId,personId);
   const excluded=await one(ctx,'SELECT * FROM auth_group_exclusions WHERE group_id=? AND person_id=?',targetId,personId);

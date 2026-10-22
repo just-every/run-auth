@@ -57,7 +57,7 @@ export async function accessReviewJourney(t) {
  await shoot('request-approved',manager,['[data-access-requests]']);
  await post(root,'company-apps/assign',{appId:appData.id,principalType:'person',principalId:managerData.id,role:'reader'});
  await owner.goto(app.origin+'/app/activity');const create=owner.locator('[data-access-review-create]');
- await create.getByLabel('Review name').fill('Northwind quarterly certification');await create.getByLabel('Reviewer',{exact:true}).selectOption(managerData.id);
+ await create.getByLabel('Review name').fill('Northwind quarterly certification');await create.locator('[name=reviewerId]').selectOption(managerData.id);
  await create.getByLabel('Due at').fill(new Date(Date.now()+86400000).toISOString().slice(0,16));
  await create.getByLabel('Period start').fill('2026-07-01');await create.getByLabel('Period end').fill(new Date(Date.now()-86400000).toISOString().slice(0,10));
  await saved(owner,()=>create.getByRole('button',{name:'Create quarterly review'}).click());
@@ -67,7 +67,7 @@ export async function accessReviewJourney(t) {
  const self=review.items.find(i=>i.subject_id===managerData.id);await post(root,'reviews/delegate',{itemId:self.id,reviewerId:(await(await root.request.get(app.origin+'/api/auth/me')).json()).user.id,reason:'Independent owner review of manager access'});
  await manager.reload();const itemForm=manager.locator(`[data-review-item="${item.id}"] [data-access-decision="review"]`);await itemForm.getByLabel('Decision reason').fill('Contract handover complete; remove access');
  await saved(manager,()=>itemForm.getByRole('button',{name:'Revoke access with passkey'}).click());
- await expect(manager.locator('[data-access-reviews]')).toContainText('remote_removal_unverified');
+ await expect(manager.locator('[data-access-reviews]')).toContainText('remote removal unverified');
  await shoot('review-unfinished',manager,['[data-access-reviews]']);
  await owner.reload();const certification=owner.locator(`[data-review-item="${self.id}"] [data-access-decision="review"]`);await certification.getByLabel('Decision reason').fill('Manager still needs customer operations access');
  await saved(owner,()=>certification.getByRole('button',{name:'Certify access with passkey'}).click());
