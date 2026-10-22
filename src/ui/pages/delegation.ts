@@ -14,7 +14,7 @@ function taskReview(model: AuthPageModel): string {
   if (!grant) return ''
   const task = grant.task
   const facts = [
-    ['Person', grant.personEmail ?? grant.personName ?? task.personId], ['Employer', grant.organizationId],
+    ['Person', grant.personEmail ?? grant.personName ?? task.personId], ['Employer', model.organizations?.current.name ?? (grant.organizationId === 'root' ? 'Installation' : grant.organizationId)],
     ['Agent', grant.agentName ?? 'Registered task agent'], ['Purpose', task.purpose],
     ['App', grant.appName ?? task.appId], ['Assignment change', `${grant.before.role ?? 'No role'} → ${grant.after.role}`],
     ['Target API', task.audience], ['Scope', task.scopes.join(', ')], ['Deadline', new Date(grant.expiresAt).toISOString()],
