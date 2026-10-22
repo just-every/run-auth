@@ -44,6 +44,7 @@ const valueText = (value: unknown): string => {
   if (value == null) return 'Not recorded'
   if (Array.isArray(value)) return value.length ? value.map(valueText).join('; ') : 'None'
   if (typeof value === 'object') return Object.entries(value).map(([key, entry]) => `${key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ')}: ${valueText(entry)}`).join('; ')
+  if (typeof value === 'number' && value >= 1e12 && value <= 8.64e15) return new Date(value).toISOString().replace('T', ' ').replace('.000Z', ' UTC').replace('Z', ' UTC')
   return typeof value === 'string' && /^[a-z]+(?:_[a-z]+)+$/.test(value) ? value.replace(/_/g, ' ') : String(value)
 }
 const evidence = (snapshot: unknown): string => {

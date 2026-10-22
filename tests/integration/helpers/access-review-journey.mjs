@@ -48,8 +48,12 @@ export async function accessReviewJourney(t) {
  await expect(manager.locator('[data-access-decisions]')).toContainText('Casey Jordan');
  await shoot('ordinary-membership',manager,['[data-access-decisions]']);
  const appData=await post(root,'company-apps/create',{name:'Salesforce customer operations',entityId:'https://salesforce.example.com',acsUrl:'https://salesforce.example.com/acs'},201);
- await post(root,'decisions/privilege',{kind:'app',targetId:appData.id,privileged:false});await post(root,'requests/policy',{appId:appData.id,deciderId:managerData.id,maxDurationMs:3600000});
- const request=await post(workers,'requests/create',{appId:appData.id,purpose:'Reconcile customer migration handover',role:'reader',durationMs:3600000},201);
+ await post(root,'decisions/privilege',{kind:'app',targetId:appData.id,privileged:false});
+ await owner.goto(app.origin+'/app/activity');const roleClassification=owner.locator('[data-access-classifications] [data-access-form=privilege]').filter({has:owner.locator(`[name=targetId][value="${appData.id}"]`)}).filter({has:owner.locator('[name=kind][value=app_role]')});
+ await roleClassification.locator('xpath=..').getByText('Classify an individual app role',{exact:true}).click();await roleClassification.getByLabel('Exact app role').fill('administrator');await saved(owner,()=>roleClassification.getByRole('button',{name:'Save role classification'}).click());
+ await shoot('app-role-classification',owner,['[data-access-classifications]'],async()=>{await owner.locator('[data-access-classifications]').getByText('Classify an individual app role',{exact:true}).first().click();});await post(root,'requests/policy',{appId:appData.id,deciderId:managerData.id,maxDurationMs:3600000});
+ await worker.goto(app.origin+'/app/account');const submission=worker.locator('[data-access-form=request-create]');await submission.getByLabel('App',{exact:true}).selectOption(appData.id);await submission.getByLabel('App role, if needed').fill('reader');await submission.getByLabel('Purpose',{exact:true}).fill('Reconcile customer migration handover');await submission.getByLabel('Duration in minutes').fill('60');await saved(worker,()=>submission.getByRole('button',{name:'Request temporary access with passkey'}).click());
+ const request=(await(await workers.request.get(app.origin+'/api/auth/requests')).json()).requests[0];assert.ok(request);
  await manager.reload();
  const requestForm=manager.locator('[data-access-decision="request"]');await requestForm.getByLabel('Decision reason').fill('Approved customer handover read access');
  await saved(manager,()=>requestForm.getByRole('button',{name:/Approve.*passkey/}).click());

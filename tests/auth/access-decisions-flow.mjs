@@ -15,6 +15,7 @@ export async function decide(r,actor,data) {
  const proof=await decisionProof(r,actor,data);
  return proof.refused??r.call('/api/auth/decisions/commit',post({transaction:proof.transaction,response:proof.response},proof.cookie));
 }
+export const submitRequest=(r,actor,data)=>decide(r,actor,{kind:'request_submit',targetId:data.appId,operation:'request',reason:data.purpose,role:data.role,durationMs:data.durationMs});
 export async function accessDecisionsFlow(t) {
  const r=await samlInstall(t),manager=await passkeyPerson(r,'manager','manager@example.com','member');
  // Sign in again with a passkey, without transferring the enrollment email proof.
@@ -28,6 +29,7 @@ export async function accessDecisionsFlow(t) {
  assert.equal((await r.call('/api/auth/decisions/options',post(params,r.bob))).status,403,'email alone is not a decision proof');
  await result(await decide(r,manager,params));
  assert.ok(await r.db.prepare("SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id='ada'").bind(group.id).first());
+ const expired=await decisionProof(r,manager,{...params,personId:'bob'});r.now+=15*60000+1;assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:expired.transaction,response:expired.response},expired.cookie))).status,400,'a decision assertion expires after fifteen minutes');r.tick();
  const replay=await decisionProof(r,manager,{...params,personId:'bob'});await result(await r.call('/api/auth/decisions/commit',post({transaction:replay.transaction,response:replay.response},replay.cookie)));
  assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:replay.transaction,response:replay.response},replay.cookie))).status,400);
  assert.equal((await decide(r,manager,{...params,personId:'manager'})).status,403);
@@ -49,7 +51,13 @@ export async function accessDecisionsFlow(t) {
  await result(await r.admin('decisions/privilege',{kind:'group',targetId:group.id,privileged:false}));
  await result(await r.admin('decisions/privilege',{kind:'app',targetId:app.id,privileged:true}));
  assert.equal((await decide(r,manager,params)).status,403);
- const history=(await r.db.prepare("SELECT * FROM auth_decision_operations WHERE actor_id='manager'").all()).results;assert.equal(history.length,2);assert.ok(history.every(h=>h.reason));
+ await result(await r.admin('decisions/privilege',{kind:'app_role',targetId:app.id,role:'reader',privileged:false}));
+ await result(await decide(r,manager,params));
+ const classified=await decisionProof(r,manager,{...params,operation:'remove'});assert.ok(classified.transaction);
+ assert.equal((await r.call('/api/auth/decisions/privilege',post({kind:'app_role',targetId:app.id,role:'reader',privileged:false},manager.cookie))).status,403);
+ await result(await r.admin('decisions/privilege',{kind:'app_role',targetId:app.id,role:'reader',privileged:true}));
+ assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:classified.transaction,response:classified.response},classified.cookie))).status,403,'a changed app-role classification protects an already offered group decision');
+ const history=(await r.db.prepare("SELECT * FROM auth_decision_operations WHERE actor_id='manager'").all()).results;assert.equal(history.length,3);assert.ok(history.every(h=>h.reason));
 }
 export async function requestDecisionsFlow(t) {
  const r=await samlInstall(t),manager=await passkeyPerson(r,'manager','manager@example.com','member'),employee=await passkeyPerson(r,'worker','worker@example.com','member');
@@ -57,14 +65,18 @@ export async function requestDecisionsFlow(t) {
  const app=await addApp(r,{name:'Salesforce',entityId:'https://salesforce.example.com',acsUrl:'https://salesforce.example.com/acs',assign:[]});
  await result(await r.admin('decisions/privilege',{kind:'app',targetId:app.id,privileged:false}));
  await result(await r.admin('requests/policy',{appId:app.id,deciderId:'manager',maxDurationMs:3600000}));
- const request=await result(await r.call('/api/auth/requests/create',post({appId:app.id,purpose:'Quarterly customer account handover',role:'reader',durationMs:60000},employee.cookie)),201);
+ assert.equal((await r.call('/api/auth/requests/create',post({appId:app.id,purpose:'Unconfirmed submission',durationMs:60000},employee.cookie))).status,403,'the old implicit-proof creation door cannot submit access');
+ const offeredSubmission=await decisionProof(r,employee,{kind:'request_submit',targetId:app.id,operation:'request',reason:'Exact purpose and role',role:'reader',durationMs:60000});assert.ok(offeredSubmission.transaction);
+ await result(await r.admin('requests/policy',{appId:app.id,deciderId:'manager',maxDurationMs:3600000}));
+ assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:offeredSubmission.transaction,response:offeredSubmission.response},offeredSubmission.cookie))).status,409,'an offered submission is bound to its exact policy revision');
+ const request=await result(await submitRequest(r,employee,{appId:app.id,purpose:'Quarterly customer account handover',role:'reader',durationMs:60000}),201);
  assert.equal((await decide(r,employee,{kind:'request',targetId:request.id,operation:'approve',reason:'Self approval'})).status,403);
  const stale=await decisionProof(r,manager,{kind:'request',targetId:request.id,operation:'approve',reason:'Need access for handover'});
  await result(await r.admin('requests/policy',{appId:app.id,deciderId:'owner',maxDurationMs:3600000}));
  assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:stale.transaction,response:stale.response},stale.cookie))).status,409);
  await result(await r.call('/api/auth/requests/cancel',post({id:request.id},employee.cookie)));
  await result(await r.admin('requests/policy',{appId:app.id,deciderId:'manager',maxDurationMs:3600000}));
- const next=await result(await r.call('/api/auth/requests/create',post({appId:app.id,purpose:'Read project records',role:'reader',durationMs:60000},employee.cookie)),201);
+ const next=await result(await submitRequest(r,employee,{appId:app.id,purpose:'Read project records',role:'reader',durationMs:60000}),201);
  const decision={kind:'request',targetId:next.id,operation:'approve',reason:'Approved read-only handover'},proof=await decisionProof(r,manager,decision),competing=await decisionProof(r,manager,decision);
  const races=await Promise.all([r.call('/api/auth/decisions/commit',{...post({transaction:proof.transaction,response:proof.response},proof.cookie),barrier:{name:'request-approval',size:2}}),r.call('/api/auth/decisions/commit',{...post({transaction:competing.transaction,response:competing.response},competing.cookie),barrier:{name:'request-approval',size:2}})]);
  assert.deepEqual(races.map(response=>response.status).sort(),[200,409]);
@@ -77,8 +89,8 @@ export async function requestDecisionsFlow(t) {
  await r.restart();assert.equal((await r.db.prepare('SELECT state FROM auth_access_requests WHERE id=?').bind(next.id).first()).state,'revocation_pending');
  // The same decider cannot grant privileged access with ordinary proof. After
  // an owner grants administration, the fresh administrator gate succeeds.
- await result(await r.admin('decisions/privilege',{kind:'app',targetId:app.id,privileged:true}));
- const privileged=await result(await r.call('/api/auth/requests/create',post({appId:app.id,purpose:'Privileged operations shift',role:'administrator',durationMs:60000},employee.cookie)),201);
+ await result(await r.admin('decisions/privilege',{kind:'app_role',targetId:app.id,role:'administrator',privileged:true}));
+ const privileged=await result(await submitRequest(r,employee,{appId:app.id,purpose:'Privileged operations shift',role:'administrator',durationMs:60000}),201);
  assert.equal((await decide(r,manager,{kind:'request',targetId:privileged.id,operation:'approve',reason:'Operations duty'})).status,403);
  await result(await r.admin('people/role',{personId:'manager',role:'admin'}));
  const {signInAgain}=await import('./agents-helpers.mjs');manager.cookie=(await signInAgain(r,manager,'manager@example.com')).cookie;

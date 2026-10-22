@@ -2,13 +2,12 @@ import {one,all,fail,hash} from '../core.mjs';
 import {roleState} from '../roles/state.mjs';
 import {requireHardware,assertPermission,roleGuard} from '../roles/policy.mjs';
 import {requireLocalEmail} from '../local-email.mjs';
+import {submissionTarget} from '../requests/submission.mjs';
 import {requestTarget} from '../requests/index.mjs';
 import {reviewTarget} from '../reviews/items.mjs';
 
-export async function privilegedGroup(ctx,id) {
- return Boolean(await one(ctx,`SELECT 1 WHERE EXISTS(SELECT 1 FROM auth_privileged_resources p WHERE p.kind='group' AND p.target_id=? AND p.privileged=1)
- OR EXISTS(SELECT 1 FROM auth_app_assignments a LEFT JOIN auth_privileged_resources p ON p.kind='app' AND p.target_id=a.app_id WHERE a.principal_type='group' AND a.principal_id=? AND COALESCE(p.privileged,1)=1)`,id,id));
-}
+import {privilegedGroup} from './privilege.mjs';
+export {privilegedGroup} from './privilege.mjs';
 export function employeeGuard(ctx,s,epoch) {
  return {clause:`EXISTS(SELECT 1 FROM auth_sessions s JOIN oa_operators p ON p.id=s.person_id WHERE s.id=? AND s.person_id=? AND s.amr=? AND s.person_version=? AND p.version=s.person_version AND p.status='active' AND s.revoked_at IS NULL AND s.expires_at>?) AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?)`,args:[s.id,s.person_id,s.amr,s.person_version,ctx.now(),epoch]};
 }
@@ -30,6 +29,8 @@ export async function decisionTarget(ctx,s,data) {
   const member=await one(ctx,'SELECT * FROM auth_group_members WHERE group_id=? AND person_id=?',targetId,personId);
   const excluded=await one(ctx,'SELECT * FROM auth_group_exclusions WHERE group_id=? AND person_id=?',targetId,personId);
   snapshot={group,person,member,excluded};
+ } else if(kind==='request_submit') {
+  const target=await submissionTarget(ctx,s,{...data,targetId,operation,reason});snapshot=target.snapshot;personId=target.personId;
  } else if(kind==='request') {
   const target=await requestTarget(ctx,s,{targetId,operation});
   snapshot=target.snapshot;personId=target.personId;privileged=target.privileged;
@@ -48,7 +49,7 @@ export async function decisionTarget(ctx,s,data) {
   guard=roleGuard(ctx,s,state);
  }
  if(!JSON.parse(s.amr).some(m=>['hwk','passkey'].includes(m)))fail('employee_passkey_required',403);
- const canonical={kind,targetId,operation,personId,reason,...(snapshot.reduction?{newRole:snapshot.reduction.newRole}:{})};
+ const canonical={kind,targetId,operation,personId,reason,...(kind==='request_submit'?{role:snapshot.role,durationMs:snapshot.durationMs}:{}),...(snapshot.reduction?{newRole:snapshot.reduction.newRole}:{})};
  return {...canonical,privileged,guard,epoch:state.epoch,digest:await hash(JSON.stringify(snapshot)),snapshot};
 }
 export async function decisionsModel(ctx,s) {
@@ -58,5 +59,5 @@ export async function decisionsModel(ctx,s) {
  const visible=new Set(groups.flatMap(g=>g.members.map(p=>p.id)));
  const people=groups.length?[...state.dir.people.values()].filter(p=>p.status==='active'&&(canManage||visible.has(p.id))).map(p=>({id:p.id,email:p.email,name:p.name})):[];
  const apps=canManage?await all(ctx,"SELECT a.id,a.name,COALESCE((SELECT p.privileged FROM auth_privileged_resources p WHERE p.kind='app' AND p.target_id=a.id),1) AS privileged FROM auth_apps a WHERE a.disabled_at IS NULL"):[];
- return {groups,people,apps:apps.map(a=>({...a,privileged:Boolean(a.privileged)})),canManage};
+ return {groups,people,apps:await Promise.all(apps.map(async a=>({...a,privileged:Boolean(a.privileged),roles:await all(ctx,'SELECT role,privileged FROM auth_privileged_app_roles WHERE app_id=? ORDER BY role',a.id)}))),canManage};
 }

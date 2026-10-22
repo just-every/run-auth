@@ -1,9 +1,10 @@
-import {one,all,random,requireSession,json,fail} from '../core.mjs';
+import {one,all,requireSession,json,fail} from '../core.mjs';
 import {authority,requireLocalEmail} from '../local-email.mjs';
+import {privilegedApp} from '../decisions/privilege.mjs';
 import {queue} from '../provisioning/obligations.mjs';
 
 export const REQUESTS_READ='/api/auth/requests';
-export const isRequestAction=p=>['/requests/policy','/requests/create','/requests/cancel'].includes(p);
+export const isRequestAction=p=>['/requests/policy','/requests/cancel'].includes(p);
 export async function requestsRead(ctx,request) {
  const s=await requireSession(ctx,request),admin=['owner','admin'].includes(s.role)&&JSON.parse(s.amr).includes('hwk');
  return json({requests:await all(ctx,`SELECT r.*,a.name AS app_name,p.display_name AS requester_name,p.email AS requester_email FROM auth_access_requests r JOIN auth_apps a ON a.id=r.app_id JOIN oa_operators p ON p.id=r.person_id ${admin?'':'WHERE r.person_id=? OR r.decider_id=?'} ORDER BY r.created_at DESC,r.id`,...(admin?[]:[s.person_id,s.person_id])),policies:await all(ctx,'SELECT p.app_id,p.max_duration_ms,a.name FROM auth_request_policies p JOIN auth_apps a ON a.id=p.app_id WHERE a.disabled_at IS NULL')});
@@ -18,19 +19,10 @@ export async function requestAction(ctx,request,path,data) {
   if(!result.meta.changes)fail('session_authority_changed',403);return json({ok:true});
  }
  if(!JSON.parse(s.amr).some(m=>['hwk','passkey'].includes(m)))fail('employee_passkey_required',403);
- if(path==='/requests/cancel') {
-  const result=await ctx.db.prepare("UPDATE auth_access_requests SET state='cancelled',reason='cancelled_by_requester' WHERE id=? AND person_id=? AND state='pending'").bind(String(data.id??''),s.person_id).run();
-  if(!result.meta.changes)fail('pending_request_not_found',404);return json({ok:true});
- }
- const policy=await one(ctx,'SELECT p.*,a.disabled_at FROM auth_request_policies p JOIN auth_apps a ON a.id=p.app_id WHERE app_id=?',String(data.appId??''))??fail('request_policy_required',403);
- if(policy.disabled_at!==null)fail('app_unavailable',403);
- if(policy.decider_id===s.person_id)fail('self_approval_refused',403);
- const purpose=String(data.purpose??'').trim(),duration=Number(data.durationMs),role=data.role==null?null:String(data.role).trim();
- if(!purpose||purpose.length>500||role?.length>80)fail('request_purpose_required');
- if(!Number.isSafeInteger(duration)||duration<60000||duration>policy.max_duration_ms)fail('invalid_request_duration');
- const id=random(),result=await ctx.db.prepare(`INSERT INTO auth_access_requests(id,app_id,person_id,role,purpose,duration_ms,decider_id,policy_revision,created_at) SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM auth_request_policies WHERE app_id=? AND revision=?) AND NOT EXISTS(SELECT 1 FROM auth_access_requests WHERE app_id=? AND person_id=? AND state IN ('pending','approved')) AND EXISTS(SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id WHERE a.id=? AND a.revoked_at IS NULL AND a.expires_at>? AND p.status='active' AND p.version=a.person_version)`).bind(id,policy.app_id,s.person_id,role,purpose,duration,policy.decider_id,policy.revision,now,policy.app_id,policy.revision,policy.app_id,s.person_id,s.id,now).run();
- if(!result.meta.changes)fail('request_state_changed',409);return json({id},201);
+ const result=await ctx.db.prepare("UPDATE auth_access_requests SET state='cancelled',reason='cancelled_by_requester' WHERE id=? AND person_id=? AND state='pending'").bind(String(data.id??''),s.person_id).run();
+ if(!result.meta.changes)fail('pending_request_not_found',404);return json({ok:true});
 }
+
 export async function requestTarget(ctx,s,{targetId,operation}) {
  if(!['approve','deny'].includes(operation))fail('invalid_request_decision');
  const row=await one(ctx,'SELECT r.*,p.revision AS current_revision,p.decider_id AS current_decider,a.disabled_at FROM auth_access_requests r JOIN auth_request_policies p ON p.app_id=r.app_id JOIN auth_apps a ON a.id=r.app_id WHERE r.id=?',targetId)??fail('request_not_found',404);
@@ -41,8 +33,7 @@ export async function requestTarget(ctx,s,{targetId,operation}) {
  const existing=await one(ctx,"SELECT * FROM auth_app_assignments WHERE app_id=? AND principal_type='person' AND principal_id=?",row.app_id,row.person_id);
  // A temporary request may not overwrite a standing assignment.
  if(operation==='approve'&&existing)fail('existing_access_requires_review',409);
- const mark=await one(ctx,"SELECT privileged FROM auth_privileged_resources WHERE kind='app' AND target_id=?",row.app_id);
- const privileged=mark?.privileged!==0;
+ const privileged=await privilegedApp(ctx,row.app_id,row.role);
  return {snapshot:{request:row,person,existing},personId:row.person_id,privileged};
 }
 export function requestStatements(ctx,s,target,operationId,won,p) {

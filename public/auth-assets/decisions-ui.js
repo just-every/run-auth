@@ -102,7 +102,7 @@
       } else {
         let payload
         if (form.dataset.accessForm === 'role-order') payload = { appId: fields.get('appId'), roles: String(fields.get('roles') || '').split(/\r?\n/).map(role => role.trim()).filter(Boolean).map((role, level) => ({role,level})) }
-        if (form.dataset.accessForm === 'privilege') payload = { kind: fields.get('kind'), targetId: fields.get('targetId'), privileged: fields.get('privileged') === 'true' }
+        if (form.dataset.accessForm === 'privilege') payload = { kind: fields.get('kind'), targetId: fields.get('targetId'), role: fields.get('role'), privileged: fields.get('privileged') === 'true' }
         if (form.dataset.accessForm === 'review-create') payload = { name: fields.get('name'), reviewerId: fields.get('reviewerId'), dueAt: dateISO(fields.get('dueAt')), periodStart: dateISO(fields.get('periodStart')), periodEnd: dateISO(fields.get('periodEnd')), intervalMonths: 3, includeAdministrators: fields.get('includeAdministrators') === 'on' }
         if (form.dataset.accessForm === 'review-delegate') payload = { itemId: fields.get('itemId'), reviewerId: fields.get('reviewerId'), reason: String(fields.get('reason') || '').trim() }
         if (form.dataset.accessForm === 'review-close') payload = { id: fields.get('id') }
@@ -110,7 +110,10 @@
         if (form.dataset.accessForm === 'request-cancel') payload = { id: fields.get('id') }
         if (form.dataset.accessForm === 'request-policy') payload = { appId: fields.get('appId'), deciderId: fields.get('deciderId'), maxDurationMs: durationMs(fields.get('maxDurationMinutes')) }
         setStatus('Saving…')
-        await post(form.action, payload)
+        if (form.dataset.accessForm === 'request-create') {
+          setStatus('Waiting for your passkey…')
+          await decide({kind:'request_submit',targetId:payload.appId,operation:'request',reason:payload.purpose,role:payload.role,durationMs:payload.durationMs})
+        } else await post(form.action, payload)
       }
       setStatus('Saved. Refreshing…')
       window.setTimeout(() => location.reload(), 350)

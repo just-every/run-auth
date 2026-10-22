@@ -20,16 +20,14 @@ continues through its existing, higher-rank hardware/fresh-email door.
 App classification defaults to privileged. Only an owner/administrator with a
 hardware passkey and fresh local email confirmation can classify an app ordinary,
 or mark a group privileged. Every group assigned to a privileged app inherits that
-classification. The app classification covers all of its roles until an explicit
-per-role privilege catalogue ships. Ordinary group owners cannot downgrade it.
-The same administrator gate protects request policies, review scheduling,
-delegation and evidence exports. These conservative defaults await CT approval.
+classification. An exact app-role classification overrides the app default; changing it invalidates offered decisions. Ordinary group owners cannot downgrade it.
+The same administrator gate protects request policies. Review scheduling, delegation and exports additionally require their published scoped review permission. These conservative defaults await CT approval.
 
 ## Temporary requests
 
 An administrator explicitly names an independent decider for an app and sets a
 maximum duration (at most thirty days). An employee signs in with a passkey,
-requests an exact app role, purpose and duration, and the decider signs that exact
+submits an exact app role, purpose and duration with a decision-bound UV passkey assertion, and the decider signs that exact
 request. A policy revision invalidates older pending requests. An approval cannot
 overwrite a standing direct assignment. Only the approved direct assignment is
 created; expiry removes that exact assignment and queues SCIM revocation. If
@@ -39,7 +37,7 @@ it. A requester can cancel a pending request; nobody can approve their own.
 
 This is a native request/decision foundation, not the full AUTH-REQUESTS-001
 Salesforce/AWS qualification. Multi-stage manager/app/security routing, extension
-and emergency policies, decision-bound request submission and Slack/Teams carriers
+and emergency policies and Slack/Teams carriers
 remain unbuilt. Authorized Salesforce and AWS role/elevation tenants are still
 required for the live journeys.
 
