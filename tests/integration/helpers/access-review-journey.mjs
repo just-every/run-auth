@@ -56,6 +56,9 @@ export async function accessReviewJourney(t) {
  await expect(manager.locator('[data-access-requests]')).toContainText('Approved temporary access');
  await shoot('request-approved',manager,['[data-access-requests]']);
  await post(root,'company-apps/assign',{appId:appData.id,principalType:'person',principalId:managerData.id,role:'reader'});
+ const service=await browser.newContext();
+ assert.equal((await service.request.post(app.origin+'/auth/identity/email/request',{data:{email:'pipeline@northwind.example.com'},headers:{origin:app.origin}})).status(),202);
+ const serviceLink=await app.link();assert.equal((await service.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:serviceLink.searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
  const buildApp=await post(root,'company-apps/create',{name:'Release engineering workspace',entityId:'https://engineering.example.com',acsUrl:'https://engineering.example.com/acs'},201);
  await post(root,'company-apps/assign',{appId:buildApp.id,principalType:'person',principalId:serviceData.id,role:'editor'});
  await owner.goto(app.origin+'/app/activity');

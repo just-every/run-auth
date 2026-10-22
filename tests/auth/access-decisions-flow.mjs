@@ -73,6 +73,15 @@ export async function requestDecisionsFlow(t) {
  assert.deepEqual((await result(await r.call('/api/auth/launcher',{cookie:employee.cookie}))).apps,[]);
  const expired=await r.db.prepare('SELECT * FROM auth_access_requests WHERE id=?').bind(next.id).first();assert.equal(expired.state,'revocation_pending','no connector acknowledgment can close remote removal');
  await r.restart();assert.equal((await r.db.prepare('SELECT state FROM auth_access_requests WHERE id=?').bind(next.id).first()).state,'revocation_pending');
+ // The same decider cannot grant privileged access with ordinary proof. After
+ // an owner grants administration, the fresh administrator gate succeeds.
+ await result(await r.admin('decisions/privilege',{kind:'app',targetId:app.id,privileged:true}));
+ const privileged=await result(await r.call('/api/auth/requests/create',post({appId:app.id,purpose:'Privileged operations shift',role:'administrator',durationMs:60000},employee.cookie)),201);
+ assert.equal((await decide(r,manager,{kind:'request',targetId:privileged.id,operation:'approve',reason:'Operations duty'})).status,403);
+ await result(await r.admin('people/role',{personId:'manager',role:'admin'}));
+ const {signInAgain}=await import('./agents-helpers.mjs');manager.cookie=(await signInAgain(r,manager,'manager@example.com')).cookie;
+ await result(await decide(r,manager,{kind:'request',targetId:privileged.id,operation:'approve',reason:'Administrator-approved operations duty'}));
+
 }
 export async function accessReviewsFlow(t) {
  const r=await samlInstall(t),manager=await passkeyPerson(r,'manager','manager@example.com','member'),alternate=await passkeyPerson(r,'alternate','alternate@example.com','member'),edge=await scimServer(t,'synthetic-auth-9');r.scimServer=edge.url;
