@@ -10,7 +10,9 @@ export async function followupJourney({app,browser,owner,page,shoot}) {
  const record=followup.locator('article',{hasText:address});
  await expect(record).toHaveCount(1);await expect(record.locator('[data-followup-state]')).toHaveText('open');
  await shoot('followup-open',page);
- await followup.getByText('Reminder settings and approved recipients',{exact:true}).click();
+ await shoot('followup-settings',page,async target=>{
+  if(!await target.locator('[data-followup-settings]').isVisible())await target.getByText('Reminder settings and approved recipients',{exact:true}).click();
+ });
  const settings=followup.locator('[data-followup-settings]');
  await settings.getByLabel('Employer timezone',{exact:true}).fill('America/New_York');
  await settings.getByLabel('Local reminder time',{exact:true}).fill('09:30');
