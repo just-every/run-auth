@@ -1,4 +1,5 @@
-import {all,one,random,requireSession,auditDetail,json,fail} from '../core.mjs';
+import {obligationPage} from './pagination.mjs';
+import {one,random,requireSession,auditDetail,json,fail} from '../core.mjs';
 import {requireLocalEmail,authority,requireAuthority} from '../local-email.mjs';
 import {policy,validatePolicy} from './policy.mjs';
 import {businessDue} from './calendar.mjs';
@@ -8,7 +9,11 @@ export const isFollowupAction=path=>['/followup/settings','/followup/schedule'].
 export async function followupRead(ctx,request) {
  await requireSession(ctx,request,true);
  await syncObligations(ctx);
- return json({policy:await policy(ctx),obligations:await all(ctx,'SELECT id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at FROM auth_obligations ORDER BY created_at DESC,id LIMIT 200'),history:await all(ctx,'SELECT * FROM auth_obligation_history ORDER BY created_at DESC,id LIMIT 500'),limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Access requests, reviews, app setup and stale-source obligations await their public flows.','Interrupted dispatch stays recorded as dispatching; transport acknowledgment is not proof of access state.']});
+ const [obligations,history]=await Promise.all([
+  obligationPage(ctx,request,{table:'auth_obligations',columns:'id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at',prefix:'obligation',defaultLimit:200}),
+  obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100}),
+ ]);
+ return json({policy:await policy(ctx),obligations:obligations.items,obligationsPage:obligations.page,history:history.items,historyPage:history.page,limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Access requests, reviews, app setup and stale-source obligations await their public flows.','Interrupted dispatch stays recorded as dispatching; transport acknowledgment is not proof of access state.']});
 }
 export async function followupAction(ctx,request,path,data) {
  const s=await requireSession(ctx,request,true);requireLocalEmail(ctx,s);

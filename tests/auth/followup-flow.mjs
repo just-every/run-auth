@@ -37,7 +37,16 @@ export async function followupFlow(t) {
   assert.equal(ob.deadline_at,Date.parse('2026-03-11T13:00:00Z'),'the declared Tuesday holiday moves the deadline to Wednesday');
  }
  await admin('organizations/cancel-invitation',{email:'cancelled@example.com'});
- const originals=new Set(before.obligations.map(o=>o.id));await r.restart();
+ const originals=new Set(before.obligations.map(o=>o.id));
+ const pages=[],seen=new Set();let cursor='';
+ do {
+  const page=await (await r.call('/api/auth/followup?historyLimit=2'+(cursor?'&historyCursor='+encodeURIComponent(cursor):''),{cookie:r.owner.cookie})).json();
+  for(const event of page.history){assert.ok(!seen.has(event.id),'history cursors never duplicate a stored event');seen.add(event.id);pages.push(event);}
+  assert.equal(page.historyPage.hasMore,Boolean(page.historyPage.nextCursor));cursor=page.historyPage.nextCursor;
+ }while(cursor);
+ assert.deepEqual(new Set(pages.map(h=>h.id)),new Set((await read()).history.map(h=>h.id)),'every retained event is accessible through public cursor pages');
+ assert.equal((await r.call('/api/auth/followup?historyCursor=invalid',{cookie:r.owner.cookie})).status,400);
+ await r.restart();
  const restarted=await read();assert.deepEqual(new Set(restarted.obligations.map(o=>o.id)),originals,'actual Worker and SQLite restart preserves the same obligation records');
  r.now=Date.parse('2026-03-09T12:59:00Z');let count=(await r.mails()).length;
  await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count,'scheduler does not dispatch early');
