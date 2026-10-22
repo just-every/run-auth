@@ -106,9 +106,14 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  const rule=page.locator('.domain-rule');await rule.locator('select').selectOption('backup');await rule.getByRole('button',{name:'Save rule'}).click();await expect(rule.locator('select')).toHaveValue('backup');
  await page.reload();await expect(rule.locator('select')).toHaveValue('backup');
  await rule.locator('select').selectOption('');await rule.getByRole('button',{name:'Save rule'}).click();await expect(page.locator('.domain-rule')).toHaveCount(0);
- await page.goto(app.origin+'/app/account');
- await page.getByRole('button',{name:'Request passkey recovery'}).click();await expect(page.getByText('Your recovery request',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Cancel request'}).click();await expect(page.getByText('Your recovery request',{exact:true})).toHaveCount(0);
+ for(const width of [1440,390]) {
+  await page.setViewportSize({width,height:1000});await page.goto(app.origin+'/app/account');
+  await page.getByRole('button',{name:'Request passkey recovery'}).click();await expect(page.getByText('Your recovery request',{exact:true})).toBeVisible();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'pending recovery fits '+width);await accessible('pending recovery '+width);
+  await page.screenshot({path:join(directory,`continuity-recovery-pending-${width}.png`),fullPage:true});
+  await page.getByRole('button',{name:'Cancel request'}).click();await expect(page.getByText('Your recovery request',{exact:true})).toHaveCount(0);
+  await page.screenshot({path:join(directory,`continuity-recovery-cancelled-${width}.png`),fullPage:true});
+ }
  assert.deepEqual(errors,[],'no browser runtime errors');
  console.log('Auth journey: 20 real private-page screenshots; 1440/390 light/dark; axe serious/critical 0; browser email, setup, virtual hardware passkey, people, recovery cancellation');
 });
