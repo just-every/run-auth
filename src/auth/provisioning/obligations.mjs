@@ -1,3 +1,4 @@
+import {syncObligations} from '../obligations/sources.mjs';
 import {computedValues,scimValues} from '../mapping/program.mjs';
 // Provisioning obligations: what Auth still has to make true in an app, pushed
 // on the event and kept open until a read-back shows it. Each records the event,
@@ -21,6 +22,7 @@ export async function queue(ctx,appId,subjects,reason) {
   ctx.db.prepare("UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type=? AND subject_id=? AND state IN ('pending','failed','blocked')").bind(appId,type,id),
   ctx.db.prepare("INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) VALUES(?,?,?,?,?,?,'pending',?)").bind(random(),appId,type,id,reason,now,now),
  ]));
+ await syncObligations(ctx);
  await kick(ctx,appId);
 }
 const groupsOf=async(ctx,appId,connector)=>connector?.push_groups?(await all(ctx,"SELECT principal_id AS id FROM auth_app_assignments WHERE app_id=? AND principal_type='group' UNION SELECT subject_id FROM auth_scim_accounts WHERE app_id=? AND subject_type='group'",appId,appId)).map(g=>['group',g.id]):[];
@@ -150,6 +152,7 @@ export async function dispatch(ctx,appId=null) {
   await run(ctx,`UPDATE auth_scim_connectors SET ${outcome.verified?'last_success_at=?,last_error=NULL':'last_error=?'} WHERE app_id=?`,outcome.verified?now:error,ob.app_id);
   // A person's new account may complete a pushed group's membership.
   if(outcome.verified&&ob.subject_type==='person'&&connector.push_groups&&outcome.operation!=='none')for(const g of await all(ctx,"SELECT a.principal_id AS id FROM auth_app_assignments a JOIN auth_group_members m ON m.group_id=a.principal_id WHERE a.app_id=? AND a.principal_type='group' AND m.person_id=?",ob.app_id,ob.subject_id))await requeueGroup(ctx,ob.app_id,g.id);
+  await syncObligations(ctx);
   if(outcome.fail||outcome.block)await audit(ctx,null,'provisioning_failed',ob.app_id);
   // Reported only once known: verified by read-back, or failed and still open.
   if(outcome.verified||outcome.fail||outcome.block)await emit(ctx,outcome.verified?'provisioning.verified':'provisioning.failed',{type:ob.subject_type,id:ob.subject_id},{app:ob.app_id,operation:outcome.operation??null,reason:ob.reason,error:outcome.verified?null:error,eventAt:new Date(ob.event_at).toISOString()});

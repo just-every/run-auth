@@ -1,3 +1,4 @@
+import {syncObligations} from './obligations/sources.mjs';
 import {requirePolicy,upstreamProof} from './domain-policy.mjs';
 import {freshLocalEmail,requireLocalEmail,authority,requireAuthority} from './local-email.mjs';
 import {prepareSession} from './session-write.mjs';
@@ -43,6 +44,7 @@ export async function registrationVerify(ctx,request,data) {
   ctx.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT person_id,'passkey_registered',?,? FROM auth_sessions WHERE id=?").bind(c.id,established.now,established.id),
  ]);
  if(!inserted.meta.changes)fail('session_authority_changed',403);
+ await syncObligations(ctx);
  return response;
 }
 export async function authenticationOptions(ctx,request,data={}) {

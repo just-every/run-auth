@@ -1,0 +1,37 @@
+import {all,one,random,requireSession,auditDetail,json,fail} from '../core.mjs';
+import {requireLocalEmail,authority,requireAuthority} from '../local-email.mjs';
+import {policy,validatePolicy} from './policy.mjs';
+import {businessDue} from './calendar.mjs';
+import {syncObligations} from './sources.mjs';
+export const FOLLOWUP_READ='/api/auth/followup';
+export const isFollowupAction=path=>['/followup/settings','/followup/schedule'].includes(path);
+export async function followupRead(ctx,request) {
+ await requireSession(ctx,request,true);
+ await syncObligations(ctx);
+ return json({policy:await policy(ctx),obligations:await all(ctx,'SELECT id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at FROM auth_obligations ORDER BY created_at DESC,id LIMIT 200'),history:await all(ctx,'SELECT * FROM auth_obligation_history ORDER BY created_at DESC,id LIMIT 500'),limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Access requests, reviews, app setup and stale-source obligations await their public flows.','Interrupted dispatch stays recorded as dispatching; transport acknowledgment is not proof of access state.']});
+}
+export async function followupAction(ctx,request,path,data) {
+ const s=await requireSession(ctx,request,true);requireLocalEmail(ctx,s);
+ const guard=authority(ctx,s,['owner','admin']);
+ if(path==='/followup/settings') {
+  if(data.confirm!==true)fail('followup_explicit_consent_required');
+  const p=await validatePolicy(ctx,data),changed=await ctx.db.prepare(`INSERT INTO auth_followup_settings(id,policy,updated_by,updated_at) SELECT 1,?,?,? WHERE ${guard.clause} ON CONFLICT(id) DO UPDATE SET policy=excluded.policy,updated_by=excluded.updated_by,updated_at=excluded.updated_at`).bind(JSON.stringify(p),s.person_id,ctx.now(),...guard.args).run();
+  if(!changed.meta.changes)await requireAuthority(ctx,s,guard);
+  await auditDetail(ctx,s.person_id,'followup_settings_changed',null,{...p,consent:true});
+  await syncObligations(ctx);
+  return json({ok:true,policy:p});
+ }
+ await syncObligations(ctx);
+ const ob=await one(ctx,"SELECT * FROM auth_obligations WHERE id=? AND state='open'",String(data.id??''));if(!ob)fail('followup_unavailable',404);
+ const owner=await one(ctx,"SELECT id FROM oa_operators WHERE id=? AND status='active' AND role IN ('owner','admin')",String(data.ownerId??''));if(!owner)fail('followup_owner_requires_admin');
+ for(const key of ['dueBusinessDays','deadlineBusinessDays'])if(!Number.isInteger(data[key])||data[key]<1||data[key]>90)fail('invalid_followup_schedule');
+ if(data.deadlineBusinessDays<data.dueBusinessDays)fail('invalid_followup_schedule');
+ const p=await policy(ctx),next=businessDue(ctx.now(),data.dueBusinessDays,p.calendar),deadline=businessDue(ctx.now(),data.deadlineBusinessDays,p.calendar),marker=random();
+ const [changed]=await ctx.db.batch([
+  ctx.db.prepare(`UPDATE auth_obligations SET owner_id=?,calendar=?,next_due_at=?,deadline_at=?,escalation_rule=?,reminders_stopped_at=NULL,claim_id=NULL,claimed_until=NULL WHERE id=? AND state='open' AND COALESCE(claimed_until,0)<=? AND ${guard.clause}`).bind(owner.id,JSON.stringify(p.calendar),next,deadline,p.escalation,ob.id,ctx.now(),...guard.args),
+  ctx.db.prepare('INSERT INTO auth_obligation_history(id,obligation_id,event,actor_id,created_at) SELECT ?,?,?,?,? WHERE changes()>0').bind(marker,ob.id,'schedule_changed',s.person_id,ctx.now()),
+ ]);
+ if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('followup_changed',409);}
+ await auditDetail(ctx,s.person_id,'followup_schedule_changed',ob.id,{ownerId:owner.id,calendar:p.calendar,nextDueAt:next,deadlineAt:deadline});
+ return json({ok:true});
+}

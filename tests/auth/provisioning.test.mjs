@@ -320,3 +320,7 @@ test('app erasure removes connector custody and protected organization reset ret
  for(const kind of ['view','retry','connection','abandon'])assert.ok(audit.some(x=>x.event==='erasure_custody_'+kind),'installation audit records custody '+kind);
  assert.equal((await selected.call('/.well-known/openid-configuration')).status,404,'root custody and a same-named replacement never revive the erased issuer');
 });
+
+test('durable follow-up dispatches on the employer business calendar across DST and restart, escalates unresolved revocation and stops on source completion, cancellation and expiry',async t=>{
+ const {followupFlow}=await import('./followup-flow.mjs');await followupFlow(t);
+});

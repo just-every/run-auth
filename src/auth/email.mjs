@@ -1,3 +1,4 @@
+import {syncObligations} from './obligations/sources.mjs';
 import {invitationAdmitted} from './tenancy/routes.mjs';
 import {invokeHooks} from './hooks/index.mjs';
 import {permitsSession,requirePolicy,upstreamProof} from './domain-policy.mjs';
@@ -24,6 +25,7 @@ async function startProof(ctx, request, data, address, bound) {
   person=await one(ctx,'SELECT * FROM oa_operators WHERE email=?',address);
  }
  if(!person||!await invitationAdmitted(ctx,person))return;
+ if(person.status==='invited')await syncObligations(ctx);
  const current=await session(ctx,request),proofId=current?.person_id===person.id&&await upstreamProof(ctx,person.id,current.upstream_proof_id)?current.upstream_proof_id:null;
  const hardwareId=current?.person_id===person.id&&JSON.parse(current.amr).includes('hwk')?current.id:null;
  if(await permitsSession(ctx,person,proofId))try {await sendProof(ctx,person,bound,proofId?['oidc','email']:['email'],data.returnTo,proofId,hardwareId);}
@@ -52,6 +54,7 @@ export async function confirmEmail(ctx,request,data) {
   ctx.db.prepare('INSERT INTO auth_emails(person_id,verified_at) VALUES(?,?) ON CONFLICT(person_id) DO UPDATE SET verified_at=excluded.verified_at').bind(proof.person_id,ctx.now()),
  ]);
  const s=await createSession(ctx,proof.person_id,[...proof.payload.amr,...(hardware?['hwk']:[])],proof.payload.upstreamProofId,{localEmailVerifiedAt:ctx.now(),expiresAt:hardware?.expires_at,sourceSession:hardware,personVersion:person.status==='active'?person.version:null});
+ await syncObligations(ctx);
  await audit(ctx,proof.person_id,'email_confirmed');
  if(person.status==='invited'){await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'email'});await evaluatePerson(ctx,person.id);}
  const returnTo=returnPath(proof.payload.returnTo);

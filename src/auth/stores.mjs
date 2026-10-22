@@ -1,8 +1,9 @@
 // Shared by erasure previews/commits and the Base export/restore adapter. Every
-// installed logical store in migrations/core/0001..0045 is classified here.
+// installed logical store in migrations/core/0001..0046 is classified here.
 // A new managed store requires an explicit decision before either operation.
 const groups = {
  portable: [
+  'auth_obligations', 'auth_obligation_history',
   'auth_activity', 'auth_activity_details', 'auth_app_assignments', 'auth_apps',
   'auth_attribute_defs', 'auth_client_versions', 'auth_clients', 'auth_domains',
   'auth_emails', 'auth_erasure_holds', 'auth_erasure_journal', 'auth_erasure_policy',
@@ -19,7 +20,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
-  'auth_admin_api_epoch', 'auth_admin_service_apps', 'auth_resource_services',
+  'auth_followup_settings', 'auth_admin_api_epoch', 'auth_admin_service_apps', 'auth_resource_services',
   'auth_delegated_agents', 'auth_delegated_tasks',
   'auth_delegation_reversals',
   'auth_rer_trust', 'auth_role_epoch', 'oa_auth_audit', 'oa_auth_settings',

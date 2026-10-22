@@ -1,3 +1,5 @@
+import {syncObligations} from './obligations/sources.mjs';
+import {FOLLOWUP_READ,isFollowupAction,followupRead,followupAction} from './obligations/routes.mjs';
 import {ERASURE_READS,isErasureAction,erasureRead,erasureAction} from './erasure/index.mjs';
 import {isDelegationPath,delegationRoute} from './agents/delegation/index.mjs';
 import {ROLE_READS,isRoleAction,roleRead,roleAction} from './roles/index.mjs';
@@ -61,6 +63,7 @@ function scopedRuntime(options) {
     if(path==='/oidc/authorize')return await authorize(ctx,request);
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
+    if(path===FOLLOWUP_READ)return await followupRead(ctx,request);
     if(ERASURE_READS.includes(path))return await erasureRead(ctx,request,path);
     if(ROLE_READS.includes(path))return await roleRead(ctx,request,path);
     if(path==='/api/auth/resource-apis')return await grantRead(ctx,request,path);
@@ -91,10 +94,11 @@ function scopedRuntime(options) {
     if(passkeyPath==='/auth/passkeys/authenticate/verify')return await authenticationVerify(ctx,request,data);
     if(path.startsWith('/api/auth/')) {
      const action=path.slice('/api/auth'.length);
+     if(isFollowupAction(action))return await followupAction(ctx,request,action,data);
      if(isErasureAction(action))return await erasureAction(ctx,request,action,data);
      if(isRoleAction(action))return await roleAction(ctx,request,action,data);
      if(isGrantAction(action))return await grantAction(ctx,request,action,data);
-     if(isTenancyAction(action))return await tenancyAction(ctx,request,action,data);
+     if(isTenancyAction(action)){const response=await tenancyAction(ctx,request,action,data);if(['/organizations/invite','/organizations/cancel-invitation'].includes(action))await syncObligations(ctx);return response;}
      if(['/recovery/start','/recovery/request'].includes(action))return await startRecovery(ctx,request);
      if(['/recovery/cancel','/recovery/approve','/recovery/complete'].includes(action))return await changeRecovery(ctx,request,data,action.split('/').at(-1));
      if(action==='/recovery/token')return await redeemRecoveryToken(ctx,request,data);

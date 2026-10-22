@@ -1,3 +1,4 @@
+import {syncObligations} from './obligations/sources.mjs';
 import {roleModel,roleRead} from './roles/index.mjs';
 import {delegationInventory,delegationConsentView} from './agents/delegation/index.mjs';
 import {requireAccountRank} from './ranks.mjs';
@@ -79,6 +80,7 @@ export async function model(ctx,request,page='account') {
 }
 // The one invitation message, from People and from move-in alike.
 export async function sendInvitation(ctx,address) {
+ await syncObligations(ctx);
  if(ctx.mail)await ctx.mail({to:address,subject:'You are invited to Auth',text:`Sign in to ${ctx.origin}${ctx.basePath??''}/signin with your email address to accept your invitation.`,html:'<p>You are invited to Auth. Sign in with your email address to accept.</p>'});
 }
 const ADMIN_ACTIONS=['/people/invite','/people/domain','/domains/add','/people/domain-rule','/people/suspend'];
