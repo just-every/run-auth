@@ -39,3 +39,6 @@ test('emitted Auth protects private documents and Base authority seams; email pr
 test('owner erasure fences a pre-erasure rer archive with its later journal, restores anonymous evidence and resets the local installation',async t=>{
  const {erasurePortability}=await import('./erasure-portability.mjs');await erasurePortability(t);
 });
+
+import {continuityDrill} from './continuity-drill.mjs';
+test('scheduled installation continuity drill restores an owner through real archive and local recovery commands without replaying authority',continuityDrill);

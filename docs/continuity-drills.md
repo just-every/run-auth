@@ -1,0 +1,11 @@
+# Continuity drills
+
+Keep the installation owner on a separately protected emergency mailbox outside the employer’s required upstream domain. Enroll two independent hardware keys and keep one in separate custody. Ordinary accounts cannot change the upstream requirement or redeem the local owner recovery token. Neither an outage nor a drill changes those gates.
+
+The `Continuity drills` workflow rehearses a temporary root installation every Monday at 03:17 UTC, and can be dispatched manually. It uses synthetic identities and no held provider accounts. Run the same rehearsal after a production build with `pnpm run drill:continuity`. It never connects to a production issuer. The TAP artifact records failed steps and explicitly unmeasured boundaries; a setup failure is not a passing drill.
+
+The rehearsal measures lost redundant factors, a distinct higher-ranked recovery approver, cancellation after approval, notices across restart, old-factor and token replay, required-upstream failure, authorized upstream-policy recovery, replacement of a genuinely expired SAML signer, and connector retry/read-back without duplicate accounts. The real CLI exports, resets and imports an owner installation with separately held private configuration; the archive cannot restore live sessions, an old emergency token or signing secrets. The owner redeems a new local token and enrolls replacement hardware before administration resumes.
+
+The SAML consumer used by the drill validates XML signatures but does not enforce X.509 validity dates. Replacement and the end of old-key trust are measured; an actual vendor rejecting an expired certificate is explicitly unmeasured. Requalify each real relying party and its trust-update process before changing its signer.
+
+This is root-installation continuity. Isolated-employer owner-authorized inactive restoration remains AUTH-TRANSFER-002, and hosted issuer disaster recovery remains AUTH-OPS-001. The existing local owner emergency token remains AUTH-IDENTITY-001’s exceptional gate; this drill adds no independent approval policy to it. A separate enforceable emergency-account protection policy and the treatment of independent approval for local owner recovery await CT direction, so AUTH-RECOVERY-002 remains partial.

@@ -1,0 +1,49 @@
+name: Continuity drills
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  continuity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      RER_SERVER_JOURNEY: '1'
+      WRANGLER_SEND_METRICS: 'false'
+      X_LOCAL_EXPLORER: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.20.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Rehearse only isolated test identities through public doors
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm run drill:continuity 2>&1 | tee continuity-drills.tap
+      - name: Preserve measured failures and explicit unmeasured steps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuity-drills-${{ github.sha }}
+          path: continuity-drills.tap
+          if-no-files-found: warn
+      - name: Report drill boundary
+        if: always()
+        shell: bash
+        run: |
+          printf '%s\n' 'Drill scope: temporary root installation and synthetic test identities; no provider account or production issuer is changed.' >> "$GITHUB_STEP_SUMMARY"
+          if test -f continuity-drills.tap; then
+            sed -n '/MEASURED /p; /UNMEASURED /p; /not ok /p' continuity-drills.tap >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '%s\n' 'UNMEASURED all steps: setup or build failed before the drill could start.' >> "$GITHUB_STEP_SUMMARY"
+          fi

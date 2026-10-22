@@ -347,3 +347,6 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
 
  const keysA=await (await a.call('/oidc/jwks')).json(),keysB=await (await b.call('/oidc/jwks')).json();assert.ok(keysA.keys.every(ka=>keysB.keys.every(kb=>ka.kid!==kb.kid)),'issuer private keys are distinct');
 });
+
+import {continuityFlow} from './continuity-flow.mjs';
+test('scheduled continuity drill exercises protected lost-factor recovery, upstream outage and expired signing-certificate replacement',continuityFlow);
