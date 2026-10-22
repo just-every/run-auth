@@ -12,6 +12,7 @@ export async function dispatchOccurrence(ctx,ob,claim,{deadline=false,timing=fal
    // including fallback escalation. A failed recipient never receives mail.
    const current=await policy(ctx),ids=escalation?current.escalationRecipients:current.recipients;
    if((earlyCurrent&&!await earlyCurrent())||!current.enabled||(timing&&!await timingCurrent(ctx,ob,claim))||(await sourceState(ctx,ob)).state!=='open'||!await one(ctx,"SELECT 1 FROM auth_obligations WHERE id=? AND state='open' AND claim_id=? AND claimed_until>?",ob.id,claim,ctx.now()))return 'stopped';
+   const epoch=await one(ctx,'SELECT epoch FROM auth_role_epoch WHERE id=1');
    const target=await recipient(ctx,ob,recipientId,ids,{escalation});
    if(!target) {
     lastError=escalation?'approved_escalation_recipient_unavailable':'approved_recipient_unavailable';
@@ -22,7 +23,7 @@ export async function dispatchOccurrence(ctx,ob,claim,{deadline=false,timing=fal
    // Commit it before transport: after a crash an unknown result stays unknown
    // and cannot be sent again merely because the worker claim expired.
    const event='dispatch:'+await hash(JSON.stringify([ob.id,timing?ob.timing_occurrence:ob.next_due_at,target.id])),now=ctx.now();
-   const started=await run(ctx,"INSERT OR IGNORE INTO auth_obligation_history(id,obligation_id,event,recipient_id,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM auth_obligations WHERE id=? AND state='open' AND claim_id=? AND claimed_until>?)",event,ob.id,escalation?'escalation_dispatching':'reminder_dispatching',target.id,now,ob.id,claim,now);
+   const started=await run(ctx,"INSERT OR IGNORE INTO auth_obligation_history(id,obligation_id,event,recipient_id,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM auth_obligations WHERE id=? AND state='open' AND claim_id=? AND claimed_until>?) AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?)",event,ob.id,escalation?'escalation_dispatching':'reminder_dispatching',target.id,now,ob.id,claim,now,epoch.epoch);
    if(!started.meta.changes) {
     const previous=await one(ctx,'SELECT event FROM auth_obligation_history WHERE id=?',event);
     if(!previous)return 'stopped';

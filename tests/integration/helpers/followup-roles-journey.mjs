@@ -2,7 +2,17 @@ import assert from 'node:assert/strict';
 import {expect} from '@playwright/test';
 
 // All setup uses human public doors; mail is inspected at the gated outbox edge.
-export async function followupRolesJourney({app,browser,owner,page,shoot}) {
+export async function followupRolesJourney(options) {
+ for(const [width,fixtureBase] of [[1440,200],[390,300]]) {
+  const capture=async(name,target,prepare)=>{
+   await options.shoot(`${name}-actions-${width}`,target,prepare);
+   await target.setViewportSize({width,height:1000});
+  };
+  await followupRolesAtWidth({...options,shoot:capture,width,fixtureBase});
+ }
+}
+
+async function followupRolesAtWidth({app,browser,owner,page,shoot,width,fixtureBase}) {
  const contexts=[];
  const post=(context,path,data)=>context.request.post(app.origin+'/api/auth/'+path,{data,headers:{origin:app.origin}});
  const body=async(response,status=200)=>{
@@ -14,9 +24,9 @@ export async function followupRolesJourney({app,browser,owner,page,shoot}) {
   assert.equal((await context.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:(await app.link()).searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
  };
  const person=async(n,hardware=true)=>{
-  const address=`synthetic-auth-${n}@example.com`;
-  await body(await post(owner,'people/invite',{email:address,name:`Synthetic Auth ${n}`}),201);
-  const context=await browser.newContext({viewport:{width:1440,height:1000}});contexts.push(context);
+  const address=`synthetic-auth-${fixtureBase+n}@example.com`;
+  await body(await post(owner,'people/invite',{email:address,name:({1:'Jordan Rivera',2:'Morgan Chen',3:'Taylor Kim',5:'Casey Patel'})[n] ?? 'Northwind employee'}),201);
+  const context=await browser.newContext({viewport:{width,height:1000}});contexts.push(context);
   const mine=await context.newPage();mine.on('dialog',dialog=>dialog.accept());
   await email(context,address);
   if(hardware) {
@@ -43,7 +53,7 @@ export async function followupRolesJourney({app,browser,owner,page,shoot}) {
   const details=await Promise.all(paths.map(async path=>{
    const response=await app.get(path,{'x-rer-dev-key':app.vars.RER_DEV_KEY});assert.equal(response.status,200);return response.text();
   }));
-  assert.ok(details.some(html=>html.includes(`To: ${address}`)&&html.includes(reference)),'intended recipient receives this obligation reference');
+  assert.ok(details.some(html=>html.includes(`<p>To: ${address}</p>`)&&html.includes(reference)),'intended recipient receives this obligation reference');
   return details;
  };
  const early=async(who,id)=>{
@@ -55,11 +65,12 @@ export async function followupRolesJourney({app,browser,owner,page,shoot}) {
   return before;
  };
  try {
+  await page.setViewportSize({width,height:1000});
   await email(owner,app.vars.OWNER_EMAIL);
   const ownerId=(await body(await owner.request.get(app.origin+'/api/auth/me'))).user.id;
-  const manager=await person(201),helpdesk=await person(202),employee=await person(203,false);
-  const roleId='synthetic-auth-204';
-  await change({kind:'role',role:{id:roleId,name:'Synthetic follow-up manager',rank:15,permissions:['roles.view','followup.manage']}});
+  const manager=await person(1),helpdesk=await person(2),employee=await person(3,false);
+  const roleId=`synthetic-auth-${fixtureBase+4}`;
+  await change({kind:'role',role:{id:roleId,name:'Follow-up coordinator',rank:15,permissions:['roles.view','followup.manage']}});
   await change({kind:'grant',personId:manager.id,roleId,resources:{view:{},edit:{}}});
   const catalogue=await body(await manager.context.request.get(app.origin+'/api/auth/roles'));
   assert.equal(catalogue.permissions['followup.manage'],'Manage follow-up');
@@ -88,6 +99,24 @@ export async function followupRolesJourney({app,browser,owner,page,shoot}) {
   await shoot('followup-employee-early',employee.page);
   assert.equal((await post(manager.context,'followup/send',{id:enrollment.id})).status(),403,'management permission does not make its holder the employee');
 
+  // A hardware holder's own recovery is a separate personal source. The
+  // normal early button sends to its role-derived employee recipient.
+  const recovery=await body(await post(helpdesk.context,'recovery/start',{}),201);
+  const ownRecovery=(await read(helpdesk.context)).obligations.find(ob=>ob.kind==='recovery'&&!ob.case_id&&ob.source_id===recovery.id);
+  assert.ok(ownRecovery,'own recovery creates a personal reminder');
+  const beforeRecovery=await early(helpdesk,ownRecovery.id);
+  await mailSince(beforeRecovery,{address:helpdesk.address,reference:ownRecovery.id});
+  await shoot('followup-own-recovery-early',helpdesk.page);
+  // A public reschedule creates a fresh occurrence. Extra caller-supplied
+  // recipients and addresses cannot widen the consented role-derived target.
+  await body(await post(owner,'followup/schedule',{id:ownRecovery.id,ownerId,dueBusinessDays:3,deadlineBusinessDays:5}));
+  const injectedAddress=`synthetic-auth-${fixtureBase+9}@example.com`,beforeInjection=new Set(await outbox());
+  await body(await post(helpdesk.context,'followup/send',{id:ownRecovery.id,recipients:[employee.id,injectedAddress],to:injectedAddress,email:injectedAddress}));
+  const injectedMail=await mailSince(beforeInjection,{address:helpdesk.address,reference:ownRecovery.id});
+  assert.ok(injectedMail.every(html=>html.includes(`<p>To: ${helpdesk.address}</p>`)&&!html.includes(injectedAddress)),'injected addresses cannot change the recipient');
+  await body(await post(helpdesk.context,'recovery/cancel',{id:recovery.id}));
+  assert.equal((await read(helpdesk.context)).obligations.find(ob=>ob.id===ownRecovery.id).state,'cancelled');
+
   // Opening uses person scope; subsequent review uses only the exact case grant.
   await change({kind:'grant',personId:helpdesk.id,roleId:'help-desk',resources:{view:{people:[employee.id]},edit:{people:[employee.id]}}});
   const opened=await body(await post(helpdesk.context,'roles/recovery-case',{action:'open',personId:employee.id,reason:'Synthetic employee recovery follow-up'}),201);
@@ -110,5 +139,34 @@ export async function followupRolesJourney({app,browser,owner,page,shoot}) {
   const history=(await read(owner)).history.filter(event=>event.obligation_id===caseOb.id);
   assert.ok(history.some(event=>event.event==='recipient_recheck_failed'),'failed live case recipient check is visible');
   await shoot('followup-helpdesk-authority-escalation',page);
+
+  // Installation sessions retain their own cookies. They are refused at an
+  // isolated employer's policy door, whose owner signs in independently.
+  const installationAdmin=await person(5);
+  await body(await post(owner,'people/role',{personId:installationAdmin.id,role:'admin'}));
+  await email(installationAdmin.context,installationAdmin.address);
+  const organization=await body(await post(owner,'organizations/create',{name:`Northwind Support ${width}`}),201);
+  const prefix=`/org/${organization.id}`,orgContext=await browser.newContext({viewport:{width,height:1000}});contexts.push(orgContext);
+  const orgPage=await orgContext.newPage();
+  const orgCdp=await orgContext.newCDPSession(orgPage);await orgCdp.send('WebAuthn.enable');
+  await orgCdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+  const orgPost=(path,data)=>orgContext.request.post(app.origin+prefix+path,{data,headers:{origin:app.origin}});
+  assert.equal((await orgPost('/auth/identity/email/request',{email:app.vars.OWNER_EMAIL})).status(),202);
+  assert.equal((await orgPost('/auth/identity/email/confirm',{token:(await app.link(prefix)).searchParams.get('token')})).status(),200);
+  await orgPage.goto(app.origin+prefix+'/app/methods');
+  const orgRegistered=orgPage.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
+  await orgPage.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await orgRegistered).status(),200);
+  const orgPolicy=await body(await orgContext.request.get(app.origin+prefix+'/api/auth/followup'));
+  const rootPolicy=(await read(owner)).policy;
+  for(const rootActor of [{context:owner,page},installationAdmin,manager]) {
+   await rootActor.page.setViewportSize({width,height:1000});
+   const refused=await rootActor.context.request.post(app.origin+prefix+'/api/auth/followup/settings',{data:{...rootPolicy,confirm:true},headers:{origin:app.origin}});
+   assert.ok([401,403].includes(refused.status()),`installation authority cannot write employer policy at ${width}px`);
+  }
+  const unchanged=await body(await orgContext.request.get(app.origin+prefix+'/api/auth/followup'));
+  assert.deepEqual(unchanged.policy,orgPolicy.policy,'isolated employer policy remains unchanged');
+  await orgPage.goto(app.origin+prefix+'/app/account');
+  await shoot('followup-isolated-employer-policy',orgPage);
+
  } finally {await Promise.all(contexts.map(context=>context.close()));}
 }

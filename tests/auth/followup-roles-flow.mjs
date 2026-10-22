@@ -7,8 +7,9 @@ export async function followupRolesFlow(t) {
  let owner=await passkeyPerson(r,'owner','owner@example.com','owner');
  const manager=await passkeyPerson(r,'manager','manager@example.com','member');
  const desk=await passkeyPerson(r,'desk','desk@example.com','member');
- await r.person('employee','employee@example.com');const employee=await emailSession(r,'employee@example.com');
  const post=async(who,path,data,status=200)=>{const response=await r.call('/api/auth/'+path,{method:'POST',cookie:who.cookie??who,data});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ await post(owner,'people/invite',{email:'employee@example.com',name:'Employee'},201);
+ const employee=await emailSession(r,'employee@example.com'),employeeId=(await(await r.call('/api/auth/me',{cookie:employee})).json()).user.id;
  const read=async(who)=>{const response=await r.call('/api/auth/followup',{cookie:who.cookie??who});assert.equal(response.status,200,await response.clone().text());return response.json();};
  const change=async data=>{const preview=await post(owner,'roles/preview',data);return post(owner,'roles/apply',{previewId:preview.previewId});};
  const definition={id:'followup-manager',name:'Follow-up manager',rank:15,permissions:['roles.view','followup.manage']};
@@ -23,9 +24,9 @@ export async function followupRolesFlow(t) {
  // Both invitation and active, email-only enrollment resolve the subject,
  // never the manager, unrelated employee or an injected address.
  await post(owner,'organizations/invite',{email:'invited@example.com'},201);
- const invited=(await read(owner)).obligations.find(ob=>ob.kind==='enrollment'&&ob.person_id!=='employee');assert.ok(invited);
- const opening=await change({kind:'grant',personId:'desk',roleId:'help-desk',resources:{view:{people:['employee']},edit:{people:['employee']}}});
- const review=await post(desk,'roles/recovery-case',{action:'open',personId:'employee',reason:'Verify recovery for the employee'},201);
+ const invited=(await read(owner)).obligations.find(ob=>ob.kind==='enrollment'&&ob.person_id!==employeeId);assert.ok(invited);
+ const opening=await change({kind:'grant',personId:'desk',roleId:'help-desk',resources:{view:{people:[employeeId]},edit:{people:[employeeId]}}});
+ const review=await post(desk,'roles/recovery-case',{action:'open',personId:employeeId,reason:'Verify recovery for the employee'},201);
  assert.ok(!(await read(desk)).obligations.some(ob=>ob.case_id===review.caseId),'people scope alone never grants case custody');
  const caseGrant=await change({kind:'grant',personId:'desk',roleId:'help-desk',resources:{view:{cases:[review.caseId]},edit:{cases:[review.caseId]}}});
  const caseOb=(await read(desk)).obligations.find(ob=>ob.case_id===review.caseId);assert.ok(caseOb);
