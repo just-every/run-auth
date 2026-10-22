@@ -25,10 +25,9 @@ async function nonceChallenge(ctx,agent,jkt,htu,tokenEndpoint) {
 }
 // RFC 9449 proof: a public registered key, HTTP method/URI, fresh issuance,
 // endpoint-specific server nonce, access-token hash and key-bound replay ID.
-export async function requireDpop(ctx,request,agent,{htu,accessToken=null,jkt=null,task=null,tokenEndpoint=false}) {
+export async function verifyDpop(ctx,request,agent,{htu,accessToken=null,jkt=null}) {
  const raw=request.headers.get('dpop');
  if(!raw||raw.length>16384||!/^[-A-Za-z0-9_]+\.[-A-Za-z0-9_]+\.[-A-Za-z0-9_]+$/.test(raw))refused();
- if(!await limit(ctx,'delegated-dpop:'+agent.id,120,60000))fail('rate_limited',429);
  let payload,thumbprint;
  try {
   const header=decodeProtectedHeader(raw),key=header.jwk;
@@ -44,6 +43,13 @@ export async function requireDpop(ctx,request,agent,{htu,accessToken=null,jkt=nu
   if(error instanceof DpopError)throw error;
   refused();
  }
+ return {payload,thumbprint};
+}
+export async function requireDpop(ctx,request,agent,{htu,accessToken=null,jkt=null,task=null,tokenEndpoint=false}) {
+ const raw=request.headers.get('dpop');
+ if(!raw||raw.length>16384||!/^[-A-Za-z0-9_]+\.[-A-Za-z0-9_]+\.[-A-Za-z0-9_]+$/.test(raw))refused();
+ if(!await limit(ctx,'delegated-dpop:'+agent.id,120,60000))fail('rate_limited',429);
+ const {payload,thumbprint}=await verifyDpop(ctx,request,agent,{htu,accessToken,jkt});
  // Attribution follows verified key possession, never the unverified header.
  ctx.delegationActor={actorId:'delegated-agent:'+agent.id,agentId:agent.id,accountablePersonId:task?.accountable_id??null,approvedBy:task?.approved_by??null,grantId:task?.id??null};
  if(await one(ctx,'SELECT 1 FROM auth_delegation_dpop_proofs WHERE jkt=? AND jti=?',thumbprint,payload.jti))refused();

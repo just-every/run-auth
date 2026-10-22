@@ -3,6 +3,12 @@ import {expect} from '@playwright/test';
 
 export async function followupJourney({app,browser,owner,page,shoot}) {
  const post=(context,path,data)=>context.request.post(app.origin+path,{data,headers:{origin:app.origin}});
+ // A reminder contains only an Activity link; it cannot carry sign-in proof.
+ const anonymous=await browser.newContext();
+ try {
+  const response=await anonymous.request.get(app.origin+'/app/activity',{maxRedirects:0});
+  assert.equal(response.status(),303);assert.equal(response.headers().location,'/signin?returnTo=%2Fapp%2Factivity');
+ }finally{await anonymous.close();}
  const address='taylor@northwind.example.com';
  assert.equal((await post(owner,'/api/auth/people/invite',{email:address,name:'Taylor Kim'})).status(),201);
  await page.goto(app.origin+'/app/activity');

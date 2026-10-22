@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import {createServer} from 'node:http';
 import {openRuntime,emailSession} from './runtime.mjs';
 import {passkeyPerson,signInAgain} from './agents-helpers.mjs';
 import {register} from './webauthn.mjs';
 import {scimServer} from './scim-server.mjs';
 export async function followupFlow(t) {
+ await followupSafety(t);
  const r=await openRuntime();t.after(()=>r.close());r.realOutbox=true;r.now=Date.parse('2026-03-06T14:00:00Z');
  r.owner=await passkeyPerson(r,'owner','owner@example.com','owner');
  let recovering=await passkeyPerson(r,'ada','ada@example.com','member');
@@ -83,4 +85,81 @@ export async function followupFlow(t) {
  assert.ok(anonymous.history.some(h=>h.obligation_id===enrollment.id&&h.event==='completed'),'anonymous source history remains after person erasure');
  assert.ok(!JSON.stringify(anonymous).includes(enrollment.person_id),'erasure removes personal references from follow-up records');
 
+}
+
+// These probes use the same public policy/source/cron doors. The scripted mail
+// transport is the network edge; no hook changes the scheduler's decisions.
+async function followupSafety(t) {
+ const r=await openRuntime();t.after(()=>r.close());r.now=Date.parse('2026-03-02T08:00:00Z');
+ r.owner=await passkeyPerson(r,'owner','owner@example.com','owner');
+ const admin=async(path,data,status=200)=>{const response=await r.call('/api/auth/'+path,{method:'POST',cookie:r.owner.cookie,data});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ const read=async()=>{const response=await r.call('/api/auth/followup',{cookie:r.owner.cookie});assert.equal(response.status,200);return response.json();};
+ const settings={confirm:true,enabled:true,calendar:{timezone:'UTC',weekdays:[1,2,3,4,5],holidays:[],at:'09:00'},reminderBusinessDays:1,deadlineBusinessDays:5,recipients:['first'],escalationRecipients:['owner'],escalation:'repeat_until_resolved'};
+ for(const id of ['first','second'])await passkeyPerson(r,id,id+'@example.com','admin');
+ const scoped={view:{groups:['*']},edit:{groups:['*']}};
+ for(const roleId of ['help-desk','manager']) {
+  const who=await passkeyPerson(r,roleId,roleId+'@example.com','member');
+  const preview=await admin('roles/preview',{kind:'grant',personId:roleId,roleId,resources:scoped});await admin('roles/apply',{previewId:preview.previewId});
+  const before=await read();
+  assert.equal((await r.call('/api/auth/followup/settings',{method:'POST',cookie:who.cookie,data:settings})).status,403,roleId+' cannot authorize reminders');
+  assert.deepEqual((await read()).policy,before.policy);
+ }
+ r.now+=11*60000;await admin('followup/settings',settings,403);
+ assert.equal((await read()).policy.enabled,false,'stale email proof cannot save consent');
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ const isolated=await admin('organizations/create',{name:'Independent reminder employer'},201);
+ const org={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+isolated.id+path,options)};
+ const orgOwner=await register(org,await emailSession(org,'owner@example.com'));
+ const installationAdmin=await passkeyPerson(r,'installation-admin','installation@example.com','admin');
+ for(const cookie of [r.owner.cookie,installationAdmin.cookie]) {
+  assert.ok([401,403].includes((await org.call('/api/auth/followup/settings',{method:'POST',cookie,data:settings})).status),'installation roles cannot write isolated employer policy');
+ }
+ const local=await org.call('/api/auth/followup',{cookie:orgOwner.cookie});assert.equal(local.status,200);assert.equal((await local.json()).policy.enabled,false);
+ await admin('organizations/invite',{email:'silent@example.com'},201);
+ r.now=Date.parse('2026-03-03T09:00:00Z');let count=(await r.mails()).length;
+ await r.call('/',{action:'maintain'});
+ assert.equal((await r.mails()).length,count,'without a saved policy the due obligation sends no mail');
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ assert.ok((await read()).obligations.some(o=>o.state==='open'),'without a saved policy work stays visible');
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');await admin('organizations/cancel-invitation',{email:'silent@example.com'});
+ await admin('followup/settings',settings);await admin('organizations/invite',{email:'pending@example.com'},201);
+ const obligation=(await read()).obligations.find(o=>o.state==='open');assert.ok(obligation);
+ await admin('people/role',{personId:'first',role:'member'});
+ r.now=Date.parse('2026-03-04T09:00:00Z');count=(await r.mails()).length;await r.call('/',{action:'maintain'});
+ let sent=(await r.mails()).slice(count);
+ assert.deepEqual(sent.map(m=>m.to),['owner@example.com'],'a removed recipient role escalates immediately, before the deadline');
+ assert.equal(sent[0].subject,'Auth follow-up recipient unavailable');
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');await admin('people/role',{personId:'first',role:'admin'});
+ await admin('followup/settings',{...settings,recipients:['first','second']});
+ const transported=[];let handle=async(message,response)=>{if(message.subject.startsWith('Auth follow-up'))transported.push(message);if(message.to==='first@example.com')await admin('people/suspend',{personId:'second'});response.end('accepted');};
+ const server=createServer(async(request,response)=>{try{let body='';for await(const chunk of request)body+=chunk;await handle(JSON.parse(body),response);}catch(error){response.statusCode=500;response.end(String(error));}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>{server.closeAllConnections();return new Promise(resolve=>server.close(resolve));});
+ r.mailEdge='http://127.0.0.1:'+server.address().port;
+ r.now=Date.parse('2026-03-05T09:00:00Z');r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ await r.call('/',{action:'maintain'});
+ assert.deepEqual(transported.map(m=>m.to),['first@example.com','owner@example.com'],'suspension between sends refuses the suspended recipient and escalates');
+ const history=(await read()).history.filter(h=>h.obligation_id===obligation.id);
+ assert.ok(history.some(h=>h.event==='recipient_recheck_failed'&&h.recipient_id==='second'));
+ assert.ok(history.some(h=>h.event==='escalation_accepted'&&h.recipient_id==='owner'));
+ // The transport has accepted the next reminder, but never returns its ACK.
+ // Dispose the actual Worker before the schedule advances, then restart it.
+ await admin('followup/settings',settings);
+ let accepted;const arrived=new Promise(resolve=>{accepted=resolve;});
+ handle=async(message,response)=>{if(!message.subject.startsWith('Auth follow-up')){response.end('accepted');return;}transported.push(message);accepted();};
+ r.now=Date.parse('2026-03-06T09:00:00Z');r.owner=await signInAgain(r,r.owner,'owner@example.com');const due=(await read()).obligations.find(o=>o.id===obligation.id).next_due_at;
+ const interrupted=r.call('/',{action:'maintain'}).catch(()=>null);await arrived;
+ await r.restart();await interrupted;
+ const beforeRetry=transported.length;
+ handle=async(message,response)=>{if(message.subject.startsWith('Auth follow-up'))transported.push(message);response.end('accepted');};
+ r.now+=120001;await r.call('/',{action:'maintain'});
+ assert.equal(transported.length,beforeRetry,'restart after the claim lease must not resend the uncertain scheduled delivery');
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ const after=await read(),attempts=after.history.filter(h=>h.obligation_id===obligation.id&&h.created_at>=due);
+ assert.equal(attempts.filter(h=>h.recipient_id==='first').length,1);
+ assert.equal(attempts.find(h=>h.recipient_id==='first').event,'reminder_dispatching','uncertain transport result never becomes accepted');
+ assert.equal(after.obligations.find(o=>o.id===obligation.id).state,'open');
+ for(const message of transported) {
+  assert.doesNotMatch(JSON.stringify(message),/pending@example.com|synthetic-auth-|authprep_|client_assertion|access_token|[?&]token=|[?&]code=/i,'follow-up mail contains no source contact or credential');
+  const urls=message.text.match(/https?:\/\/\S+/g);assert.deepEqual(urls,[r.origin+'/app/activity']);
+ }
 }
