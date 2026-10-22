@@ -13,6 +13,7 @@ export async function requestDelegation(ctx,request,data) {
  if(effect.expiresAt>agent.expires_at||effect.expiresAt>agent.service.expires_at)fail('invalid_delegation_expiry');
  const principal=await machinePrincipal(ctx,agent,effect.expiresAt);
  if(!principal.permits('apps',effect.appId)||!principal.permits('people',effect.personId)||!principal.ownerAllows('apps.assign',{appId:effect.appId,personId:effect.personId,write:true}))fail('admin_service_resource_refused',403);
+ if(!await limit(ctx,'delegated-assertion:'+agent.id,120,60000))fail('rate_limited',429);
  await privateAssertion(ctx,agent,data.clientAssertion,issuer(ctx)+'/api/auth/delegations/request',{delegation_use:'request',request_hash:requestHash});
  if(!await limit(ctx,'delegated-request:'+agent.id,30,3600000))fail('rate_limited',429);
  // Exactly one existing direct employee assignment; no group or administrator

@@ -1,5 +1,5 @@
 import {createLocalJWKSet,jwtVerify} from 'jose';
-import {fail,run,limit} from '../../core.mjs';
+import {fail,run} from '../../core.mjs';
 import {agentGuard} from './state.mjs';
 
 export async function verifyPrivateAssertion(ctx,agent,raw,audience,claims) {
@@ -14,7 +14,6 @@ export async function verifyPrivateAssertion(ctx,agent,raw,audience,claims) {
 }
 export async function privateAssertion(ctx,agent,raw,audience,claims,guard=null) {
  guard??=await agentGuard(ctx,agent);
- if(!await limit(ctx,'delegated-assertion:'+agent.id,120,60000))fail('rate_limited',429);
  const payload=await verifyPrivateAssertion(ctx,agent,raw,audience,claims);
  ctx.delegationActor??={actorId:'delegated-agent:'+agent.id,agentId:agent.id,accountablePersonId:null,approvedBy:null,grantId:claims.grant_id??null};
  await run(ctx,`DELETE FROM auth_delegation_assertions WHERE agent_id=? AND expires_at<=? AND ${guard.clause}`,agent.id,ctx.now(),...guard.args);

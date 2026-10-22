@@ -1,5 +1,5 @@
 import {createLocalJWKSet,jwtVerify} from 'jose';
-import {all,fail,random,json,auditDetail,AuthError} from '../../core.mjs';
+import {all,fail,random,json,auditDetail,AuthError,limit} from '../../core.mjs';
 import {writeAdmin} from '../../admin-api/commands.mjs';
 import {body,exact,id,SCOPE,issuer,organization,target,TARGET_PATH} from './common.mjs';
 import {sameEffect,authorizationDetails,sameDetails} from './effect.mjs';
@@ -31,6 +31,7 @@ export async function executeDelegation(ctx,request,data) {
  const url=new URL(request.url);
  if(url.origin!==ctx.origin||url.search||![TARGET_PATH,(ctx.basePath??'')+TARGET_PATH].includes(url.pathname))fail('delegation_target_refused',403);
  const {agent,task,claims,raw}=await authenticate(ctx,request);
+ if(!await limit(ctx,'delegated-dpop:'+agent.id,120,60000))fail('rate_limited',429);
  await requireDpop(ctx,request,agent,{htu:target(ctx),accessToken:raw,jkt:claims.cnf.jkt,task});
  data??=await body(ctx,request);
  try {exact(data,['grantId','effectDigest','task']);}catch(error){if(error instanceof AuthError)fail('delegation_effect_changed',403);throw error;}

@@ -1,5 +1,5 @@
 import {decodeJwt} from 'jose';
-import {AuthError,fail,json,run,random,auditDetail} from '../../core.mjs';
+import {AuthError,fail,json,run,random,auditDetail,limit} from '../../core.mjs';
 import {ensureSigningKey,signToken} from '../../keys.mjs';
 import {CLIENT_PREFIX,SCOPE,issuer,organization,target,id} from './common.mjs';
 import {agentRow,taskRow,taskGuard} from './state.mjs';
@@ -22,10 +22,16 @@ export async function delegationToken(ctx,request) {
  const claimedGrantId=form.get('grant_id'),attemptedGrantId=String(claimedGrantId??'').slice(0,200);
  const attribution=()=>({actorId:'delegated-agent:'+agent.id,agentId:agent.id,accountablePersonId:task.accountable_id,approvedBy:task.approved_by,grantId:task.id});
  try {
+  agent=await agentRow(ctx,clientId);
+  // Bound both proofs before refusal attribution, including invalid scope/resource.
+  // The other delegated doors charge these same buckets before their proofs.
+  if(agent) {
+   if(!await limit(ctx,'delegated-assertion:'+agent.id,120,60000))fail('rate_limited',429);
+   if(!await limit(ctx,'delegated-dpop:'+agent.id,120,60000))fail('rate_limited',429);
+  }
   // Resolve only bounded, unambiguous claims. They are attempted identifiers,
   // never an actor/subject, until both registered-key proofs authenticate them.
   if(raw.length<=32768&&form.getAll('client_id').length===1&&form.getAll('grant_id').length===1&&form.get('client_id')===clientId) {
-   agent=await agentRow(ctx,clientId);
    if(agent&&typeof claimedGrantId==='string'&&/^[-A-Za-z0-9_:]{1,200}$/.test(claimedGrantId))task=await taskRow(ctx,claimedGrantId);
    if(task?.agent_id!==agent?.id)task=null;
    if(agent&&task&&!request.headers.has('authorization')&&form.getAll('client_assertion').length===1) {

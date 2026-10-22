@@ -1,5 +1,5 @@
 import {decodeProtectedHeader,importJWK,jwtVerify,calculateJwkThumbprint} from 'jose';
-import {AuthError,hash,random,one,run,limit,fail} from '../../core.mjs';
+import {AuthError,hash,random,one,run} from '../../core.mjs';
 import {agentGuard} from './state.mjs';
 
 export class DpopError extends AuthError {
@@ -48,7 +48,6 @@ export async function verifyDpop(ctx,request,agent,{htu,accessToken=null,jkt=nul
 export async function requireDpop(ctx,request,agent,{htu,accessToken=null,jkt=null,task=null,tokenEndpoint=false}) {
  const raw=request.headers.get('dpop');
  if(!raw||raw.length>16384||!/^[-A-Za-z0-9_]+\.[-A-Za-z0-9_]+\.[-A-Za-z0-9_]+$/.test(raw))refused();
- if(!await limit(ctx,'delegated-dpop:'+agent.id,120,60000))fail('rate_limited',429);
  const {payload,thumbprint}=await verifyDpop(ctx,request,agent,{htu,accessToken,jkt});
  // Attribution follows verified key possession, never the unverified header.
  ctx.delegationActor={actorId:'delegated-agent:'+agent.id,agentId:agent.id,accountablePersonId:task?.accountable_id??null,approvedBy:task?.approved_by??null,grantId:task?.id??null};

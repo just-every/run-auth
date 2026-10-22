@@ -324,6 +324,24 @@ test('a person-consented agent changes exactly one employer assignment after ind
  await auditRefusal(await oauth(grant,agent,{signed:await tokenAssertion(grant,agent,{},undefined,foreignKey.privateKey)}),'delegation_token_refused','DPoP alone cannot attribute a claimed grant',{verified:'agent-only',code:'invalid_client',status:401});
  await auditRefusal(await oauth(grant,agent,{signed:await tokenAssertion(sibling)}),'delegation_token_refused','another grant assertion cannot supply person attribution',{verified:'agent-only',code:'invalid_client',status:401});
  assert.deepEqual(await assignmentRoles(),initialRoles,'human, preparer and forged token requests leave assignments unchanged');
+ // Refused scope/resource requests spend the proof budget too. Replaying valid
+ // signatures must not buy unbounded refusal-attribution verification.
+ r.now+=60000;
+ const refusedAssertion=await tokenAssertion(grant),refusedProof=await dpop(r.origin+'/oidc/token');
+ for(let attempt=0;attempt<120;attempt++) {
+  const scope=attempt%2===0,options={signed:refusedAssertion,dpopHeader:refusedProof,...(scope?{scope:'people.manage'}:{resource:'https://untrusted.example.com/tool'})};
+  const response=await oauth(grant,agent,options);
+  assert.equal(response.status,400,'each refused request charges the budget once');
+  assert.equal((await response.json()).error,scope?'invalid_scope':'invalid_target');
+ }
+ const throttled=await oauth(grant,agent,{signed:refusedAssertion,dpopHeader:refusedProof,scope:'people.manage'});
+ assert.equal(throttled.headers.get('retry-after'),'60');
+ await auditRefusal(throttled,'delegation_token_refused','refused-scope proof budget exhausted',{verified:false,code:'rate_limited',status:429});
+ const isolated=await oauth(grant,secondAgent,{scope:'people.manage'});
+ assert.equal(isolated.status,400,'another agent retains its own proof budget');
+ assert.equal((await isolated.json()).error,'invalid_scope');
+ assert.deepEqual(await assignmentRoles(),initialRoles,'throttling cannot change the assignment');
+ r.now+=60000;
  const boundToken=await tokenAssertion(grant);
  await auditRefusal(await oauth(grant,agent,{scope:'people.manage'}),'delegation_token_refused','excess token scope',{code:'invalid_scope'});
  await auditRefusal(await oauth(grant,agent,{resource:'https://untrusted.example.com/tool'}),'delegation_token_refused','token resource indicator cannot widen the target',{code:'invalid_target'});
