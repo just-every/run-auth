@@ -15,7 +15,7 @@ export async function validatePolicy(ctx,data) {
   for(const id of checked[field])if(!await one(ctx,"SELECT 1 FROM oa_operators WHERE id=? AND status='active' AND role IN ('owner','admin')",id))fail('followup_recipient_requires_admin');
  }
  if(checked.enabled&&!checked.recipients.length)fail('followup_approved_recipient_required');
- if(checked.enabled&&checked.escalation==='repeat_until_resolved'&&!checked.escalationRecipients.length)fail('followup_escalation_recipient_required');
+ if(checked.enabled&&!checked.escalationRecipients.length)fail('followup_escalation_recipient_required');
  return checked;
 }
 export async function eligibleRecipients(ctx,ids) {

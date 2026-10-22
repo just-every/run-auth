@@ -122,6 +122,8 @@ async function followupSafety(t) {
  r.owner=await signInAgain(r,r.owner,'owner@example.com');
  assert.ok((await read()).obligations.some(o=>o.state==='open'),'without a saved policy work stays visible');
  r.owner=await signInAgain(r,r.owner,'owner@example.com');await admin('organizations/cancel-invitation',{email:'silent@example.com'});
+ for(const escalation of ['repeat_until_resolved','stop_at_deadline'])await admin('followup/settings',{...settings,escalation,escalationRecipients:[]},400);
+ assert.equal((await read()).policy.enabled,false,'enabling any schedule requires an approved fallback for failed recipient rechecks');
  await admin('followup/settings',settings);await admin('organizations/invite',{email:'pending@example.com'},201);
  const obligation=(await read()).obligations.find(o=>o.state==='open');assert.ok(obligation);
  await admin('people/role',{personId:'first',role:'member'});
