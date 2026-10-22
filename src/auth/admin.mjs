@@ -1,4 +1,5 @@
 import {syncObligations} from './obligations/sources.mjs';
+import {followupRead} from './obligations/routes.mjs';
 import {roleModel,roleRead} from './roles/index.mjs';
 import {delegationInventory,delegationConsentView} from './agents/delegation/index.mjs';
 import {requireAccountRank} from './ranks.mjs';
@@ -51,6 +52,7 @@ export async function model(ctx,request,page='account') {
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
   if(page==='agents'){Object.assign(result,await agentsModel(ctx,request));result.adminServices=await adminServicesModel(ctx);}
   if(page==='people')result.directory=await directoryModel(ctx);
+  if(page==='activity')result.followup=await (await followupRead(ctx,request)).json();
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
  if(page==='roles') {

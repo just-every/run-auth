@@ -16,6 +16,17 @@
     }
   }
   const friendlyErrors = {
+    invalid_followup_timezone: 'Choose a valid timezone, such as America/New_York or Australia/Brisbane.',
+    invalid_followup_calendar: 'Choose business days, a local reminder time and valid holiday dates.',
+    invalid_followup_policy: 'Choose reminder and deadline intervals from 1 to 90 business days.',
+    invalid_followup_schedule: 'Choose a deadline at least as far away as the next reminder.',
+    followup_explicit_consent_required: 'Confirm the reminder policy and approved recipients before saving.',
+    followup_approved_recipient_required: 'Choose at least one active administrator to receive reminders.',
+    followup_escalation_recipient_required: 'Choose an active administrator to receive repeated escalation.',
+    followup_recipient_requires_admin: 'Reminder recipients must be active owners or administrators.',
+    followup_owner_requires_admin: 'Choose an active owner or administrator for this follow-up.',
+    followup_changed: 'This follow-up changed during your request. Reload and review its current state.',
+    followup_unavailable: 'This follow-up is no longer open. Reload to see its result.', 
     hook_timeout: 'An inline sign-in hook timed out. Try signing in again.',
     hook_refused: 'Your employer’s sign-in hook refused this request.',
     hook_invalid_response: 'The hook tried to change a protected or unapproved field.',
@@ -385,6 +396,20 @@
         const expiry = new Date(payload.expiresAt).getTime(), now = Date.now()
         if (!Number.isFinite(expiry) || expiry <= now || expiry > now + 365 * 86400000) throw new Error(friendlyErrors.invalid_admin_service_expiry)
         payload.expiresAt = new Date(expiry).toISOString()
+      }
+      if (form.hasAttribute('data-followup-settings')) {
+        const values = new FormData(form)
+        payload.enabled = values.has('enabled')
+        payload.confirm = values.has('confirm')
+        payload.calendar = {timezone: payload.timezone, at: payload.at, weekdays: values.getAll('weekdays').map(Number), holidays: String(payload.holidays || '').split(/[\s,]+/).filter(Boolean)}
+        payload.recipients = values.getAll('recipients')
+        payload.escalationRecipients = values.getAll('escalationRecipients')
+        payload.reminderBusinessDays = Number(payload.reminderBusinessDays)
+        payload.deadlineBusinessDays = Number(payload.deadlineBusinessDays)
+      }
+      if (form.hasAttribute('data-followup-schedule')) {
+        payload.dueBusinessDays = Number(payload.dueBusinessDays)
+        payload.deadlineBusinessDays = Number(payload.deadlineBusinessDays)
       }
       const result = await requestJSON(form.action, payload)
       if (form.hasAttribute('data-organization-switch')) { window.location.assign(result.redirect); return }

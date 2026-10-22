@@ -226,7 +226,16 @@ export interface DelegatedTask {
   revocationReach:{local:string;completedEffect:string;downstream:string}
 }
 
+export interface FollowupModel {
+ obligationsPage?: {hasMore:boolean;nextCursor:string|null};historyPage?: {hasMore:boolean;nextCursor:string|null}
+ policy: {enabled:boolean;calendar:{timezone:string;weekdays:number[];holidays:string[];at:string};reminderBusinessDays:number;deadlineBusinessDays:number;recipients:string[];escalationRecipients:string[];escalation:string}
+ obligations: Array<{id:string;kind:string;person_id:string|null;owner_id:string|null;next_action:string;calendar:string;deadline_at:number;next_due_at:number;state:string;last_error:string|null;delivery_error:string|null;reminders_stopped_at:number|null}>
+ history: Array<{obligation_id:string;event:string;created_at:number;error:string|null}>
+ limitations:string[]
+}
+
 export interface AuthPageModel {
+  followup?: FollowupModel
   delegations?: {organizationId:string;targetApi:string;grants:DelegatedTask[];agents:Array<{id:string;clientId:string;name:string;state:string;expiresAt:number}>;hasMore:boolean;nextCursor:string|null}
   delegation?: DelegatedTask & {canConsent:boolean;canApprove:boolean}
   delegationApps?: Array<{id:string;name:string}>
