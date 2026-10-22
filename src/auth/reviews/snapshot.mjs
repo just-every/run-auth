@@ -1,10 +1,11 @@
 import {assignment} from '../workforce/directory.mjs';
 import {all,one,hash} from '../core.mjs';
 import {roleState} from '../roles/state.mjs';
+import {nativeSnapshot,isNativeItem,nativeItemDrift} from './native-access.mjs';
 
 // The stored snapshot is never refreshed in place. Current observations are a
 // separate drift report, not a rewrite of what a reviewer was asked to certify.
-export async function accessSnapshot(ctx,s) {
+export async function accessSnapshot(ctx,s,{includeAdministrators=false}={}) {
  const state=await roleState(ctx,s),now=ctx.now(),items=[];
  const [lastUses,connectors,denials]=await Promise.all([
   all(ctx,'SELECT person_id,MAX(last_used_at) AS last_used_at FROM auth_passkeys GROUP BY person_id'),
@@ -21,12 +22,14 @@ export async function accessSnapshot(ctx,s) {
    items.push({subject_id:id,app_id:a.app_id,principal_type:a.principal_type,principal_id:a.principal_id,role:effective.role,snapshot});
   }
  }
+ if(includeAdministrators)items.push(...await nativeSnapshot(ctx,state,now));
  return items.sort((a,b)=>keyOf(a).localeCompare(keyOf(b)));
 }
 export const keyOf=i=>[i.subject_id,i.app_id,i.principal_type,i.principal_id].join(':');
 export function comparable(snapshot) {const {freshness,...rest}=snapshot;return rest;}
 export const fingerprint=snapshot=>hash(JSON.stringify(comparable(snapshot)));
 export async function itemDrift(ctx,item) {
+ if(isNativeItem(item))return nativeItemDrift(ctx,item);
  const snapshot=JSON.parse(item.snapshot),a=snapshot.assignment;
  const current=await one(ctx,'SELECT role FROM auth_app_assignments WHERE app_id=? AND principal_type=? AND principal_id=?',item.app_id,item.principal_type,item.principal_id);
  const p=await one(ctx,'SELECT status,version FROM oa_operators WHERE id=?',item.subject_id);

@@ -70,9 +70,10 @@ export async function accessReviewJourney(t) {
  await create.getByLabel('Review name').fill('Northwind quarterly certification');await create.locator('[name=reviewerId]').selectOption(managerData.id);
  await create.getByLabel('Due at').fill(new Date(Date.now()+86400000).toISOString().slice(0,16));
  await create.getByLabel('Period start').fill('2026-07-01');await create.getByLabel('Period end').fill(new Date(Date.now()-86400000).toISOString().slice(0,10));
+ await create.getByRole('checkbox',{name:'Include Auth administrator roles and grants'}).check();
  await saved(owner,()=>create.getByRole('button',{name:'Create quarterly review'}).click());
  const view=await(await root.request.get(app.origin+'/api/auth/reviews')).json(),review=view.reviews[0],item=review.items.find(i=>i.subject_id===workerData.id);
- assert.ok(item);
+ assert.ok(item);const native=review.items.find(i=>i.principal_type==='installation_role');assert.ok(native);
  // Delegation is a hardware-and-email administrator write.
  const self=review.items.find(i=>i.subject_id===managerData.id);await post(root,'reviews/delegate',{itemId:self.id,reviewerId:(await(await root.request.get(app.origin+'/api/auth/me')).json()).user.id,reason:'Independent owner review of manager access'});
  await manager.reload();const serviceItem=review.items.find(i=>i.subject_id===serviceData.id);assert.ok(serviceItem);
@@ -84,6 +85,9 @@ export async function accessReviewJourney(t) {
  await shoot('review-unfinished',manager,['[data-access-reviews]']);
  await owner.reload();const certification=owner.locator(`[data-review-item="${self.id}"] [data-access-decision="review"]`);await certification.getByLabel('Decision reason').fill('Manager still needs customer operations access');
  await saved(owner,()=>certification.getByRole('button',{name:'Certify access with passkey'}).click());
+ await manager.reload();const nativeForm=manager.locator(`[data-review-item="${native.id}"] [data-access-decision="review"]`);await nativeForm.getByLabel('Decision reason').fill('Independent review of emergency owner authority');
+ await saved(manager,()=>nativeForm.getByRole('button',{name:'Certify access with passkey'}).click());
+ await shoot('native-administration',manager,['[data-access-reviews]'],async()=>{await manager.locator(`[data-review-item="${native.id}"]`).getByText('Access evidence at review creation',{exact:true}).click();});
  const exported=await(await root.request.get(app.origin+'/api/auth/reviews/export?id='+review.id)).json();assert.equal(exported.review.completion.complete,false);assert.equal(exported.review.completion.unfinished,2);
  await post(root,'reviews/close',{id:review.id},409);
  await post(root,'decisions/privilege',{kind:'group',targetId:group.id,privileged:true});await manager.reload();await expect(manager.locator('[data-access-decisions]')).toContainText('Privileged access');assert.equal(await manager.locator('[data-access-decision="group"]').count(),0);
@@ -94,5 +98,16 @@ export async function accessReviewJourney(t) {
  await retention.locator('[name="audit.value"]').fill('90');await saved(owner,()=>retention.getByRole('button',{name:/Save retention/i}).click());
  await shoot('retention-refused',owner,['[data-retention]','[data-access-reviews]']);
  await shoot('reviewer-reminder-policy',owner,['[data-followup-panel]'],async()=>{await owner.locator('[data-followup-panel]').getByText('Reminder settings and approved recipients',{exact:true}).click();await expect(owner.getByRole('checkbox',{name:'Current access reviewer'})).toBeVisible();});
+ const definition=await post(root,'roles/preview',{kind:'role',role:{name:'Product access review coordinator',rank:12,permissions:['reviews.view','reviews.manage','reviews.export']}});
+ const role=await post(root,'roles/apply',{previewId:definition.previewId});
+ const scope={people:['*'],groups:['*'],apps:[buildApp.id],cases:[]};
+ const grant=await post(root,'roles/preview',{kind:'grant',personId:managerData.id,roleId:role.plan.role.id,resources:{view:scope,edit:scope}});await post(root,'roles/apply',{previewId:grant.previewId});
+ await manager.goto(app.origin+'/app/methods');await manager.getByRole('button',{name:'Confirm my email',exact:true}).click();await manager.goto((await app.link()).href);await manager.getByRole('button',{name:'Continue to Auth'}).click();
+ await manager.goto(app.origin+'/app/account');const scopedCreate=manager.locator('[data-access-review-create]');
+ await scopedCreate.getByLabel('Review name').fill('Release engineering scoped review');await scopedCreate.locator('[name=reviewerId]').selectOption(managerData.id);
+ await scopedCreate.getByLabel('Due at').fill(new Date(Date.now()+86400000).toISOString().slice(0,16));await scopedCreate.getByLabel('Period start').fill('2026-07-01');await scopedCreate.getByLabel('Period end').fill(new Date(Date.now()-86400000).toISOString().slice(0,10));
+ await saved(manager,()=>scopedCreate.getByRole('button',{name:'Create quarterly review'}).click());
+ const scoped=(await(await managers.request.get(app.origin+'/api/auth/reviews')).json()).reviews.find(r=>r.name==='Release engineering scoped review');assert.ok(scoped);assert.ok(scoped.items.every(i=>i.app_id===buildApp.id));
+ await shoot('scoped-review-management',manager,['[data-access-review-create]',`[data-access-review="${scoped.id}"]`]);
  assert.deepEqual(errors,[]);
 }

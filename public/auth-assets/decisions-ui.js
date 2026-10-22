@@ -103,7 +103,7 @@
         let payload
         if (form.dataset.accessForm === 'role-order') payload = { appId: fields.get('appId'), roles: String(fields.get('roles') || '').split(/\r?\n/).map(role => role.trim()).filter(Boolean).map((role, level) => ({role,level})) }
         if (form.dataset.accessForm === 'privilege') payload = { kind: fields.get('kind'), targetId: fields.get('targetId'), privileged: fields.get('privileged') === 'true' }
-        if (form.dataset.accessForm === 'review-create') payload = { name: fields.get('name'), reviewerId: fields.get('reviewerId'), dueAt: dateISO(fields.get('dueAt')), periodStart: dateISO(fields.get('periodStart')), periodEnd: dateISO(fields.get('periodEnd')), intervalMonths: 3 }
+        if (form.dataset.accessForm === 'review-create') payload = { name: fields.get('name'), reviewerId: fields.get('reviewerId'), dueAt: dateISO(fields.get('dueAt')), periodStart: dateISO(fields.get('periodStart')), periodEnd: dateISO(fields.get('periodEnd')), intervalMonths: 3, includeAdministrators: fields.get('includeAdministrators') === 'on' }
         if (form.dataset.accessForm === 'review-delegate') payload = { itemId: fields.get('itemId'), reviewerId: fields.get('reviewerId'), reason: String(fields.get('reason') || '').trim() }
         if (form.dataset.accessForm === 'review-close') payload = { id: fields.get('id') }
         if (form.dataset.accessForm === 'request-create') payload = { appId: fields.get('appId'), role: String(fields.get('role') || '').trim() || null, purpose: String(fields.get('purpose') || '').trim(), durationMs: durationMs(fields.get('durationMinutes')) }

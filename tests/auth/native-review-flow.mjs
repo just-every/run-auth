@@ -1,0 +1,85 @@
+import assert from 'node:assert/strict';
+import {openRuntime,cookieOf} from './runtime.mjs';
+import {passkeyPerson,post} from './agents-helpers.mjs';
+import {authenticate} from './webauthn.mjs';
+import {decisionProof,decide} from './access-decisions-flow.mjs';
+
+const result=async(response,status=200)=>{assert.equal(response.status,status,await response.clone().text());return response.json();};
+
+export async function nativeReviewFlow(t) {
+ const r=await openRuntime();t.after(()=>r.close());
+ const owner=await passkeyPerson(r,'owner','synthetic-auth-30@example.com','owner');
+ const reviewer=await passkeyPerson(r,'reviewer','synthetic-auth-31@example.com','member');
+ const holder=await passkeyPerson(r,'holder','synthetic-auth-32@example.com','member');
+ const admin=await passkeyPerson(r,'administrator','synthetic-auth-33@example.com','admin');
+ const sponsored=await passkeyPerson(r,'sponsored','synthetic-auth-34@example.com','member');
+ await r.person('subject','synthetic-auth-35@example.com');
+ await r.person('stale-holder','synthetic-auth-36@example.com');
+ await r.person('second-owner','synthetic-auth-37@example.com','owner');
+ reviewer.cookie=cookieOf((await authenticate(r,reviewer.key)).response);
+ const write=(path,data,actor=owner,status=200)=>r.call('/api/auth/'+path,post(data,actor.cookie)).then(response=>result(response,status));
+ const change=async(data,actor=owner)=>{const preview=await write('roles/preview',data,actor);return write('roles/apply',{previewId:preview.previewId},actor);};
+ const scope={view:{people:['subject'],groups:[],apps:[],cases:[]},edit:{people:[],groups:[],apps:[],cases:[]}};
+ const all={view:{people:['*'],groups:['*'],apps:['*'],cases:['*']},edit:{people:['*'],groups:['*'],apps:['*'],cases:['*']}};
+ const definition=await change({kind:'role',role:{name:'Synthetic scoped directory reviewer',rank:15,permissions:['roles.view','people.view']}});
+ const custom=await change({kind:'grant',personId:'holder',roleId:definition.plan.role.id,resources:scope});
+ const builtin=await change({kind:'grant',personId:'sponsored',roleId:'auditor',resources:all},admin);
+ const staleRole=await change({kind:'role',role:{name:'Synthetic revisable reviewer',rank:11,permissions:['roles.view','people.view']}});
+ const staleGrant=await change({kind:'grant',personId:'stale-holder',roleId:staleRole.plan.role.id,resources:scope});
+ const create=(extra={})=>write('reviews/create',{name:'Synthetic native administration review',reviewerId:'reviewer',periodStart:r.now-86400000,periodEnd:r.now,dueAt:r.now+3600000,...extra},owner,201);
+ const read=async id=>(await result(await r.call('/api/auth/reviews',{cookie:owner.cookie}))).reviews.find(review=>review.id===id);
+ const ordinary=await create();assert.equal((await read(ordinary.id)).items.length,0,'existing app-only snapshots exclude native authority');
+ const review=await create({includeAdministrators:true}),initial=await read(review.id);
+ const ownerItem=initial.items.find(item=>item.principal_type==='installation_role'&&item.subject_id==='owner');
+ const adminItem=initial.items.find(item=>item.principal_type==='installation_role'&&item.subject_id==='administrator');
+ const customItem=initial.items.find(item=>item.principal_id===custom.plan.id);
+ const builtinItem=initial.items.find(item=>item.principal_id===builtin.plan.id);
+ const staleItem=initial.items.find(item=>item.principal_id===staleGrant.plan.id);
+ assert.ok(ownerItem&&adminItem&&customItem&&builtinItem&&staleItem);
+ assert.equal(customItem.app_id,r.origin+'/api/auth/roles');
+ assert.deepEqual(customItem.snapshot.source.resources,scope);
+ assert.deepEqual(customItem.snapshot.source.role.permissions,['people.view','roles.view']);
+ assert.equal(customItem.snapshot.source.role.revision,definition.plan.role.revision);
+ assert.equal(builtinItem.snapshot.source.role.builtin,true);
+ assert.equal(builtinItem.snapshot.source.grant.grantedBy,'administrator');
+ assert.equal(builtinItem.snapshot.source.resources.edit.people[0],'*');
+ assert.deepEqual(ownerItem.snapshot.source.resources,all);
+ const params=(item,operation='certify')=>({kind:'review',targetId:item.id,operation,reason:'Synthetic accountable access review'});
+ await result(await decide(r,reviewer,params(ownerItem)));
+ await result(await decide(r,reviewer,params(builtinItem)));
+ assert.equal((await decide(r,reviewer,params(customItem,'revoke'))).status,403,'review assignment confers no role revocation authority');
+ assert.equal((await decide(r,reviewer,params(customItem,'reduce'))).status,409,'native roles have no guessed lower hierarchy');
+ await write('reviews/delegate',{itemId:customItem.id,reviewerId:'owner',reason:'Owner must authorize native revocation'});
+ const noEmail={key:owner.key,cookie:cookieOf((await authenticate(r,owner.key)).response)};
+ assert.equal((await decide(r,noEmail,params(customItem,'revoke'))).status,403,'native revocation requires fresh session-local email proof');
+ await result(await decide(r,owner,params(customItem,'revoke')));
+ assert.equal((await r.call('/api/auth/roles/people',{cookie:holder.cookie})).status,401,'native revocation ends the recipient sessions');
+ const afterCustom=await read(review.id);
+ assert.equal(afterCustom.items.find(item=>item.id===customItem.id).remediation.complete,true,'local native revocation needs no downstream connector');
+ // A role revision invalidates both an immutable item and an offered passkey
+ // transaction; it cannot silently certify or revoke the revised authority.
+ await write('reviews/delegate',{itemId:staleItem.id,reviewerId:'owner',reason:'Owner reviews exact version'});
+ const pending=await decisionProof(r,owner,params(staleItem,'revoke'));assert.ok(pending.transaction);
+ await change({kind:'role',role:{id:staleRole.plan.role.id,name:'Synthetic revised scope reviewer',rank:11,permissions:['roles.view']}});
+ assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:pending.transaction,response:pending.response},pending.cookie))).status,409);
+ assert.equal((await decide(r,owner,params(staleItem,'revoke'))).status,409);
+ assert.equal((await read(review.id)).items.find(item=>item.id===staleItem.id).drift,true);
+ // Demoting a legacy administrator also invalidates grants they sponsored.
+ assert.equal((await r.call('/api/auth/roles/people',{cookie:sponsored.cookie})).status,200);
+ await write('reviews/delegate',{itemId:adminItem.id,reviewerId:'owner',reason:'Owner ends legacy administration'});
+ await result(await decide(r,owner,params(adminItem,'revoke')));
+ assert.equal((await r.call('/api/auth/me',{cookie:admin.cookie})).status,401);
+ assert.equal((await r.call('/api/auth/roles/people',{cookie:sponsored.cookie})).status,403,'an ended sponsor supplies no authority');
+ assert.equal((await read(review.id)).items.find(item=>item.id===adminItem.id).remediation.complete,true);
+ const ownReview=await create({includeAdministrators:true,reviewerId:'owner'}),ownItems=(await read(ownReview.id)).items;
+ const self=ownItems.find(item=>item.subject_id==='owner');
+ assert.equal((await decide(r,owner,params(self))).status,403,'owners cannot certify their own administration');
+ const secondOwner=ownItems.find(item=>item.subject_id==='second-owner');
+ assert.equal((await decide(r,owner,params(secondOwner,'revoke'))).status,403,'even an independent designated owner cannot remove an owner');
+ await write('reviews/delegate',{itemId:self.id,reviewerId:'reviewer',reason:'Independent owner review'});
+ assert.equal((await decide(r,reviewer,params(self,'revoke'))).status,403,'owner removal always refuses');
+ const evidence=await result(await r.call('/api/auth/reviews/export?id='+review.id,{cookie:owner.cookie}));
+ for(const item of [ownerItem,builtinItem,customItem,adminItem])assert.ok(evidence.events.some(event=>event.item_id===item.id&&['certify','revoke'].includes(event.event)));
+ assert.equal(evidence.review.items.find(item=>item.id===customItem.id).snapshot.source.grant.id,custom.plan.id,'export preserves original role grant evidence');
+ assert.ok(evidence.review.items.find(item=>item.id===adminItem.id).remediation.complete);
+}

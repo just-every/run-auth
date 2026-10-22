@@ -275,3 +275,9 @@ test('review reductions follow a published app order and cap live access through
 
 import {reviewRemindersFlow} from './review-reminders-flow.mjs';
 test('review reminders follow current reviewer consent and business calendars across restart with absence escalation',reviewRemindersFlow);
+
+import {nativeReviewFlow} from './native-review-flow.mjs';
+test('native administration reviews preserve scoped grant evidence and enforce the existing revocation door',nativeReviewFlow);
+
+import {reviewScopeFlow} from './review-scope-flow.mjs';
+test('scoped review coordinators schedule only editable resources and cannot hide excluded evidence in exports',reviewScopeFlow);

@@ -49,7 +49,7 @@ A scheduled review snapshots employee, contractor and service identities, app
 assignment roles and their direct/group source, membership, last observed passkey
 use and provider freshness. App usage without a real source is labelled unknown.
 Snapshots are never rewritten by later directory changes. The current view shows
-drift and newly observed access separately. Administrators can delegate an
+drift and newly observed access separately. Holders of the published reviews.manage permission can delegate an
 undecided item to a different active person; self-review is refused.
 
 Certification records the reason and exact deciding actor. Revocation places an
@@ -75,7 +75,8 @@ Attempts are durable before transport, so an interrupted send cannot replay afte
 restart. A completed decision stops its reminders. Mail never certifies access.
 
 Generic review obligations and request/stale-source reminders remain
-AUTH-FOLLOWUP-003. Scoped custom review-management permissions and a package of
-future password/policy versions remain unbuilt; those clauses inherit these
-review and proof requirements before shipping. The adopted hierarchy, delegation
-and administrator-only management defaults await CT approval.
+AUTH-FOLLOWUP-003. The published reviews.view, reviews.manage and reviews.export permissions follow the same person/app view and edit scopes as other roles. Scheduling, delegation and export require hardware and fresh local email; exporting a campaign containing resources outside the exporter’s scope is refused in full. Recurrence stops when its creator loses the permission.
+
+A campaign may explicitly include Auth administrator roles and grants. Their fixed snapshot preserves exact permissions, resources, sponsor and role revision. An independent reviewer may certify them; revoking them requires the existing role/rank authority and administrator proof. Owner removal and guessed native role reductions are refused. Auth verifies its own revocations locally and ends recipient sessions.
+
+Future password/policy versions inherit these evidence requirements before shipping. The adopted hierarchy, delegation and scoped management defaults await CT approval.
