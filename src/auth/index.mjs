@@ -1,3 +1,7 @@
+import {DECISIONS_READ,isDecisionAction,decisionsRead,decisionAction} from './decisions/routes.mjs';
+import {REVIEWS_READS,isReviewAction,reviewsRead,reviewAction} from './reviews/routes.mjs';
+import {REQUESTS_READ,isRequestAction,requestsRead,requestAction} from './requests/index.mjs';
+import {RETENTION_READS,isRetentionAction,retentionRead,retentionAction} from './retention/index.mjs';
 import {syncObligations} from './obligations/sources.mjs';
 import {FOLLOWUP_READ,isFollowupAction,followupRead,followupAction} from './obligations/routes.mjs';
 import {ERASURE_READS,isErasureAction,erasureRead,erasureAction} from './erasure/index.mjs';
@@ -63,6 +67,10 @@ function scopedRuntime(options) {
     if(path==='/oidc/authorize')return await authorize(ctx,request);
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
+    if(path===DECISIONS_READ)return await decisionsRead(ctx,request);
+    if(REVIEWS_READS.includes(path))return await reviewsRead(ctx,request,path);
+    if(path===REQUESTS_READ)return await requestsRead(ctx,request);
+    if(RETENTION_READS.includes(path))return await retentionRead(ctx,request,path);
     if(path===FOLLOWUP_READ)return await followupRead(ctx,request);
     if(ERASURE_READS.includes(path))return await erasureRead(ctx,request,path);
     if(ROLE_READS.includes(path))return await roleRead(ctx,request,path);
@@ -94,6 +102,10 @@ function scopedRuntime(options) {
     if(passkeyPath==='/auth/passkeys/authenticate/verify')return await authenticationVerify(ctx,request,data);
     if(path.startsWith('/api/auth/')) {
      const action=path.slice('/api/auth'.length);
+     if(isDecisionAction(action))return await decisionAction(ctx,request,action,data);
+     if(isReviewAction(action))return await reviewAction(ctx,request,action,data);
+     if(isRequestAction(action))return await requestAction(ctx,request,action,data);
+     if(isRetentionAction(action))return await retentionAction(ctx,request,action,data);
      if(isFollowupAction(action))return await followupAction(ctx,request,action,data);
      if(isErasureAction(action))return await erasureAction(ctx,request,action,data);
      if(isRoleAction(action))return await roleAction(ctx,request,action,data);

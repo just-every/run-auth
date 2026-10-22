@@ -1,0 +1,45 @@
+// This allowlist contains no credential-bearing table or column. New product
+// stores require an explicit retention decision; no schema-wide export occurs.
+const terminated=person=>`EXISTS(SELECT 1 FROM oa_operators p JOIN auth_people d ON d.person_id=p.id WHERE p.id=${person} AND p.status='inactive' AND d.terminated_at IS NOT NULL)`;
+const end=person=>`(SELECT d.terminated_at FROM auth_people d WHERE d.person_id=${person})`;
+export const CATALOG=Object.freeze([
+ {table:'auth_activity_details',class:'audit',time:'(SELECT a.created_at FROM auth_activity a WHERE a.id=t.activity_id)',key:['activity_id'],where:"EXISTS(SELECT 1 FROM auth_activity a WHERE a.id=t.activity_id AND substr(a.event,1,6)!='model_')"},
+ {table:'auth_activity_details',class:'modelTraces',time:'(SELECT a.created_at FROM auth_activity a WHERE a.id=t.activity_id)',key:['activity_id'],where:"EXISTS(SELECT 1 FROM auth_activity a WHERE a.id=t.activity_id AND substr(a.event,1,6)='model_')"},
+ {table:'auth_activity',class:'audit',time:'t.created_at',key:['id'],where:"substr(t.event,1,6)!='model_' AND NOT EXISTS(SELECT 1 FROM auth_activity_details d WHERE d.activity_id=t.id)"},
+ {table:'auth_activity',class:'modelTraces',time:'t.created_at',key:['id'],where:"substr(t.event,1,6)='model_' AND NOT EXISTS(SELECT 1 FROM auth_activity_details d WHERE d.activity_id=t.id)"},
+ {table:'oa_auth_audit',class:'audit',time:'t.created_at',key:['id']},
+ {table:'auth_review_events',class:'decisions',time:'t.created_at',key:['id'],where:"EXISTS(SELECT 1 FROM auth_reviews r WHERE r.id=t.review_id AND r.status='closed')"},
+ {table:'auth_review_items',class:'decisions',time:'t.decided_at',key:['id'],where:"EXISTS(SELECT 1 FROM auth_reviews r WHERE r.id=t.review_id AND r.status='closed')"},
+ {table:'auth_reviews',class:'decisions',time:'t.closed_at',key:['id'],where:"t.status='closed' AND NOT EXISTS(SELECT 1 FROM auth_review_items i WHERE i.review_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_review_events e WHERE e.review_id=t.id)"},
+ {table:'auth_access_requests',class:'decisions',time:'COALESCE(t.expired_at,t.decided_at,t.created_at)',key:['id'],where:"t.state NOT IN ('pending','approved','revocation_pending')"},
+ {table:'auth_decision_operations',class:'decisions',time:'t.created_at',key:['id'],where:'NOT EXISTS(SELECT 1 FROM auth_review_items i WHERE i.operation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_app_denials d WHERE d.operation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_access_requests q WHERE q.operation_id=t.id)'},
+ {table:'auth_agent_proposals',class:'decisions',time:'t.decided_at',key:['id'],where:"t.status!='pending'"},
+ {table:'auth_role_cases',class:'decisions',time:'t.updated_at',key:['id'],where:"t.state='closed' AND NOT EXISTS(SELECT 1 FROM auth_followup_cases c WHERE c.case_id=t.id)"},
+ {table:'auth_role_events',class:'decisions',time:'t.created_at',key:['id']},
+ {table:'auth_role_operations',class:'decisions',time:'t.created_at',key:['id'],where:'NOT EXISTS(SELECT 1 FROM auth_role_events e WHERE e.operation_id=t.id)'},
+ {table:'auth_obligation_history',class:'provisioning',time:'t.created_at',key:['id'],where:"EXISTS(SELECT 1 FROM auth_obligations o WHERE o.id=t.obligation_id AND o.state!='open' AND o.stopped_at IS NOT NULL)"},
+ {table:'auth_followup_cases',class:'provisioning',time:'(SELECT o.stopped_at FROM auth_obligations o WHERE o.id=t.obligation_id)',key:['obligation_id'],where:"EXISTS(SELECT 1 FROM auth_obligations o WHERE o.id=t.obligation_id AND o.state!='open')"},
+ {table:'auth_obligations',class:'provisioning',time:'t.stopped_at',key:['id'],where:"t.state!='open' AND NOT EXISTS(SELECT 1 FROM auth_obligation_history h WHERE h.obligation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_followup_cases c WHERE c.obligation_id=t.id)"},
+ {table:'auth_provisioning',class:'provisioning',time:'COALESCE(t.verified_at,t.event_at)',key:['id'],where:"t.state IN ('verified','superseded')"},
+ {table:'auth_event_deliveries',class:'audit',time:'t.delivered_at',key:['subscription_id','seq'],where:"t.state='delivered'"},
+ {table:'auth_events',class:'audit',time:'t.occurred_at',key:['seq'],where:'NOT EXISTS(SELECT 1 FROM auth_event_deliveries d WHERE d.seq=t.seq)'},
+ {table:'auth_logout_deliveries',class:'authentication',time:'t.finished_at',key:['id'],where:'t.finished_at IS NOT NULL'},
+ {table:'auth_oidc_logouts',class:'authentication',time:'t.finished_at',key:['id'],where:'t.finished_at IS NOT NULL'},
+ {table:'auth_session_clients',class:'authentication',time:'(SELECT s.created_at FROM auth_sessions s WHERE s.id=t.session_id)',key:['session_id','client_id'],where:'EXISTS(SELECT 1 FROM auth_sessions s WHERE s.id=t.session_id AND s.expires_at<=:now) AND NOT EXISTS(SELECT 1 FROM auth_logout_deliveries d WHERE d.sid=t.session_id AND d.finished_at IS NULL)'},
+ {table:'auth_saml_sessions',class:'authentication',time:'COALESCE(t.ended_at,t.created_at)',key:['session_id','app_id'],where:'(t.ended_at IS NOT NULL OR EXISTS(SELECT 1 FROM auth_sessions s WHERE s.id=t.session_id AND s.expires_at<=:now)) AND NOT EXISTS(SELECT 1 FROM auth_saml_logouts l WHERE l.session_id=t.session_id)'},
+ {table:'auth_oidc_sessions',class:'authentication',time:'t.created_at',key:['session_id','client_id'],where:'EXISTS(SELECT 1 FROM auth_sessions s WHERE s.id=t.session_id AND s.expires_at<=:now) AND NOT EXISTS(SELECT 1 FROM auth_oidc_logouts d WHERE d.sid=t.session_id AND d.finished_at IS NULL)'},
+ {table:'auth_sessions',class:'authentication',time:'t.created_at',key:['id'],where:'t.expires_at<=:now',columns:['id','person_id','person_version','amr','created_at','expires_at','revoked_at','local_email_verified_at'],deleteWhere:'NOT EXISTS(SELECT 1 FROM auth_codes c WHERE c.session_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_recoveries r WHERE r.session_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_notices n WHERE n.session_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_session_clients c WHERE c.session_id=t.id)'},
+ {table:'auth_recoveries',class:'authentication',time:'COALESCE(t.completed_at,t.cancelled_at)',key:['id'],where:'(t.completed_at IS NOT NULL OR t.cancelled_at IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM auth_notices n WHERE n.recovery_id=t.id)'},
+ {table:'auth_notices',class:'authentication',time:'t.created_at',key:['id'],where:'t.recovery_id IS NULL OR EXISTS(SELECT 1 FROM auth_recoveries r WHERE r.id=t.recovery_id AND (r.completed_at IS NOT NULL OR r.cancelled_at IS NOT NULL))'},
+ {table:'auth_import_rows',class:'sourceSnapshots',time:'(SELECT b.created_at FROM auth_import_batches b WHERE b.id=t.batch_id)',key:['batch_id','idx'],where:"t.status IN ('admitted','undone')"},
+ {table:'auth_import_batches',class:'sourceSnapshots',time:'t.created_at',key:['id'],where:'NOT EXISTS(SELECT 1 FROM auth_import_rows r WHERE r.batch_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_former_subjects f WHERE f.batch_id=t.id)'},
+ {table:'auth_former_subjects',class:'sourceSnapshots',time:'t.created_at',key:['source_system','subject'],where:terminated('t.person_id')},
+ {table:'auth_person_fields',class:'profiles',time:end('t.person_id'),key:['person_id','field','source'],where:terminated('t.person_id')},
+ {table:'oa_external_identities',class:'sourceSnapshots',time:end('t.operator_id'),key:['issuer','subject'],where:terminated('t.operator_id')},
+ {table:'auth_person_sources',class:'sourceSnapshots',time:end('t.person_id'),key:['source','source_id'],where:terminated('t.person_id')},
+ {table:'oa_operators',class:'profiles',time:end('t.id'),key:['id'],where:terminated('t.id')+" AND t.email NOT LIKE 'expired-%@retention.invalid'",columns:['id','email','display_name','role','status','version','created_at'],operation:'anonymize'},
+ {table:'auth_erasure_remote',class:'erasureReceipts',time:'t.updated_at',key:['id'],where:"t.state='verified' AND t.sealed_work IS NULL",columns:['id','receipt_id','kind','partner','state','attempts','last_status','last_error','created_at','updated_at']},
+ {table:'auth_erasure_receipts',class:'erasureReceipts',time:'t.created_at',key:['id'],where:'NOT EXISTS(SELECT 1 FROM auth_erasure_remote r WHERE r.receipt_id=t.id)'},
+]);
+export const tableQuote=name=>'"'+name.replaceAll('"','""')+'"';
+export const entryId=entry=>entry.table+':'+entry.class;

@@ -212,3 +212,6 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const abandoned=page.locator('article').filter({has:page.getByRole('heading',{name:'organization erasure · remote_unfinished'})});await abandoned.getByText('Abandon unfinished remote work',{exact:true}).click();const abandon=abandoned.locator('[data-erasure-abandon]');await abandon.locator('[name=workIds]').check();await abandon.getByLabel('Type ABANDON').fill('ABANDON');await saved(()=>abandon.getByRole('button',{name:'Abandon selected remote work'}).click());await expect(page.getByRole('heading',{name:'organization erasure · remote_abandoned'})).toBeVisible();await shoot('remote-abandoned');
  assert.ok(!(await (await context.request.get(app.origin+'/api/auth/people')).json()).some(p=>p.email==='erin@northwind.example.com'));assert.deepEqual(errors,[]);
 });
+
+import {accessReviewJourney} from './helpers/access-review-journey.mjs';
+test('access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390',accessReviewJourney);

@@ -10,7 +10,7 @@ const ASSIGNED=`SELECT a.role,0 AS rank FROM auth_app_assignments a WHERE a.app_
 export async function assignment(ctx,appId,personId) {
  const person=await one(ctx,"SELECT id FROM oa_operators WHERE id=? AND status='active'",personId);
  const app=await one(ctx,'SELECT id FROM auth_apps WHERE id=? AND disabled_at IS NULL',appId);
- if(!person||!app)return null;
+ if(!person||!app||await one(ctx,'SELECT 1 FROM auth_app_denials WHERE app_id=? AND person_id=?',appId,personId))return null;
  return one(ctx,ASSIGNED,appId,personId,appId,personId);
 }
 
@@ -29,6 +29,6 @@ export async function launcher(ctx,personId) {
  const apps=await all(ctx,`SELECT DISTINCT p.id,p.name,p.idp_initiated,p.launch_url FROM auth_apps p JOIN auth_app_assignments a ON a.app_id=p.id
   LEFT JOIN auth_group_members m ON a.principal_type='group' AND m.group_id=a.principal_id
   JOIN oa_operators o ON o.id=? AND o.status='active'
-  WHERE p.disabled_at IS NULL AND ((a.principal_type='person' AND a.principal_id=?) OR m.person_id=?) ORDER BY p.name`,personId,personId,personId);
+  WHERE p.disabled_at IS NULL AND NOT EXISTS(SELECT 1 FROM auth_app_denials d WHERE d.app_id=p.id AND d.person_id=o.id) AND ((a.principal_type='person' AND a.principal_id=?) OR m.person_id=?) ORDER BY p.name`,personId,personId,personId);
  return apps.map(a=>({id:a.id,name:a.name,launch:a.idp_initiated?`/saml/launch/${encodeURIComponent(a.id)}`:a.launch_url}));
 }

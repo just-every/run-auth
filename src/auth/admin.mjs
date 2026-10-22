@@ -1,3 +1,7 @@
+import {requestsRead} from './requests/index.mjs';
+import {decisionsModel} from './decisions/policy.mjs';
+import {reviewsModel} from './reviews/routes.mjs';
+import {retentionRead} from './retention/index.mjs';
 import {syncObligations} from './obligations/sources.mjs';
 import {followupRead} from './obligations/routes.mjs';
 import {roleModel,roleRead} from './roles/index.mjs';
@@ -55,6 +59,8 @@ export async function model(ctx,request,page='account') {
   if(page==='activity')result.followup=await (await followupRead(ctx,request)).json();
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
+ if(page==='account'||page==='activity'){result.decisions=await decisionsModel(ctx,s);result.reviews=await reviewsModel(ctx,s);result.requests={...await (await requestsRead(ctx,request)).json(),canManage:isAdmin,meId:s.person_id,people:isAdmin?result.people:[],adminApps:isAdmin?await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL'):[]};}
+ if(page==='activity'&&isAdmin)result.retention=await (await retentionRead(ctx,request,'/api/auth/retention')).json();
  if(page==='account')result.followup=await (await followupRead(ctx,request)).json();
  if(page==='roles') {
   try { result.roles=await roleModel(ctx,s); }

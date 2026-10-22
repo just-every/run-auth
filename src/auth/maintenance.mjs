@@ -1,3 +1,6 @@
+import {maintainReviews} from './reviews/routes.mjs';
+import {maintainRequests} from './requests/index.mjs';
+import {maintainRetention} from './retention/index.mjs';
 import {maintainObligations} from './obligations/delivery.mjs';
 import {organizationContext} from './tenancy/context.mjs';
 import {deliverLogouts} from './links/logout.mjs';
@@ -29,8 +32,11 @@ export async function maintainAuth(ctx) {
  await deliverLogouts(ctx);
  await deliverGenericLogouts(ctx);
  await deliverEvents(ctx);
+ await maintainRequests(ctx);
+ await maintainReviews(ctx);
  await maintainProvisioning(ctx);
  await maintainObligations(ctx);
+ await maintainRetention(ctx);
  if(!ctx.organizationId||ctx.organizationId==='root') {
   const organizations=(await ctx.db.prepare("SELECT id FROM auth_organizations WHERE status='active' ORDER BY created_at,id").all()).results;
   for(const organization of organizations)await maintainAuth(await organizationContext(ctx,organization.id));

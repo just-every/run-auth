@@ -262,3 +262,10 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  const exported=await r.call('/api/auth/roles/export?personId=junior-reviewer',{cookie:bob.cookie});assert.equal(exported.status,200);assert.deepEqual((await exported.json()).people.map(p=>p.id),['junior-reviewer']);
  assert.equal((await r.call('/api/auth/roles/export?personId=peer-auditor',{cookie:bob.cookie})).status,403,'auditor cannot export an equal administrator');
 });
+
+import {accessDecisionsFlow,requestDecisionsFlow,accessReviewsFlow} from './access-decisions-flow.mjs';
+import {retentionFlow} from './retention-flow.mjs';
+test('group owners confirm exact ordinary decisions without email and lose stale or privileged authority',accessDecisionsFlow);
+test('independent request decisions bind the current approver and temporary access expires without claiming remote removal',requestDecisionsFlow);
+test('quarterly access snapshots retain delegation, drift, overdue escalation and verified remediation',accessReviewsFlow);
+test('retention previews export before expiry and preserve held classes and unfinished work across restart',retentionFlow);

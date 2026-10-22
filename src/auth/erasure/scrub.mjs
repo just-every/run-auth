@@ -1,7 +1,7 @@
 import {normalized} from './journal.mjs';
 
-export const referenceColumns=new Set(['person_id','operator_id','owner_id','owner_person_id','actor_id','subject_id','created_by','updated_by','set_by','bound_by','added_by','approved_by','decided_by','requested_by','revoked_by','released_by','completed_by','claim_id']);
-const evidenceTables=new Set(['auth_activity','auth_activity_details','oa_auth_audit','auth_agent_proposals','auth_events','auth_role_events','auth_role_operations']);
+export const referenceColumns=new Set(['person_id','operator_id','owner_id','owner_person_id','actor_id','subject_id','created_by','updated_by','set_by','bound_by','added_by','approved_by','decided_by','requested_by','revoked_by','released_by','completed_by','claim_id','reviewer_id','decider_id','marked_by']);
+const evidenceTables=new Set(['auth_decision_operations','auth_review_events','auth_activity','auth_activity_details','oa_auth_audit','auth_agent_proposals','auth_events','auth_role_events','auth_role_operations']);
 export const isEvidence=name=>evidenceTables.has(name);
 export function contains(value,identifiers) {
  if(value===null||value===undefined)return false;

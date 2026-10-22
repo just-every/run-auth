@@ -1,3 +1,7 @@
+import type { AccessRequestsModel } from './pages/access-requests.js'
+import type { RetentionModel } from './pages/retention.js'
+import type { AccessDecisionsModel } from './pages/access-decisions.js'
+import type { AccessReviewsModel } from './pages/access-reviews.js'
 export type AuthPage = 'people' | 'move-in' | 'agents' | 'apps' | 'methods' | 'activity' | 'account' | 'organizations' | 'roles' | 'permissions' | 'erasure'
 
 export interface AuthUser {
@@ -236,6 +240,11 @@ export interface FollowupModel {
 }
 
 export interface AuthPageModel {
+  retention?: RetentionModel
+  requests?: AccessRequestsModel
+  decisions?: AccessDecisionsModel
+  reviews?: AccessReviewsModel
+
   followup?: FollowupModel
   delegations?: {organizationId:string;targetApi:string;grants:DelegatedTask[];agents:Array<{id:string;clientId:string;name:string;state:string;expiresAt:number}>;hasMore:boolean;nextCursor:string|null}
   delegation?: DelegatedTask & {canConsent:boolean;canApprove:boolean}

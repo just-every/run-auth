@@ -328,3 +328,6 @@ test('durable follow-up dispatches on the employer business calendar across DST 
 test('follow-up duties resolve employees and scoped case holders, restrict early send and escalate lost case authority',async t=>{
  const {followupRolesFlow}=await import('./followup-roles-flow.mjs');await followupRolesFlow(t);
 });
+
+import {retentionIntegrityFlow} from './retention-integrity-flow.mjs';
+test('scheduled retention expiry preserves erasure audit verification while altered expiry commitments fail',retentionIntegrityFlow);

@@ -1,3 +1,7 @@
+import { requestsPanel } from './access-requests.js'
+import { retentionPanel } from './retention.js'
+import { decisionsPanel } from './access-decisions.js'
+import { reviewsPanel } from './access-reviews.js'
 import { followupPanel } from './followup.js'
 import type { AuthActivity, AuthPageModel } from '../model.js'
 import { asArray, escape, timeElement } from '../helpers.js'
@@ -23,5 +27,5 @@ const activityRows = (events: AuthActivity[]): string => events.length
 
 export function renderActivityPage(model: AuthPageModel): string {
   const events = asArray<AuthActivity>(model.activity)
-  return `${followupPanel(model)}<section class="table-panel activity-table" aria-label="Activity"><div class="table-scroll" tabindex="0" role="region" aria-label="Activity table"><table><thead><tr><th scope="col">Event</th><th scope="col">Actor</th><th scope="col">Time</th></tr></thead><tbody>${activityRows(events)}</tbody></table></div><footer class="table-footer">${events.length} ${events.length === 1 ? 'event' : 'events'}</footer></section>`
+  return `${retentionPanel(model)}${decisionsPanel(model)}${requestsPanel(model)}${reviewsPanel(model)}${followupPanel(model)}<section class="table-panel activity-table" aria-label="Activity"><div class="table-scroll" tabindex="0" role="region" aria-label="Activity table"><table><thead><tr><th scope="col">Event</th><th scope="col">Actor</th><th scope="col">Time</th></tr></thead><tbody>${activityRows(events)}</tbody></table></div><footer class="table-footer">${events.length} ${events.length === 1 ? 'event' : 'events'}</footer></section>`
 }

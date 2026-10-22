@@ -1,6 +1,7 @@
 import {all,fail,hash,b64} from '../core.mjs';
 import {quoted,schema} from './schema.mjs';
 import {isEvidence} from './scrub.mjs';
+import {authenticatedExpiries} from '../retention/expiry.mjs';
 
 // SQLite row values are scalars or blobs. Type tags keep text/numbers/blobs
 // distinct; JSON columns remain their exact stored text. No identity values
@@ -58,10 +59,16 @@ export async function verifyAuditCommitments(ctx,journal) {
   const rows=available.has(entry.table)?await all(ctx,`SELECT * FROM ${quoted(entry.table)}`):[];
   const current=new Map();
   for(const digest of await Promise.all(rows.map(evidenceDigest)))current.set(digest,(current.get(digest)||0)+1);
+  // A signed commitment is appended atomically with legitimate policy expiry.
+  // Changed or deleted commitments still fail verification, as do unsigned
+  // deletions and changes to any audit row that remains present.
+  const expired=new Map();
+  for(const row of await authenticatedExpiries(ctx,entry.table))if(row.expired_at>=(journal.createdAt??0))expired.set(row.digest,(expired.get(row.digest)||0)+1);
   let changed=0;
   for(const digest of entry.rows) {
    const matches=current.get(digest)||0;
    if(matches)current.set(digest,matches-1);
+   else if(expired.get(digest))expired.set(digest,expired.get(digest)-1);
    else changed++;
   }
   // Extra rows are later audit appends. Multiplicity still matters for every

@@ -6,7 +6,7 @@ import {sourceOf,organizationOf} from './journal.mjs';
 import {resetConsent} from './reset-policy.mjs';
 
 const rowId=(table,index)=>table+':'+index;
-const serialized=new Set(['detail','data','subject','params','effect','target_state','reason','outcome','undo_report','metadata','message','payload','resources','program','plan','verification','policy']);
+const serialized=new Set(['detail','data','subject','params','effect','target_state','reason','outcome','undo_report','metadata','message','payload','resources','program','plan','verification','policy','snapshot','purpose']);
 const staging=new Set(['rer_portability_jobs','rer_portability_parts','rer_portability_segments','rer_portability_owned']);
 const values=(stores,name)=>stores.get(name)?.rows||[];
 const text=v=>typeof v==='string'&&v.length>0;
