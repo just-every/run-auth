@@ -17,6 +17,9 @@ export async function followupFlow(t) {
  await admin('followup/settings',{...settings,recipients:['bob']},400);
  await admin('followup/settings',settings);
  await admin('people/invite',{email:'newhire@example.com',name:'New hire'},201);
+ await admin('people/invite',{email:'leaver@example.com',name:'Unenrolled leaver'},201);
+ const leaverCookie=await emailSession(r,'leaver@example.com'),leaver=(await (await r.call('/api/auth/me',{cookie:leaverCookie})).json()).user;
+ await admin('people/suspend',{personId:leaver.id});
  const cancelled=await admin('organizations/invite',{email:'cancelled@example.com'},201);
  const expiring=await admin('organizations/invite',{email:'expiring@example.com',expiresAt:r.now+3600000},201);
  const recovery=await r.call('/api/auth/recovery/start',{method:'POST',cookie:recovering.cookie,data:{}});assert.equal(recovery.status,201);const recoveryId=(await recovery.json()).id;
@@ -26,8 +29,8 @@ export async function followupFlow(t) {
  await admin('company-apps/assign',{appId:app.id,principalType:'person',principalId:'bob'});
  const remote=()=>[...scim.users.values()].find(p=>p.externalId==='bob');assert.equal(remote().active,true);
  scim.fail(100,403);await admin('company-apps/unassign',{appId:app.id,principalType:'person',principalId:'bob'});assert.equal(remote().active,true,'a refused deprovision stays unresolved');
- const before=await read(),enrollment=before.obligations.find(o=>o.kind==='enrollment'&&o.person_id!==cancelled.id&&o.person_id!==expiring.id),failed=before.obligations.find(o=>o.kind==='provisioning'&&o.state==='open');
- assert.ok(enrollment&&failed);
+ const before=await read(),enrollment=before.obligations.find(o=>o.kind==='enrollment'&&o.state==='open'&&o.person_id!==cancelled.id&&o.person_id!==expiring.id),failed=before.obligations.find(o=>o.kind==='provisioning'&&o.state==='open');
+ assert.ok(enrollment&&failed);assert.equal(before.obligations.find(o=>o.person_id===leaver.id).state,'cancelled','suspension stops email-activated enrollment before a passkey exists');
  const recoveringOb=before.obligations.find(o=>o.kind==='recovery');assert.equal(recoveringOb.owner_id,'ada');
  await admin('followup/schedule',{id:recoveringOb.id,ownerId:'owner',dueBusinessDays:1,deadlineBusinessDays:2});
  assert.equal((await read()).obligations.find(o=>o.id===recoveringOb.id).owner_id,'owner');

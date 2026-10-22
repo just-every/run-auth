@@ -6,7 +6,9 @@ import {businessDue} from './calendar.mjs';
 export async function sourceState(ctx,ob) {
  if(ob.kind==='enrollment') {
   const p=await one(ctx,'SELECT status FROM oa_operators WHERE id=?',ob.source_id);
-  if(!p||p.status==='inactive')return {state:'cancelled'};
+  // Suspended and terminated directory states are inactive in the account
+  // store. Only admitted invitations and active people retain enrollment work.
+  if(!p||!['active','invited'].includes(p.status))return {state:'cancelled'};
   if(p.status==='invited') {
    const invitation=await one(ctx,'SELECT expires_at,cancelled_at FROM auth_org_invitations WHERE person_id=?',ob.source_id);
    if(invitation?.cancelled_at)return {state:'cancelled'};
