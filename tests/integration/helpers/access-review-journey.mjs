@@ -23,7 +23,9 @@ export async function accessReviewJourney(t) {
  };
  const shoot=async(name,page,panels)=>{for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});await page.reload();await expect(page.locator('h1')).toBeVisible();
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits '+width);
+  await page.screenshot({path:join(directory,`access-${name}-${width}.png`),fullPage:true});
+  const layout=await page.evaluate(()=>({fits:document.documentElement.scrollWidth<=innerWidth,overflow:[...document.querySelectorAll('main *')].filter(e=>e.scrollWidth>e.clientWidth+1&&getComputedStyle(e).overflowX==='visible').slice(-6).map(e=>({tag:e.tagName,classes:e.className,text:e.textContent.slice(0,100),width:e.clientWidth,scroll:e.scrollWidth}))}));
+  assert.ok(layout.fits,name+' fits '+width+' '+JSON.stringify(layout));
   const axe=await new AxeBuilder({page}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],name+' '+width);
   await page.screenshot({path:join(directory,`access-${name}-${width}.png`),fullPage:true});
   for(const selector of panels){const panel=page.locator(selector).first();if(await panel.count())await panel.screenshot({path:join(directory,`access-${name}-${selector.replace(/[^a-z-]/g,'')}-${width}.png`)});}
