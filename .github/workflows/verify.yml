@@ -4,7 +4,7 @@ on:
   pull_request:
 jobs:
   verify:
-    # Three parallel shards keep a push's Verify well inside 15 minutes;
+    # Four parallel shards keep a push's Verify well inside 15 minutes;
     # together they run everything `rer verify` runs.
     name: verify (${{ matrix.shard }})
     runs-on: ubuntu-latest
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [app, protocol, browser]
+        shard: [app, protocol, workforce, browser]
     permissions:
       contents: read
     env:
@@ -47,6 +47,8 @@ jobs:
       - if: matrix.shard == 'app'
         run: pnpm run typecheck && pnpm run test:typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site
       - if: matrix.shard == 'protocol'
-        run: pnpm run test:auth
+        run: pnpm run test:auth:protocol
+      - if: matrix.shard == 'workforce'
+        run: pnpm run test:auth:workforce
       - if: matrix.shard == 'browser'
         run: pnpm run test:browser
