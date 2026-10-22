@@ -41,7 +41,7 @@ export function scriptedApps() {
     const redeemed=await r.send(AUTH_ORIGIN+'/oidc/link/redeem',{method:'POST',json:{code,interface:INTERFACE,origin:app.origin,callback:app.origin+CALLBACK,client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:assertion},cookies:false});
     if(redeemed.status!==200)return Response.json({error:'redeem_failed'},{status:400});
     app.clientId=(await redeemed.json()).client_id;
-    return Response.json({linked:true});
+    return app.refuseCallback?Response.json({error:'synthetic_callback_refused'},{status:409}):Response.json({linked:true});
    }
    if(request.method==='POST'&&url.pathname===LOGOUT)return new Response(null,{status:204});
    return new Response(null,{status:404});

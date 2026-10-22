@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {openLink} from './link/runtime.mjs';
 import {AUTH_ORIGIN,APP_ORIGIN} from './link/origins.mjs';
 import {emailSession} from './runtime.mjs';
@@ -22,6 +23,9 @@ test('an app links with a one-use token, signs a person in through Auth, and Sig
  const envelope=await minted.json();
  assert.deepEqual(envelope.callbacks,[APP_ORIGIN+'/.well-known/rer-link/callback',APP_ORIGIN+'/auth/oidc/auth/callback',APP_ORIGIN+'/auth/oidc/auth/logout'].sort());
  assert.ok(envelope.expiresAt-envelope.issuedAt<=3600000);
+ const followup=async()=>{const response=await r.call('/api/auth/followup',{cookie:owner.cookie});assert.equal(response.status,200);return response.json();};
+ const pending=(await followup()).obligations.find(ob=>ob.kind==='app_link_token');assert.equal(pending.state,'open');
+ for(const secret of [envelope.token,createHash('sha256').update(envelope.token).digest('base64url')])assert.ok(!JSON.stringify(await followup()).includes(secret),'follow-up never exposes link credentials or their digests');
 
  // What rer setup does in the app: open its own approval, claim its owner, then ask Auth.
  assert.equal((await r.send(APP_ORIGIN+'/auth/dependencies/setup',{method:'POST',json:{issuer:AUTH_ORIGIN,interface:INTERFACE,token:APP_SETUP}})).status,200);
@@ -30,6 +34,7 @@ test('an app links with a one-use token, signs a person in through Auth, and Sig
  const linked=await initiate({origin:APP_ORIGIN,interface:INTERFACE,token:envelope.token});
  assert.equal(linked.status,200,await linked.clone().text());
  assert.equal((await linked.json()).source,'token');
+ assert.equal((await followup()).obligations.find(ob=>ob.id===pending.id).state,'completed');
  const status=await(await r.send(APP_ORIGIN+'/auth/dependencies/status')).json();
  assert.deepEqual(status.links,[{interface:INTERFACE,issuer:AUTH_ORIGIN,linked:true}]);
  assert.equal((await initiate({origin:APP_ORIGIN,interface:INTERFACE,token:envelope.token})).status,403,'a link token is single use');
@@ -112,4 +117,19 @@ test('only the owner accepts a lower interface version, also when an administrat
  const accepted=await r.call('/api/auth/apps/version',{method:'POST',data:{id:app.clientId,version:'oidc-provider@1.0'},cookie:owner.cookie});
  assert.equal(accepted.status,200);
  assert.deepEqual(await approveRequest((await request(app.origin,admin.cookie)).id,admin.cookie),{status:200,error:undefined},'after the owner accepted it');
+ const followup=async id=>{const response=await r.call('/api/auth/followup',{cookie:owner.cookie});assert.equal(response.status,200);return (await response.json()).obligations.find(ob=>ob.source_id===id);};
+ const uncertain=await file(r,key,{kind:'approve_app_link',target:app.origin,reason:'Confirm app callback outcome'});
+ app.refuseCallback=true;
+ const refused=await approve(r,owner,uncertain);assert.equal(refused.status,200);assert.equal((await refused.json()).followUp,'failed');
+ assert.equal((await proposal(r,uncertain)).status,'done');
+ assert.equal((await followup(uncertain)).state,'open','proposal claim and redeemed client cannot stand in for callback confirmation');
+ assert.equal((await followup(uncertain)).last_error,'approved_app_link_effect_unconfirmed');
+ app.refuseCallback=false;
+ const confirmed=await file(r,key,{kind:'approve_app_link',target:app.origin,reason:'Finish app setup with successful callback'});
+ const keyId=(await proposal(r,confirmed)).key_id;
+ assert.equal((await r.call('/api/auth/agents/revoke',{method:'POST',cookie:owner.cookie,data:{keyId}})).status,200);
+ assert.equal((await followup(confirmed)).state,'open','ending a preparer key preserves a filed human decision');
+ assert.equal((await approve(r,owner,confirmed)).status,200);
+ assert.equal((await followup(confirmed)).state,'completed','real callback and redemption confirm the link');
+
 });

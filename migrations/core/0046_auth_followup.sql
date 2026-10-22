@@ -7,7 +7,7 @@ CREATE TABLE auth_followup_settings (
 );
 CREATE TABLE auth_obligations (
  id TEXT PRIMARY KEY,
- kind TEXT NOT NULL CHECK(kind IN ('enrollment','recovery','provisioning')),
+ kind TEXT NOT NULL CHECK(kind IN ('enrollment','recovery','provisioning','app_setup','app_link_proposal','app_link_token','delegated_assignment')),
  source_id TEXT NOT NULL,
  owner_id TEXT REFERENCES oa_operators(id),
  person_id TEXT REFERENCES oa_operators(id),
@@ -39,3 +39,11 @@ CREATE TABLE auth_obligation_history (
  error TEXT
 );
 CREATE INDEX auth_obligation_history_task ON auth_obligation_history(obligation_id,created_at);
+
+-- Opaque follow-up references are separate from one-use credential digests.
+-- This custody mapping is secret, local, and deleted with the original token.
+CREATE TABLE auth_followup_link_tokens (
+ id TEXT PRIMARY KEY,
+ token_hash TEXT NOT NULL UNIQUE REFERENCES auth_link_tokens(token_hash) ON DELETE CASCADE,
+ client_id TEXT REFERENCES auth_clients(id)
+);

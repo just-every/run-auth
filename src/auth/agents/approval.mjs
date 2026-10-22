@@ -94,7 +94,10 @@ export async function approve(ctx,request,data) {
  }
  // Work that reaches outside the database runs once, after the claim committed.
  if(kind.after) {
-  try {await kind.after(ctx,state,params,s.person_id);}
+  try {
+   await kind.after(ctx,state,params,s.person_id);
+   if(p.kind==='approve_app_link')await run(ctx,'UPDATE auth_agent_proposals SET outcome=? WHERE id=? AND execution_id=?',JSON.stringify({...outcome,linkConfirmed:true}),p.id,execution);
+  }
   catch(error) {await auditDetail(ctx,s.person_id,'agent_proposal_followup_failed',p.id,{target:targetName(p),reason:String(error?.message||'failed').slice(0,120)});return json({id:p.id,status:'done',followUp:'failed'});}
  }
  if(kind.mail) {

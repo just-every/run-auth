@@ -1,3 +1,4 @@
+import {syncObligations} from '../obligations/sources.mjs';
 // Administration of agents: keys and the proposals their keys filed. Every
 // handler authorizes its own request with the administrator's session.
 import {one,all,fail} from '../core.mjs';
@@ -6,7 +7,7 @@ import {approvalOptions,approve,reject} from './approval.mjs';
 import {KINDS,digest,changes} from './kinds.mjs';
 export {preparer} from './preparer.mjs';
 
-export function agentsAction(ctx,request,path,data) {
+async function action(ctx,request,path,data) {
  if(path==='/agents/mint')return mintKey(ctx,request,data);
  if(path==='/agents/revoke')return revokeKey(ctx,request,data);
  if(path==='/agents/renew')return renewKey(ctx,request,data);
@@ -33,3 +34,5 @@ export async function agentsModel(ctx,request) {
  }
  return {agents:{now:ctx.now(),keys,proposals:proposals.map(row=>view(ctx,row)),proposal}};
 }
+
+export async function agentsAction(ctx,request,path,data) {const response=await action(ctx,request,path,data);await syncObligations(ctx);return response;}

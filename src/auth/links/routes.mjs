@@ -1,3 +1,4 @@
+import {syncObligations} from '../obligations/sources.mjs';
 // Auth as an oidc-provider@1 link provider: its well-known documents, the
 // server-to-server link endpoints, and the Apps page's administrator actions.
 import {createLocalJWKSet,jwtVerify} from 'jose';
@@ -48,7 +49,10 @@ async function initiate(ctx,request) {
  if(!token||token.origin!==origin||token.interface!==INTERFACE)fail('invalid_link_token',403);
  const app=await pullApp(ctx,origin);
  if(JSON.stringify(app.callbacks)!==token.callbacks)fail('invalid_link_token',403);
- return json({linked:true,...await link(ctx,{app,source:'token',approvedBy:token.created_by})});
+ const result=await link(ctx,{app,source:'token',approvedBy:token.created_by});
+ await run(ctx,'UPDATE auth_followup_link_tokens SET client_id=? WHERE token_hash=?',result.client_id,token.token_hash);
+ await syncObligations(ctx);
+ return json({linked:true,...result});
 }
 
 // The app unlinked itself: it signs with the key Auth holds for its client.
@@ -86,8 +90,13 @@ export async function appAction(ctx,request,path,data) {
  const guard=authority(ctx,s,['owner','admin']);
  if(path==='/apps/link-token') {
   const origin=validateClientOrigin(ctx,String(data.origin||'')),token=random(),now=ctx.now(),callbacks=callbacksFor(origin);
-  const minted=await run(ctx,`INSERT INTO auth_link_tokens(token_hash,origin,interface,callbacks,created_by,issued_at,expires_at) SELECT ?,?,?,?,?,?,? WHERE ${guard.clause}`,await hash(token),origin,INTERFACE,JSON.stringify(callbacks),s.person_id,now,now+TOKEN_LIFETIME,...guard.args);
+  const tokenHash=await hash(token);
+  const [minted]=await ctx.db.batch([
+   ctx.db.prepare(`INSERT INTO auth_link_tokens(token_hash,origin,interface,callbacks,created_by,issued_at,expires_at) SELECT ?,?,?,?,?,?,? WHERE ${guard.clause}`).bind(tokenHash,origin,INTERFACE,JSON.stringify(callbacks),s.person_id,now,now+TOKEN_LIFETIME,...guard.args),
+   ctx.db.prepare('INSERT INTO auth_followup_link_tokens(id,token_hash) SELECT ?,? WHERE changes()>0').bind(random(),tokenHash),
+  ]);
   if(!minted.meta.changes){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}
+  await syncObligations(ctx);
   await auditDetail(ctx,s.person_id,'link_token_created',null,{origin});
   // The envelope `rer setup` reads from RER_LINK_TOKEN_FILE; shown once.
   return json({token,issuer:(ctx.issuer??ctx.origin),interface:INTERFACE,origin,callbacks,issuedAt:now,expiresAt:now+TOKEN_LIFETIME},201);
@@ -99,6 +108,7 @@ export async function appAction(ctx,request,path,data) {
   const stored=await run(ctx,`INSERT INTO auth_link_requests(id,origin,interface,app,client_id,key_changed,first_seen,punycode,replaces,requested_by,created_at,expires_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard.clause}`,id,app.origin,INTERFACE,JSON.stringify(app),existing?.id??null,existing&&!sameKey(storedKey(existing),app.key)?1:0,seen?1:0,punycode(app.origin)?1:0,JSON.stringify(replaced),s.person_id,ctx.now(),ctx.now()+REQUEST_LIFETIME,...guard.args);
   if(!stored.meta.changes){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}
   await run(ctx,'INSERT OR IGNORE INTO auth_origins_seen(origin,first_seen_at) VALUES(?,?)',app.origin,ctx.now());
+  await syncObligations(ctx);
   return json({id,origin:app.origin,name:app.name,firstSeen:seen,punycode:punycode(app.origin),replacesClient:existing?.id??null,replaces:replaced.map(shownReplacement)},201);
  }
  if(path==='/apps/approve') {
@@ -111,6 +121,7 @@ export async function appAction(ctx,request,path,data) {
   if(!decided.meta.changes){await requireAuthority(ctx,s,guard);fail('link_request_decided',409);}
   const result=await link(ctx,{app,source:'owner',approvedBy:s.person_id,replacing:replacedIds(shownReplaced)});
   await run(ctx,'UPDATE auth_link_requests SET outcome=? WHERE id=?','linked',r.id);
+  await syncObligations(ctx);
   return json({linked:true,...result});
  }
  if(path==='/apps/remove') {

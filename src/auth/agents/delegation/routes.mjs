@@ -1,3 +1,4 @@
+import {syncObligations} from '../../obligations/sources.mjs';
 import {fail,AuthError,session,auditDetail,json} from '../../core.mjs';
 import {TARGET_PATH} from './common.mjs';
 import {registerAgent,suspendAgent} from './registry.mjs';
@@ -39,7 +40,9 @@ export async function delegationRoute(ctx,request,path) {
  if(request.method!=='POST')fail('method_not_allowed',405);
  // Browser handlers parse and Origin-check their own input. Machine request
  // and execution handlers accept only their bound private-key authority.
- return await handler(ctx,request);
+ const response=await handler(ctx,request);
+ await syncObligations(ctx);
+ return response;
  }catch(error) {
   if(error instanceof AuthError) {
    const actor=ctx.delegationActor;

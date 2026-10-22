@@ -13,7 +13,7 @@ export async function followupRead(ctx,request) {
   obligationPage(ctx,request,{table:'auth_obligations',columns:'id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at',prefix:'obligation',defaultLimit:200}),
   obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100}),
  ]);
- return json({policy:await policy(ctx),obligations:obligations.items,obligationsPage:obligations.page,history:history.items,historyPage:history.page,limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Access requests, reviews, app setup and stale-source obligations await their public flows.','Interrupted dispatch stays recorded as dispatching; transport acknowledgment is not proof of access state.']});
+ return json({policy:await policy(ctx),obligations:obligations.items,obligationsPage:obligations.page,history:history.items,historyPage:history.page,limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Generic access requests, reviews, reversal resolution and stale-source obligations await their public flows.','Interrupted dispatch stays recorded as dispatching; transport acknowledgment is not proof of access state.']});
 }
 export async function followupAction(ctx,request,path,data) {
  const s=await requireSession(ctx,request,true);requireLocalEmail(ctx,s);

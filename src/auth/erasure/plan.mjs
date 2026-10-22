@@ -1,3 +1,4 @@
+import {followupReferences,followupErasure} from '../obligations/erasure.mjs';
 import {fail,hash,random} from '../core.mjs';
 import {snapshot,erasureTable} from './schema.mjs';
 import {anonymous,contains,isEvidence,referenceColumns} from './scrub.mjs';
@@ -34,6 +35,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  for(const row of values(stores,'auth_delegated_agents'))if(reset||row.registered_by===target||identifiers.has(row.client_id)){identifiers.add(row.id);identifiers.add(row.client_id);}
  for(const row of values(stores,'auth_delegated_tasks'))if(reset||contains(row,identifiers))identifiers.add(row.id);
  if(kind==='app')for(const row of values(stores,'auth_oidc_clients'))if(row.app_id===target)identifiers.add(row.client_id);
+ followupReferences(stores,identifiers,reset);
  const holds=values(stores,'auth_erasure_holds').filter(h=>!h.released_at&&(reset||h.kind==='installation'||h.kind==='organization'&&h.target===organizationOf(ctx)||h.kind===kind&&identifiers.has(h.target)));
  const policy=values(stores,'auth_erasure_policy')[0];
  const removed=new Set(),updates=new Map(),decisions=[];
@@ -47,6 +49,8 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   if(name==='auth_delegated_tasks'&&(reset||identifiers.has(row.id)||contains(row,identifiers))) {
    removed.add(key);decisions.push({kind:'delegated_assignment',status:row.state,createdAt:row.created_at,decidedAt:row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});continue;
   }
+  const followup=followupErasure(table,row,{stores,identifiers,reset,reference});
+  if(followup) {if(followup.remove)removed.add(key);else updates.set(key,followup.update);continue;}
   const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&canMatch('auth_activity',a));
   const matched=relatedActivity||canMatch(name,row),discardMap=name==='auth_grant_maps',discardStage=staging.has(name);
   if(isEvidence(name)) {
@@ -83,7 +87,8 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  while(added){added=false;for(const table of stores.values())for(const [index,row] of table.rows.entries()) {
   const key=rowId(table.name,index);if(removed.has(key)||erasureTable(table.name))continue;
   for(const fk of table.foreignKeys) {
-   if(row[fk.from]===null)continue;
+   // An explicit anonymization already removes this dependency.
+   if(row[fk.from]===null||Object.hasOwn(updates.get(key)??{},fk.from))continue;
    const parent=stores.get(fk.table);if(!parent)continue;
    const dependency=parent.rows.some((r,i)=>r[fk.to]===row[fk.from]&&removed.has(rowId(parent.name,i)));
    if(!dependency)continue;

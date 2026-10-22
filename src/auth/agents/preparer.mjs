@@ -1,3 +1,4 @@
+import {syncObligations} from '../obligations/sources.mjs';
 // The preparer API, the one door a preparer key opens: GET reads the inventory,
 // POST files a proposal. It reads no cookie and changes nothing but the
 // proposal it files, its key's last use and an Activity entry.
@@ -54,6 +55,7 @@ async function file(ctx,request,key) {
  await ctx.db.prepare('INSERT INTO auth_agent_proposals(id,key_id,kind,target,params,reason,effect,target_state,state_digest,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
   .bind(id,key.id,kindName,target,JSON.stringify(params),reason,JSON.stringify(effect),JSON.stringify(state),await digest(state),now,now+PROPOSAL_LIFETIME).run();
  await auditDetail(ctx,null,'agent_proposal_filed',id,{key:key.label,proposal:kindName.replace(/_/g,' '),target:effect.person?.email??effect.domain,reason});
+ if(['approve_app_link','remove_app_link'].includes(kindName))await syncObligations(ctx);
  return json(proposalView(ctx,await one(ctx,'SELECT * FROM auth_agent_proposals WHERE id=?',id)),201);
 }
 

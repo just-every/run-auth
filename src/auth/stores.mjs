@@ -29,7 +29,7 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
-  'auth_agent_keys', 'auth_erasure_remote', 'auth_event_subscriptions', 'auth_hooks',
+  'auth_followup_link_tokens', 'auth_agent_keys', 'auth_erasure_remote', 'auth_event_subscriptions', 'auth_hooks',
   'auth_oidc_secrets', 'auth_recovery_tokens', 'auth_saml_keys', 'auth_scim_connectors',
   'auth_settings', 'auth_signing_keys', 'oa_credentials', 'oa_dev_credentials',
   'rer_dependency_keys',

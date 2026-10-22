@@ -75,4 +75,12 @@ export async function followupFlow(t) {
  const history=done.history.filter(h=>h.obligation_id===failed.id);assert.ok(history.some(h=>h.event==='reminder_accepted'));assert.ok(history.some(h=>h.event==='escalation_accepted'));assert.ok(history.some(h=>h.event==='completed'));
  r.now=Date.parse('2026-03-12T13:00:00Z');count=(await r.mails()).length;await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count,'completed, cancelled and expired sources remain silent after another restart');
  r.owner=await signInAgain(r,r.owner,'owner@example.com');done=await read();assert.deepEqual(done.history.filter(h=>h.obligation_id===failed.id),history,'all follow-up history survives stop and restart');
+ await admin('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ const preview=await admin('erasure/preview',{kind:'person',target:enrollment.person_id});
+ await admin('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:false,destinations:[]});
+ const anonymous=await read(),retained=anonymous.obligations.find(ob=>ob.id===enrollment.id);
+ assert.equal(retained.state,'completed');assert.equal(retained.person_id,null);assert.notEqual(retained.source_id,enrollment.source_id);
+ assert.ok(anonymous.history.some(h=>h.obligation_id===enrollment.id&&h.event==='completed'),'anonymous source history remains after person erasure');
+ assert.ok(!JSON.stringify(anonymous).includes(enrollment.person_id),'erasure removes personal references from follow-up records');
+
 }
