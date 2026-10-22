@@ -269,3 +269,9 @@ test('group owners confirm exact ordinary decisions without email and lose stale
 test('independent request decisions bind the current approver and temporary access expires without claiming remote removal',requestDecisionsFlow);
 test('quarterly access snapshots retain delegation, drift, overdue escalation and verified remediation',accessReviewsFlow);
 test('retention previews export before expiry and preserve held classes and unfinished work across restart',retentionFlow);
+
+import {reviewReductionFlow} from './review-reduction-flow.mjs';
+test('review reductions follow a published app order and cap live access through provider readback',reviewReductionFlow);
+
+import {reviewRemindersFlow} from './review-reminders-flow.mjs';
+test('review reminders follow current reviewer consent and business calendars across restart with absence escalation',reviewRemindersFlow);

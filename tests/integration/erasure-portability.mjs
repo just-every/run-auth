@@ -34,7 +34,7 @@ export async function erasurePortability(t) {
  const company=await command('company-apps/create',{name:'Archive credential custody',entityId:'https://archive.example.com',acsUrl:'https://archive.example.com/acs'},201);
  await command('provisioning/connect',{appId:company.id,baseUrl:edge.url+'/scim/v2',token:'synthetic-auth-20'},201);
  await command('provisioning/rotate',{appId:company.id,token:'synthetic-auth-21'});edge.token='synthetic-auth-21';
- const stagedKey=await command('keys/stage',{});assert.ok(stagedKey.kid);
+ const stagedKey=await command('keys/stage',{},201);assert.ok(stagedKey.kid);
  const now=Date.now();await command('reviews/create',{name:'Portable quarterly snapshot',reviewerId:'owner',periodStart:now-86400000,periodEnd:now-1000,dueAt:now+86400000,intervalMonths:3},201);
  for(const path of ['/api/auth/activity','/auth-assets/auth-ui.js','/auth-assets/decisions-ui.js','/auth-assets/retention-ui.js']) {
   const response=await app.get(path,{cookie:commandCookie});assert.equal(response.status,200);const body=await response.text();

@@ -1,3 +1,4 @@
+import {capRoleClaims} from '../reviews/claims.mjs';
 import {computedValues} from '../mapping/program.mjs';
 // General OpenID Connect clients for company SaaS, web and native apps. They
 // never share code, client or key paths with RER registrations, which keep the
@@ -109,5 +110,5 @@ export async function claimsFor(ctx,client,s,scopes,role,proofAt) {
  }
  if(scopes.includes('profile'))Object.assign(claims,(await computedValues(ctx,client.app_id,s.person_id))?.oidc??{});
  if(scopes.includes('groups'))claims.groups=await groupNames(ctx,s.person_id);
- return claims;
+ return capRoleClaims(ctx,client.app_id,s.person_id,client.attributes,claims);
 }

@@ -13,7 +13,7 @@ resource state and the authorization epoch in the mutation transaction.
 
 Group owners can edit ordinary membership without local email confirmation.
 An administrator acting as a group owner still needs the administrator gate.
-Self-addition and self-certification are refused. Reviewers certify or revoke
+Self-addition and self-certification are refused. Reviewers certify, reduce or revoke
 existing access; neither action creates a privileged grant. Administrator recovery
 continues through its existing, higher-rank hardware/fresh-email door.
 
@@ -59,9 +59,23 @@ The review can close only when every original item is decided and every removal
 is read-back verified. Missing connectors and failed removals remain explicit in
 the export. It never claims SOC 2 certification.
 
+An administrator publishes app roles in an explicit authority order before a
+reviewer can reduce one. The saved per-person cap follows direct and group grants
+through SAML, OIDC, provisioning and resource checks. A changed hierarchy closes
+capped access until an administrator explicitly clears or reconfirms it; no
+unknown ordering is guessed. Role-sourced mapping/hook output cannot restore the
+higher role. Reduction remains unfinished until provider read-back confirms it.
+
 Recurring snapshots stop when their accountable administrator or named reviewer
-loses authority. Deadlines record overdue escalation, which survives restart.
-Email reminder routing into AUTH-FOLLOWUP-003, reviewer absence/reassignment
-policy, role reduction against a published app role hierarchy, scoped custom
-review-management permissions and complete audit/policy-version packaging remain
-unbuilt. The quarterly acceptance is therefore partial.
+loses authority. Deadlines and new quarterly snapshots survive restart. The shared
+follow-up policy can explicitly select the current reviewer as a decider recipient.
+With that consent, business-calendar reminders follow delegation; absent reviewers
+and overdue items escalate only to the policy's currently approved administrators.
+Attempts are durable before transport, so an interrupted send cannot replay after
+restart. A completed decision stops its reminders. Mail never certifies access.
+
+Generic review obligations and request/stale-source reminders remain
+AUTH-FOLLOWUP-003. Scoped custom review-management permissions and a package of
+future password/policy versions remain unbuilt; those clauses inherit these
+review and proof requirements before shipping. The adopted hierarchy, delegation
+and administrator-only management defaults await CT approval.

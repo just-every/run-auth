@@ -96,10 +96,12 @@
       if (form.dataset.accessDecision) {
         const payload = { kind: form.dataset.accessDecision, targetId: fields.get('targetId'), operation: event.submitter?.name === 'operation' ? event.submitter.value : fields.get('operation'), reason: String(fields.get('reason') || '').trim() }
         if (payload.kind === 'group') payload.personId = fields.get('personId')
+        if (payload.kind === 'review' && payload.operation === 'reduce') payload.newRole = fields.get('newRole')
         setStatus('Waiting for your passkey…')
         await decide(payload)
       } else {
         let payload
+        if (form.dataset.accessForm === 'role-order') payload = { appId: fields.get('appId'), roles: String(fields.get('roles') || '').split(/\r?\n/).map(role => role.trim()).filter(Boolean).map((role, level) => ({role,level})) }
         if (form.dataset.accessForm === 'privilege') payload = { kind: fields.get('kind'), targetId: fields.get('targetId'), privileged: fields.get('privileged') === 'true' }
         if (form.dataset.accessForm === 'review-create') payload = { name: fields.get('name'), reviewerId: fields.get('reviewerId'), dueAt: dateISO(fields.get('dueAt')), periodStart: dateISO(fields.get('periodStart')), periodEnd: dateISO(fields.get('periodEnd')), intervalMonths: 3 }
         if (form.dataset.accessForm === 'review-delegate') payload = { itemId: fields.get('itemId'), reviewerId: fields.get('reviewerId'), reason: String(fields.get('reason') || '').trim() }

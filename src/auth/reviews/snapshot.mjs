@@ -1,3 +1,4 @@
+import {assignment} from '../workforce/directory.mjs';
 import {all,one,hash} from '../core.mjs';
 import {roleState} from '../roles/state.mjs';
 
@@ -14,9 +15,10 @@ export async function accessSnapshot(ctx,s) {
   const ids=a.principal_type==='person'?[a.principal_id]:[...state.memberships].filter(([,groups])=>groups.has(a.principal_id)).map(([id])=>id);
   for(const id of ids) {
    const p=state.dir.people.get(id);if(!p||p.status!=='active'||denials.some(d=>d.app_id===a.app_id&&d.person_id===id))continue;
+   const effective=await assignment(ctx,a.app_id,id);if(!effective)continue;
    const fields=state.dir.values(p),connector=connectors.find(c=>c.app_id===a.app_id),last=lastUses.find(u=>u.person_id===id)?.last_used_at??null;
-   const snapshot={identity:{id,email:p.email,name:p.name,kind:fields.kind,status:p.status},groups:[...(state.memberships.get(id)??[])].sort(),assignment:{appId:a.app_id,app:a.app,principalType:a.principal_type,principalId:a.principal_id,role:a.role},source:{kind:a.principal_type==='group'?'group':'direct',directory:[...state.dir.sourceIds].filter(([key])=>key.endsWith(':'+id)).map(([key,value])=>({source:key.split(':')[0],id:value}))},lastObservedUse:last,freshness:{observedAt:now,providerObservedAt:connector?.last_reconciled_at??connector?.last_success_at??null,usage:'unknown: passkey use is not app usage'}};
-   items.push({subject_id:id,app_id:a.app_id,principal_type:a.principal_type,principal_id:a.principal_id,role:a.role,snapshot});
+   const snapshot={identity:{id,email:p.email,name:p.name,kind:fields.kind,status:p.status},groups:[...(state.memberships.get(id)??[])].sort(),assignment:{appId:a.app_id,app:a.app,principalType:a.principal_type,principalId:a.principal_id,role:effective.role,grantRole:a.role},source:{kind:a.principal_type==='group'?'group':'direct',directory:[...state.dir.sourceIds].filter(([key])=>key.endsWith(':'+id)).map(([key,value])=>({source:key.split(':')[0],id:value}))},lastObservedUse:last,freshness:{observedAt:now,providerObservedAt:connector?.last_reconciled_at??connector?.last_success_at??null,usage:'unknown: passkey use is not app usage'}};
+   items.push({subject_id:id,app_id:a.app_id,principal_type:a.principal_type,principal_id:a.principal_id,role:effective.role,snapshot});
   }
  }
  return items.sort((a,b)=>keyOf(a).localeCompare(keyOf(b)));
@@ -30,5 +32,6 @@ export async function itemDrift(ctx,item) {
  const p=await one(ctx,'SELECT status,version FROM oa_operators WHERE id=?',item.subject_id);
  const membership=item.principal_type==='person'||Boolean(await one(ctx,'SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id=?',item.principal_id,item.subject_id));
  const denied=await one(ctx,'SELECT 1 FROM auth_app_denials WHERE app_id=? AND person_id=?',item.app_id,item.subject_id);
- return !current||current.role!==a.role||p?.status!=='active'||!membership||Boolean(denied);
+ const effective=await assignment(ctx,item.app_id,item.subject_id);
+ return !current||current.role!==(a.grantRole??a.role)||effective?.role!==a.role||p?.status!=='active'||!membership||Boolean(denied);
 }

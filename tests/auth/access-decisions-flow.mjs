@@ -63,8 +63,10 @@ export async function requestDecisionsFlow(t) {
  await result(await r.call('/api/auth/requests/cancel',post({id:request.id},employee.cookie)));
  await result(await r.admin('requests/policy',{appId:app.id,deciderId:'manager',maxDurationMs:3600000}));
  const next=await result(await r.call('/api/auth/requests/create',post({appId:app.id,purpose:'Read project records',role:'reader',durationMs:60000},employee.cookie)),201);
- const proof=await decisionProof(r,manager,{kind:'request',targetId:next.id,operation:'approve',reason:'Approved read-only handover'});
- await result(await r.call('/api/auth/decisions/commit',post({transaction:proof.transaction,response:proof.response},proof.cookie)));
+ const decision={kind:'request',targetId:next.id,operation:'approve',reason:'Approved read-only handover'},proof=await decisionProof(r,manager,decision),competing=await decisionProof(r,manager,decision);
+ const races=await Promise.all([r.call('/api/auth/decisions/commit',{...post({transaction:proof.transaction,response:proof.response},proof.cookie),barrier:{name:'request-approval',size:2}}),r.call('/api/auth/decisions/commit',{...post({transaction:competing.transaction,response:competing.response},competing.cookie),barrier:{name:'request-approval',size:2}})]);
+ assert.deepEqual(races.map(response=>response.status).sort(),[200,409]);
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_decision_operations WHERE target_id=?').bind(next.id).first()).n,1);
  assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:proof.transaction,response:proof.response},proof.cookie))).status,400);
  assert.deepEqual((await result(await r.call('/api/auth/launcher',{cookie:employee.cookie}))).apps.map(a=>a.id),[app.id]);
  r.now+=61000;await r.call('/',{action:'maintain'});
@@ -101,4 +103,14 @@ export async function accessReviewsFlow(t) {
  const final=(await read()).reviews[0];assert.equal(final.completion.complete,true,JSON.stringify(final.completion));
  await result(await r.admin('reviews/close',{id:review.id}));
  assert.equal((await read()).reviews[0].status,'closed');
+ // The next quarter is a new immutable snapshot; restart does not create a
+ // second campaign for that scheduled period. Explicit disable stops it.
+ const {emailSession}=await import('./runtime.mjs'),{signInAgain}=await import('./agents-helpers.mjs');
+ const nextAt=(await r.db.prepare('SELECT next_at FROM auth_review_schedules WHERE id=?').bind(initial.schedule_id).first()).next_at;
+ r.now=nextAt;await r.call('/',{action:'maintain'});await r.restart();await r.call('/',{action:'maintain'});
+ await emailSession(r,'owner@example.com');r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ const quarters=await read();assert.equal(quarters.reviews.filter(q=>q.schedule_id===initial.schedule_id).length,2);
+ await result(await r.call('/api/auth/reviews/disable-schedule',post({id:initial.schedule_id},r.owner.cookie)));
+ r.now+=120*86400000;await r.call('/',{action:'maintain'});await emailSession(r,'owner@example.com');r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ assert.equal((await read()).reviews.filter(q=>q.schedule_id===initial.schedule_id).length,2);
 }

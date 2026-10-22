@@ -1,10 +1,12 @@
+import {maintainReviewReminders} from './reminders.mjs';
+import {roleOrderAction,clearReductionAction,getRoleOrder} from './reductions.mjs';
 import {one,all,random,json,fail,requireSession} from '../core.mjs';
 import {authority,requireLocalEmail} from '../local-email.mjs';
 import {accessSnapshot,keyOf,comparable} from './snapshot.mjs';
 import {reviewView} from './items.mjs';
 
 export const REVIEWS_READS=['/api/auth/reviews','/api/auth/reviews/export'];
-export const isReviewAction=p=>['/reviews/create','/reviews/delegate','/reviews/close','/reviews/disable-schedule'].includes(p);
+export const isReviewAction=p=>['/reviews/create','/reviews/delegate','/reviews/close','/reviews/disable-schedule','/reviews/role-order','/reviews/reduction-clear'].includes(p);
 const time=(v,code)=>{const n=typeof v==='number'?v:Date.parse(v);if(!Number.isSafeInteger(n))fail(code);return n;};
 export const nextQuarter=(at,months)=>{const d=new Date(at),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months);const end=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,end));return d.getTime();};
 async function reviewer(ctx,id) {return await one(ctx,"SELECT id FROM oa_operators WHERE id=? AND status='active'",String(id??''))??fail('active_reviewer_required');}
@@ -16,12 +18,14 @@ async function createReview(ctx,s,settings,g,scheduleId=null) {
  const won={clause:'EXISTS(SELECT 1 FROM auth_reviews WHERE id=?)',args:[id]};
  // The role epoch protects the entire immutable snapshot, including changes
  // between its read and the single D1 transaction that creates the campaign.
+ const scheduleStatements=settings.newSchedule?[p(`INSERT INTO auth_review_schedules(id,name,reviewer_id,interval_months,next_at,duration_ms,created_by,created_at) SELECT ?,?,?,?,?,?,?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?)`,scheduleId,settings.name,settings.reviewerId,settings.newSchedule.intervalMonths,settings.newSchedule.nextAt,settings.dueAt-now,s.person_id,now,...g.args,epoch.epoch)]:[];
  const results=await ctx.db.batch([
-  p(`INSERT INTO auth_reviews(id,schedule_id,name,reviewer_id,period_start,period_end,due_at,created_by,created_at) SELECT ?,?,?,?,?,?,?,?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?)`,id,scheduleId,settings.name,settings.reviewerId,settings.periodStart,settings.periodEnd,settings.dueAt,s.person_id,now,...g.args,epoch.epoch),
+  ...scheduleStatements,
+  p(`INSERT OR IGNORE INTO auth_reviews(id,schedule_id,name,reviewer_id,period_start,period_end,due_at,created_by,created_at) SELECT ?,?,?,?,?,?,?,?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?)`,id,scheduleId,settings.name,settings.reviewerId,settings.periodStart,settings.periodEnd,settings.dueAt,s.person_id,now,...g.args,epoch.epoch),
   ...items.map(i=>p(`INSERT INTO auth_review_items(id,review_id,subject_id,app_id,principal_type,principal_id,role,snapshot,reviewer_id) SELECT ?,?,?,?,?,?,?,?,? WHERE ${won.clause}`,random(),id,i.subject_id,i.app_id,i.principal_type,i.principal_id,i.role,JSON.stringify(i.snapshot),settings.reviewerId,id)),
   event(ctx,p,won,{reviewId:id,actorId:s.person_id,event:'started',detail:{items:items.length,scheduleId}}),
  ]);
- if(!results[0].meta.changes)fail('review_authority_changed',409);
+ if(!results[scheduleStatements.length].meta.changes){if(scheduleId&&!settings.newSchedule)return null;fail('review_authority_changed',409);}
  return {id,items:items.length};
 }
 export async function reviewsModel(ctx,s) {
@@ -40,7 +44,7 @@ export async function reviewsModel(ctx,s) {
   }
   reviews.push(view);
  }
- return {canManage,people:canManage?await all(ctx,"SELECT id,email,display_name AS name FROM oa_operators WHERE status='active' ORDER BY email"):[],apps:canManage?await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL'):[],reviews,schedules:canManage?await all(ctx,'SELECT * FROM auth_review_schedules ORDER BY created_at'):[]};
+ return {canManage,people:canManage?await all(ctx,"SELECT id,email,display_name AS name FROM oa_operators WHERE status='active' ORDER BY email"):[],apps:canManage?await Promise.all((await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL')).map(async a=>({...a,roleOrder:await getRoleOrder(ctx,a.id)}))):[],reviews,schedules:canManage?await all(ctx,'SELECT * FROM auth_review_schedules ORDER BY created_at'):[]};
 }
 export async function reviewsRead(ctx,request,path) {
  const s=await requireSession(ctx,request);
@@ -49,11 +53,14 @@ export async function reviewsRead(ctx,request,path) {
  await requireSession(ctx,request,true);requireLocalEmail(ctx,s);
  const id=new URL(request.url).searchParams.get('id'),review=await one(ctx,'SELECT * FROM auth_reviews WHERE id=?',id??'')??fail('review_not_found',404);
  const view=await reviewView(ctx,s,review,true),g=authority(ctx,s,['owner','admin']);
+ const current=await accessSnapshot(ctx,s),keys=new Set(view.items.map(keyOf));view.newAccess=current.filter(i=>!keys.has(keyOf(i))).map(i=>i.snapshot);
  const result=await ctx.db.prepare(`INSERT INTO auth_review_events(id,review_id,actor_id,event,detail,created_at) SELECT ?,?,?,'exported','{}',? WHERE ${g.clause}`).bind(random(),id,s.person_id,ctx.now(),...g.args).run();
  if(!result.meta.changes)fail('session_authority_changed',403);
  return json({format:'auth-access-review-v1',review:view,events:await all(ctx,"SELECT * FROM auth_review_events WHERE review_id=? AND event!='exported' ORDER BY created_at,id",id),claim:'Decision completion does not imply verified removal. This is evidence, not SOC 2 certification.'},200,{'content-disposition':'attachment; filename="access-review.json"'});
 }
 export async function reviewAction(ctx,request,path,data) {
+ if(path==='/reviews/role-order')return roleOrderAction(ctx,request,data);
+ if(path==='/reviews/reduction-clear')return clearReductionAction(ctx,request,data);
  const s=await requireSession(ctx,request),isAdmin=['owner','admin'].includes(s.role)&&JSON.parse(s.amr).includes('hwk');
  if(path==='/reviews/delegate') {
   const item=await one(ctx,'SELECT i.*,r.status FROM auth_review_items i JOIN auth_reviews r ON r.id=i.review_id WHERE i.id=?',String(data.itemId??''))??fail('review_item_not_found',404);
@@ -80,8 +87,7 @@ export async function reviewAction(ctx,request,path,data) {
   let scheduleId=null;
   if(intervalMonths) {
    scheduleId=random();
-   const result=await ctx.db.prepare(`INSERT INTO auth_review_schedules(id,name,reviewer_id,interval_months,next_at,duration_ms,created_by,created_at) SELECT ?,?,?,?,?,?,?,? WHERE ${g.clause}`).bind(scheduleId,name,to.id,intervalMonths,nextQuarter(periodEnd,intervalMonths),dueAt-ctx.now(),s.person_id,ctx.now(),...g.args).run();
-   if(!result.meta.changes)fail('session_authority_changed',403);
+   settings.newSchedule={intervalMonths,nextAt:nextQuarter(periodEnd,intervalMonths)};
   }
   return json(await createReview(ctx,s,settings,g,scheduleId),201);
  }
@@ -89,12 +95,14 @@ export async function reviewAction(ctx,request,path,data) {
   const result=await ctx.db.prepare(`UPDATE auth_review_schedules SET enabled=0 WHERE id=? AND ${g.clause}`).bind(String(data.id??''),...g.args).run();
   if(!result.meta.changes)fail('schedule_not_found',404);return json({ok:true});
  }
+ const epoch=await one(ctx,'SELECT epoch FROM auth_role_epoch WHERE id=1');
  const row=await one(ctx,"SELECT * FROM auth_reviews WHERE id=? AND status='open'",String(data.id??''))??fail('open_review_not_found',404),view=await reviewView(ctx,s,row,true);
  if(!view.completion.complete)return json({error:'review_remediation_unfinished',completion:view.completion},409);
- const epoch=await one(ctx,'SELECT epoch FROM auth_role_epoch WHERE id=1'),result=await ctx.db.prepare(`UPDATE auth_reviews SET status='closed',closed_at=? WHERE id=? AND status='open' AND ${g.clause} AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?) AND NOT EXISTS(SELECT 1 FROM auth_review_items WHERE review_id=? AND decision IS NULL)`).bind(ctx.now(),row.id,...g.args,epoch.epoch,row.id).run();
+ const result=await ctx.db.prepare(`UPDATE auth_reviews SET status='closed',closed_at=? WHERE id=? AND status='open' AND ${g.clause} AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?) AND NOT EXISTS(SELECT 1 FROM auth_review_items WHERE review_id=? AND decision IS NULL)`).bind(ctx.now(),row.id,...g.args,epoch.epoch,row.id).run();
  if(!result.meta.changes)fail('review_changed',409);return json({ok:true});
 }
 export async function maintainReviews(ctx) {
+ await maintainReviewReminders(ctx);
  // Only consented recurring snapshots run automatically. They neither decide
  // access nor remove it, and stop if their accountable administrator leaves.
  for(const schedule of await all(ctx,'SELECT * FROM auth_review_schedules WHERE enabled=1 AND next_at<=? ORDER BY next_at,id',ctx.now())) {

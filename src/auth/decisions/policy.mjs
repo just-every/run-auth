@@ -34,7 +34,7 @@ export async function decisionTarget(ctx,s,data) {
   const target=await requestTarget(ctx,s,{targetId,operation});
   snapshot=target.snapshot;personId=target.personId;privileged=target.privileged;
  } else if(kind==='review') {
-  const target=await reviewTarget(ctx,s,{targetId,operation});
+  const target=await reviewTarget(ctx,s,{targetId,operation,newRole:data.newRole});
   snapshot=target.snapshot;personId=target.personId;privileged=target.privileged;
  } else fail('decision_kind_not_available',400);
  // Ordinary relationship roles carry rank zero. A real administrator holding
@@ -48,7 +48,7 @@ export async function decisionTarget(ctx,s,data) {
   guard=roleGuard(ctx,s,state);
  }
  if(!JSON.parse(s.amr).some(m=>['hwk','passkey'].includes(m)))fail('employee_passkey_required',403);
- const canonical={kind,targetId,operation,personId,reason};
+ const canonical={kind,targetId,operation,personId,reason,...(snapshot.reduction?{newRole:snapshot.reduction.newRole}:{})};
  return {...canonical,privileged,guard,epoch:state.epoch,digest:await hash(JSON.stringify(snapshot)),snapshot};
 }
 export async function decisionsModel(ctx,s) {

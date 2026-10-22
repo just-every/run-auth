@@ -12,7 +12,7 @@ export const CATALOG=Object.freeze([
  {table:'auth_review_items',class:'decisions',time:'t.decided_at',key:['id'],where:"EXISTS(SELECT 1 FROM auth_reviews r WHERE r.id=t.review_id AND r.status='closed')"},
  {table:'auth_reviews',class:'decisions',time:'t.closed_at',key:['id'],where:"t.status='closed' AND NOT EXISTS(SELECT 1 FROM auth_review_items i WHERE i.review_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_review_events e WHERE e.review_id=t.id)"},
  {table:'auth_access_requests',class:'decisions',time:'COALESCE(t.expired_at,t.decided_at,t.created_at)',key:['id'],where:"t.state NOT IN ('pending','approved','revocation_pending')"},
- {table:'auth_decision_operations',class:'decisions',time:'t.created_at',key:['id'],where:'NOT EXISTS(SELECT 1 FROM auth_review_items i WHERE i.operation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_app_denials d WHERE d.operation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_access_requests q WHERE q.operation_id=t.id)'},
+ {table:'auth_decision_operations',class:'decisions',time:'t.created_at',key:['id'],where:'NOT EXISTS(SELECT 1 FROM auth_review_items i WHERE i.operation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_app_denials d WHERE d.operation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_app_reductions r WHERE r.operation_id=t.id) AND NOT EXISTS(SELECT 1 FROM auth_access_requests q WHERE q.operation_id=t.id)'},
  {table:'auth_agent_proposals',class:'decisions',time:'t.decided_at',key:['id'],where:"t.status!='pending'"},
  {table:'auth_role_cases',class:'decisions',time:'t.updated_at',key:['id'],where:"t.state='closed' AND NOT EXISTS(SELECT 1 FROM auth_followup_cases c WHERE c.case_id=t.id)"},
  {table:'auth_role_events',class:'decisions',time:'t.created_at',key:['id']},

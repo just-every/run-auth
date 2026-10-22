@@ -1,3 +1,4 @@
+import {capRoleClaims} from '../reviews/claims.mjs';
 import {invokeHooks} from '../hooks/index.mjs';
 import {recheckIssuance} from '../hooks/fences.mjs';
 import {computedValues} from '../mapping/program.mjs';
@@ -44,7 +45,7 @@ export async function signInResponse(ctx,{app,s,acs,inResponseTo,role}) {
  const sessionIndex=existing?.session_index??random(),computed=await computedValues(ctx,app.id,s.person_id),subject=computed?.nameId??await nameId(ctx,app,s),format=FORMATS[app.name_id_format];
  const extension=await invokeHooks(ctx,'saml',{personId:s.person_id,appId:app.id});
  await recheckIssuance(ctx,s,{appId:app.id,appVersion:app.version,mappingVersion:app.mapping_version,assignmentRole:role});
- const mapped={...(computed?.saml??{}),...extension.attributes};
+ const mapped=await capRoleClaims(ctx,app.id,s.person_id,app.attributes,{...(computed?.saml??{}),...extension.attributes});
  const attributes=[];
  for(const a of app.attributes.filter(a=>!Object.hasOwn(mapped,a.name))){const values=await attributeValues(ctx,a.source,s,role);if(values.length)attributes.push(el('saml:Attribute',{Name:a.name,NameFormat:'urn:oasis:names:tc:SAML:2.0:attrname-format:basic'},values.map(v=>el('saml:AttributeValue',{},[v]))));}
  for(const [name,value] of Object.entries(mapped)){const values=(Array.isArray(value)?value:[value]).filter(v=>v!==null&&v!==undefined);if(values.length)attributes.push(el('saml:Attribute',{Name:name,NameFormat:'urn:oasis:names:tc:SAML:2.0:attrname-format:basic'},values.map(v=>el('saml:AttributeValue',{},[String(v)]))));}

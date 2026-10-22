@@ -21,8 +21,8 @@ export async function accessReviewJourney(t) {
   await page.waitForURL(app.origin+'/app/methods');await page.waitForLoadState('load');
   const response=page.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify')),loaded=page.waitForEvent('load');await page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await response).status(),200);await loaded;
  };
- const shoot=async(name,page,panels)=>{for(const width of [1440,390]){
-  await page.setViewportSize({width,height:1000});await page.reload();await expect(page.locator('h1')).toBeVisible();
+ const shoot=async(name,page,panels,prepare=async()=>{})=>{for(const width of [1440,390]){
+  await page.setViewportSize({width,height:1000});await page.reload();await prepare();await expect(page.locator('h1')).toBeVisible();
   await page.screenshot({path:join(directory,`access-${name}-${width}.png`),fullPage:true});
   const layout=await page.evaluate(()=>({fits:document.documentElement.scrollWidth<=innerWidth,overflow:[...document.querySelectorAll('main *')].filter(e=>e.scrollWidth>e.clientWidth+1&&getComputedStyle(e).overflowX==='visible').slice(-6).map(e=>({tag:e.tagName,classes:e.className,text:e.textContent.slice(0,100),width:e.clientWidth,scroll:e.scrollWidth}))}));
   assert.ok(layout.fits,name+' fits '+width+' '+JSON.stringify(layout));
@@ -34,7 +34,7 @@ export async function accessReviewJourney(t) {
  await signin(root,owner,app.vars.OWNER_EMAIL,true);
  const managerData=await post(root,'directory/onboard',{email:'morgan@northwind.example.com',name:'Morgan Ellis',kind:'employee',set:{department:'Product operations'}},201);
  const workerData=await post(root,'directory/onboard',{email:'casey@contractors.example.com',name:'Casey Jordan',kind:'contractor',set:{department:'Product operations'}},201);
- await post(root,'directory/onboard',{email:'pipeline@northwind.example.com',name:'Release pipeline',kind:'service',invite:false},201);
+ const serviceData=await post(root,'directory/onboard',{email:'pipeline@northwind.example.com',name:'Release pipeline',kind:'service',invite:false},201);
  const managers=await browser.newContext(),manager=await managers.newPage();await hardware(managers,manager);await signin(managers,manager,'morgan@northwind.example.com');
  // A fresh ordinary passkey sign-in carries no local email confirmation.
  await post(managers,'signout',{});await manager.goto(app.origin+'/signin');
@@ -56,7 +56,14 @@ export async function accessReviewJourney(t) {
  await expect(manager.locator('[data-access-requests]')).toContainText('Approved temporary access');
  await shoot('request-approved',manager,['[data-access-requests]']);
  await post(root,'company-apps/assign',{appId:appData.id,principalType:'person',principalId:managerData.id,role:'reader'});
- await owner.goto(app.origin+'/app/activity');const create=owner.locator('[data-access-review-create]');
+ const buildApp=await post(root,'company-apps/create',{name:'Release engineering workspace',entityId:'https://engineering.example.com',acsUrl:'https://engineering.example.com/acs'},201);
+ await post(root,'company-apps/assign',{appId:buildApp.id,principalType:'person',principalId:serviceData.id,role:'editor'});
+ await owner.goto(app.origin+'/app/activity');
+ const hierarchy=owner.locator('[data-access-form=role-order]').filter({has:owner.locator(`[name=appId][value="${buildApp.id}"]`)});
+ await hierarchy.locator('xpath=..').locator('summary').click();
+ await hierarchy.getByLabel('Roles from least to most authority').fill('viewer\neditor');
+ await saved(owner,()=>hierarchy.getByRole('button',{name:'Publish role hierarchy'}).click());
+ const create=owner.locator('[data-access-review-create]');
  await create.getByLabel('Review name').fill('Northwind quarterly certification');await create.locator('[name=reviewerId]').selectOption(managerData.id);
  await create.getByLabel('Due at').fill(new Date(Date.now()+86400000).toISOString().slice(0,16));
  await create.getByLabel('Period start').fill('2026-07-01');await create.getByLabel('Period end').fill(new Date(Date.now()-86400000).toISOString().slice(0,10));
@@ -65,13 +72,16 @@ export async function accessReviewJourney(t) {
  assert.ok(item);
  // Delegation is a hardware-and-email administrator write.
  const self=review.items.find(i=>i.subject_id===managerData.id);await post(root,'reviews/delegate',{itemId:self.id,reviewerId:(await(await root.request.get(app.origin+'/api/auth/me')).json()).user.id,reason:'Independent owner review of manager access'});
- await manager.reload();const itemForm=manager.locator(`[data-review-item="${item.id}"] [data-access-decision="review"]`);await itemForm.getByLabel('Decision reason').fill('Contract handover complete; remove access');
+ await manager.reload();const serviceItem=review.items.find(i=>i.subject_id===serviceData.id);assert.ok(serviceItem);
+ const reduction=manager.locator(`[data-review-item="${serviceItem.id}"] [data-access-decision="review"]`);await reduction.getByLabel('Reduce to app role').selectOption('viewer');await reduction.getByLabel('Decision reason').fill('Pipeline needs read access only');
+ await saved(manager,()=>reduction.getByRole('button',{name:'Reduce access with passkey'}).click());
+ const itemForm=manager.locator(`[data-review-item="${item.id}"] [data-access-decision="review"]`);await itemForm.getByLabel('Decision reason').fill('Contract handover complete; remove access');
  await saved(manager,()=>itemForm.getByRole('button',{name:'Revoke access with passkey'}).click());
  await expect(manager.locator('[data-access-reviews]')).toContainText('remote removal unverified');
  await shoot('review-unfinished',manager,['[data-access-reviews]']);
  await owner.reload();const certification=owner.locator(`[data-review-item="${self.id}"] [data-access-decision="review"]`);await certification.getByLabel('Decision reason').fill('Manager still needs customer operations access');
  await saved(owner,()=>certification.getByRole('button',{name:'Certify access with passkey'}).click());
- const exported=await(await root.request.get(app.origin+'/api/auth/reviews/export?id='+review.id)).json();assert.equal(exported.review.completion.complete,false);assert.equal(exported.review.completion.unfinished,1);
+ const exported=await(await root.request.get(app.origin+'/api/auth/reviews/export?id='+review.id)).json();assert.equal(exported.review.completion.complete,false);assert.equal(exported.review.completion.unfinished,2);
  await post(root,'reviews/close',{id:review.id},409);
  await post(root,'decisions/privilege',{kind:'group',targetId:group.id,privileged:true});await manager.reload();await expect(manager.locator('[data-access-decisions]')).toContainText('Privileged access');assert.equal(await manager.locator('[data-access-decision="group"]').count(),0);
  await shoot('privileged-refused',manager,['[data-access-decisions]']);
@@ -80,5 +90,6 @@ export async function accessReviewJourney(t) {
  await retention.getByRole('button',{name:/Save retention/i}).click();assert.equal(await retention.locator('[name="audit.value"]').evaluate(input=>input.validity.rangeUnderflow),true);
  await retention.locator('[name="audit.value"]').fill('90');await saved(owner,()=>retention.getByRole('button',{name:/Save retention/i}).click());
  await shoot('retention-refused',owner,['[data-retention]','[data-access-reviews]']);
+ await shoot('reviewer-reminder-policy',owner,['[data-followup-panel]'],async()=>{await owner.locator('[data-followup-panel]').getByText('Reminder settings and approved recipients',{exact:true}).click();await expect(owner.getByRole('checkbox',{name:'Current access reviewer'})).toBeVisible();});
  assert.deepEqual(errors,[]);
 }

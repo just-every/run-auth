@@ -6,7 +6,7 @@ export const REQUESTS_READ='/api/auth/requests';
 export const isRequestAction=p=>['/requests/policy','/requests/create','/requests/cancel'].includes(p);
 export async function requestsRead(ctx,request) {
  const s=await requireSession(ctx,request),admin=['owner','admin'].includes(s.role)&&JSON.parse(s.amr).includes('hwk');
- return json({requests:await all(ctx,`SELECT r.*,a.name AS app_name FROM auth_access_requests r JOIN auth_apps a ON a.id=r.app_id ${admin?'':'WHERE r.person_id=? OR r.decider_id=?'} ORDER BY r.created_at DESC,r.id`,...(admin?[]:[s.person_id,s.person_id])),policies:await all(ctx,'SELECT p.app_id,p.max_duration_ms,a.name FROM auth_request_policies p JOIN auth_apps a ON a.id=p.app_id WHERE a.disabled_at IS NULL')});
+ return json({requests:await all(ctx,`SELECT r.*,a.name AS app_name,p.display_name AS requester_name,p.email AS requester_email FROM auth_access_requests r JOIN auth_apps a ON a.id=r.app_id JOIN oa_operators p ON p.id=r.person_id ${admin?'':'WHERE r.person_id=? OR r.decider_id=?'} ORDER BY r.created_at DESC,r.id`,...(admin?[]:[s.person_id,s.person_id])),policies:await all(ctx,'SELECT p.app_id,p.max_duration_ms,a.name FROM auth_request_policies p JOIN auth_apps a ON a.id=p.app_id WHERE a.disabled_at IS NULL')});
 }
 export async function requestAction(ctx,request,path,data) {
  const s=await requireSession(ctx,request),now=ctx.now();
