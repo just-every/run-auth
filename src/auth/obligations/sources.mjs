@@ -22,11 +22,13 @@ export async function sourceState(ctx,ob) {
   if(r.status!=='active')return {state:'expired'};
   return {state:'open',action:r.approved_by||r.ready_at<=ctx.now()?'complete_recovery':'wait_or_request_distinct_admin_approval'};
  }
- const p=await one(ctx,'SELECT state,last_error FROM auth_provisioning WHERE id=?',ob.source_id);
+ const p=await one(ctx,'SELECT state,last_error,app_id FROM auth_provisioning WHERE id=?',ob.source_id);
  if(!p||p.state==='superseded')return {state:'cancelled'};
  if(p.state==='verified')return {state:'completed'};
  // Only fixed instruction codes leave the engine; vendor error bodies and
  // credentials never enter follow-up history or messages.
+ if(!await one(ctx,'SELECT 1 FROM auth_scim_connectors WHERE app_id=?',p.app_id))return {state:'open',action:'restore_connector_or_manually_verify_remote_access',error:'connector_missing_remote_effect_unknown'};
+ if(p.last_error==='remote_account_exists')return {state:'open',action:'compare_remote_identity_before_admin_binding',error:'remote_account_collision_requires_admin_decision'};
  return {state:'open',action:['failed','blocked'].includes(p.state)?'repair_connector_then_retry':'await_remote_verification',error:p.last_error?'remote_unverified_check_connector':null};
 }
 export async function syncObligations(ctx) {

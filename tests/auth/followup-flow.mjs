@@ -27,7 +27,11 @@ export async function followupFlow(t) {
  const remote=[...scim.users.values()].find(p=>p.externalId==='bob');assert.equal(remote.active,true);
  scim.fail(100,403);await admin('company-apps/unassign',{appId:app.id,principalType:'person',principalId:'bob'});assert.equal(remote.active,true,'a refused deprovision stays unresolved');
  const before=await read(),enrollment=before.obligations.find(o=>o.kind==='enrollment'&&o.person_id!==cancelled.id&&o.person_id!==expiring.id),failed=before.obligations.find(o=>o.kind==='provisioning'&&o.state==='open');
- assert.ok(enrollment&&failed);assert.equal(failed.last_error,'remote_unverified_check_connector');
+ assert.ok(enrollment&&failed);
+ const recoveringOb=before.obligations.find(o=>o.kind==='recovery');assert.equal(recoveringOb.owner_id,'ada');
+ await admin('followup/schedule',{id:recoveringOb.id,ownerId:'owner',dueBusinessDays:1,deadlineBusinessDays:2});
+ assert.equal((await read()).obligations.find(o=>o.id===recoveringOb.id).owner_id,'owner');
+ assert.equal(failed.last_error,'remote_unverified_check_connector');
  for(const ob of [enrollment,failed]) {
   assert.equal(ob.owner_id,'owner');assert.equal(ob.next_due_at,Date.parse('2026-03-09T13:00:00Z'),'Monday 09:00 follows the weekend and DST shift');
   assert.equal(ob.deadline_at,Date.parse('2026-03-11T13:00:00Z'),'the declared Tuesday holiday moves the deadline to Wednesday');
