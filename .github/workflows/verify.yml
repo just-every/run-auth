@@ -73,4 +73,28 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - run: pnpm run test:browser
+      - run: pnpm run test:browser:ui
+  cli:
+    name: verify (cli)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      CI: 'true'
+      RER_SERVER_JOURNEY: '1'
+      WRANGLER_SEND_METRICS: 'false'
+      X_LOCAL_EXPLORER: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.20.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install chromium
+      - run: pnpm run build
+      - run: timeout 240s pnpm run test:browser:cli
