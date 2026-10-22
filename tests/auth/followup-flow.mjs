@@ -24,8 +24,8 @@ export async function followupFlow(t) {
  const app=await admin('company-apps/create',{name:'Payroll',entityId:'https://payroll.example.com',acsUrl:'https://payroll.example.com/acs'},201);
  await admin('provisioning/connect',{appId:app.id,baseUrl:'https://scim.example.com/scim/v2',token:scim.token,pushGroups:false},201);
  await admin('company-apps/assign',{appId:app.id,principalType:'person',principalId:'bob'});
- const remote=[...scim.users.values()].find(p=>p.externalId==='bob');assert.equal(remote.active,true);
- scim.fail(100,403);await admin('company-apps/unassign',{appId:app.id,principalType:'person',principalId:'bob'});assert.equal(remote.active,true,'a refused deprovision stays unresolved');
+ const remote=()=>[...scim.users.values()].find(p=>p.externalId==='bob');assert.equal(remote().active,true);
+ scim.fail(100,403);await admin('company-apps/unassign',{appId:app.id,principalType:'person',principalId:'bob'});assert.equal(remote().active,true,'a refused deprovision stays unresolved');
  const before=await read(),enrollment=before.obligations.find(o=>o.kind==='enrollment'&&o.person_id!==cancelled.id&&o.person_id!==expiring.id),failed=before.obligations.find(o=>o.kind==='provisioning'&&o.state==='open');
  assert.ok(enrollment&&failed);
  const recoveringOb=before.obligations.find(o=>o.kind==='recovery');assert.equal(recoveringOb.owner_id,'ada');
@@ -53,7 +53,7 @@ export async function followupFlow(t) {
  r.now+=60000;await Promise.all([r.call('/',{action:'maintain'}),r.call('/',{action:'maintain'})]);
  let reminders=(await r.mails()).slice(count);assert.equal(reminders.length,3,'only the open enrollment, recovery and refused deprovision dispatch');
  assert.ok(reminders.every(m=>m.to.length===1&&m.to[0]==='owner@example.com'));assert.ok(reminders.every(m=>m.subject==='Auth follow-up is due'));
- assert.equal(remote.active,true,'mail delivery never verifies the refused remote change');
+ assert.equal(remote().active,true,'mail delivery never verifies the refused remote change');
  await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count+3,'the persisted due claim prevents a second dispatch');
  r.owner=await signInAgain(r,r.owner,'owner@example.com');
  const monday=await read();assert.equal(monday.obligations.find(o=>o.person_id===cancelled.id).state,'cancelled');assert.equal(monday.obligations.find(o=>o.person_id===expiring.id).state,'expired');
@@ -67,7 +67,7 @@ export async function followupFlow(t) {
  // reads back the denied account. The real development outbox is the mail edge.
  r.now=Date.parse('2026-03-10T13:00:00Z');count=(await r.mails()).length;await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count,'holiday emits no reminder');
  r.now=Date.parse('2026-03-11T13:00:00Z');await r.restart();await r.call('/',{action:'maintain'});reminders=(await r.mails()).slice(count);assert.equal(reminders.length,1);assert.equal(reminders[0].subject,'Auth follow-up deadline reached');
- r.owner=await signInAgain(r,r.owner,'owner@example.com');scim.fail(0);await admin('provisioning/retry',{appId:app.id});assert.equal(remote.active,false);
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');scim.fail(0);await admin('provisioning/retry',{appId:app.id});assert.equal(remote().active,false);
  let done=await read();assert.equal(done.obligations.find(o=>o.id===failed.id).state,'completed');
  const history=done.history.filter(h=>h.obligation_id===failed.id);assert.ok(history.some(h=>h.event==='reminder_accepted'));assert.ok(history.some(h=>h.event==='escalation_accepted'));assert.ok(history.some(h=>h.event==='completed'));
  r.now=Date.parse('2026-03-12T13:00:00Z');count=(await r.mails()).length;await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count,'completed, cancelled and expired sources remain silent after another restart');
