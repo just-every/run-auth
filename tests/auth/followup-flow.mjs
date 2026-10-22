@@ -60,7 +60,7 @@ export async function followupFlow(t) {
  r.now=Date.parse('2026-03-11T13:00:00Z');await r.restart();await r.call('/',{action:'maintain'});reminders=(await r.mails()).slice(count);assert.equal(reminders.length,1);assert.equal(reminders[0].subject,'Auth follow-up deadline reached');
  r.owner=await signInAgain(r,r.owner,'owner@example.com');scim.fail(0);await admin('provisioning/retry',{appId:app.id});assert.equal(remote.active,false);
  let done=await read();assert.equal(done.obligations.find(o=>o.id===failed.id).state,'completed');
- const history=done.history.filter(h=>h.obligation_id===failed.id);assert.ok(history.some(h=>h.event==='reminder_delivered'));assert.ok(history.some(h=>h.event==='escalation_delivered'));assert.ok(history.some(h=>h.event==='completed'));
+ const history=done.history.filter(h=>h.obligation_id===failed.id);assert.ok(history.some(h=>h.event==='reminder_accepted'));assert.ok(history.some(h=>h.event==='escalation_accepted'));assert.ok(history.some(h=>h.event==='completed'));
  r.now=Date.parse('2026-03-12T13:00:00Z');count=(await r.mails()).length;await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).length,count,'completed, cancelled and expired sources remain silent after another restart');
  r.owner=await signInAgain(r,r.owner,'owner@example.com');done=await read();assert.deepEqual(done.history.filter(h=>h.obligation_id===failed.id),history,'all follow-up history survives stop and restart');
 }

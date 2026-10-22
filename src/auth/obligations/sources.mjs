@@ -51,9 +51,10 @@ export async function syncObligations(ctx) {
   // never create a dangling personal reference.
   const person=c.person_id&&await one(ctx,'SELECT id FROM oa_operators WHERE id=?',c.person_id),app=c.app_id&&await one(ctx,'SELECT id FROM auth_apps WHERE id=?',c.app_id);
   const id=random(),source=await sourceState(ctx,c),created=c.created_at;
-  const inserted=await ctx.db.prepare(`INSERT OR IGNORE INTO auth_obligations(id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,created_at)
-   VALUES(?,?,?,?,?,?,?,?,?,?,'open','source_satisfied_cancelled_or_authority_expired',?,?,?)`).bind(id,c.kind,c.source_id,c.kind==='recovery'?person?.id??owner?.id??null:owner?.id??null,person?.id??null,app?.id??null,source.action??'review_source',JSON.stringify(p.calendar),businessDue(created,p.deadlineBusinessDays,p.calendar),businessDue(created,p.reminderBusinessDays,p.calendar),p.escalation,source.error??null,created).run();
-  if(inserted.meta.changes)await ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) VALUES(?,?,'opened',?)").bind(random(),id,now).run();
+  await ctx.db.batch([ctx.db.prepare(`INSERT OR IGNORE INTO auth_obligations(id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,created_at)
+   VALUES(?,?,?,?,?,?,?,?,?,?,'open','source_satisfied_cancelled_or_authority_expired',?,?,?)`).bind(id,c.kind,c.source_id,c.kind==='recovery'?person?.id??owner?.id??null:owner?.id??null,person?.id??null,app?.id??null,source.action??'review_source',JSON.stringify(p.calendar),businessDue(created,p.deadlineBusinessDays,p.calendar),businessDue(created,p.reminderBusinessDays,p.calendar),p.escalation,source.error??null,created),
+   ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,'opened',? WHERE changes()>0").bind(random(),id,now),
+  ]);
  }
  for(const ob of await all(ctx,"SELECT * FROM auth_obligations WHERE state='open'")) {
   const source=await sourceState(ctx,ob);

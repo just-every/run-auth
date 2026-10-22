@@ -23,7 +23,7 @@ export async function maintainObligations(ctx) {
    try {
     if(!ctx.mail)throw new Error('mail_not_configured');
     await ctx.mail({to:recipient.email,subject:escalation?'Auth follow-up deadline reached':'Auth follow-up is due',text:`An Auth ${ob.kind} action is unresolved. An administrator must ${ob.next_action.replaceAll('_',' ')}. Review it in Auth: ${ctx.origin}${ctx.basePath??''}/app/activity\nReference: ${ob.id}\nA reminder does not confirm enrollment or removal of access.`,html:'<p>An Auth action remains unresolved. Sign in to Auth and review Activity. A reminder does not confirm enrollment or removal of access.</p>'});
-    await run(ctx,'UPDATE auth_obligation_history SET event=? WHERE id=?',escalation?'escalation_delivered':'reminder_delivered',event);
+    await run(ctx,'UPDATE auth_obligation_history SET event=? WHERE id=?',escalation?'escalation_accepted':'reminder_accepted',event);
    } catch {
     lastError='mail_delivery_failed_check_transport';
     await run(ctx,"UPDATE auth_obligation_history SET event='delivery_failed',error=? WHERE id=?",lastError,event);
