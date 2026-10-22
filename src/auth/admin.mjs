@@ -55,6 +55,7 @@ export async function model(ctx,request,page='account') {
   if(page==='activity')result.followup=await (await followupRead(ctx,request)).json();
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
+ if(page==='account')result.followup=await (await followupRead(ctx,request)).json();
  if(page==='roles') {
   try { result.roles=await roleModel(ctx,s); }
   catch(error) {if(!(error instanceof AuthError)||error.status!==403)throw error;result.roleError=error.message;}

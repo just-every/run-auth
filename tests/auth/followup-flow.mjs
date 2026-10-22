@@ -14,7 +14,7 @@ export async function followupFlow(t) {
  const admin=async(path,data,status=200)=>{const response=await r.call('/api/auth/'+path,{method:'POST',cookie:r.owner.cookie,data});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
  const read=async()=>{const response=await r.call('/api/auth/followup',{cookie:r.owner.cookie});assert.equal(response.status,200,await response.clone().text());return response.json();};
  const settings={confirm:true,enabled:true,calendar:{timezone:'America/New_York',weekdays:[1,2,3,4,5],holidays:['2026-03-10'],at:'09:00'},reminderBusinessDays:1,deadlineBusinessDays:2,recipients:['owner'],escalationRecipients:['owner'],escalation:'repeat_until_resolved'};
- assert.equal((await r.call('/api/auth/followup',{cookie:bob})).status,403);
+ assert.equal((await r.call('/api/auth/followup',{cookie:bob})).status,200,'signed-in employees can read only their own follow-up work');
  assert.equal((await r.call('/api/auth/followup/settings',{method:'POST',cookie:bob,data:settings})).status,403);
  await admin('followup/settings',{...settings,confirm:false},400);
  await admin('followup/settings',{...settings,recipients:['bob']},400);

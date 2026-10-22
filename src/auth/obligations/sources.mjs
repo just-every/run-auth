@@ -21,6 +21,12 @@ export async function sourceState(ctx,ob) {
   if(await one(ctx,'SELECT 1 FROM auth_passkeys WHERE person_id=? LIMIT 1',ob.source_id))return {state:'completed'};
   return {state:'open',action:p.status==='invited'?'accept_invitation':'enroll_passkey'};
  }
+ if(ob.case_id) {
+  const c=await one(ctx,'SELECT c.*,p.status FROM auth_role_cases c LEFT JOIN oa_operators p ON p.id=c.person_id WHERE c.id=?',ob.case_id);
+  if(!c||c.state==='closed')return {state:'completed'};
+  if(c.status!=='active')return {state:'cancelled'};
+  return {state:'open',action:c.state==='verified'?'complete_verified_recovery_case':'verify_recovery_case'};
+ }
  if(ob.kind==='recovery') {
   const r=await one(ctx,'SELECT r.*,p.status FROM auth_recoveries r LEFT JOIN oa_operators p ON p.id=r.person_id WHERE r.id=?',ob.source_id);
   if(!r||r.cancelled_at)return {state:'cancelled'};
@@ -41,7 +47,7 @@ export async function syncObligations(ctx) {
  const now=ctx.now(),p=await policy(ctx),owner=await one(ctx,"SELECT id FROM oa_operators WHERE status='active' AND role='owner' ORDER BY created_at,id LIMIT 1");
  const candidates=[...await all(ctx,`SELECT 'enrollment' AS kind,id AS source_id,id AS person_id,NULL AS app_id,created_at FROM oa_operators WHERE status='invited'
   UNION ALL SELECT 'recovery',id,person_id,NULL,created_at FROM auth_recoveries WHERE cancelled_at IS NULL AND completed_at IS NULL
-  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await appCandidates(ctx),...await taskCandidates(ctx)];
+  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
  for(const c of candidates) {
   const existing=await one(ctx,'SELECT id,state FROM auth_obligations WHERE kind=? AND source_id=?',c.kind,c.source_id);
   if(existing) {
@@ -57,8 +63,8 @@ export async function syncObligations(ctx) {
   // never create a dangling personal reference.
   const person=c.person_id&&await one(ctx,'SELECT id FROM oa_operators WHERE id=?',c.person_id),app=c.app_id&&await one(ctx,'SELECT id FROM auth_apps WHERE id=?',c.app_id);
   const id=random(),source=await sourceState(ctx,c),created=c.created_at;
-  await ctx.db.batch([ctx.db.prepare(`INSERT OR IGNORE INTO auth_obligations(id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,created_at)
-   VALUES(?,?,?,?,?,?,?,?,?,?,'open','source_satisfied_cancelled_or_authority_expired',?,?,?)`).bind(id,c.kind,c.source_id,c.owner_id??(c.kind==='recovery'?person?.id??owner?.id??null:owner?.id??null),person?.id??null,app?.id??null,source.action??'review_source',JSON.stringify(p.calendar),Math.min(source.expiresAt??Infinity,businessDue(created,p.deadlineBusinessDays,p.calendar)),businessDue(created,p.reminderBusinessDays,p.calendar),p.escalation,source.error??null,created),
+  await ctx.db.batch([ctx.db.prepare(`INSERT OR IGNORE INTO auth_obligations(id,kind,source_id,case_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,created_at)
+   VALUES(?,?,?,?,?,?,?,?,?,?,?,'open','source_satisfied_cancelled_or_authority_expired',?,?,?)`).bind(id,c.kind,c.source_id,c.case_id??null,c.owner_id??(c.kind==='recovery'?person?.id??owner?.id??null:owner?.id??null),person?.id??null,app?.id??null,source.action??'review_source',JSON.stringify(p.calendar),Math.min(source.expiresAt??Infinity,businessDue(created,p.deadlineBusinessDays,p.calendar)),businessDue(created,p.reminderBusinessDays,p.calendar),p.escalation,source.error??null,created),
    ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,'opened',? WHERE changes()>0").bind(random(),id,now),
   ]);
  }

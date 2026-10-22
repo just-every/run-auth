@@ -10,7 +10,7 @@ export function followupErasure(table,row,{stores,identifiers,reset,reference}) 
  if(reset)return {remove:true};
  if(table.name==='auth_obligations') {
   if(!contains(row,identifiers))return null;
-  return {update:{source_id:reference+':'+row.id,owner_id:null,person_id:null,app_id:null,state:row.state==='open'?'cancelled':row.state,next_action:'erased_source',last_error:null,delivery_error:null,claim_id:null,claimed_until:null}};
+  return {update:{source_id:reference+':'+row.id,owner_id:null,case_id:null,person_id:null,app_id:null,state:row.state==='open'?'cancelled':row.state,next_action:'erased_source',last_error:null,delivery_error:null,claim_id:null,claimed_until:null}};
  }
  const affected=rows(stores,'auth_obligations').some(ob=>ob.id===row.obligation_id&&contains(ob,identifiers));
  if(!affected&&!contains(row,identifiers))return null;

@@ -7,6 +7,7 @@ import {chromium,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {openApp} from './runtime.mjs';
 import {followupJourney} from './helpers/followup-journey.mjs';
+import {followupRolesJourney} from './helpers/followup-roles-journey.mjs';
 import {delegatedAssignmentJourney} from './helpers/delegation-journey.mjs';
 
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
@@ -108,5 +109,6 @@ test('agents journey: mint a key, an agent files a suspension, a person approves
  assert.ok(!(await page.content()).includes(key),'Activity never shows the key');
  await delegatedAssignmentJourney({app,browser,owner:context,page,shoot});
  await followupJourney({app,browser,owner:context,page,shoot});
+ await followupRolesJourney({app,browser,owner:context,page,shoot});
  assert.deepEqual(errors,[],'no browser runtime errors');
 });

@@ -324,3 +324,7 @@ test('app erasure removes connector custody and protected organization reset ret
 test('durable follow-up dispatches on the employer business calendar across DST and restart, escalates unresolved revocation and stops on source completion, cancellation and expiry',async t=>{
  const {followupFlow}=await import('./followup-flow.mjs');await followupFlow(t);
 });
+
+test('follow-up duties resolve employees and scoped case holders, restrict early send and escalate lost case authority',async t=>{
+ const {followupRolesFlow}=await import('./followup-roles-flow.mjs');await followupRolesFlow(t);
+});

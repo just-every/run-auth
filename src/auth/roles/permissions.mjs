@@ -3,6 +3,7 @@ import {BUILTIN_RANKS} from '../ranks.mjs';
 export {LEGACY_RANK} from '../ranks.mjs';
 
 export const PERMISSIONS=Object.freeze({
+ 'followup.manage':'Manage follow-up',
  'roles.view':'View role definitions and own grants',
  'roles.edit':'Create or revise custom roles (also requires legacy owner/admin)',
  'roles.grant':'Grant or revoke strictly lower roles within held authority',
@@ -43,7 +44,7 @@ export const BUILTINS=Object.freeze([
 ]);
 export const RESOURCE_KINDS=['people','groups','apps','cases'];
 export const ALL_RESOURCES=Object.freeze(Object.fromEntries(['view','edit'].map(mode=>[mode,Object.fromEntries(RESOURCE_KINDS.map(k=>[k,['*']]))])));
-export const writePermission=p=>['roles.edit','roles.grant','people.profile.edit','people.factors.reset','groups.edit','apps.edit','cases.open','cases.verify','people.suspend','people.restore','recovery.approve','groups.rules.edit','apps.assign','policy.manage','identity-providers.manage','admin-api.manage','audit.export'].includes(p);
+export const writePermission=p=>['followup.manage','roles.edit','roles.grant','people.profile.edit','people.factors.reset','groups.edit','apps.edit','cases.open','cases.verify','people.suspend','people.restore','recovery.approve','groups.rules.edit','apps.assign','policy.manage','identity-providers.manage','admin-api.manage','audit.export'].includes(p);
 export const permissionKind=p=>p==='recovery.approve'?'cases':p.startsWith('people.')?'people':p.startsWith('groups.')?'groups':p.startsWith('apps.')?'apps':p.startsWith('cases.')?'cases':null;
 export const contains=(ids,id)=>ids.includes('*')||ids.includes(id);
 export const subset=(small,large)=>large.includes('*')||small.every(id=>large.includes(id));

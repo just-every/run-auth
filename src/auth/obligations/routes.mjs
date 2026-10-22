@@ -1,23 +1,33 @@
+import {followupAccess} from './access.mjs';
+import {sendEarly} from './early.mjs';
+import {holdsObligation,holdsCase} from './recipients.mjs';
+import {requireRolePermission} from '../roles/policy.mjs';
 import {obligationPage} from './pagination.mjs';
-import {one,random,requireSession,auditDetail,json,fail} from '../core.mjs';
-import {requireLocalEmail,authority,requireAuthority} from '../local-email.mjs';
+import {one,all,random,requireSession,auditDetail,json,fail} from '../core.mjs';
+import {requireAuthority} from '../local-email.mjs';
 import {policy,validatePolicy} from './policy.mjs';
 import {businessDue} from './calendar.mjs';
 import {syncObligations} from './sources.mjs';
 export const FOLLOWUP_READ='/api/auth/followup';
-export const isFollowupAction=path=>['/followup/settings','/followup/schedule'].includes(path);
+export const isFollowupAction=path=>['/followup/settings','/followup/schedule','/followup/send'].includes(path);
 export async function followupRead(ctx,request) {
- await requireSession(ctx,request,true);
+ const s=await requireSession(ctx,request);
  await syncObligations(ctx);
+ const access=await followupAccess(ctx,s),filter=access.filter;
  const [obligations,history]=await Promise.all([
-  obligationPage(ctx,request,{table:'auth_obligations',columns:'id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at',prefix:'obligation',defaultLimit:200}),
-  obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100}),
+  obligationPage(ctx,request,{table:'auth_obligations',columns:'id,kind,source_id,case_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at',prefix:'obligation',defaultLimit:200,filter}),
+  obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100,filter:{clause:`obligation_id IN (SELECT id FROM auth_obligations WHERE ${filter.clause})`,args:filter.args}}),
  ]);
- return json({policy:await policy(ctx),obligations:obligations.items,obligationsPage:obligations.page,history:history.items,historyPage:history.page,limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Generic access requests, reviews, reversal resolution and stale-source obligations await their public flows.','Interrupted dispatch stays recorded as dispatching and is not retried for the same recipient and scheduled occurrence; transport acknowledgment is not proof of access state.']});
+ for(const ob of obligations.items)ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);
+ const live=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),access.state.epoch);
+ if(!live)fail('role_authority_changed',409);
+ const saved=await policy(ctx),visiblePolicy=access.canManage?saved:{enabled:saved.enabled,calendar:saved.calendar,reminderBusinessDays:saved.reminderBusinessDays,deadlineBusinessDays:saved.deadlineBusinessDays,escalation:saved.escalation,recipients:[],escalationRecipients:[]};
+ return json({canManage:access.canManage,eligibleAdmins:access.canManage?await all(ctx,"SELECT id,email,display_name AS name FROM oa_operators WHERE status='active' AND role IN ('owner','admin')"):[],policy:visiblePolicy,obligations:obligations.items,obligationsPage:obligations.page,history:history.items,historyPage:history.page,limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Generic access requests, reviews, reversal resolution and stale-source obligations await their public flows.','Interrupted dispatch stays recorded as dispatching and is not retried for the same recipient and scheduled occurrence; transport acknowledgment is not proof of access state.']});
 }
 export async function followupAction(ctx,request,path,data) {
- const s=await requireSession(ctx,request,true);requireLocalEmail(ctx,s);
- const guard=authority(ctx,s,['owner','admin']);
+ const s=await requireSession(ctx,request);
+ if(path==='/followup/send')return sendEarly(ctx,s,data);
+ const guard=await requireRolePermission(ctx,s,'followup.manage',{write:true});
  if(path==='/followup/settings') {
   if(data.confirm!==true)fail('followup_explicit_consent_required');
   const p=await validatePolicy(ctx,data),changed=await ctx.db.prepare(`INSERT INTO auth_followup_settings(id,policy,updated_by,updated_at) SELECT 1,?,?,? WHERE ${guard.clause} ON CONFLICT(id) DO UPDATE SET policy=excluded.policy,updated_by=excluded.updated_by,updated_at=excluded.updated_at`).bind(JSON.stringify(p),s.person_id,ctx.now(),...guard.args).run();
@@ -28,7 +38,7 @@ export async function followupAction(ctx,request,path,data) {
  }
  await syncObligations(ctx);
  const ob=await one(ctx,"SELECT * FROM auth_obligations WHERE id=? AND state='open'",String(data.id??''));if(!ob)fail('followup_unavailable',404);
- const owner=await one(ctx,"SELECT id FROM oa_operators WHERE id=? AND status='active' AND role IN ('owner','admin')",String(data.ownerId??''));if(!owner)fail('followup_owner_requires_admin');
+ const owner=await one(ctx,"SELECT id,role FROM oa_operators WHERE id=? AND status='active'",String(data.ownerId??''));if(!owner||!['owner','admin'].includes(owner.role)&&!(ob.case_id&&await holdsCase(ctx,owner.id,ob.case_id)))fail('followup_owner_requires_admin');
  for(const key of ['dueBusinessDays','deadlineBusinessDays'])if(!Number.isInteger(data[key])||data[key]<1||data[key]>90)fail('invalid_followup_schedule');
  if(data.deadlineBusinessDays<data.dueBusinessDays)fail('invalid_followup_schedule');
  const p=await policy(ctx),next=businessDue(ctx.now(),data.dueBusinessDays,p.calendar),deadline=businessDue(ctx.now(),data.deadlineBusinessDays,p.calendar),marker=random();
