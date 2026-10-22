@@ -6,11 +6,11 @@ import AxeBuilder from '@axe-core/playwright';
 import {openApp} from '../runtime.mjs';
 
 export async function accessReviewJourney(t) {
- const app=await openApp();t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
+ browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const root=await browser.newContext({viewport:{width:1440,height:1000}}),owner=await root.newPage(),directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  const errors=[];
- const hardware=async(context,page)=>{page.on('pageerror',e=>errors.push(e.message));const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});};
+ const hardware=async(context,page)=>{page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);page.on('pageerror',e=>errors.push(e.message));const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});};
  await hardware(root,owner);
  const post=async(context,path,data,status=200)=>{const response=await context.request.post(app.origin+'/api/auth/'+path,{data,headers:{origin:app.origin}});assert.equal(response.status(),status,path+' '+await response.text());return response.json();};
  const signin=async(context,page,email,setup=false)=>{

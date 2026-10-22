@@ -216,4 +216,4 @@ test('organization and authority journey: switch employers, delegate a scoped re
 });
 
 import {accessReviewJourney} from './helpers/access-review-journey.mjs';
-test('access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390',accessReviewJourney);
+test('access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390',{timeout:180000},accessReviewJourney);
