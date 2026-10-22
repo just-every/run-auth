@@ -8,10 +8,11 @@ import {openApp} from './runtime.mjs';
 
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 
-test('directory journey: an administrator onboards a worker, edits and bulk-moves people with a preview, sets a group rule, terminates and rehires, at desktop/mobile in both themes',async t=>{
- const app=await openApp();t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+test('directory journey: an administrator onboards a worker, edits and bulk-moves people with a preview, sets a group rule, terminates and rehires, at desktop/mobile in both themes',{timeout:180000},async t=>{
+ const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
+ browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),primary=page;
+ page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
@@ -105,10 +106,11 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  assert.deepEqual(errors,[]);
 });
 
-test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',async t=>{
- const app=await openApp();t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',{timeout:180000},async t=>{
+ const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
+ browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+ page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  const hardware=async(context,page)=>{const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});page.on('dialog',dialog=>dialog.accept());};
  await hardware(context,page);
