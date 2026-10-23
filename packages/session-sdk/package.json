@@ -1,0 +1,11 @@
+{
+  "name": "@runeditrun/auth-sdk",
+  "version": "0.1.0",
+  "description": "Explicit OAuth sessions and scoped Auth machine administration",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22.20.0" },
+  "exports": { ".": "./index.mjs", "./admin": "./admin.mjs" },
+  "files": ["index.mjs", "admin.mjs", "README.md", "examples"],
+  "dependencies": { "jose": "6.2.12" }
+}
