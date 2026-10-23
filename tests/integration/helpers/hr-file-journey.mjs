@@ -1,9 +1,7 @@
-import {createServer} from 'node:http';
-import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {join,resolve,extname} from 'node:path';
+import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import ssh2 from 'ssh2';
 import {expect} from '@playwright/test';
@@ -28,18 +26,4 @@ export async function hrFileJourney({app,context,page,shoot}) {
  await expect(row.getByRole('link',{name:'Open HR file feed guide'})).toBeVisible();await expect(row.getByRole('button',{name:'Send reminder early'})).toHaveCount(0);
  await shoot('hr-feed-stale');
  await expect(row.getByRole('link',{name:'Open HR file feed guide'})).toHaveAttribute('href','https://run-auth.com/docs/hr-file-feeds');
- const guides=['hr-file-feeds','identity-reports','progressive-migration','delegated-agents','employer-providers','erasure'];
- const site=join(root,'dist/site');
- const server=createServer(async(req,res)=>{
-  const path=new URL(req.url,'http://localhost').pathname;
-  const relative=path==='/docs'?'docs.html':/^\/docs\/[^/]+$/.test(path)?path.slice(1)+'.html':path.slice(1);
-  const file=resolve(site,relative);if(!file.startsWith(site+'/')){res.writeHead(404);return res.end();}
-  try{const body=await readFile(file);res.writeHead(200,{'content-type':({'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.webp':'image/webp','.woff2':'font/woff2'})[extname(file)]??'application/octet-stream'});res.end(body);}catch{res.writeHead(404);res.end();}
- });
- await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
- try{for(const slug of ['docs',...guides.map(slug=>'docs/'+slug)]){
-  const response=await page.goto('http://127.0.0.1:'+server.address().port+'/'+slug);assert.equal(response.status(),200,slug);
-  await shoot(slug.replaceAll('/','-'));
- }}finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
-
 }

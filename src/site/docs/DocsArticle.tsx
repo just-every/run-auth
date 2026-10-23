@@ -8,6 +8,8 @@ export function DocsArticle({ slug }: { slug: string }) {
   const page = pages[index]
   if (!page) throw new Error(`No docs page ${slug}`)
   const next = pages[index + 1]
+  let example = 0
+  const html = page.html.replaceAll('<pre>', () => `<pre tabindex="0" role="region" aria-label="Code example ${++example}">`)
   return (
     <SiteFrame className="docs">
       <div className="docs-layout">
@@ -21,7 +23,7 @@ export function DocsArticle({ slug }: { slug: string }) {
           <h1>{page.title}</h1>
           <p className="docs-summary">{page.summary}</p>
           {page.toc.length > 2 ? <nav className="docs-toc" aria-label="On this page"><p>On this page</p><ul>{page.toc.map(item => <li key={item.id}><a href={`#${item.id}`}>{item.text}</a></li>)}</ul></nav> : null}
-          <div className="docs-prose" dangerouslySetInnerHTML={{ __html: page.html }} />
+          <div className="docs-prose" dangerouslySetInnerHTML={{ __html: html }} />
           {next ? <a className="docs-next" href={`/docs/${next.slug}`}><span>Next</span><strong>{next.title}</strong></a> : null}
         </article>
       </div>

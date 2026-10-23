@@ -28,10 +28,11 @@ export async function legacyBridgeFlow(t) {
   assert.deepEqual(Object.keys(body).sort(),['id','password','subject','version']);
   return {body:{authenticated:body.password===password,subject:body.subject}};
  });
- const registration=subjects=>command('migration/bridge/register',{url:'https://hooks.example.com/legacy',credential,expiresAt:r.now+3600000,subjects,confirm:true});
+ const registration=(subjects,url='https://hooks.example.com/legacy')=>command('migration/bridge/register',{url,credential,expiresAt:r.now+3600000,subjects,confirm:true});
  const source=person=>({sourceSystem:'custom',sourceSubject:custom.people.find(row=>row.email===person.email).directory_id,personId:person.id,batchId:staged.batchId});
  assert.equal((await registration([source(disabled)])).status,409,'disabled source is ineligible even after a deliberate import');
  assert.equal((await registration([{...source(legacy),personId:interrupted.id}])).status,409,'email/source collision cannot rebind a person');
+ assert.equal((await registration([source(legacy)],'https://private.example.com/legacy')).status,400,'bridge registration refuses a private DNS destination');
  const bridge=await json(await registration([source(legacy),source(interrupted),source(cutover)]),201);assert.equal(bridge.passwordHashes,'reset-required');assert.equal(bridge.factors,'reenrollment-required');assert.ok(!JSON.stringify(bridge).includes(credential));
  const hook=await json(await command('hooks/register',{point:'password_import',url:'https://hooks.example.com/password-gate',allowedFields:[]}),201);edge.responses.set('/password-gate',{body:{allow:true}});
  const login=(subject,attempt=password)=>command('migration/bridge/login',{bridgeId:bridge.id,sourceSubject:subject,password:attempt},undefined);
@@ -46,7 +47,11 @@ export async function legacyBridgeFlow(t) {
  assert.equal(await (await r.call('/api/auth/move-in/subjects.csv?batch='+staged.batchId,{cookie:owner.cookie})).text(),mapping.replace('synthetic-auth-81,legacy@example.com,invited,','synthetic-auth-81,legacy@example.com,active,'),'reviewed downstream old-subject mapping survives first login and enrollment');
  const verifiedCalls=edge.received.filter(row=>row.path==='/legacy').length;
  assert.equal((await json(await login('synthetic-auth-81'),202)).state,'already-migrated');assert.equal(edge.received.filter(row=>row.path==='/legacy').length,verifiedCalls,'completed migration never rechecks or trusts the old password');
- const verifier=edge.responses.get('/legacy');edge.responses.set('/legacy',{status:503,body:{}});
+ const verifier=edge.responses.get('/legacy');edge.responses.set('/legacy','hang');
+ const timeoutStarted=performance.now();assert.equal((await login('synthetic-auth-83')).status,503,'a hanging verifier fails closed');
+ const elapsed=performance.now()-timeoutStarted;assert.ok(elapsed>=4500&&elapsed<15000,'the actual verifier call is bounded');console.log('MEASURED legacy verifier timeout '+Math.round(elapsed)+' ms');
+ edge.responses.set('/legacy',{body:{authenticated:true,subject:'synthetic-auth-foreign'}});assert.equal((await login('synthetic-auth-83')).status,403,'a verifier cannot substitute a reviewed identity');
+ edge.responses.set('/legacy',{status:503,body:{}});
  assert.equal((await login('synthetic-auth-83')).status,503,'verifier outage is unavailable and creates no migration completion');
  assert.equal((await r.db.prepare('SELECT completed_at FROM auth_migration_subjects WHERE person_id=?').bind(interrupted.id).first()).completed_at,null);
  edge.responses.set('/legacy',verifier);
