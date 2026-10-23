@@ -88,6 +88,11 @@ export async function identityPairsFlow(t) {
  assert.deepEqual(Object.keys(receipt).sort(),['message','notices','state']);assert.equal(receipt.message,'Auth erased your installation identity. Memberships you did not link are held separately by those employers; Auth did not see or erase them. Ask each employer to erase them.');
  assert.equal((await c.client.call('/api/auth/me',{cookie:c.member.cookie})).status,200,'unlinked membership is not erased');
  await r.restart();assert.equal((await command(r,undefined,'identity-pairs/receipt',{receiptKey})).notices[0].state,'erased','receipt and notice survive restart');
+ const resetPreview=await command(r,owner.cookie,'erasure/preview',{kind:'organization',target:a.org.id});
+ await command(r,owner.cookie,'erasure/confirm',{organizationId:a.org.id,previewId:resetPreview.id,confirmation:'RESET '+r.origin+'/org/'+a.org.id});
+ const afterReset=await command(r,undefined,read,{receiptKey});
+ assert.deepEqual(afterReset.notices,[{handle:linked.handle,erasureReference:erased.reference,state:'employer-erased'}]);
+ for(const table of ['auth_identity_pairs','auth_identity_release_notices'])assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM org_'+a.org.id+'_'+table).first()).n,0,'organization reset destroys its handles');
  assert.equal((await command(r,undefined,read,{receiptKey:outsiderKey})).state,'awaiting-installation-erasure','each key reads only its own receipt');
  await command(r,undefined,revoke,{receiptKey,confirm:false},403);
  await command(r,undefined,revoke,{receiptKey,confirm:true});
@@ -101,7 +106,9 @@ export async function identityPairsFlow(t) {
  const creatorPreview=await command(r,successor.cookie,'erasure/preview',{kind:'person',target:'owner'});
  await command(r,successor.cookie,'erasure/confirm',{previewId:creatorPreview.id,confirmation:'ERASE',destinations:[]});
  assert.equal((await c.client.call('/api/auth/me',{cookie:c.admin.cookie})).status,200,'erasing the root creator leaves the employer and its independent owner');
- r.now=issued.expiresAt;
+ const deadline=new Date(stored[0].created_at);deadline.setUTCMonth(deadline.getUTCMonth()+13);
+ r.now=deadline.getTime()-1;assert.equal((await command(r,undefined,read,{receiptKey:expiring})).state,'installation-erased','read authority lasts until the thirteen-month boundary');
+ r.now=deadline.getTime();
  await command(r,undefined,read,{receiptKey:expiring},404);
  await r.call('/scheduled',{action:'maintain'});await r.restart();
  await command(r,undefined,read,{receiptKey:expiring},404);
