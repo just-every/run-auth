@@ -24,8 +24,9 @@ export async function refreshJourney(t) {
  await owner.goto(app.origin+'/signin?returnTo=%2Fsetup');await owner.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);await owner.getByRole('button',{name:'Email me a sign-in link'}).click();
  await owner.goto((await app.link()).href);await owner.getByRole('button',{name:'Continue to Auth'}).click();await expect(owner).toHaveURL(app.origin+'/setup');await owner.getByRole('checkbox').check();await owner.getByRole('button',{name:'Finish setup'}).click();
  await owner.goto(app.origin+'/app/methods');const enrolled=owner.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await saved(owner,()=>owner.getByRole('button',{name:'Register a passkey'}).click());assert.equal((await enrolled).status(),200);
+ const signing=await post(root,'keys/stage',{alg:'ES256'});
  const employee=await post(root,'directory/onboard',{email:'erin@northwind.example.com',name:'Erin Park',kind:'employee',set:{department:'Field engineering'}},201);
- const native=await post(root,'oidc-apps/create',{name:'Northwind field documents',authMethod:'none',redirectUris:'https://field.example.com/callback'},201);
+ const native=await post(root,'oidc-apps/create',{name:'Northwind field documents',authMethod:'none',idTokenAlg:'ES256',redirectUris:'https://field.example.com/callback'},201);
  const api=await post(root,'resource-apis/register',{appId:native.id,name:'Field documents API',audience:'https://field.example.com/documents',scopes:['read','write'],roles:[{role:'reader',scopes:['read'],resources:['document:*']}],resources:[{id:'document:budget'}]},201);
  await post(root,'resource-apis/assign',{apiId:api.id,principalType:'person',principalId:employee.id,role:'reader'});
  await owner.goto(app.origin+'/app/account');await owner.getByText('Manage offline profiles',{exact:true}).click();
@@ -37,6 +38,9 @@ export async function refreshJourney(t) {
  const sdk=await createSessionClient({issuer:app.origin,clientId:native.clientId,redirectUri:'https://field.example.com/callback'});
  const authorization=await sdk.authorization({resource:'https://field.example.com/documents',scopes:['read'],deviceName:'Erin’s managed iPad · Field engineering'});
  await page.goto(authorization.url);await expect(page.getByRole('heading',{name:'Allow Northwind field documents offline access?'})).toBeVisible();await shoot('consent',page);
+ // A fresh install must publish its signing key for a full cache lifetime.
+ // Use the public staging deadline, without editing clocks or private storage.
+ const remaining=signing.useAfter-Date.now()+25;if(remaining>0){console.log('Waiting for the fresh signing key publication deadline');await new Promise(done=>setTimeout(done,remaining));}
  await page.route('https://field.example.com/callback*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Field documents</title><p>Return received</p>'}));
  const callback=page.waitForURL('https://field.example.com/callback*');await page.getByRole('button',{name:'Allow offline access'}).click();await callback;
  const tokens=await sdk.complete(page.url());assert.equal((await sdk.resourceRequest('/api/auth/resource-apis/check',{apiId:api.id,action:'read',resource:'document:budget'})).allowed,true);
