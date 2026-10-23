@@ -37,6 +37,14 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  await stranger.close();await page.goto(link.href);
  await page.getByRole('button',{name:'Continue to Auth'}).click();await expect(page).toHaveURL(app.origin+'/setup');
  await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Finish setup'}).click();await expect(page).toHaveURL(app.origin+'/app');
+ const replayPage=await context.newPage();
+ for(const width of [1440,390]) {
+  await replayPage.setViewportSize({width,height:1000});await replayPage.goto(link.href);
+  await replayPage.getByRole('button',{name:'Continue to Auth'}).click();
+  await expect(replayPage.getByRole('alert')).toContainText('already used');
+  await replayPage.screenshot({path:join(directory,`email-reused-${width}.png`),fullPage:true});
+ }
+ await replayPage.close();
  assert.equal((await context.request.get(app.origin+'/api/auth/people')).status(),403);
  await page.goto(app.origin+'/app/methods');
  const registered=page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
@@ -112,7 +120,37 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
   const dialog=page.getByRole('dialog',{name:'Invite person'}),address=`person-${width}-${theme}@example.com`;
   await dialog.getByLabel('Name',{exact:true}).fill(`Person ${width} ${theme}`);await dialog.getByLabel('Email',{exact:true}).fill(address);
   await dialog.getByRole('button',{name:'Invite person',exact:true}).click();await expect(page.getByText(address,{exact:true})).toBeVisible();
+  let awaiting;
+  if(width===1440&&theme==='light') {
+   awaiting=await browser.newContext();
+   assert.equal((await awaiting.request.post(app.origin+'/auth/identity/email/request',{data:{email:address},headers:{origin:app.origin}})).status(),202);
+  }
+  const pendingLink=awaiting?await app.link():null;
   const row=page.getByRole('row').filter({hasText:address});await row.getByRole('button',{name:'Suspend',exact:true}).click();await expect(row.locator('.status-pill')).toHaveText('Suspended');
+  if(awaiting) {
+   const stopped=await awaiting.newPage();await stopped.goto(pendingLink.href);
+   await stopped.getByRole('button',{name:'Continue to Auth'}).click();
+   await expect(stopped.getByRole('alert')).toContainText('contact your administrator');
+   for(const stoppedWidth of [1440,390]) {
+    await stopped.setViewportSize({width:stoppedWidth,height:1000});
+    await expect(stopped.getByRole('heading',{name:'Email link could not continue'})).toBeVisible();
+    await expect(stopped.getByRole('link',{name:'Request a fresh link'})).toBeVisible();
+    assert.ok(await stopped.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await stopped.screenshot({path:join(directory,`email-suspended-${stoppedWidth}.png`),fullPage:true});
+   }
+   await awaiting.close();
+   await page.getByRole('button',{name:'Invite person',exact:true}).click();
+   await dialog.getByLabel('Name',{exact:true}).fill('Already suspended');await dialog.getByLabel('Email',{exact:true}).fill(address);
+   await dialog.getByRole('button',{name:'Invite person',exact:true}).click();
+   await expect(dialog).toBeHidden();
+   for(const duplicateWidth of [1440,390]) {
+    await page.setViewportSize({width:duplicateWidth,height:1000});
+    await expect(page.locator('[data-auth-status]')).toContainText('Restore person proposal');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:join(directory,`people-reinvite-${duplicateWidth}.png`),fullPage:true});
+   }
+   await page.setViewportSize({width,height:1000});
+  }
   await page.getByRole('button',{name:'Allow a domain',exact:true}).click();
   const domain=page.getByRole('dialog',{name:'Allow a domain'});await domain.getByLabel('Domain',{exact:true}).fill(`team-${width}-${theme}.example.com`);
   await domain.getByRole('button',{name:'Allow a domain',exact:true}).click();await expect(page.getByText(`team-${width}-${theme}.example.com`,{exact:true})).toBeVisible();
@@ -143,6 +181,13 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
   await expect(page.locator('[data-auth-status][role="alert"]')).toContainText('Try again in');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await accessible('email retry '+width);
   await page.screenshot({path:join(directory,`email-retry-${width}.png`),fullPage:true});
+  const themeControl=page.locator('[data-theme-toggle]:visible').first();
+  await page.locator('h1').click();await page.mouse.move(0,0);await themeControl.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('Color theme');
+  await page.screenshot({path:join(directory,`email-methods-tooltip-hover-${width}.png`),fullPage:true});
+  await page.mouse.move(0,0);await themeControl.focus();
+  await expect(page.getByRole('tooltip')).toBeVisible();
+  await page.screenshot({path:join(directory,`email-methods-tooltip-focus-${width}.png`),fullPage:true});
  }
  assert.deepEqual(errors,[],'no browser runtime errors');
  console.log('Auth journey: 20 real private-page screenshots; 1440/390 light/dark; axe serious/critical 0; browser email, setup, virtual hardware passkey, people, recovery cancellation');

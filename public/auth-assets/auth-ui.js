@@ -46,6 +46,7 @@
     session_authority_changed: 'Your sign-in changed during this request. Sign in again, then request a new email confirmation.',
     invalid_domain: 'Enter a valid domain name.',
     invalid_email: 'Enter a valid email address.',
+    person_already_exists: 'This person already exists. Review their People entry. If suspended, prepare a Restore person proposal on Agents before inviting again.',
     no_passkeys: 'Register a passkey before requesting recovery.',
     passkey_admin_required: 'Sign in with a passkey to use administrator actions.',
     passkey_required: 'Sign in with a passkey before adding another passkey.',
@@ -440,7 +441,7 @@
       }
       showStatus(typeof result.message === 'string' ? result.message : 'Request completed.', 'success')
     } catch (error) {
-      if (error?.code === 'local_email_step_up_required') form.closest('dialog')?.close()
+      if (['local_email_step_up_required', 'person_already_exists'].includes(error?.code)) form.closest('dialog')?.close()
       showStatus(error instanceof Error ? error.message : 'Auth could not complete that request.', 'error')
       if (submitter) submitter.disabled = false
     }

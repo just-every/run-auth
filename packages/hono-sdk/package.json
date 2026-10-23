@@ -1,0 +1,11 @@
+{
+  "name": "@runeditrun/auth-hono",
+  "version": "0.1.0",
+  "description": "Live Auth resource authorization for Hono servers",
+  "type": "module",
+  "license": "MIT",
+  "engines": {"node": ">=22.20.0"},
+  "exports": {".": "./index.mjs", "./admin": "./admin.mjs"},
+  "files": ["index.mjs", "admin.mjs", "README.md", "examples"],
+  "dependencies": {"@runeditrun/auth-sdk": "0.1.0", "hono": "4.13.7"}
+}

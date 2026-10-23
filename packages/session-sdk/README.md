@@ -142,5 +142,7 @@ A scope/resource/IP refusal requires the registration's human custodian to
 review it. A wrong web redirect must be corrected in the app registration and
 SDK `redirectUri` together; callback validation remains exact and is never
 bypassed by editing SDK internals. The Node administration slice adds no web
-session or cross-employer authority. Next/React, Python, Hono, embedded
-components and complete fresh-install web journeys remain DEVELOPER-001 work.
+session or cross-employer authority. The Python administration package is in
+`./packages/admin-python/README.md`; the Hono authorization adapter is in
+`./packages/hono-sdk/README.md`. Next.js and React, embedded components and
+complete fresh-install employee web journeys remain DEVELOPER-001 work.

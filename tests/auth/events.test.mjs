@@ -42,6 +42,10 @@ test('joiner, mover and leaver events reach a subscriber signed, in order and on
  hook.script.push({status:429,retryAfter:60});
  const dana=await r.db.prepare("SELECT id FROM oa_operators WHERE email='dana@example.com'").first();
  assert.equal((await r.admin('people/suspend',{personId:dana.id})).status,200);
+ const beforeInvite=(await r.mails()).length,invitedAudit=await r.db.prepare("SELECT count(*) AS n FROM auth_activity WHERE event='person_invited'").first();
+ const repeated=await r.admin('people/invite',{email:'dana@example.com',name:'Dana Day'});assert.equal(repeated.status,409);assert.equal((await repeated.json()).error,'person_already_exists');
+ assert.equal((await r.mails()).length,beforeInvite);assert.deepEqual(await r.db.prepare("SELECT count(*) AS n FROM auth_activity WHERE event='person_invited'").first(),invitedAudit);
+ assert.equal((await r.db.prepare('SELECT status FROM oa_operators WHERE id=?').bind(dana.id).first()).status,'inactive');
  const types=()=>hook.delivered().filter(e=>e.subject.email==='dana@example.com'||e.type==='app.assigned').map(e=>e.type);
  assert.deepEqual(types(),['person.invited','person.activated','group.member_added','app.assigned']);
  const maintain=()=>r.call('/',{action:'maintain'});

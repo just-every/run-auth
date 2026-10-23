@@ -139,6 +139,8 @@ test('only the signed-in address sees mail limits and delivery failure, with ret
   assert.equal(cookieOf(response),undefined,'a refusal preserves the previous browser binding');
   assert.equal((await r.mails()).length,before);await refused(r,r.owner.cookie);
  }
+ await r.db.prepare('INSERT INTO auth_limits(bucket,count,expires_at) VALUES(?,?,?)').bind('proof-mail:owner',5,r.now+240001).run();
+ const overlap=await request();assert.equal(overlap.status,429);assert.equal(overlap.headers.get('retry-after'),'241','the latest blocking limit determines the retry');
  for(const address of ['owner@example.com','absent@example.com']) {
   const anonymous=await request(address,null);assert.equal(anonymous.status,202);
   assert.deepEqual(await anonymous.json(),{message:'If this address can sign in, a link has been sent.'});

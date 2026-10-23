@@ -115,7 +115,7 @@ export async function adminAction(ctx,request,path,data) {
   const name=String(data.name||address).trim().slice(0,160);
   // Invitation does not silently reactivate a suspended account or grant a role.
   const created=await run(ctx,`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${g} ON CONFLICT(email) DO NOTHING`,random(),address,name,ctx.now(),...ga);
-  if(!created.meta.changes)await requireAuthority(ctx,s,guard);
+  if(!created.meta.changes){await requireAuthority(ctx,s,guard);fail('person_already_exists',409);}
   await sendInvitation(ctx,address);
   await audit(ctx,s.person_id,'person_invited',address);
   if(created.meta.changes){const p=await one(ctx,'SELECT id FROM oa_operators WHERE email=?',address);await emit(ctx,'person.invited',{type:'person',id:p.id,email:address},{name});}

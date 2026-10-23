@@ -46,7 +46,11 @@ export async function requestEmail(ctx, request, data) {
  const ipLimit=await limitState(ctx,`mail-ip:${await hash(ip)}`,20,3600000);
  const addressLimit=await limitState(ctx,`mail-address:${await hash(address || '')}`,5,3600000);
  if(ownAddress) {
-  if(!ipLimit.allowed||!addressLimit.allowed)throw mailLimited(Math.max(!ipLimit.allowed?ipLimit.retryAfter:0,!addressLimit.allowed?addressLimit.retryAfter:0));
+  if(!ipLimit.allowed||!addressLimit.allowed) {
+   const proofLimit=await one(ctx,'SELECT count,expires_at FROM auth_limits WHERE bucket=?',`proof-mail:${current.person_id}`);
+   const proofWait=proofLimit?.count>=5&&proofLimit.expires_at>ctx.now()?Math.ceil((proofLimit.expires_at-ctx.now())/1000):0;
+   throw mailLimited(Math.max(!ipLimit.allowed?ipLimit.retryAfter:0,!addressLimit.allowed?addressLimit.retryAfter:0,proofWait));
+  }
   await startProof(ctx,request,data,address,bound,true);
  } else if(address&&ipLimit.allowed&&addressLimit.allowed) {
   // Only an existing session requesting its own address receives delivery details.

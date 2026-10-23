@@ -1,4 +1,4 @@
-import {sdkAdminFlow} from './sdk-admin-flow.mjs';
+import {sdkAdminFlow,pythonAdminFlow,honoPermissionFlow} from './sdk-admin-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {emailSession,cookieOf} from './runtime.mjs';
@@ -322,3 +322,7 @@ test('scoped credential custodians own exact automation whose tokens and native 
 });
 
 test('a packed Node SDK installs in an empty app and enforces scoped private-key administration, pagination, ETags and live revocation over HTTP',sdkAdminFlow);
+
+test('a built Python wheel installs in an empty app and enforces scoped administration, ETags, pagination and cached-token revocation over HTTP',pythonAdminFlow);
+
+test('an installed Hono quickstart checks genuine employee consent, callback binding, rotation and live revocation against fresh Auth',honoPermissionFlow);
