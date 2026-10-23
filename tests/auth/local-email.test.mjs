@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {openRuntime,emailSession} from './runtime.mjs';
+import {openRuntime,emailSession,cookieOf} from './runtime.mjs';
 import {register,authenticate} from './webauthn.mjs';
 import {requestProof,finishProof,beginPasskey,finishPasskey,sessionCookie} from './policy-helpers.mjs';
 
@@ -105,4 +105,54 @@ test('revocation during a passkey challenge removes inherited local proof and re
  const forged=await emailSession(r,'owner@example.com',{amr:['hwk'],localEmailVerifiedAt:r.now,hardwareSessionId:'owner',upstreamProofId:'company'});
  assert.equal((await r.call('/api/auth/people',{cookie:forged})).status,403);
  assert.equal((await change(r,forged)).status,403);
+});
+
+
+test('failed browser email links explain recovery without weakening binding, single use or suspended-person refusal',async t=>{
+ const r=await fixture(t);
+ const proof=await requestProof(r,'owner@example.com',r.owner.cookie);
+ const wrong=await r.call('/auth/identity/email/confirm',{method:'POST',form:{token:proof.token},cookie:'__Host-auth_browser=synthetic-auth-1'});
+ assert.equal(wrong.status,400);assert.match(wrong.headers.get('content-type'),/text\/html/);
+ assert.match(await wrong.text(),/Request a fresh link/);assert.equal(cookieOf(wrong),undefined);
+ const accepted=await finishProof(r,proof);assert.equal(accepted.status,200,'wrong-browser refusal does not consume the genuine browser challenge');
+ const reused=await r.call('/auth/identity/email/confirm',{method:'POST',form:{token:proof.token},cookie:proof.binding});
+ assert.equal(reused.status,400);assert.match(await reused.text(),/already used/);
+ const json=await finishProof(r,proof);assert.equal(json.status,400);assert.deepEqual(await json.json(),{error:'invalid_challenge'});
+ const next=await requestProof(r,'owner@example.com',r.owner.cookie);
+ await r.person('backup','backup@example.com','owner');
+ await r.db.prepare("UPDATE oa_operators SET status='inactive',version=version+1 WHERE id='owner'").run();
+ const suspended=await r.call('/auth/identity/email/confirm',{method:'POST',form:{token:next.token},cookie:next.binding});
+ assert.equal(suspended.status,400);assert.equal(cookieOf(suspended),undefined);assert.match(await suspended.text(),/contact your administrator/);
+ assert.equal((await r.call('/api/auth/people',{cookie:r.owner.cookie})).status,401);
+});
+
+test('only the signed-in address sees mail limits and delivery failure, with retry time and no renewed authority',async t=>{
+ const r=await fixture(t);r.now+=11*60000;
+ const request=(address='owner@example.com',cookie=r.owner.cookie)=>r.call('/auth/identity/email/request',post({email:address},cookie));
+ const before=(await r.mails()).length;
+ const {hash}=await import('../../src/auth/core.mjs');
+ for(const [bucket,count] of [['proof-mail:owner',5],['mail-address:'+await hash('owner@example.com'),5],['mail-ip:'+await hash('192.0.2.10'),20]]) {
+  await r.db.prepare('DELETE FROM auth_limits').run();
+  await r.db.prepare('INSERT INTO auth_limits(bucket,count,expires_at) VALUES(?,?,?)').bind(bucket,count,r.now+120001).run();
+  const response=await request();assert.equal(response.status,429);
+  assert.equal(response.headers.get('retry-after'),'121');assert.equal((await response.json()).retryAfter,121);
+  assert.equal(cookieOf(response),undefined,'a refusal preserves the previous browser binding');
+  assert.equal((await r.mails()).length,before);await refused(r,r.owner.cookie);
+ }
+ for(const address of ['owner@example.com','absent@example.com']) {
+  const anonymous=await request(address,null);assert.equal(anonymous.status,202);
+  assert.deepEqual(await anonymous.json(),{message:'If this address can sign in, a link has been sent.'});
+  assert.equal(anonymous.headers.get('retry-after'),null);
+ }
+ const other=await request('absent@example.com');assert.equal(other.status,202);assert.equal(other.headers.get('retry-after'),null);
+ await r.db.prepare('DELETE FROM auth_limits').run();
+ const {createServer}=await import('node:http');
+ const edge=createServer((_req,res)=>{res.writeHead(503);res.end();});
+ await new Promise(resolve=>edge.listen(0,'127.0.0.1',resolve));t.after(()=>{edge.closeAllConnections();return new Promise(resolve=>edge.close(resolve));});
+ r.mailEdge='http://127.0.0.1:'+edge.address().port;
+ const failed=await request();assert.equal(failed.status,503);assert.equal((await failed.json()).error,'email_delivery_failed');
+ assert.equal((await r.mails()).length,before);await refused(r,r.owner.cookie);
+ r.mailEdge=undefined;r.now+=3600001;
+ const recovered=await request();assert.equal(recovered.status,202);assert.equal((await r.mails()).length,before+1);
+ await refused(r,r.owner.cookie);
 });

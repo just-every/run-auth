@@ -24,7 +24,7 @@ import {adminApi} from './admin-api/routes.mjs';
 import {isHookAction,hookAction,hookModel} from './hooks/index.mjs';
 import {isMappingAction,mappingAction} from './mapping/routes.mjs';
 import {AuthError,input,json,fail,requireSession,validateClientOrigin} from './core.mjs';
-import {requestEmail,confirmEmail,confirmationPage} from './email.mjs';
+import {requestEmail,confirmEmail,confirmationPage,confirmationError} from './email.mjs';
 import {registrationOptions,registrationVerify,authenticationOptions,authenticationVerify} from './passkeys.mjs';
 import {startRecovery,changeRecovery,redeemRecoveryToken} from './recovery.mjs';
 import {discovery,authorize,resumeAuthorization,token,delegationToken} from './protocol.mjs';
@@ -164,6 +164,9 @@ function scopedRuntime(options) {
    fail('not_found',404);
   } catch(error) {
    if(!(error instanceof AuthError))throw error;
+   if(path==='/auth/identity/email/confirm'&&(request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded'))return confirmationError(ctx,error);
+   if(error.message==='email_rate_limited')return json({error:error.message,retryAfter:error.retryAfter,message:`Too many email confirmation requests. Try again in ${Math.ceil(error.retryAfter/60)} minute(s). Your current email confirmation is not extended.`},429,{'retry-after':String(error.retryAfter)});
+   if(error.message==='email_delivery_failed')return json({error:error.message,message:'Auth could not send your confirmation email. Try again later or contact your administrator. Your current email confirmation is not extended.'},503);
    if(path==='/oidc/authorize'||path==='/oidc/authorize/resume'||path===END_SESSION)return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><title>Auth request could not continue</title><h1>Auth request could not continue</h1><p>${error.message==='hook_timeout'?'An inline sign-in hook timed out. Try signing in again.':error.message==='hook_refused'?'Your employer’s inline hook refused sign-in.':'Check the app and its sign-in address.'}</p></html>`,{status:error.status,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'none'; frame-ancestors 'none'; base-uri 'none'"}});
    const message=error.message==='hook_timeout'?'An inline sign-in hook timed out. Try signing in again.':error.message==='hook_refused'?'Your employer’s inline hook refused sign-in.':error.message==='hook_invalid_response'?'The inline hook attempted a protected or unapproved change.':undefined;
    return json({error:error.message,...(message?{message,error_description:message}:{})},error.status);

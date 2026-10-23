@@ -24,7 +24,17 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  await page.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);
  const requested=page.waitForResponse(response=>response.url().endsWith('/auth/identity/email/request'));
  await page.getByRole('button',{name:'Email me a sign-in link'}).click();assert.equal((await requested).status(),202);
- const link=await app.link();await page.goto(link.href);
+ const link=await app.link();
+ const stranger=await browser.newContext(),strangerPage=await stranger.newPage();
+ for(const width of [1440,390]) {
+  await strangerPage.setViewportSize({width,height:1000});await strangerPage.goto(link.href);
+  await strangerPage.getByRole('button',{name:'Continue to Auth'}).click();
+  await expect(strangerPage.getByRole('heading',{name:'Email link could not continue'})).toBeVisible();
+  await expect(strangerPage.getByRole('link',{name:'Request a fresh link'})).toHaveAttribute('href','/signin');
+  assert.ok(await strangerPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await strangerPage.screenshot({path:join(directory,`email-wrong-browser-${width}.png`),fullPage:true});
+ }
+ await stranger.close();await page.goto(link.href);
  await page.getByRole('button',{name:'Continue to Auth'}).click();await expect(page).toHaveURL(app.origin+'/setup');
  await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Finish setup'}).click();await expect(page).toHaveURL(app.origin+'/app');
  assert.equal((await context.request.get(app.origin+'/api/auth/people')).status(),403);
@@ -118,6 +128,21 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
   await page.screenshot({path:join(directory,`continuity-recovery-pending-${width}.png`),fullPage:true});
   await page.getByRole('button',{name:'Cancel request'}).click();await expect(page.getByText('Your recovery request',{exact:true})).toHaveCount(0);
   await page.screenshot({path:join(directory,`continuity-recovery-cancelled-${width}.png`),fullPage:true});
+ }
+ await page.goto(app.origin+'/app/methods');
+ let throttled;
+ for(let attempt=0;attempt<6;attempt++) {
+  const answer=page.waitForResponse(response=>response.url().endsWith('/auth/identity/email/request'));
+  await page.getByRole('button',{name:'Confirm my email',exact:true}).click();
+  const response=await answer;if(response.status()===429){throttled=response;break;}
+ }
+ assert.ok(throttled,'authenticated own-address request reaches the public throttle');
+ assert.ok(Number(throttled.headers()['retry-after'])>0);
+ for(const width of [1440,390]) {
+  await page.setViewportSize({width,height:1000});
+  await expect(page.locator('[data-auth-status][role="alert"]')).toContainText('Try again in');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await accessible('email retry '+width);
+  await page.screenshot({path:join(directory,`email-retry-${width}.png`),fullPage:true});
  }
  assert.deepEqual(errors,[],'no browser runtime errors');
  console.log('Auth journey: 20 real private-page screenshots; 1440/390 light/dark; axe serious/critical 0; browser email, setup, virtual hardware passkey, people, recovery cancellation');

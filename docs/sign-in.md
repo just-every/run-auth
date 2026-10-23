@@ -2,7 +2,7 @@ Auth has no passwords. People sign in with an email link or a passkey, and admin
 
 ## Email links
 
-At `/signin` a person enters their email address and chooses **Email me a sign-in link**. The link works only in the browser that asked for it, once, for a short time. Opening it on another device does nothing.
+At `/signin` a person enters their email address and chooses **Email me a sign-in link**. The link works only in the browser that asked for it, once, for a short time. If a link is expired, already used or opened in another browser, Auth explains how to retry and offers **Request a fresh link**. A suspended account cannot regain access with an old link.
 
 An email-link session can use the apps a person is allowed into and manage their own account. It cannot administer Auth.
 
@@ -17,6 +17,8 @@ Every so often Auth asks a passkey user to confirm their email again; **Sign-in 
 ## Changes that need a fresh email confirmation
 
 Registering a passkey, completing or approving a recovery, and every administrator change (people, roles, domains and provider rules) also need an email confirmation in the same browser within the last ten minutes. If Auth asks, choose **Confirm my email** on **Sign-in methods**, open the link, then try again.
+
+Requests from your signed-in session for your own address show mail throttling and the time until you can retry. Auth limits each address and person to five messages per hour, and each IP address to twenty requests per hour. Delivery failures are shown on Sign-in methods. A throttled or failed request never renews the ten-minute confirmation window. Requests for other addresses always keep the same private response.
 
 ## Required providers
 

@@ -179,7 +179,7 @@
       }
       window.location.assign(organizationPath(localPath(result.returnTo || returnTo)))
     } catch (error) {
-      showStatus(passkeyError(error), 'error')
+      showStatus(error?.code === 'invalid_passkey' ? 'That passkey cannot sign in. Try another registered passkey, or request an email link.' : passkeyError(error), 'error')
       button.disabled = false
     }
   }
