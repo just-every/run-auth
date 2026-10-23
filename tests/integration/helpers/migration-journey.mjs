@@ -7,7 +7,7 @@ export async function migrationJourney({app,edge,browser,owner,page,shoot}) {
  const post=(context,path,data)=>context.request.post(app.origin+path,{data,headers:{origin:app.origin}});
  const people={format:'auth-custom-directory',version:1,people:[{directory_id:'synthetic-auth-91',email:'migrating@example.com',name:'Jordan Rivera',disabled:false,history:[{at:'2025-06-01T00:00:00Z',values:{department:'Engineering'}}]}]};
  const batch=await json(await post(owner,'/api/auth/move-in/stage',{fileName:'reviewed-custom.json',exportDate:'2026-10-23',text:JSON.stringify(people)}),201);
- await page.goto(app.origin+'/app/move-in?batch='+batch.batchId);await expect(page.getByRole('region',{name:'Staged people table'})).toContainText('Jordan Rivera');await shoot('custom-reviewed');
+ await page.goto(app.origin+'/app/move-in?batch='+batch.batchId);await expect(page.getByRole('region',{name:'Staged people table'})).toContainText('Jordan Rivera');await expect(page.getByText(/Custom directory/).first()).toBeVisible();await shoot('custom-reviewed');
  await page.getByRole('button',{name:'Admit selected'}).click();await expect(page.locator('[data-row-status=admitted]')).toHaveCount(1);
  const directory=await json(await owner.request.get(app.origin+'/api/auth/people')),person=directory.find(row=>row.email==='migrating@example.com');assert.ok(person);
  const credential='synthetic-auth-92',password='synthetic-auth-93';

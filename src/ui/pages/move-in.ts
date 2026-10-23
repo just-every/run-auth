@@ -1,7 +1,7 @@
 import type { AuthPageModel, MoveInBatch, MoveInRow } from '../model.js'
 import { asArray, csrfField, emptyState, escape, timeElement } from '../helpers.js'
 
-const sources: Record<string, string> = { google: 'Google Workspace', microsoft: 'Microsoft Entra', auth0: 'Auth0', okta: 'Okta', jumpcloud: 'JumpCloud' }
+const sources: Record<string, string> = { custom: 'Custom directory', google: 'Google Workspace', microsoft: 'Microsoft Entra', auth0: 'Auth0', okta: 'Okta', jumpcloud: 'JumpCloud' }
 const sourceName = (value?: string): string => sources[value ?? ''] ?? 'Unknown source'
 
 const findings: Record<string, string> = {
