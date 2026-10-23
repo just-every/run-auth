@@ -71,7 +71,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   }
   if(reset||discardMap||discardStage){removed.add(key);continue;}
   const direct=Object.entries(row).some(([column,value])=>text(value)&&identifiers.has(value)&&(
-   ['person_id','operator_id','session_id','owner_id','owner_person_id','key_id','client_id','app_id','subject_id','sector_id','email','source_id'].includes(column)||column==='id'&&['oa_operators','auth_apps','auth_clients'].includes(name)));
+   ['person_id','operator_id','session_id','owner_id','owner_person_id','key_id','client_id','app_id','subject_id','sector_id','email','source_id','family_id','refresh_consent_id'].includes(column)||column==='id'&&['oa_operators','auth_apps','auth_clients'].includes(name)));
   if(direct||matched&&Object.keys(row).some(c=>serialized.has(c)||['email','source_id','subject','bucket'].includes(c))){removed.add(key);continue;}
   const changed={};
   for(const [column,value] of Object.entries(row))if(referenceColumns.has(column)&&text(value)&&identifiers.has(value)) {
