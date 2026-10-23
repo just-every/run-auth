@@ -23,7 +23,10 @@ export async function receiptAction(ctx,request,path,data) {
  }
  exact(data,['confirm']);if(data.confirm!==true)fail('explicit_receipt_consent_required',403);
  const s=await requireSession(ctx,request);if(!JSON.parse(s.amr).includes('hwk'))fail('independent_passkey_required',403);
- const token=random()+random(),guard=personSessionGuard(ctx,s),expires=new Date(ctx.now());expires.setUTCMonth(expires.getUTCMonth()+13);
+ const token=random()+random(),guard=personSessionGuard(ctx,s),expires=new Date(ctx.now()),day=expires.getUTCDate();
+ expires.setUTCDate(1);expires.setUTCMonth(expires.getUTCMonth()+13);
+ const last=new Date(Date.UTC(expires.getUTCFullYear(),expires.getUTCMonth()+1,0)).getUTCDate();
+ expires.setUTCDate(Math.min(day,last));
  const result=await ctx.db.prepare(`INSERT INTO auth_erasure_person_receipts(token_hash,person_id,created_at,expires_at,notices) SELECT ?,?,?,?,'[]' WHERE ${guard.clause}`).bind(await hash(token),s.person_id,ctx.now(),expires.getTime(),...guard.args).run();
  if(!result.meta.changes)fail('receipt_key_refused',403);
  return json({receiptKey:token,expiresAt:expires.getTime(),instruction:'Shown once. Save privately. Post only in a request body to read your receipt or revoke this key. Never put it in a URL or log.'},201);
