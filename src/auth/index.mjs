@@ -1,3 +1,5 @@
+import {BRIDGE,bridgeRegister,bridgeDisable,legacyLogin} from './migration/bridge.mjs';
+import {EMPLOYER_PROVIDERS,configureEmployerProvider} from './tenancy/providers.mjs';
 import {PAIRS_PREFIX,isPairPath,pairAction,pairModel,personReceipt} from './erasure/pairs.mjs';
 import {releaseRead,releaseAction} from './erasure/pair-erasure.mjs';
 import {refreshCors} from './tokens/cors.mjs';
@@ -101,6 +103,10 @@ function scopedRuntime(options) {
     if(path==='/api/auth/move-in/stage')return await stage(ctx,request);
     if(path==='/api/auth/resource-apis/check')return await grantCheck(ctx,request);
     const data=await input(ctx,request);
+    if(path===BRIDGE+'/register')return bridgeRegister(ctx,request,data);
+    if(path===BRIDGE+'/disable')return bridgeDisable(ctx,request,data);
+    if(path===BRIDGE+'/login')return legacyLogin(ctx,request,data);
+    if(path===EMPLOYER_PROVIDERS)return configureEmployerProvider(ctx,request,data);
     if(path===PAIRS_PREFIX+'/receipt')return personReceipt(ctx,request,data);
     if(isPairPath(path))return pairAction(ctx,request,path,data);
     if(path==='/api/auth/identity-release-notices/hold')return releaseAction(ctx,request,data);

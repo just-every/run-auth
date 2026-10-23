@@ -1,3 +1,4 @@
+import {scopedUpstreamFlow} from './scoped-upstream-flow.mjs';
 import {identityPairsFlow} from './identity-pairs-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -173,6 +174,7 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  const memberB=await emailSession(b,'contractor@example.com');
  const personA=(await (await a.call('/api/auth/me',{cookie:memberA})).json()).user,personB=(await (await b.call('/api/auth/me',{cookie:memberB})).json()).user;
  assert.notEqual(personA.id,personB.id,'same-email memberships keep independent identities');
+ await scopedUpstreamFlow({r,a,b,adminA,adminB,owner,personA,personB});
  const inB=cookie=>cookie.replaceAll('_'+north.id+'=','_'+south.id+'=');
  assert.equal((await b.call('/api/auth/me',{cookie:inB(memberA)})).status,401,'renaming a synthetic session cookie cannot transplant its authority');
 

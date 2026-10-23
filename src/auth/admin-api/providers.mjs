@@ -1,10 +1,11 @@
+import {employerProviders} from '../tenancy/providers.mjs';
 import {all,auditDetail,fail,json} from '../core.mjs';
 import {only,requireScope} from './resources.mjs';
 
 // Configuration owns identity and credentials; this table only controls whether
 // a configured upstream is currently offered and accepts verified proofs.
 export async function resolveProviders(ctx) {
- const configured=ctx.configuredUpstreamProviders??ctx.upstreamProviders??[];
+ const configured=ctx.organizationId&&ctx.organizationId!=='root'?await employerProviders(ctx):ctx.configuredUpstreamProviders??ctx.upstreamProviders??[];
  const disabled=new Set((await all(ctx,'SELECT provider_id FROM auth_provider_states WHERE enabled=0')).map(row=>row.provider_id));
  return {...ctx,configuredUpstreamProviders:configured,upstreamProviders:configured.filter(provider=>!disabled.has(provider.id))};
 }

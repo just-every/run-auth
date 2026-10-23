@@ -13,12 +13,16 @@ export async function identityPairsJourney(t) {
  const post=(context,path,data)=>context.request.post(app.origin+path,{data,headers:{origin:app.origin}});
  const email=async(context,prefix,address)=>{await json(await post(context,prefix+'/auth/identity/email/request',{email:address}),202);const link=await app.link(prefix);await json(await post(context,prefix+'/auth/identity/email/confirm',{token:link.searchParams.get('token')}));};
  const context=async()=>{
-  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),cdp=await context.newCDPSession(page);page.on('dialog',dialog=>dialog.accept());
-  await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
-  return {context,page};
+  const context=await browser.newContext({viewport:{width:1440,height:1000}}),pages=new Map();
+  const pageFor=async prefix=>{
+   if(pages.has(prefix))return pages.get(prefix);
+   const page=await context.newPage(),cdp=await context.newCDPSession(page);page.on('dialog',dialog=>dialog.accept());
+   await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});pages.set(prefix,page);return page;
+  };
+  return {context,page:await pageFor(''),pageFor,pages};
  };
  const owner=await context();await email(owner.context,'','owner@example.com');await owner.page.goto(app.origin+'/setup');await owner.page.getByRole('checkbox').check();await owner.page.getByRole('button',{name:'Finish setup'}).click();
- const enroll=async(subject,prefix)=>{await subject.page.goto(app.origin+prefix+'/app/methods');const registered=subject.page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));await subject.page.getByRole('button',{name:'Register a passkey'}).click();await json(await registered);};
+ const enroll=async(subject,prefix)=>{const page=await subject.pageFor(prefix);await page.bringToFront();await page.goto(app.origin+prefix+'/app/methods');const registered=page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify')),reloaded=page.waitForEvent('load');await page.getByRole('button',{name:'Register a passkey'}).click();await Promise.all([registered.then(response=>json(response)),reloaded]);};
  await enroll(owner,'');
  await json(await post(owner.context,'/api/auth/people/invite',{email:'personal@example.com',name:'Alex Morgan'}),201);
  const person=await context();await email(person.context,'','personal@example.com');await enroll(person,'');
@@ -34,16 +38,17 @@ export async function identityPairsJourney(t) {
  for(const org of [a,c]){await email(person.context,org.prefix,'personal@example.com');await enroll(person,org.prefix);}
  assert.equal((await post(person.context,'/api/auth/identity-pairs/options',{organizationId:b.id})).status(),401,'root proof supplies no unproved B membership');
  const offered=await json(await post(person.context,'/api/auth/identity-pairs/options',{organizationId:a.id}));
- await person.page.goto(app.origin+'/app/account');
- const sign=options=>person.page.evaluate(async value=>{
+ await person.page.bringToFront();await person.page.goto(app.origin+'/app/account');
+ const sign=async(options,prefix='')=>(await person.pageFor(prefix)).evaluate(async value=>{
   const decode=text=>Uint8Array.from(atob(text.replace(/-/g,'+').replace(/_/g,'/')),character=>character.charCodeAt(0));
   value.challenge=decode(value.challenge);value.allowCredentials=value.allowCredentials.map(item=>({...item,id:decode(item.id)}));
   return (await navigator.credentials.get({publicKey:value})).toJSON();
  },options);
- const paired=await json(await post(person.context,'/api/auth/identity-pairs/confirm',{transaction:offered.transaction,rootResponse:await sign(offered.rootOptions),memberResponse:await sign(offered.memberOptions),confirm:true}),201);
+ const paired=await json(await post(person.context,'/api/auth/identity-pairs/confirm',{transaction:offered.transaction,rootResponse:await sign(offered.rootOptions),memberResponse:await sign(offered.memberOptions,a.prefix),confirm:true}),201);
+ for(const subject of [owner,person])for(const [prefix,page] of subject.pages)if(prefix)await page.close();
  const own=await json(await person.context.request.get(app.origin+'/api/auth/identity-pairs/export'));assert.equal(own.links[0].handle,paired.handle);
  assert.deepEqual((await json(await owner.context.request.get(app.origin+'/api/auth/identity-pairs'))).links,[]);
- const shoot=async(name,page)=>{for(const width of [1440,390])for(const theme of ['light','dark']){
+ const shoot=async(name,page)=>{await page.bringToFront();for(const width of [1440,390])for(const theme of ['light','dark']){
   await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();await expect(page.locator('h1')).toBeVisible();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   const results=await new AxeBuilder({page}).analyze();assert.deepEqual(results.violations.filter(item=>['serious','critical'].includes(item.impact)).map(item=>item.id),[]);
   for(const control of await page.locator('[data-tooltip]:visible').all()){await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}

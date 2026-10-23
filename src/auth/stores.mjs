@@ -3,6 +3,7 @@
 // A new managed store requires an explicit decision before either operation.
 const groups = {
  portable: [
+  'auth_import_history',
   'auth_app_role_order', 'auth_app_reductions', 'auth_app_denials', 'auth_privileged_resources', 'auth_privileged_app_roles', 'auth_decision_operations',
   'auth_reviews', 'auth_review_items', 'auth_review_events', 'auth_review_schedules',
   'auth_retention_expiry', 'auth_retention_policy', 'auth_retention_holds', 'auth_request_policies', 'auth_access_requests',
@@ -35,6 +36,8 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
+  'auth_migration_bridges', 'auth_migration_subjects',
+  'auth_employer_providers',
   'auth_identity_pairs', 'auth_identity_release_notices', 'auth_erasure_person_receipts',
   'auth_refresh_families', 'auth_refresh_credentials',
   'auth_followup_link_tokens', 'auth_agent_keys', 'auth_erasure_remote', 'auth_event_subscriptions', 'auth_hooks',

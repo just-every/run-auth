@@ -39,6 +39,10 @@ function jumpcloud(user) {
 // JSON sources: recognised by the documented field names of their user objects.
 const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
 export const JSON_SOURCES=[
+ {system:'custom',format:'json',label:'Reviewed custom directory (v1)',
+  list:value=>object(value)&&value.format==='auth-custom-directory'&&value.version===1&&Array.isArray(value.people)?value.people:null,
+  detect:user=>typeof user.directory_id==='string'&&typeof user.email==='string',
+  map:user=>({sourceId:user.directory_id,email:user.email,name:user.name,disabled:typeof user.disabled==='boolean'?user.disabled:null,groups:[],history:user.history??[]})},
  {system:'google',format:'json',label:'Google Workspace user list (JSON)',
   list:value=>Array.isArray(value)?value:object(value)&&Array.isArray(value.users)?value.users:null,
   detect:user=>'primaryEmail' in user,
@@ -57,4 +61,4 @@ export const JSON_SOURCES=[
   map:user=>jumpcloud(user)},
 ];
 
-export const SOURCE_NAMES={google:'Google Workspace',microsoft:'Microsoft Entra',auth0:'Auth0',okta:'Okta',jumpcloud:'JumpCloud'};
+export const SOURCE_NAMES={custom:'Custom directory',google:'Google Workspace',microsoft:'Microsoft Entra',auth0:'Auth0',okta:'Okta',jumpcloud:'JumpCloud'};

@@ -52,5 +52,9 @@ export function createUpstreams(ctx) {
  }};
  // Auth's configured upstreams are its owner's own choice: configured means offered.
  const providers=createOidcProviders({admission,enabled:async()=>true,db:ctx.db,config:{origin:ctx.origin,local:ctx.local,transactionSecret:ctx.secret,providers:configured},clock:ctx.now,clientIp:r=>r.headers.get('cf-connecting-ip')||'',...(ctx.upstreamFetch?{fetch:ctx.upstreamFetch}: {})});
- return {providers,fetch:createOidcHandler(providers)};
+ const handler=createOidcHandler(providers);
+ return {providers,fetch:request=>{
+  if(ctx.basePath&&/^\/auth\/oidc\/[a-z][a-z0-9-]{0,31}\/callback$/.test(new URL(request.url).pathname)){const url=new URL(request.url);url.pathname=ctx.basePath+url.pathname;request=new Request(url,request);}
+  return handler(request);
+ }};
 }

@@ -44,6 +44,7 @@ export async function stage(ctx,request) {
   const chunk=rows.slice(start,start+250).map((r,i)=>({i:start+i,s:r.sourceId,e:r.email,n:r.displayName,d:r.disabled===null?null:r.disabled?1:0,g:JSON.stringify(r.groups),r:JSON.stringify(r.reasons)}));
   statements.push(ctx.db.prepare("INSERT INTO auth_import_rows(batch_id,idx,source_id,email,display_name,disabled,groups,status,reasons) SELECT ?,json_extract(value,'$.i'),json_extract(value,'$.s'),json_extract(value,'$.e'),json_extract(value,'$.n'),json_extract(value,'$.d'),json_extract(value,'$.g'),'staged',json_extract(value,'$.r') FROM json_each(?) WHERE EXISTS(SELECT 1 FROM auth_import_batches WHERE id=?)").bind(id,JSON.stringify(chunk),id));
  }
+ for(const [index,row] of rows.entries())if(row.profileHistory?.length)statements.push(ctx.db.prepare('INSERT INTO auth_import_history(batch_id,idx,email,history) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM auth_import_batches WHERE id=?)').bind(id,index,row.email,JSON.stringify(row.profileHistory),id));
  statements.push(ctx.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT ?,'move_in_staged',?,? WHERE EXISTS(SELECT 1 FROM auth_import_batches WHERE id=?)").bind(s.person_id,id,now,id));
  await ctx.db.batch(statements);
  if(!await one(ctx,'SELECT id FROM auth_import_batches WHERE id=?',id)) {
@@ -71,7 +72,8 @@ async function admit(ctx,request,data) {
    ctx.db.prepare(`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${liveGuard.clause} ON CONFLICT(email) DO NOTHING`).bind(id,row.email,extension.profile?.name??row.displayName??row.email,now,...liveGuard.args),
    ctx.db.prepare(`UPDATE auth_import_rows SET status='admitted',person_id=?,admitted_at=? WHERE batch_id=? AND idx=? AND status='staged' AND ${created}`).bind(id,now,batch.id,row.idx,id),
   ];
-  if(batch.source_system==='auth0'&&row.sourceId)statements.push(ctx.db.prepare(`INSERT OR IGNORE INTO auth_former_subjects(source_system,subject,person_id,batch_id,created_at) SELECT 'auth0',?,?,?,? WHERE ${created}`).bind(row.sourceId,id,batch.id,now,id));
+  if(['auth0','google','custom'].includes(batch.source_system)&&row.sourceId)statements.push(ctx.db.prepare(`INSERT OR IGNORE INTO auth_former_subjects(source_system,subject,person_id,batch_id,created_at) SELECT ?,?,?,?,? WHERE ${created}`).bind(batch.source_system,row.sourceId,id,batch.id,now,id));
+  statements.push(ctx.db.prepare(`UPDATE auth_import_history SET person_id=? WHERE batch_id=? AND idx=? AND ${created}`).bind(id,batch.id,row.idx,id));
   const [inserted]=await ctx.db.batch(statements);
   if(inserted.meta.changes){admitted.push(row.email);taken.add(row.email);continue;}
   await requireAuthority(ctx,s,liveGuard);skipped.push({email:row.email,reasons:['existing_person']});
@@ -163,6 +165,8 @@ export async function moveInModel(ctx,request) {
  const batch=id?await one(ctx,'SELECT * FROM auth_import_batches WHERE id=?',id):null;
  if(!batch)return {moveIn:{batches,batch:null,rows:[]}};
  const rows=classify(ctx,(await all(ctx,'SELECT * FROM auth_import_rows WHERE batch_id=? ORDER BY idx',batch.id)).map(stagedShape),await people(ctx));
+ const histories=await all(ctx,'SELECT idx,history FROM auth_import_history WHERE batch_id=?',batch.id);
+ for(const row of rows){const history=histories.find(item=>item.idx===row.idx);if(history)row.profileHistory=JSON.parse(history.history);}
  const subjects=await one(ctx,'SELECT count(*) AS n FROM auth_former_subjects WHERE batch_id=?',batch.id);
  return {moveIn:{batches,batch:{id:batch.id,source_system:batch.source_system,format:batch.format,file_name:batch.file_name,export_date:batch.export_date,created_at:batch.created_at,undone_at:batch.undone_at,undo_report:batch.undo_report?JSON.parse(batch.undo_report):null,former_subjects:subjects.n},rows}};
 }

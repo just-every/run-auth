@@ -62,14 +62,7 @@ refuses the operation. Current import doors are staged move-in admission and the
 source-id-matched directory feed. Auth keeps their reviewed identity bindings;
 the hook cannot turn an email match into identity proof or rebind a subject.
 
-The current-capability boundary names every shipping door above. The future
-password-verification/first-login bridge in AUTH-MIGRATION-002, and new match or
-create doors in AUTH-HRIS-001, AUTH-HRIS-002 and AUTH-SCIM-002, inherit the complete
-AUTH-HOOKS-001 signature, payload minimization, timeout, fail policy, protected
-identity, destination and audit obligations before shipping. Password-hook
-registration currently refuses with hook_point_unavailable; this implementation
-never collects, stores or forwards a migrating password or pretends to verify one.
-The future bridge must document its credential-verification payload separately.
+The current-capability boundary includes the first-login legacy verifier bridge in AUTH-MIGRATION-002. Its `password_import` hook receives only the reviewed person and source IDs, with no password, bridge credential or configurable output fields. The independent signed legacy verifier request is documented in `docs/progressive-migration.md`; it is a different, explicitly authorized credential-verification boundary. The hook retains the existing signature, minimal-payload, timeout/failure, protected-identity, destination and audit checks. New match/create doors in AUTH-HRIS-001, AUTH-HRIS-002 and AUTH-SCIM-002 inherit the complete AUTH-HOOKS-001 obligations before shipping.
 
 Responses must be 2xx JSON, at most 32 KiB, with exactly the documented keys.
 Unknown keys, reserved or unallowlisted fields, malformed responses, explicit
