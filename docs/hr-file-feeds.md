@@ -51,7 +51,9 @@ Identity binding uses `hr` plus `<feed ID>:<source ID>`, never an email match.
 An existing source can be explicitly bound through the ordinary reviewed
 `/api/auth/directory/source` command before its first feed. A new ID whose
 email already exists remains a collision requiring separate identity review.
-The field precedence remains manual override, HR, directory, self. Import hooks
+Manager cells currently name an existing Auth person ID; translating external
+manager source IDs is not implemented. The field precedence remains manual
+override, HR, directory, self. Import hooks
 run with the signed minimal source/email/name payload before review and apply;
 they can change only an allowed name, never identity, proof, roles or policy.
 
@@ -123,7 +125,9 @@ review without performing another directory action.
 ## Freshness, retention and shutdown
 
 No valid delivery by schedule plus one interval (two hours/days) flags the
-source stale. Held/malformed/empty data cannot reset a successful-read time.
+source stale. Malformed, empty or invalid-profile data cannot reset a successful-read time.
+A valid file held for destructive confirmation is still a successful source
+read; its effects remain held until explicit approval.
 A durable owner-held follow-up appears in Activity/API, is deduplicated across
 restart, and stops when a valid next delivery restores freshness or the source
 is disabled. This profile adds no outbound recipient consent: HR-source email

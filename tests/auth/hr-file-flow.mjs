@@ -23,8 +23,9 @@ export async function hrFilePreviewFlow(t) {
  const file=csv([['new-hire','synthetic-auth-145@example.com','New hire','Engineering','active',at],['source-0','synthetic-auth-140@example.com','Mover','Engineering','active',at],['source-1','synthetic-auth-141@example.com','Leaver','Support','terminated',at]]);
  const passkeyOnly=cookieOf((await authenticate(r,owner.key)).response);
  for(const [path,data] of [['hr-feeds/create',{name:'No email',schedule:'hourly',mapping,fingerprint:keyFingerprint(key),confirm:true}],['hr-feeds/upload',{feedId:feed.id,fileName:'blocked.csv',text:file}],['hr-feeds/apply',{feedId:feed.id,fileId:'synthetic-auth-180',digest:'synthetic-auth-181',rows:[0],confirm:true}],['hr-feeds/disable',{feedId:feed.id}],['hr-feeds/close-file',{feedId:feed.id,fileId:'synthetic-auth-182',confirm:true}]])assert.equal((await r.call('/api/auth/'+path,post(data,passkeyOnly))).status,403,path+' still needs fresh local email');
+ const badMapping=await r.call('/api/auth/hr-feeds/create',post({name:'Ambiguous columns',schedule:'daily',mapping:{sourceId:' ID ',email:'ID',state:'State',effectiveAt:'Effective'},fingerprint:keyFingerprint(key),confirm:true},owner.cookie));assert.equal(badMapping.status,400,'trimmed column names remain one-to-one');
  const upload=(text,fileName='hr.csv')=>r.call('/api/auth/hr-feeds/upload',post({feedId:feed.id,fileName,text},owner.cookie));
- const received=await result(await upload(file),202);assert.equal(received.state,'held');assert.deepEqual(received.reasons,['termination_threshold_exceeded']);
+ const received=await result(await upload(file),202);assert.equal(received.state,'held');assert.deepEqual(received.reasons,['termination_threshold_exceeded']);assert.equal((await r.db.prepare('SELECT last_success_at FROM auth_hr_feeds WHERE id=?').bind(feed.id).first()).last_success_at,r.now,'a valid held delivery remains a successful source read');
  const preview=await result(await r.call('/api/auth/hr-feeds?fileId='+received.fileId,{cookie:owner.cookie}));
  assert.equal(preview.preview.outcomes.find(row=>row.sourceId==='new-hire').outcome,'new_hire_review_required');
  assert.equal(preview.preview.plan.entries.length,2);
@@ -34,6 +35,7 @@ export async function hrFilePreviewFlow(t) {
  const again=await result(await upload(file),202);assert.equal(again.fileId,received.fileId);assert.equal(again.replayed,true);
  assert.ok((await result(await upload(''),202)).reasons.includes('empty_file'));
  assert.ok((await result(await upload('"unterminated'),202)).reasons.includes('malformed_file'));
+ for(const date of ['2026-02-31T12:00:00Z','2026-10-23T24:00:00Z']){const invalid=await result(await upload(csv([['bad-date','synthetic-auth-184@example.com','Invalid date','Support','active',date]]),'invalid-date.csv'),202);assert.equal(invalid.state,'held');assert.ok(invalid.reasons.includes('invalid_hr_record'));}
  assert.equal((await upload(file,'../hr.csv')).status,400);
  const malformedProfile=await result(await upload(csv([['bad-profile','synthetic-auth-148@example.com','Invalid','x'.repeat(121),'active',at]]),'invalid-field.csv'),202);assert.equal(malformedProfile.state,'held');assert.ok(malformedProfile.reasons.includes('invalid_profile_field'));
  const future=await result(await upload(csv([['future','synthetic-auth-146@example.com','Future','Support','active',new Date(r.now+86400000).toISOString()]]),'future.csv'),202);
@@ -98,6 +100,7 @@ export async function sftpIngressFlow(t) {
  assert.ok((await result(await r.call('/api/auth/launcher',{cookie:workers[0].cookie}))).apps.some(row=>row.id===app.id),'the SFTP mover gains exactly the rule-assigned app');
  const {register}=await import('./webauthn.mjs');const joined=await register(r,await emailSession(r,'synthetic-auth-147@example.com'));
  assert.ok((await result(await r.call('/api/auth/launcher',{cookie:joined.cookie}))).apps.some(row=>row.id===app.id),'the SFTP hire enrolls with Auth proof before accessing the assigned app');
+ const repeated=await command('hr-feeds/upload',{feedId:feed.id,fileName:'already-ended.csv',text:csv([['source-1','synthetic-auth-191@example.com','Already ended','Support','terminated',effective]])},202);assert.equal(repeated.state,'staged','an already terminated source row is not a new destructive transition');
  const foreign=await result(await r.call('/api/auth/organizations/create',post({name:'Separate HR employer'},owner.cookie)),201);
  const denied=await r.call('/org/'+foreign.id+'/api/auth/hr-feeds/ingest',{method:'POST',data:{feedId:feed.id,fileName:'foreign.csv',text:file},headers:{authorization:'AuthFeed '+feed.ingressToken,'x-auth-sftp-fingerprint':feed.fingerprint}});assert.equal(denied.status,401,'a feed token cannot cross employers');
  await result(await r.call('/api/auth/hr-feeds/disable',post({feedId:feed.id},owner.cookie)));

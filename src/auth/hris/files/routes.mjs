@@ -40,11 +40,11 @@ async function receive(ctx,feed,data,transport,guard) {
  const parsed=parseFeed(data.text,JSON.parse(feed.mapping)),reasons=[...parsed.errors],directory=await loadDirectory(ctx);
  for(const row of parsed.records)for(const [field,value] of Object.entries(row.fields)){try{await normalize(ctx,directory.defs.get(field),value);}catch{if(!reasons.includes('invalid_profile_field'))reasons.push('invalid_profile_field');}}
  const workers=[...directory.people.values()].filter(person=>person.role==='member'&&person.status==='active').length;
- const terminations=parsed.records.filter(row=>row.state==='terminated').length;
+ const terminations=parsed.records.filter(row=>row.state==='terminated'&&directory.people.get(directory.sources.get('hr:'+feed.id+':'+row.sourceId))?.state!=='terminated').length;
  if(terminations&&(!workers||terminations*100>workers*feed.termination_percent))reasons.push('termination_threshold_exceeded');
  const id=random(),state=reasons.length?'held':'staged',marker={clause:'EXISTS(SELECT 1 FROM auth_hr_files WHERE id=?)',args:[id]};
  const statements=[ctx.db.prepare(`INSERT INTO auth_hr_files(id,feed_id,digest,file_name,received_at,transport,state,reasons,row_count) SELECT ?,?,?,?,?,?,?,?,? WHERE ${guard.clause}`).bind(id,feed.id,digest,data.fileName,ctx.now(),transport,state,JSON.stringify(reasons),parsed.records.length,...guard.args),
-  ctx.db.prepare(`UPDATE auth_hr_feeds SET last_received_at=?,last_success_at=CASE WHEN ?=0 THEN ? ELSE last_success_at END WHERE id=? AND ${marker.clause}`).bind(ctx.now(),reasons.length,ctx.now(),feed.id,id),
+  ctx.db.prepare(`UPDATE auth_hr_feeds SET last_received_at=?,last_success_at=CASE WHEN ?=0 THEN ? ELSE last_success_at END WHERE id=? AND ${marker.clause}`).bind(ctx.now(),parsed.errors.length||reasons.includes('invalid_profile_field')?1:0,ctx.now(),feed.id,id),
   ...parsed.records.map((row,idx)=>ctx.db.prepare(`INSERT INTO auth_hr_file_rows(file_id,idx,source_id,record) SELECT ?,?,?,? WHERE ${marker.clause}`).bind(id,idx,feed.id+':'+row.sourceId,JSON.stringify(row),id)),
  ];
  let done;try{done=await ctx.db.batch(statements);}catch(error){
