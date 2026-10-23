@@ -34,5 +34,5 @@ CREATE TABLE auth_refresh_credentials (
  UNIQUE(family_id,generation)
 );
 CREATE TABLE auth_refresh_proofs (
- jkt TEXT NOT NULL, jti TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(jkt,jti)
+ jkt TEXT NOT NULL, jti TEXT NOT NULL, family_id TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(jkt,jti)
 );

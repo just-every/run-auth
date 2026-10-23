@@ -35,7 +35,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  for(const row of values(stores,'auth_delegated_agents'))if(reset||row.registered_by===target||identifiers.has(row.client_id)){identifiers.add(row.id);identifiers.add(row.client_id);}
  for(const row of values(stores,'auth_delegated_tasks'))if(reset||contains(row,identifiers))identifiers.add(row.id);
  if(kind==='app')for(const row of values(stores,'auth_oidc_clients'))if(row.app_id===target)identifiers.add(row.client_id);
- for(const row of values(stores,'auth_refresh_families'))if(reset||contains(row,identifiers))identifiers.add(row.id);
+ for(const name of ['auth_refresh_families','auth_refresh_consents'])for(const row of values(stores,name))if(reset||contains(row,identifiers))identifiers.add(row.id);
  followupReferences(stores,identifiers,reset);
  const holds=values(stores,'auth_erasure_holds').filter(h=>!h.released_at&&(reset||h.kind==='installation'||h.kind==='organization'&&h.target===organizationOf(ctx)||h.kind===kind&&identifiers.has(h.target)));
  const policy=values(stores,'auth_erasure_policy')[0];

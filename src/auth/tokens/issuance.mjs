@@ -22,7 +22,7 @@ export async function initialProof(ctx,request,code) {
  if(!code?.refresh_consent_id)return;
  const consent=await one(ctx,'SELECT * FROM auth_refresh_consents WHERE id=? AND approved_at IS NOT NULL AND expires_at>?',code.refresh_consent_id,ctx.now());
  if(!consent)fail('invalid_grant');
- await deviceProof(ctx,request,consent.jkt);
+ await deviceProof(ctx,request,consent.jkt,null,consent.id);
 }
 export async function initialFamily(ctx,client,code) {
  const c=await one(ctx,'SELECT * FROM auth_refresh_consents WHERE id=? AND approved_at IS NOT NULL AND expires_at>?',code.refresh_consent_id,ctx.now());
@@ -45,7 +45,7 @@ export async function refreshFamily(ctx,request,form,client) {
  if(!f)fail('invalid_grant');
  // A stolen digest alone cannot trigger family denial: authenticate the bound
  // client and device before making a reuse decision.
- await deviceProof(ctx,request,f.jkt);
+ await deviceProof(ctx,request,f.jkt,null,f.id);
  if(form.has('resource')||form.has('scope'))fail('invalid_scope');
  if(credential.consumed_at!==null||credential.token_hash!==f.current_hash){await endFamily(ctx,f.id,'refresh_reuse');fail('invalid_grant');}
  await requireFamily(ctx,f);
