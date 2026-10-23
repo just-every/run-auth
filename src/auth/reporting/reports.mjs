@@ -89,12 +89,17 @@ export async function reportsRead(ctx, request, path) {
     const terminated = people.filter(person => person.state === 'terminated');
     directoryCount = name === 'terminated-people' ? terminated.length : people.length;
     rows = (name === 'terminated-people' ? terminated : people).map(person => {
-      const work = provisioning.filter(row => row.subject_id === person.id && row.reason === 'person_terminated' && row.event_at >= (person.terminatedAt ?? Infinity));
+      const byApp=new Map();
+      for(const row of provisioning.filter(row=>row.subject_id===person.id&&row.event_at>=(person.terminatedAt??Infinity)&&row.state!=='superseded')){
+        const prior=byApp.get(row.app_id);
+        if(!prior||prior.state==='verified'&&(row.state!=='verified'||row.verified_at>prior.verified_at))byApp.set(row.app_id,row);
+      }
+      const work=[...byApp.values()];
       const unresolved = work.filter(row => !['verified', 'superseded'].includes(row.state));
       const hidden = unresolved.some(row => !visibleApp(row.app_id));
       return {...common(person), terminationEffectiveAt: iso(person.terminatedAt), leaverEventAt: work.length ? iso(Math.min(...work.map(row => row.event_at))) : unknown,
         localDenialAt: unknown, fullDeprovisionAt: unknown,
-        remoteVerifiedAt: work.length && !unresolved.length ? iso(Math.max(...work.map(row => row.verified_at ?? 0))) : unknown,
+        remoteVerifiedAt: work.length && work.every(row=>row.state==='verified'&&row.verified_at!==null) ? iso(Math.max(...work.map(row => row.verified_at))) : unknown,
         unresolvedApps: [...new Set(unresolved.filter(row => visibleApp(row.app_id)).map(row => row.name))],
         unresolvedOutsideScope: hidden ? unknown : false, sourceObservedAt: unknown, timingQualification: 'unmeasured'};
     });

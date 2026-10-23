@@ -12,6 +12,7 @@ export async function applyHrFile(ctx,request,s,data) {
  if(review.digest!==data.digest)fail('hr_preview_changed',409);
  if(review.file.reasons.some(reason=>reason!=='termination_threshold_exceeded'))fail('malformed_hr_file_cannot_apply',409);
  if(review.file.reasons.includes('termination_threshold_exceeded')&&data.confirmHeld!==true)fail('explicit_destructive_hr_confirmation_required',403);
+ const additionalGuard={clause:"EXISTS(SELECT 1 FROM auth_hr_feeds f JOIN oa_operators p ON p.id=f.created_by JOIN auth_hr_files file ON file.feed_id=f.id WHERE f.id=? AND file.id=? AND file.state!='reviewed' AND f.disabled_at IS NULL AND f.token_hash=? AND p.status='active' AND p.role IN ('owner','admin') AND p.version=f.owner_version)",args:[review.feed.id,review.file.id,review.feed.token_hash]};
  const selected=data.rows.map(idx=>review.outcomes.find(row=>row.idx===idx)||fail('hr_row_not_found',404));
  if(selected.some(row=>!['review_existing','new_hire_review_required'].includes(row.outcome)))fail('hr_row_requires_review',409);
  if(review.plan&&!review.plan.ok||review.newPlans.some(row=>data.rows.includes(row.idx)&&row.plan.refusals.length))fail('hr_row_refused',409);
@@ -28,7 +29,7 @@ export async function applyHrFile(ctx,request,s,data) {
   // If the selected native plan differs from the approved entries, do not
   // silently accept a concurrent change while preparing the native request.
   for(const entry of plan.entries)if(JSON.stringify(entry)!==JSON.stringify(review.plan.entries.find(prior=>prior.personId===entry.personId)))fail('hr_preview_changed',409);
-  const reply=await directoryAction(ctx,request,'/directory/apply',{edits,digest:plan.digest},{notify:()=>{}});
+  const reply=await directoryAction(ctx,request,'/directory/apply',{edits,digest:plan.digest},{notify:()=>{},additionalGuard});
   if(!reply.ok)return reply;
   completed.push(...existing.map(row=>({idx:row.idx,personId:row.personId})));
  }
@@ -38,7 +39,7 @@ export async function applyHrFile(ctx,request,s,data) {
   // Native onboard refuses every email/source collision and creates only an
   // invited member; normal browser-bound email proof and factor enrollment
   // remain mandatory. Invitations are a separate explicit action.
-  const reply=await directoryAction(ctx,request,'/directory/onboard',{email:row.email,name:row.fields.name??row.email,source:'hr',sourceId,set:row.fields,invite:false},{notify:()=>{}});
+  const reply=await directoryAction(ctx,request,'/directory/onboard',{email:row.email,name:row.fields.name??row.email,source:'hr',sourceId,set:row.fields,invite:false},{notify:()=>{},additionalGuard});
   if(!reply.ok)return reply;
   const made=await reply.json();completed.push({idx:row.idx,personId:made.id});
  }

@@ -83,5 +83,8 @@ export async function terminatedReportFlow(t) {
  assert.deepEqual(left.unresolvedApps,[]);assert.notEqual(left.remoteVerifiedAt,'unknown');
  const health=await result(await r.call('/api/auth/reports/connector-health',{cookie:owner.cookie}));
  assert.equal(health.rows[0].status,'unhealthy');assert.ok(health.rows[0].openFailures>0);
- assert.ok(!JSON.stringify([report,health]).includes(token));
+ await command('directory/edit',{personId:'held',source:'hr',set:{name:'Held worker profile revised'}});
+ const revised=await result(await r.call('/api/auth/reports/terminated-people',{cookie:owner.cookie}));
+ const residual=revised.rows.find(row=>row.personId==='held');assert.deepEqual(residual.unresolvedApps,['Unresolved payroll access']);assert.equal(residual.remoteVerifiedAt,'unknown','superseding an old leaver queue never fabricates remote completion');
+ assert.ok(!JSON.stringify([report,health,revised]).includes(token));
 }

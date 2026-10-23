@@ -4,7 +4,8 @@ import ssh2 from 'ssh2';
 const {Client,utils}=ssh2;
 import {createSftpIngress,fingerprint} from '../../connectors/sftp/server.mjs';
 import {ownerInstall,post,passkeyPerson,signInAgain} from './agents-helpers.mjs';
-import {emailSession} from './runtime.mjs';
+import {emailSession,cookieOf} from './runtime.mjs';
+import {authenticate} from './webauthn.mjs';
 const result=async(response,status=200)=>{assert.equal(response.status,status,await response.clone().text());return response.json();};
 const mapping={sourceId:'Employee ID',email:'Work email',name:'Name',department:'Department',state:'Status',effectiveAt:'Effective'};
 const csv=rows=>'Employee ID,Work email,Name,Department,Status,Effective\n'+rows.map(row=>row.join(',')).join('\n')+'\n';
@@ -20,6 +21,8 @@ export async function hrFilePreviewFlow(t) {
  for(let i=0;i<5;i++)await passkeyPerson(r,'worker-'+i,'synthetic-auth-'+(140+i)+'@example.com','member');
  for(let i=0;i<2;i++)await result(await r.call('/api/auth/directory/source',post({source:'hr',records:[{sourceId:feed.id+':source-'+i,personId:'worker-'+i,email:'synthetic-auth-'+(140+i)+'@example.com',fields:{department:'Support'}}]},owner.cookie)));
  const file=csv([['new-hire','synthetic-auth-145@example.com','New hire','Engineering','active',at],['source-0','synthetic-auth-140@example.com','Mover','Engineering','active',at],['source-1','synthetic-auth-141@example.com','Leaver','Support','terminated',at]]);
+ const passkeyOnly=cookieOf((await authenticate(r,owner.key)).response);
+ for(const [path,data] of [['hr-feeds/create',{name:'No email',schedule:'hourly',mapping,fingerprint:keyFingerprint(key),confirm:true}],['hr-feeds/upload',{feedId:feed.id,fileName:'blocked.csv',text:file}],['hr-feeds/apply',{feedId:feed.id,fileId:'synthetic-auth-180',digest:'synthetic-auth-181',rows:[0],confirm:true}],['hr-feeds/disable',{feedId:feed.id}],['hr-feeds/close-file',{feedId:feed.id,fileId:'synthetic-auth-182',confirm:true}]])assert.equal((await r.call('/api/auth/'+path,post(data,passkeyOnly))).status,403,path+' still needs fresh local email');
  const upload=(text,fileName='hr.csv')=>r.call('/api/auth/hr-feeds/upload',post({feedId:feed.id,fileName,text},owner.cookie));
  const received=await result(await upload(file),202);assert.equal(received.state,'held');assert.deepEqual(received.reasons,['termination_threshold_exceeded']);
  const preview=await result(await r.call('/api/auth/hr-feeds?fileId='+received.fileId,{cookie:owner.cookie}));
@@ -124,4 +127,11 @@ export async function hrFileApplyFlow(t) {
  assert.equal((await r.call('/api/auth/hr-feeds/apply',post(params,owner.cookie))).status,409,'the old preview cannot replay after native effects');
  await r.restart();assert.ok((await read()).preview.outcomes.every(row=>row.outcome==='locally_applied'));
  assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM oa_operators WHERE email=?').bind('synthetic-auth-155@example.com').first()).n,1,'restart retains one stable source-bound hire');
+ const pending=await command('hr-feeds/upload',{feedId:feed.id,fileName:'cutover.csv',text:csv([['cutover','synthetic-auth-156@example.com','Cutover hire','Engineering','active',at]])},202);
+ const pendingView=(await result(await r.call('/api/auth/hr-feeds?fileId='+pending.fileId,{cookie:owner.cookie}))).preview;
+ edge.responses.set('/hr-import',async()=>{await command('hr-feeds/disable',{feedId:feed.id});return {body:{allow:true,profile:{name:'Reviewed HR name'}}};});
+ const stopped=await r.call('/api/auth/hr-feeds/apply',post({feedId:feed.id,fileId:pending.fileId,digest:pendingView.digest,rows:[0],confirm:true},owner.cookie));
+ assert.ok([403,409].includes(stopped.status),'disabling during an import hook fences the native commit');
+ assert.equal(await r.db.prepare('SELECT id FROM oa_operators WHERE email=?').bind('synthetic-auth-156@example.com').first(),null);
+
 }

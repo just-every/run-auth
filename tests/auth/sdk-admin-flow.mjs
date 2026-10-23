@@ -44,9 +44,14 @@ export async function sdkAdminFlow(t) {
   const service = await create({people: [], groups: ['*'], apps: []});
   const settings = {issuer: r.origin, clientId: service.clientId, privateKey: key.privateKey, kid: 'synthetic-auth-101', scopes: ['groups.manage']};
   const client = createAdminClient(settings);
-  const made = await Promise.all(['Engineering', 'Support'].map(name => client.request('POST', '/groups', {body: {name}})));
+  const concurrent = await Promise.all([client.request('GET', '/groups'), client.request('GET', '/groups')]);
+  assert.deepEqual(concurrent.map(row => row.status), [200, 200]);
+  assert.equal(requests.filter(([method, path]) => path === '/oidc/token').length, 1, 'concurrent reads share one private-key exchange');
+  // Native writes intentionally share a revision fence. Submit independent
+  // creations deliberately; the SDK must never retry a refused concurrent write.
+  const made = [];
+  for (const name of ['Engineering', 'Support']) made.push(await client.request('POST', '/groups', {body: {name}}));
   assert.deepEqual(made.map(row => row.status), [201, 201]);
-  assert.equal(requests.filter(([method, path]) => path === '/oidc/token').length, 1, 'concurrent calls share one private-key exchange');
   const pages = []; for await (const page of client.pages('/groups', {limit: 1})) pages.push(page.data);
   assert.equal(pages.length, 2); assert.equal(pages[0].total, 2); assert.equal(pages[1].nextOffset, null);
   const id = made[0].data.id, old = await client.request('GET', '/groups/' + id);
