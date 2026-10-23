@@ -116,7 +116,7 @@ function scopedRuntime(options) {
      if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(key=>!['feedId','fileName','text'].includes(key)))fail('invalid_hr_upload');
      return path.endsWith('/ingest')?await hrFeedIngress(ctx,request,body):await hrFeedAction(ctx,request,'/hr-feeds/upload',body);
     }
-    if(isPairPath(path)&&url.search)fail('receipt_body_required',400);
+    if(['/receipt','/receipt-key','/receipt-revoke'].some(suffix=>path===PAIRS_PREFIX+suffix)&&url.search)fail('receipt_body_required',400);
     const data=await input(ctx,request);
     if(path===BRIDGE+'/register')return bridgeRegister(ctx,request,data);
     if(path===BRIDGE+'/disable')return bridgeDisable(ctx,request,data);

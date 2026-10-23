@@ -37,8 +37,10 @@ export async function personReceipt(ctx,request,data) {
   const org=await one(ctx,'SELECT status FROM auth_organizations WHERE id=?',entry.organizationId);
   const notice=org?.status==='active'?await ctx.db.prepare(`SELECT handle,erasure_reference,state,hold_id FROM ${namespace(entry.organizationId)}auth_identity_release_notices WHERE id=?`).bind(entry.noticeId).first():null;
   const activeHold=notice?.state==='held'&&await ctx.db.prepare(`SELECT id FROM ${namespace(entry.organizationId)}auth_erasure_holds WHERE id=? AND released_at IS NULL`).bind(notice.hold_id).first();
-  // Older encrypted receipts can still resolve through their live notice.
-  visible.push({handle:entry.handle??notice?.handle,erasureReference:entry.erasureReference??notice?.erasure_reference,state:org?.status==='erased'?'employer-erased':notice?.state==='held'&&!activeHold?'pending':notice?.state??'unknown'});
+  // Resolve pre-rider payloads only while their original notice still exists.
+  const handle=entry.handle??notice?.handle,erasureReference=entry.erasureReference??notice?.erasure_reference;
+  if(!handle||!erasureReference)fail('receipt_unavailable',404);
+  visible.push({handle,erasureReference,state:org?.status==='erased'?'employer-erased':notice?.state==='held'&&!activeHold?'pending':notice?.state??'unknown'});
  }
  return json({state:'installation-erased',notices:visible,message:UNLINKED_RECEIPT});
 }

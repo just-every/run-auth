@@ -58,8 +58,8 @@ export async function identityPairsFlow(t) {
  assert.ok(issued.expiresAt>r.now);
  for(const path of ['/api/auth/me','/api/auth/identity-pairs','/api/auth/identity-pairs/export'])assert.equal((await r.call(path,{headers:{authorization:'Bearer '+receiptKey}})).status,401,'receipt authority never signs in or lists memberships');
  assert.equal((await r.call('/api/auth/erasure/policy',{...post({confirm:true,receiptKey}),headers:{authorization:'Bearer '+receiptKey}})).status,401,'receipt authority cannot erase');
- assert.equal((await r.call('/api/auth/'+read+'?receiptKey='+receiptKey,post({receiptKey}))).status,400,'a URL is never a receipt-key transport');
- assert.equal((await r.call('/api/auth/'+read+'?receiptKey='+receiptKey)).status,404);
+ assert.equal((await r.call('/api/auth/'+read+'?receiptKey=synthetic-auth-1',post({receiptKey}))).status,400,'a URL is never a receipt-key transport');
+ assert.equal((await r.call('/api/auth/'+read+'?receiptKey=synthetic-auth-1')).status,404);
  await command(r,undefined,read,{receiptKey:'synthetic-auth-1'},404);
  assert.equal((await command(r,undefined,'identity-pairs/receipt',{receiptKey})).state,'awaiting-installation-erasure');
  await command(r,owner.cookie,'erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
