@@ -16,6 +16,7 @@ export async function refreshLifecycle(t) {
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'ada',role:'reader'});
  const profile=async(extra={})=>command('refresh/profile',{clientId:app.clientId,apiId:api.id,scopes:['read','write'],idleHours:1,absoluteHours:24,...extra});
  await profile();
+ const freshAt=r.now;r.now+=660000;await command('refresh/profile',{clientId:app.clientId,apiId:api.id,scopes:['read'],idleHours:1,absoluteHours:24},403);r.now=freshAt;
  const cors=await r.call('/oidc/token',{method:'OPTIONS',headers:{origin:'https://native.example.com','access-control-request-method':'POST','access-control-request-headers':'dpop,content-type'}});assert.equal(cors.status,204);assert.equal(cors.headers.get('access-control-allow-origin'),'https://native.example.com');
  assert.equal((await r.call('/oidc/token',{method:'OPTIONS',headers:{origin:'https://unregistered.example.com','access-control-request-method':'POST'}})).status,404);
  await command('refresh/profile',{clientId:app.clientId,apiId:api.id,scopes:['read'],idleHours:1,absoluteHours:24},403,r.ada);
@@ -85,7 +86,7 @@ export async function refreshLifecycle(t) {
  for(let step=0;step<2;step++){r.now+=2500;const res=await rawRefresh(absolute.sdk.getTokens().refresh_token);assert.equal(res.status,200);absolute.sdk.restore(await res.json());}
  r.now+=2500;assert.equal((await rawRefresh(absolute.sdk.getTokens().refresh_token)).status,400,'absolute expiry never slides');assert.equal((await check(absolute.sdk.getTokens().access_token)).status,401);
  r.tick=()=>{r.now=Date.now();};r.tick();await profile();
- const adminEnded=await connect({deviceName:'Administrator inventory'});assert.ok((await inventory(r.owner.cookie,'?refreshAdmin=1')).some(g=>g.id===adminEnded.tokens.grant_id));await command('refresh/revoke',{id:adminEnded.tokens.grant_id});assert.equal((await check(adminEnded.tokens.access_token)).status,401);
+ const adminEnded=await connect({deviceName:'Administrator inventory'});assert.ok((await inventory(r.owner.cookie,'?refreshAdmin=1')).some(g=>g.id===adminEnded.tokens.grant_id));const emailAt=r.now;r.now+=660000;await command('refresh/revoke',{id:adminEnded.tokens.grant_id},403);r.now=emailAt;assert.equal((await check(adminEnded.tokens.access_token)).status,200);await command('refresh/revoke',{id:adminEnded.tokens.grant_id});assert.equal((await check(adminEnded.tokens.access_token)).status,401);
  const {passkeyPerson}=await import('./agents-helpers.mjs'),support=await passkeyPerson(r,'field-support','field-support@example.com');
  const plan=async data=>{const preview=await command('roles/preview',data);return (await command('roles/apply',{previewId:preview.previewId})).plan;};
  const supportRole=await plan({kind:'role',role:{name:'Field grant support',rank:50,permissions:['apps.view','apps.edit']}});
@@ -95,6 +96,7 @@ export async function refreshLifecycle(t) {
  await command('refresh/revoke',{id:scoped.tokens.grant_id},403,support.cookie);assert.equal((await check(scoped.tokens.access_token)).status,200);
  await plan({kind:'grant',personId:'field-support',roleId:supportRole.role.id,resources:{view:{apps:[app.id],people:['ada']},edit:{apps:[app.id],people:['ada']}}});
  await command('refresh/revoke',{id:scoped.tokens.grant_id},200,support.cookie);assert.equal((await check(scoped.tokens.access_token)).status,401);await command('refresh/revoke',{id:hidden.tokens.grant_id},403,support.cookie);
+ await plan({kind:'grant',personId:'ada',roleId:supportRole.role.id,resources:{view:{apps:[app.id],people:['ada']},edit:{apps:[app.id],people:['ada']}}});const peer=await connect({deviceName:'Equal-rank administrator tablet'});assert.ok((await inventory(support.cookie,'?refreshAdmin=1')).some(g=>g.id===peer.tokens.grant_id),'view scope does not use rank');await command('refresh/revoke',{id:peer.tokens.grant_id},403,support.cookie);assert.equal((await check(peer.tokens.access_token)).status,200);await command('refresh/revoke',{id:peer.tokens.grant_id});assert.equal((await check(peer.tokens.access_token)).status,401);
  const suspended=await connect({deviceName:'Suspended worker tablet'});await command('people/suspend',{personId:'ada'});assert.equal((await rawRefresh(suspended.tokens.refresh_token)).status,400);assert.equal((await check(suspended.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===suspended.tokens.grant_id));
  // A second active worker proves app removal independently of suspension.
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'bob',role:'reader'});
