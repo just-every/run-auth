@@ -50,7 +50,7 @@ export async function refreshJourney(t) {
  for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});await page.reload();
   const icon=page.locator('[data-theme-toggle]:visible').first();await icon.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toHaveText('Color theme');
-  await page.mouse.move(0,0);await icon.focus();await expect(page.getByRole('tooltip')).toHaveText('Color theme');await page.screenshot({path:join(directory,`refresh-keyboard-tooltip-${width}.png`)});
+  await page.mouse.move(0,0);await icon.focus();assert.equal(await page.locator('#auth-tooltip').isVisible(),true,'keyboard focus shows the tooltip immediately');assert.equal(await page.locator('#auth-tooltip').textContent(),'Color theme');await page.screenshot({path:join(directory,`refresh-keyboard-tooltip-${width}.png`)});
   await page.keyboard.press('Escape');await expect(page.getByRole('tooltip')).toBeHidden();
  }
  await owner.goto(app.origin+'/app/account?refreshAdmin=1');await expect(owner.getByRole('button',{name:'Revoke Erin’s managed iPad · Field engineering',exact:true})).toBeVisible();await shoot('administrator-inventory',owner);
