@@ -62,7 +62,7 @@ export async function identityPairsJourney(t) {
  for(const org of organizations){assert.ok(!JSON.stringify(preview).includes(org.name));assert.ok(!JSON.stringify(erased).includes(org.name));}
  const notice=(await json(await owner.context.request.get(app.origin+a.prefix+'/api/auth/identity-release-notices'))).notices[0];assert.equal(notice.handle,paired.handle);
  for(const org of [b,c])assert.deepEqual((await json(await owner.context.request.get(app.origin+org.prefix+'/api/auth/identity-release-notices'))).notices,[]);
- await owner.page.goto(app.origin+a.prefix+'/app/activity');await expect(owner.page.locator('[data-followup-panel]')).toContainText('Identity release');await shoot('release-followup',owner.page);
+ await owner.page.goto(app.origin+a.prefix+'/app/activity');await expect(owner.page.locator('[data-followup-panel]')).toContainText('identity release');await shoot('release-followup',owner.page);
  const receipt=await json(await post(person.context,'/api/auth/identity-pairs/receipt',{receiptKey:key}));assert.equal(receipt.notices.length,1);assert.equal(receipt.notices[0].organization,a.name);assert.equal(receipt.notices[0].state,'pending');assert.ok(receipt.message.includes('Memberships you did not link'));
  const anonymous=await browser.newContext(),signin=await anonymous.newPage();await signin.goto(app.origin+a.prefix+'/signin');await expect(signin.getByText('To ask for erasure of an employer membership',{exact:false})).toBeVisible();await shoot('employer-signin',signin);
  await anonymous.close();await person.context.close();await owner.context.close();
