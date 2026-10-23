@@ -39,7 +39,7 @@ export async function refreshLifecycle(t) {
  };
  const proof=async(path,access,keyPair=key)=>new SignJWT({jti:crypto.randomUUID(),iat:Math.floor(r.now/1000),htm:'POST',htu:r.origin+path,...(access?{ath:await (await import('../../src/auth/core.mjs')).hash(access)}:{})}).setProtectedHeader({alg:'ES256',typ:'dpop+jwt',jwk:await exportJWK(keyPair.publicKey)}).sign(keyPair.privateKey);
  const rawRefresh=async(token,extra={},keyPair=key,envelope={})=>r.call('/oidc/token',{method:'POST',form:{grant_type:'refresh_token',client_id:app.clientId,refresh_token:token,...extra},headers:{dpop:await proof('/oidc/token',null,keyPair)},...envelope});
- const check=async(token,extra={},keyPair=key)=>r.call('/api/auth/resource-apis/check',{method:'POST',data:{apiId:api.id,action:'read',resource:'document:budget',...extra},headers:{authorization:'DPoP '+token,dpop:await proof('/api/auth/resource-apis/check',token,keyPair)}});
+ const check=async(token,extra={},keyPair=key)=>r.call('/api/auth/resource-apis/check',{method:'POST',data:{apiId:api.id,action:'read',resource:'document:budget',...extra},headers:{authorization:'dpop '+token,dpop:await proof('/api/auth/resource-apis/check',token,keyPair)}});
  const inventory=async(cookie=r.ada,query='')=>(await (await r.call('/api/auth/refresh'+query,{cookie})).json()).grants;
  assert.equal((await connect({scopes:['write']})).error,'invalid_scope','consent cannot exceed the current app role');
  await connect({decision:'deny'});

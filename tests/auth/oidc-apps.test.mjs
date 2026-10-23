@@ -234,7 +234,7 @@ test('resource APIs use live app roles and tenant resources for employees and di
  const api=await command('resource-apis/register',{appId:app.id,name:'Documents API',audience:'https://documents.example.com/api',scopes:['read','write'],roles:[{role:'editor',scopes:['read','write'],resources:['document:*'],relations:{ownerId:'$person'}},{role:'reader',scopes:['read'],resources:['document:*']}],resources:[{id:'document:budget',attributes:{ownerId:'ada'}},{id:'document:private',attributes:{ownerId:'bob'}}]},201);
  await command('resource-apis/assign',{apiId:api.id,principalType:'group',principalId:group.id,role:'editor'});
  const check=async(data,cookie=r.ada,token)=>{
-  const response=await r.call('/api/auth/resource-apis/check',{method:'POST',cookie,data:{apiId:api.id,action:'read',resource:'document:budget',...data},headers:token?{authorization:'Bearer '+token,origin:''}:{}});return {response,body:await response.json()};
+  const response=await r.call('/api/auth/resource-apis/check',{method:'POST',cookie,data:{apiId:api.id,action:'read',resource:'document:budget',...data},headers:token?{authorization:'bearer '+token,origin:''}:{}});return {response,body:await response.json()};
  };
  assert.equal((await check({})).body.allowed,true);assert.equal((await check({action:'write'})).body.allowed,true);
  assert.equal((await check({},r.bob)).body.allowed,false,'unassigned role denied');

@@ -72,10 +72,10 @@ export async function resourcePrincipal(ctx,request,apiId) {
  }catch{fail('invalid_resource_token',401);}
  if(header.typ!=='at+jwt'||claims.aud!==api.audience||claims.organization_id!==organization(ctx)||claims.api_id!==api.id||claims.api_revision!==api.revision||typeof claims.client_id!=='string'||typeof claims.scope!=='string'||!Number.isSafeInteger(claims.exp)||!Number.isSafeInteger(claims.iat)||claims.exp-claims.iat>300||claims.exp<=claims.iat||claims.iat>Math.floor(ctx.now()/1000)+30)fail('invalid_resource_token',401);
  if(claims.refresh_family) {
-  if(!request.headers.get('authorization').startsWith('DPoP '))fail('invalid_resource_token',401);
+  if(!/^DPoP /i.test(request.headers.get('authorization')))fail('invalid_resource_token',401);
   return employeePrincipal(ctx,request,api,claims,raw[1]);
  }
- if(!claims.client_id.startsWith(CLIENT_PREFIX)||!request.headers.get('authorization').startsWith('Bearer '))fail('invalid_resource_token',401);
+ if(!claims.client_id.startsWith(CLIENT_PREFIX)||!/^Bearer /i.test(request.headers.get('authorization')))fail('invalid_resource_token',401);
  const service=await serviceRow(ctx,claims.client_id);
  if(!service||claims.resource_service!==service.id||claims.sub!==CLIENT_PREFIX+service.id||claims.revision!==service.revision||claims.owner_id!==service.owner_id||claims.owner_version!==service.owner_version||service.api_id!==api.id||!await guardHolds(ctx,serviceGuard(ctx,service,claims.exp*1000,api.revision)))fail('invalid_resource_token',401);
  const scopes=claims.scope.split(' '),registered=JSON.parse(service.scopes);
