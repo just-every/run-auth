@@ -47,7 +47,7 @@ export async function refreshLifecycle(t) {
  const empty=await make();await assert.rejects(empty.refresh());const first=await connect({sdk:empty}),before=calls;assert.equal(first.error,undefined,'approved native flow');
  const rotations=await Promise.all([first.sdk.refresh(),first.sdk.refresh(),first.sdk.refresh()]);
  assert.equal(calls-before,1,'one SDK refresh serves concurrent callers');assert.equal(new Set(rotations.map(v=>v.refresh_token)).size,1);assert.notEqual(rotations[0].refresh_token,first.tokens.refresh_token);assert.equal(saved.at(-1).refresh_token,rotations[0].refresh_token);
- assert.equal((await first.sdk.resourceRequest('/api/auth/resource-apis/check',{apiId:api.id,action:'read',resource:'document:budget'})).allowed,true);
+ const permission=await first.sdk.resourceRequest('/api/auth/resource-apis/check',{apiId:api.id,action:'read',resource:'document:budget'});assert.equal(permission.allowed,true);assert.notEqual(decodeJwt(rotations[0].access_token).sub,'ada','the app retains its configured pairwise subject');assert.equal(permission.principal.id,decodeJwt(rotations[0].access_token).sub);assert.equal(permission.principal.ownerId,undefined,'an employee check does not expose a cross-app directory identifier');
  assert.equal((await check(rotations[0].access_token)).status,200);assert.equal((await (await check(rotations[0].access_token)).json()).allowed,true);
  assert.equal((await (await check(rotations[0].access_token,{action:'write'})).json()).allowed,false);
  const stranger=await generateKeyPair('ES256',{extractable:true});assert.equal((await rawRefresh(rotations[0].refresh_token,{},stranger)).status,401,'wrong device does not revoke a rightful grant');

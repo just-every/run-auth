@@ -1,3 +1,4 @@
+import {subjectFor} from '../oidc-apps/clients.mjs';
 import {AuthError,auditDetail,fail,hash,json,one,random,run} from '../core.mjs';
 import {ensureSigningKey,signToken} from '../keys.mjs';
 import {invokeHooks} from '../hooks/index.mjs';
@@ -14,7 +15,7 @@ async function accessToken(ctx,client,f,refreshToken) {
  await requireFamily(ctx,f);await ensureSigningKey(ctx);
  const now=Math.floor(ctx.now()/1000),expiry=Math.min(now+300,Math.floor(f.idle_expires_at/1000),Math.floor(f.absolute_expires_at/1000));
  if(expiry<=now)fail('invalid_grant');
- const token=await signToken(ctx,{aud:profile.audience,sub:f.person_id,client_id:f.client_id,refresh_family:f.id,api_id:f.api_id,api_revision:f.api_revision,organization_id:ctx.organizationId??'root',scope:JSON.parse(f.scopes).join(' '),cnf:{jkt:f.jkt},jti:random()},{alg:client.id_token_alg,typ:'at+jwt',expiresAt:expiry,published:true});
+ const token=await signToken(ctx,{aud:profile.audience,sub:await subjectFor(ctx,client,f.person_id),client_id:f.client_id,refresh_family:f.id,api_id:f.api_id,api_revision:f.api_revision,organization_id:ctx.organizationId??'root',scope:JSON.parse(f.scopes).join(' '),cnf:{jkt:f.jkt},jti:random()},{alg:client.id_token_alg,typ:'at+jwt',expiresAt:expiry,published:true});
  await requireFamily(ctx,f);
  return {access_token:token,refresh_token:refreshToken,token_type:'DPoP',expires_in:expiry-now,scope:JSON.parse(f.scopes).join(' '),grant_id:f.id};
 }
