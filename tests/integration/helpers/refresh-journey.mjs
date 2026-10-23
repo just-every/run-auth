@@ -16,9 +16,11 @@ export async function refreshJourney(t) {
  const saved=async(page,action)=>{const loaded=page.waitForEvent('load');await action();await loaded;};
  const shoot=async(name,page,prepare=async()=>{})=>{for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});await page.reload();await prepare();
-  await expect(page.locator('h1')).toBeVisible();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits '+width);
+  await expect(page.locator('h1')).toBeVisible();await page.screenshot({path:join(directory,`refresh-${name}-${width}.png`),fullPage:true});
+  const layout=await page.evaluate(()=>({fits:document.documentElement.scrollWidth<=innerWidth,overflow:[...document.querySelectorAll('main *')].filter(e=>e.scrollWidth>e.clientWidth+1&&getComputedStyle(e).overflowX==='visible').map(e=>({tag:e.tagName,classes:e.className,text:e.textContent.slice(0,120)})).slice(-5)}));assert.ok(layout.fits,name+' fits '+width+' '+JSON.stringify(layout.overflow));
   const axe=await new AxeBuilder({page}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],name+' '+width);
   await page.screenshot({path:join(directory,`refresh-${name}-${width}.png`),fullPage:true});
+  const consent=page.locator('section[aria-label="Offline access consent"]');if(await consent.count())await consent.screenshot({path:join(directory,`refresh-consent-card-${width}.png`)});
   await page.locator('#offline-grants').screenshot({path:join(directory,`refresh-${name}-panel-${width}.png`)});
  }await page.setViewportSize({width:1440,height:1000});};
  await owner.goto(app.origin+'/signin?returnTo=%2Fsetup');await owner.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);await owner.getByRole('button',{name:'Email me a sign-in link'}).click();
@@ -49,9 +51,12 @@ export async function refreshJourney(t) {
  // keyboard focus exposes it immediately, at both supported widths.
  for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});await page.reload();
-  const icon=page.locator('[data-theme-toggle]:visible').first();await icon.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toHaveText('Color theme');
-  await page.mouse.move(0,0);await icon.focus();assert.equal(await page.locator('#auth-tooltip').isVisible(),true,'keyboard focus shows the tooltip immediately');assert.equal(await page.locator('#auth-tooltip').textContent(),'Color theme');await page.screenshot({path:join(directory,`refresh-keyboard-tooltip-${width}.png`)});
-  await page.keyboard.press('Escape');await expect(page.getByRole('tooltip')).toBeHidden();
+  const controls=page.locator('[data-tooltip]:visible');
+  for(let index=0;index<await controls.count();index++){
+   const control=controls.nth(index);await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await expect(page.getByRole('tooltip')).not.toBeEmpty();
+   await page.mouse.move(0,0);await control.focus();assert.equal(await page.locator('#auth-tooltip').isVisible(),true,'keyboard focus shows the tooltip immediately');assert.ok((await page.locator('#auth-tooltip').textContent()).trim());await page.screenshot({path:join(directory,`refresh-keyboard-tooltip-${width}-${index}.png`)});
+   await page.keyboard.press('Escape');await expect(page.getByRole('tooltip')).toBeHidden();await control.blur();
+  }
  }
  await owner.goto(app.origin+'/app/account?refreshAdmin=1');await expect(owner.getByRole('button',{name:'Revoke Erin’s managed iPad · Field engineering',exact:true})).toBeVisible();await shoot('administrator-inventory',owner);
  await saved(page,()=>page.getByRole('button',{name:'Revoke Erin’s managed iPad · Field engineering',exact:true}).click());await expect(page.getByRole('button',{name:'Revoke Erin’s managed iPad · Field engineering',exact:true})).toHaveCount(0);await shoot('employee-revoked',page);
