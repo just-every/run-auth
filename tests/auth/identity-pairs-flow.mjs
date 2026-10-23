@@ -76,7 +76,7 @@ export async function identityPairsFlow(t) {
  assert.equal((await command(r,undefined,'/identity-pairs/receipt',{receiptKey})).notices[0].state,'pending');
  await command(a.client,a.admin.cookie,'/erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
  const hold=await command(a.client,a.admin.cookie,'/erasure/hold',{kind:'person',target:a.personId,reason:'Preserve the active investigation'},201);
- await command(a.client,a.admin.cookie,'identity-release-notices/hold',{noticeId:aNotices[0].id,holdId:hold.id});
+ await command(a.client,a.admin.cookie,'/identity-release-notices/hold',{noticeId:aNotices[0].id,holdId:hold.id});
  const heldReceipt=await command(r,undefined,'/identity-pairs/receipt',{receiptKey});assert.equal(heldReceipt.notices[0].state,'held');
  assert.equal((await json(await a.client.call('/api/auth/followup',{cookie:a.admin.cookie}))).obligations.find(row=>row.kind==='identity_release').state,'completed');
  await command(a.client,a.admin.cookie,'/erasure/hold',{release:true,id:hold.id});
