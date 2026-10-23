@@ -141,8 +141,8 @@ Feed credential/configuration, staged files and jobs are excluded from transfer
 archives; a destination must establish its own custody and consent.
 
 AUTH-HRIS-002 stays partial: explicit current-file review/application is proved,
-but automatic approved routine/effective-date lifecycle, broader uninterrupted
-campaign qualification and separately consented outbound stale reminders are
+but automatic approved routine/effective-date lifecycle, recovery of an interrupted
+multi-row apply and separately consented outbound stale reminders are
 not. Default ADOPTED pending CT: every file requires explicit hardware/fresh-
 email approval; future rows require renewed review; stale-source follow-up
 confers no new outbound consent. HRIS-001 and SCIM-002 inherit these identity,

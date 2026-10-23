@@ -290,6 +290,6 @@ test('the dormant report distinguishes an aged successful sign-in from recent ac
 test('terminated reports retain held app names and verified remote outcomes while connector failures and unmeasured timing stay explicit',terminatedReportFlow);
 
 test('saved HR file mappings hold destructive, empty and malformed deliveries, preview current and future rows, and retain one stale-feed follow-up across restart',hrFilePreviewFlow);
-test('a real SFTP listener admits only the employer key, stages bounded files through Auth, refuses traversal and shells, and ends ingress after disabling',sftpIngressFlow);
+test('a real SFTP listener verifies the employer key, applies reviewed hires, moves and leavers, refuses traversal and shells, and ends ingress after disabling',sftpIngressFlow);
 
 test('an explicitly approved HR file applies reviewed hires, moves and leavers through native directory proof while preserving enrollment and replay refusals',hrFileApplyFlow);
