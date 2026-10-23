@@ -1,3 +1,4 @@
+import {REPORTS,reportsRead} from './reporting/reports.mjs';
 import {BRIDGE,bridgeRegister,bridgeDisable,legacyLogin} from './migration/bridge.mjs';
 import {EMPLOYER_PROVIDERS,configureEmployerProvider} from './tenancy/providers.mjs';
 import {PAIRS_PREFIX,isPairPath,pairAction,pairModel,personReceipt} from './erasure/pairs.mjs';
@@ -89,6 +90,7 @@ function scopedRuntime(options) {
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
     if(path==='/api/auth/hooks'){await requireSession(ctx,request,true);return json(await hookModel(ctx));}
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
+    if(path===REPORTS||path.startsWith(REPORTS+'/'))return await reportsRead(ctx,request,path);
     if(DIRECTORY_READS.includes(path))return await directoryRead(ctx,request,path);
     if(PROFILE_READS.includes(path))return await profileRead(ctx,request);
     // The event cursor reads its own read key, never a cookie.

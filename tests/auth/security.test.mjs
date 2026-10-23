@@ -240,14 +240,14 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
   for(const secret of [connectorCredential,credentialApp.clientSecret])assert.ok(!text.includes(secret),'a public response/export excludes employer credential values');
   assert.doesNotMatch(text,/"(?:encrypted_private|encryptedPrivate|sealed_token|sealedToken|secret_hash|client_secret|clientSecret|private_key|privateKey|private_jwk|privateJwk|d|p|q|dp|dq|qi|oth|k)"\s*:/,'public issuer and directory responses expose no private key or credential fields');
  };
- const employerExports=['roles/export?personId='+personA.id,'roles/audit/export','move-in/subjects.csv?batch='+importA.batchId];
+ const employerExports=['reports/mfa-enrollment?format=csv','roles/export?personId='+personA.id,'roles/audit/export','move-in/subjects.csv?batch='+importA.batchId];
  for(const path of ['me','apps','company-apps','activity',...employerExports]) {
   const response=await a.call('/api/auth/'+path,{cookie:adminA.cookie});assert.equal(response.status,200,path);assertNoCredentials(await response.text());
  }
  const publicIssuer=await a.call('/oidc/jwks',{cookie:owner.cookie});assert.equal(publicIssuer.status,200);const published=await publicIssuer.text();assert.ok(JSON.parse(published).keys.length>0);assertNoCredentials(published);
  const connectorModel=await (await a.call('/api/auth/company-apps',{cookie:adminA.cookie})).json();
  assert.equal(connectorModel.companyApps.find(app=>app.id===credentialApp.id).provisioning.baseUrl,'https://scim.example.com/scim/v2','the credential-free response describes the populated connector');
- const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','delegations'];
+ const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','delegations','reports','reports/mfa-enrollment','reports/mfa-enrollment?format=csv'];
  for(const path of reads) {
   const response=await b.call('/api/auth/'+path,{cookie:adminB.cookie});
   assert.equal(response.status,200,path+' '+await response.clone().text());
