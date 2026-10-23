@@ -1,3 +1,5 @@
+import {PAIRS_PREFIX,isPairPath,pairAction,pairModel,personReceipt} from './erasure/pairs.mjs';
+import {releaseRead,releaseAction} from './erasure/pair-erasure.mjs';
 import {refreshCors} from './tokens/cors.mjs';
 import {isRefreshAction,refreshAction,refreshInventory} from './tokens/routes.mjs';
 import {DECISIONS_READ,isDecisionAction,decisionsRead,decisionAction} from './decisions/routes.mjs';
@@ -70,6 +72,8 @@ function scopedRuntime(options) {
     if(path==='/oidc/authorize')return await authorize(ctx,request);
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
+    if(path===PAIRS_PREFIX||path===PAIRS_PREFIX+'/export')return json(await pairModel(ctx,request),200,path.endsWith('/export')?{'content-disposition':'attachment; filename="auth-identity-links.json"'}:{});
+    if(path==='/api/auth/identity-release-notices')return releaseRead(ctx,request);
     if(path===DECISIONS_READ)return await decisionsRead(ctx,request);
     if(REVIEWS_READS.includes(path))return await reviewsRead(ctx,request,path);
     if(path===REQUESTS_READ)return await requestsRead(ctx,request);
@@ -97,6 +101,9 @@ function scopedRuntime(options) {
     if(path==='/api/auth/move-in/stage')return await stage(ctx,request);
     if(path==='/api/auth/resource-apis/check')return await grantCheck(ctx,request);
     const data=await input(ctx,request);
+    if(path===PAIRS_PREFIX+'/receipt')return personReceipt(ctx,request,data);
+    if(isPairPath(path))return pairAction(ctx,request,path,data);
+    if(path==='/api/auth/identity-release-notices/hold')return releaseAction(ctx,request,data);
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);
     if(path==='/auth/identity/email/confirm')return await confirmEmail(ctx,request,{...data,token:data.token||url.searchParams.get('token')});
     const passkeyPath=path.replace('/auth/identity/passkeys/','/auth/passkeys/');

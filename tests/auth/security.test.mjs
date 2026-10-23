@@ -1,3 +1,4 @@
+import {identityPairsFlow} from './identity-pairs-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPair,exportJWK,SignJWT} from 'jose';
@@ -350,3 +351,5 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
 
 import {continuityFlow} from './continuity-flow.mjs';
 test('scheduled continuity drill exercises protected lost-factor recovery, upstream outage and expired signing-certificate replacement',continuityFlow);
+
+ test('voluntary independent identity pairs keep employer release notices private through installation erasure, holds, membership erasure and creator removal',identityPairsFlow);

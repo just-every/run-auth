@@ -1,3 +1,4 @@
+import {releaseSource} from '../erasure/pair-erasure.mjs';
 import {caseProjection} from './records.mjs';
 import {followupAccess} from './access.mjs';
 import {sendEarly} from './early.mjs';
@@ -19,7 +20,7 @@ export async function followupRead(ctx,request) {
   obligationPage(ctx,request,{table:'auth_obligations',columns:`id,kind,source_id,${caseProjection},owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at`,prefix:'obligation',defaultLimit:200,filter}),
   obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100,filter:{clause:`obligation_id IN (SELECT id FROM auth_obligations WHERE ${filter.clause})`,args:filter.args}}),
  ]);
- for(const ob of obligations.items)ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);
+ for(const ob of obligations.items){ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);if(releaseSource(ob))ob.kind='identity_release';}
  const live=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),access.state.epoch);
  if(!live)fail('role_authority_changed',409);
  const saved=await policy(ctx),visiblePolicy=access.canManage?saved:{enabled:saved.enabled,calendar:saved.calendar,reminderBusinessDays:saved.reminderBusinessDays,deadlineBusinessDays:saved.deadlineBusinessDays,escalation:saved.escalation,recipients:[],escalationRecipients:[]};
@@ -39,7 +40,9 @@ export async function followupAction(ctx,request,path,data) {
  }
  await syncObligations(ctx);
  const ob=await one(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE id=? AND state='open'`,String(data.id??''));if(!ob)fail('followup_unavailable',404);
+ if(releaseSource(ob)&&s.role!=='owner')fail('owner_required',403);
  const owner=await one(ctx,"SELECT id,role FROM oa_operators WHERE id=? AND status='active'",String(data.ownerId??''));if(!owner||!['owner','admin'].includes(owner.role)&&!(ob.case_id&&await holdsCase(ctx,owner.id,ob.case_id)))fail('followup_owner_requires_admin');
+ if(releaseSource(ob)&&owner.role!=='owner')fail('owner_required',403);
  for(const key of ['dueBusinessDays','deadlineBusinessDays'])if(!Number.isInteger(data[key])||data[key]<1||data[key]>90)fail('invalid_followup_schedule');
  if(data.deadlineBusinessDays<data.dueBusinessDays)fail('invalid_followup_schedule');
  const p=await policy(ctx),next=businessDue(ctx.now(),data.dueBusinessDays,p.calendar),deadline=businessDue(ctx.now(),data.deadlineBusinessDays,p.calendar),marker=random();

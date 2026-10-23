@@ -1,3 +1,4 @@
+import {releaseSource} from '../erasure/pair-erasure.mjs';
 import {withCase} from './records.mjs';
 import {one} from '../core.mjs';
 import {roleState} from '../roles/state.mjs';
@@ -18,6 +19,7 @@ export async function holdsCase(ctx,id,caseId) {
 // owner/administrator roles, and retain exactly their earlier consent.
 export async function recipientIds(ctx,ob,selectors) {
  ob=await withCase(ctx,ob);
+ if(releaseSource(ob))return selectors.includes(ob.owner_id)?[ob.owner_id]:[];
  const ids=[];
  for(const selector of selectors) {
   if(selector==='employee') {
@@ -32,6 +34,7 @@ export async function recipient(ctx,ob,id,selectors,{escalation=false}={}) {
  ob=await withCase(ctx,ob);
  const person=await one(ctx,"SELECT id,email,role,status FROM oa_operators WHERE id=?",id);
  if(!person)return null;
+ if(releaseSource(ob))return person.id===ob.owner_id&&person.role==='owner'&&person.status==='active'&&selectors.includes(person.id)?person:null;
  if(selectors.includes(id)&&person.status==='active'&&['owner','admin'].includes(person.role))return person;
  if(escalation)return null;
  if(selectors.includes('employee')&&!ob.case_id&&['enrollment','recovery'].includes(ob.kind)&&ob.person_id===id&&['invited','active'].includes(person.status))return person;
@@ -40,6 +43,7 @@ export async function recipient(ctx,ob,id,selectors,{escalation=false}={}) {
 }
 export async function holdsObligation(ctx,s,ob) {
  ob=await withCase(ctx,ob);
+ if(releaseSource(ob))return s.role==='owner'&&ob.owner_id===s.person_id;
  if(!ob.case_id&&['enrollment','recovery'].includes(ob.kind)&&ob.person_id===s.person_id)return true;
  const holder=await caseHolder(ctx,ob);
  if(holder?.id===s.person_id&&await holdsCase(ctx,s.person_id,ob.case_id))return true;

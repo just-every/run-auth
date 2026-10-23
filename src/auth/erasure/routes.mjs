@@ -1,3 +1,4 @@
+import {releasePerson} from './pair-erasure.mjs';
 import {resetConsentAction} from './reset-consent.mjs';
 import {initializePortability} from './portability.mjs';
 import {all,one,run,random,requireSession,fail,json} from '../core.mjs';
@@ -74,7 +75,7 @@ export async function erasureAction(ctx,request,path,data) {
   return json({id,kind,target,reason},201);
  }
  if(path==='/erasure/preview') {
-  const kind=validKind(data.kind),target=targetOf(ctx,data),plan=await planErasure(ctx,kind,target),id=random(),now=ctx.now();
+  const kind=validKind(data.kind),target=data.releaseNoticeId?await releasePerson(ctx,request,data.releaseNoticeId):targetOf(ctx,data),plan=await planErasure(ctx,kind,target),id=random(),now=ctx.now();
   await ownerWrite(ctx,s,g=>[ctx.db.prepare(`INSERT INTO auth_erasure_previews(id,actor_id,kind,target,digest,created_at,expires_at) SELECT ?,?,?,?,?,?,? WHERE ${g.clause}`).bind(id,s.person_id,kind,target,plan.fingerprint,now,now+600000,...g.args)]);
   return json({id,organizationId:ctx.organizationId,expiresAt:now+600000,...publicPlan(plan)});
  }

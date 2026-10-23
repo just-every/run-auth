@@ -1,3 +1,4 @@
+import {releaseSource,releaseState,releaseCandidates} from '../erasure/pair-erasure.mjs';
 import {caseProjection,withCase} from './records.mjs';
 import {appCandidates,appSourceState} from './app-sources.mjs';
 import {taskCandidates,taskSourceState} from './task-sources.mjs';
@@ -8,6 +9,7 @@ import {businessDue} from './calendar.mjs';
 // cannot manufacture successful enrollment or verified downstream revocation.
 export async function sourceState(ctx,ob) {
  ob=await withCase(ctx,ob);
+ if(releaseSource(ob))return releaseState(ctx,ob);
  if(['app_setup','app_link_proposal','app_link_token'].includes(ob.kind))return appSourceState(ctx,ob);
  if(ob.kind==='delegated_assignment')return taskSourceState(ctx,ob);
  if(ob.kind==='enrollment') {
@@ -49,15 +51,15 @@ export async function syncObligations(ctx) {
  const now=ctx.now(),p=await policy(ctx),owner=await one(ctx,"SELECT id FROM oa_operators WHERE status='active' AND role='owner' ORDER BY created_at,id LIMIT 1");
  const candidates=[...await all(ctx,`SELECT 'enrollment' AS kind,id AS source_id,id AS person_id,NULL AS app_id,created_at FROM oa_operators WHERE status='invited'
   UNION ALL SELECT 'recovery',id,person_id,NULL,created_at FROM auth_recoveries WHERE cancelled_at IS NULL AND completed_at IS NULL
-  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
+  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await releaseCandidates(ctx),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
  for(const c of candidates) {
   const existing=await one(ctx,'SELECT id,state FROM auth_obligations WHERE kind=? AND source_id=?',c.kind,c.source_id);
   if(existing) {
    // Reissuing an expired invitation restores only the follow-up record, using
    // the invitation's own renewed authority. The earlier history stays intact.
-   if(c.kind==='enrollment'&&existing.state==='expired'&&(await sourceState(ctx,c)).state==='open')await ctx.db.batch([
-    ctx.db.prepare("UPDATE auth_obligations SET state='open',stopped_at=NULL,reminders_stopped_at=NULL,next_due_at=?,deadline_at=?,calendar=? WHERE id=? AND state='expired'").bind(businessDue(now,p.reminderBusinessDays,p.calendar),businessDue(now,p.deadlineBusinessDays,p.calendar),JSON.stringify(p.calendar),existing.id),
-    ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,'invitation_reissued',? WHERE changes()>0").bind(random(),existing.id,now),
+   if((c.kind==='enrollment'&&existing.state==='expired'||releaseSource(c)&&existing.state==='completed')&&(await sourceState(ctx,c)).state==='open')await ctx.db.batch([
+    ctx.db.prepare("UPDATE auth_obligations SET state='open',stopped_at=NULL,reminders_stopped_at=NULL,next_due_at=?,deadline_at=?,calendar=? WHERE id=? AND state IN ('expired','completed')").bind(businessDue(now,p.reminderBusinessDays,p.calendar),businessDue(now,p.deadlineBusinessDays,p.calendar),JSON.stringify(p.calendar),existing.id),
+    ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,?,? WHERE changes()>0").bind(random(),existing.id,releaseSource(c)?'erasure_hold_released':'invitation_reissued',now),
    ]);
    continue;
   }

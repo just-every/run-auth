@@ -1,3 +1,4 @@
+import {pairErasureWork,privatePairStore} from './pair-erasure.mjs';
 import {installationFence} from './portability.mjs';
 import {batchWithInstallation} from '../tenancy/storage.mjs';
 import {seal} from '../keys.mjs';
@@ -15,6 +16,7 @@ import {auditCommitments} from './audit.mjs';
 export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  if(plan.holds.length)fail('erasure_legal_hold',409);
  if(!plan.policy?.configured)fail('erasure_policy_configuration_required',409);
+ const pairWork=await pairErasureWork(ctx,plan);
  const id=random(),latch=random(),proof=ownerProof(ctx,s),guard=proof.guard,tasks=await remoteWork(ctx,plan,destinations);
  const hashes=await hashesFor(ctx,plan.identifiers),now=ctx.now();
  const consent=consentGuard(plan.resetConsent,now);
@@ -36,8 +38,10 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  const statement=(sql,args=[])=>ctx.db.prepare(sql+' AND '+held).bind(...args,latch);
  // Write durable anonymized evidence before touching source rows. No receipt
  // or journal may exist for an uncommitted/refused erasure.
+ for(const item of pairWork.before)statements.push(statement(item.sql,item.args));
  const records=[];
  for(const table of plan.stores.values())for(const [index,row] of table.rows.entries()) {
+  if(privatePairStore(table.name))continue;
   const key=keyOf(table.name,index),changes=plan.updates.get(key);
   if(!plan.removed.has(key)&&!changes)continue;
   const primary=table.columns.filter(c=>c.pk).sort((a,b)=>a.pk-b.pk),columns=(primary.length?primary:table.columns).map(c=>c.name);
@@ -46,7 +50,7 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  }
  const journal=await signedJournal(ctx,{id,source:plan.source,organization:plan.organization,kind:plan.kind,reference:plan.reference,hashes,records,createdAt:now},await auditCommitments(plan));
  const storedJournal=plan.reset?{format:'auth-sealed-erasure-journal',version:1,sealed:await seal(ctx,'erasure-journal:'+id,journal)}:journal;
- statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_receipts(id,reference,kind,actor_ref,created_at,stores,limitations,decisions,status,journal) SELECT ?,?,?,?,?,?,?,?,'remote_unfinished',? WHERE ${held}`).bind(id,plan.reference,plan.kind,plan.reset||plan.identifiers.has(s.person_id)?plan.reference:s.person_id,now,JSON.stringify(plan.counts),JSON.stringify(['Mailbox/provider owners must delete delivered messages; Auth cannot recall them.','Installation owners must delete exported archives/backups or supply the later erasure journal on restore.','External audit receiver owners and named app/provider owners must delete independently held copies and retain their confirmations.']),JSON.stringify(plan.decisions),JSON.stringify(storedJournal),latch));
+ statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_receipts(id,reference,kind,actor_ref,created_at,stores,limitations,decisions,status,journal) SELECT ?,?,?,?,?,?,?,?,'remote_unfinished',? WHERE ${held}`).bind(id,plan.reference,plan.kind,plan.reset||plan.identifiers.has(s.person_id)?plan.reference:s.person_id,now,JSON.stringify(plan.counts.filter(row=>!privatePairStore(row.store))),JSON.stringify(['Mailbox/provider owners must delete delivered messages; Auth cannot recall them.','Installation owners must delete exported archives/backups or supply the later erasure journal on restore.','External audit receiver owners and named app/provider owners must delete independently held copies and retain their confirmations.']),JSON.stringify(plan.decisions),JSON.stringify(storedJournal),latch));
  statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_journal(id,source,organization,kind,reference,hashes,records,created_at) SELECT ?,?,?,?,?,?,?,? WHERE ${held}`).bind(id,plan.source,plan.organization,plan.kind,plan.reference,JSON.stringify(hashes),JSON.stringify(records),now,latch));
  for(const task of tasks)statements.push(ctx.db.prepare(`INSERT INTO auth_erasure_remote(id,receipt_id,kind,partner,sealed_work,state,created_at,updated_at,consented_at,app_label) SELECT ?,?,?,?,?,?,?,?,?,? WHERE ${held}`).bind(task.id,id,task.kind,task.storedPartner,task.sealed,task.sealed?'pending':'blocked',now,now,task.consented?now:null,task.appLabel,latch));
  for(const table of plan.stores.values())for(const [index,row] of table.rows.entries()) {
@@ -84,12 +88,13 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  }
  statements.push(statement('DELETE FROM auth_erasure_previews WHERE id=?',[previewId]));
  statements.push(ctx.db.prepare(`INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT ?,'erasure_completed',?,? WHERE ${held}`).bind(plan.reset||plan.identifiers.has(s.person_id)?plan.reference:s.person_id,plan.reference,now,latch));
- const global=await installationFence(ctx,latch);
+ for(const item of pairWork.after)statements.push(statement(item.sql,item.args));
+ const global=[...await installationFence(ctx,latch),...pairWork.global.map(item=>item.statement.bind(...item.args,latch))];
  const marker=(ctx.organization?.namespace??'')+'auth_erasure_commits';
  if(plan.kind==='organization'&&ctx.organizationId!=='root')global.push(ctx.rootDb.prepare(`UPDATE auth_organizations SET name=?,created_by=?,status='erased' WHERE id=? AND EXISTS(SELECT 1 FROM ${marker} WHERE id=?)`).bind(plan.reference,plan.reference,ctx.organizationId,latch));
  global.push((ctx.rootDb??ctx.db).prepare(`DELETE FROM ${marker} WHERE id=?`).bind(latch));
  const batch=await batchWithInstallation(ctx.db,statements,[...global,...proof.after],proof.before),results=batch.slice(proof.before.length);
- const saved=results[1+[...plan.stores.values()].reduce((n,t)=>n+1+t.rows.length,0)];
+ const saved=results[1+pairWork.before.length+[...plan.stores.values()].reduce((n,t)=>n+1+t.rows.length,0)];
  if(!results[0].meta.changes||!saved?.meta.changes){await assertOwnerProof(ctx,s);fail('erasure_conflict',409);}
  await executeRemote(ctx,id,{connections:new Map(tasks.map(task=>[task.id,task.connection]))});
  const receipt=await ctx.db.prepare('SELECT stores,status,limitations FROM auth_erasure_receipts WHERE id=?').bind(id).first();

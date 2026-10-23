@@ -1,3 +1,4 @@
+import {privatePairStore} from './pair-erasure.mjs';
 import {followupReferences,followupErasure} from '../obligations/erasure.mjs';
 import {fail,hash,random} from '../core.mjs';
 import {snapshot,erasureTable} from './schema.mjs';
@@ -40,7 +41,9 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  const holds=values(stores,'auth_erasure_holds').filter(h=>!h.released_at&&(reset||h.kind==='installation'||h.kind==='organization'&&h.target===organizationOf(ctx)||h.kind===kind&&identifiers.has(h.target)));
  const policy=values(stores,'auth_erasure_policy')[0];
  const removed=new Set(),updates=new Map(),decisions=[];
- const canMatch=(name,row)=>contains(row,identifiers);
+ // Role/state/type labels are values, never person identifiers. In particular,
+ // erasing a creator whose id is 'owner' must not select every owner role.
+ const canMatch=(name,row)=>contains(Object.fromEntries(Object.entries(row).filter(([column])=>!['role','state','status','kind','event','type'].includes(column))),identifiers);
  const steward=people.find(p=>p.id!==target&&p.role==='owner'&&p.status==='active')?.id;
  for(const table of stores.values())for(const [index,row] of table.rows.entries()) {
   const key=rowId(table.name,index),name=table.name;
@@ -143,7 +146,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   confirmation:reset?`RESET ${sourceOf(ctx)}`:'ERASE',source:sourceOf(ctx),organization:organizationOf(ctx)};
 }
 export const keyOf=rowId;
-export const publicPlan=plan=>({kind:plan.kind,target:plan.target,confirmation:plan.confirmation,stores:plan.counts,
+export const publicPlan=plan=>({kind:plan.kind,target:plan.target,confirmation:plan.confirmation,stores:plan.counts.filter(row=>!privatePairStore(row.store)),
  remote:plan.remote.map(r=>({kind:r.kind,...(plan.installationReset?{app:r.appLabel||'Connected app',deletionPreauthorized:Boolean(plan.resetConsent?.destinations.includes(r.partner))}:{partner:r.partner}),state:r.work?'awaiting-confirmation':'partner-action-required'})),
  holds:plan.holds.map(h=>({id:h.id,kind:h.kind,...(plan.installationReset?{}:{reason:h.reason})})),policyConfigured:Boolean(plan.policy?.configured),
  limits:['Mailbox/provider owners must delete already delivered messages; Auth cannot recall them.','Installation owners must delete exported archive/backup copies or supply the later erasure journal on restore.','External audit receiver owners must delete delivered event copies; Auth cannot verify that independent storage.','Ask every named partner to delete its independently held copies and confirm completion.','Save the receipt and signed erasure journal before local reset; an old archive cannot discover a later journal.']});
