@@ -16,6 +16,7 @@ export async function migrationJourney({app,edge,browser,owner,page,shoot}) {
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),mine=await context.newPage(),cdp=await context.newCDPSession(mine);
  await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  assert.equal((await post(context,'/api/auth/migration/bridge/login',{bridgeId:bridge.id,sourceSubject:'synthetic-auth-91',password:'synthetic-auth-wrong'})).status(),403);
+ assert.equal(edge.received.filter(row=>row.path==='/legacy-migration').length,1,'wrong password reached the configured verifier through the real Worker');
  await json(await post(context,'/api/auth/migration/bridge/login',{bridgeId:bridge.id,sourceSubject:'synthetic-auth-91',password}),202);
  assert.equal((await context.request.get(app.origin+'/api/auth/me')).status(),401,'old password itself grants no Auth session');
  const link=await app.link();await mine.goto(link.href);await mine.getByRole('button',{name:'Continue to Auth'}).click();

@@ -22,7 +22,11 @@ export async function hookServer(t) {
  const fetchEdge=async request=>{
   const url=new URL(request.url);
   if(!['hooks.example.com','cloudflare-dns.com'].includes(url.hostname))return fetch(request);
-  return fetch(origin+url.pathname+url.search,{method:request.method,headers:request.headers,body:['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer(),signal:request.signal,redirect:'manual'});
+  const headers=new Headers(request.headers);
+  // Miniflare's HTTP service boundary can include transfer framing; the next
+  // HTTP client must compute its own framing for the exact signed body.
+  for(const name of ['connection','transfer-encoding','content-length','host'])headers.delete(name);
+  return fetch(origin+url.pathname+url.search,{method:request.method,headers,body:['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer(),signal:request.signal,redirect:'manual'});
  };
  return {origin,received,responses,privateHosts,fetch:fetchEdge,edges:{'https://hooks.example.com':origin,'https://cloudflare-dns.com':origin}};
 }

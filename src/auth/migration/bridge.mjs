@@ -46,21 +46,22 @@ export async function legacyLogin(ctx,request,data) {
  // The inherited password-import hook receives only the reviewed person and
  // source identifiers, never the password, bridge credential or response body.
  await invokeHooks(ctx,'password_import',{personId:mapping.person_id,sourceId:mapping.source_subject});
- const callId=random(),started=Date.now();let verified=false;
+ const callId=random(),started=Date.now();let verified=false,verifierStatus=null;
  try {
   verified=await withinTimeout(5000,async signal=>{
    const url=await checkedDestination(ctx,mapping.url,signal),credential=await unseal(ctx,'migration-bridge:'+mapping.bridge_id,mapping.sealed_credential);
    const body=JSON.stringify({version:1,id:callId,subject:mapping.source_subject,password:data.password}),timestamp=String(Math.floor(ctx.now()/1000));
    const key=await crypto.subtle.importKey('raw',utf8.encode(credential),{name:'HMAC',hash:'SHA-256'},false,['sign']);
    const signature=b64(await crypto.subtle.sign('HMAC',key,utf8.encode(callId+'.'+timestamp+'.'+body)));
-   const response=await (ctx.connectorFetch||fetch)(url,{method:'POST',redirect:'manual',signal,headers:{'content-type':'application/json','bridge-id':mapping.bridge_id,'bridge-call-id':callId,'bridge-timestamp':timestamp,'bridge-signature':'v1,'+signature},body});
-   if(!response.ok){await response.body?.cancel();return false;}
+   const response=await (ctx.connectorFetch||globalThis.fetch)(url,{method:'POST',redirect:'manual',signal,headers:{'content-type':'application/json','bridge-id':mapping.bridge_id,'bridge-call-id':callId,'bridge-timestamp':timestamp,'bridge-signature':'v1,'+signature},body});
+   verifierStatus=response.status;
+   if(!response.ok){await response.body?.cancel();if(response.status>=500||[408,429].includes(response.status))throw new Error('verifier_unavailable');return false;}
    if(!/^application\/json(?:\s*;|$)/i.test(response.headers.get('content-type')??'')){await response.body?.cancel();return false;}
    const output=JSON.parse(await readBounded(response,signal,2048));
    return output&&Object.keys(output).every(key=>['authenticated','subject'].includes(key))&&output.authenticated===true&&output.subject===mapping.source_subject;
   });
  }catch{await auditDetail(ctx,null,'migration_bridge_call',mapping.bridge_id,{callId,outcome:'unavailable',latencyMs:Date.now()-started});fail('legacy_verifier_unavailable',503);}
- await auditDetail(ctx,null,'migration_bridge_call',mapping.bridge_id,{callId,outcome:verified?'verified':'refused',latencyMs:Date.now()-started});
+ await auditDetail(ctx,null,'migration_bridge_call',mapping.bridge_id,{callId,outcome:verified?'verified':'refused',httpStatus:verifierStatus,latencyMs:Date.now()-started});
  if(!verified)fail('invalid_legacy_credentials',403);
  const current=await eligible(ctx,mapping.bridge_id,mapping.source_subject);if(!current||current.completed_at!==null)fail('migration_changed',409);
  // A write after network verification rechecks the entire reviewed authority.

@@ -32,7 +32,7 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
   await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();
   await expect(page.locator('h1')).toBeVisible();await accessible(`${width} ${theme} ${name}`);if(check)await check(width);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
-  for(const control of await page.locator('[data-tooltip]:visible').all()){await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
+  for(const control of await page.locator('[data-tooltip]:visible').all()){await page.mouse.move(0,0);await control.blur();await expect(page.getByRole('tooltip')).toBeHidden();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
   await page.screenshot({path:join(directory,`move-in-${name}-${width}-${theme}.png`),fullPage:true});
  }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});};
 
