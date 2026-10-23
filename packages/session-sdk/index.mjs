@@ -191,7 +191,7 @@ export async function createSessionClient({
   function refresh() {
     if (refreshInFlight) return refreshInFlight;
     if (completing) return Promise.reject(failure('session_busy'));
-    refreshInFlight = (async () => {
+    refreshInFlight = Promise.resolve().then(async () => {
       try {
         if (!tokens) throw failure('session_required');
         const previous = tokens.refresh_token;
@@ -205,7 +205,7 @@ export async function createSessionClient({
       } finally {
         refreshInFlight = null;
       }
-    })();
+    });
     return refreshInFlight;
   }
 
