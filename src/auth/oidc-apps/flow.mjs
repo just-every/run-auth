@@ -1,3 +1,5 @@
+import {offlineAuthorization,profileFor} from '../tokens/consent.mjs';
+import {initialProof,initialFamily,refreshFamily} from '../tokens/issuance.mjs';
 import {capRoleClaims} from '../reviews/claims.mjs';
 import {invokeHooks} from '../hooks/index.mjs';
 import {recheckIssuance} from '../hooks/fences.mjs';
@@ -21,7 +23,7 @@ function respond(ctx,uri,mode,params) {
  return new Response(null,{status:302,headers:{location:url.href,...noStore}});
 }
 
-async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToken}) {
+async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToken,grantSid}) {
  const proof=await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',s.person_id);
  const assigned=await assignment(ctx,client.app_id,s.person_id);
  if(!proof||ctx.now()-proof.verified_at>=EMAIL_MAX_AGE||!assigned)return null;
@@ -33,7 +35,7 @@ async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToke
  await recheckIssuance(ctx,s,{appId:client.app_id,appVersion:client.app_version,mappingVersion:client.mapping_version,assignmentRole:assigned.role});
  if(withAccessToken)Object.assign(out,{access_token:await signToken(ctx,{aud:`${(ctx.issuer??ctx.origin)}/oidc/userinfo`,sub,client_id:client.client_id,sid:s.id,scope:scopes.join(' '),jti:random()},{alg,typ:'at+jwt',expiresAt}),token_type:'Bearer',expires_in:expiresAt-Math.floor(ctx.now()/1000)});
  if(withIdToken) {
-  const claims=await capRoleClaims(ctx,client.app_id,s.person_id,client.attributes,{aud:client.client_id,sub,sid:s.id,auth_time:Math.floor(s.created_at/1000),amr:JSON.parse(s.amr),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims});
+  const claims=await capRoleClaims(ctx,client.app_id,s.person_id,client.attributes,{aud:client.client_id,sub,sid:grantSid??s.id,auth_time:Math.floor(s.created_at/1000),amr:JSON.parse(s.amr),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims});
   if(out.access_token)claims.at_hash=await halfHash(out.access_token);
   if(code)claims.c_hash=await halfHash(code);
   out.id_token=await signToken(ctx,claims,{alg,expiresAt:Math.floor(ctx.now()/1000)+TOKEN_SECONDS});
@@ -57,7 +59,7 @@ export async function genericAuthorize(ctx,request,login,client) {
  if(type!=='code'&&!LEGACY_TYPES.includes(type))return error('unsupported_response_type');
  if(front&&!client.legacy_flows)return error('unauthorized_client');
  const scopes=(q.get('scope')||'').split(' ').filter(Boolean);
- if(!scopes.includes('openid')||scopes.some(s=>!SCOPES.includes(s)))return error('invalid_scope');
+ if(!scopes.includes('openid')||!scopes.includes('offline_access')&&scopes.some(s=>!SCOPES.includes(s)))return error('invalid_scope');
  const nonce=q.get('nonce');if((type.includes('id_token')&&!nonce)||(nonce&&nonce.length>2048))return error('invalid_request');
  const challenge=q.get('code_challenge'),method=q.get('code_challenge_method');
  if(type.includes('code')) {
@@ -74,6 +76,7 @@ export async function genericAuthorize(ctx,request,login,client) {
   return beginAuthorizationLogin(ctx,request,s,Boolean(s));
  }
  if(!await assignment(ctx,client.app_id,s.person_id)){await audit(ctx,s.person_id,'oidc_refused_unassigned',client.app_id);return error('access_denied');}
+ if(scopes.includes('offline_access'))return offlineAuthorization(ctx,request,s,client);
  let code;
  if(type.includes('code')) {
   code=random();
@@ -94,7 +97,14 @@ export async function genericToken(ctx,request) {
  if(!client)return null;
  try {await authenticate(ctx,request,form,client,[`${(ctx.issuer??ctx.origin)}/oidc/token`,(ctx.issuer??ctx.origin)]);}
  catch(error){if(error instanceof AuthError)return oauthError('invalid_client',401,client.auth_method==='client_secret_basic'?{'www-authenticate':'Basic realm="token"'}:{});throw error;}
+ if([...form.keys()].some(k=>form.getAll(k).length!==1))return oauthError('invalid_request');
+ if(form.get('grant_type')==='refresh_token') {
+  if(!await profileFor(ctx,client.client_id))return oauthError('unsupported_grant_type');
+  try{return await refreshFamily(ctx,request,form,client);}catch(error){if(error instanceof AuthError)return oauthError(error.message,error.status);throw error;}
+ }
  if(form.get('grant_type')!=='authorization_code')return oauthError('unsupported_grant_type');
+ try {await initialProof(ctx,request,await one(ctx,'SELECT refresh_consent_id FROM auth_oidc_codes WHERE code_hash=? AND client_id=?',await hash(form.get('code')||''),client.client_id));}
+ catch(error){if(error instanceof AuthError)return oauthError(error.message,error.status);throw error;}
  // One winner: the code is gone whatever happens next.
  const code=await one(ctx,'DELETE FROM auth_oidc_codes WHERE code_hash=? AND client_id=? AND expires_at>? RETURNING *',await hash(form.get('code')||''),client.client_id,ctx.now());
  if(!code||code.redirect_uri!==form.get('redirect_uri'))return oauthError('invalid_grant');
@@ -102,8 +112,12 @@ export async function genericToken(ctx,request) {
  if(code.challenge?!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier||'')||code.challenge!==await hash(verifier):verifier!==null)return oauthError('invalid_grant');
  const s=await one(ctx,"SELECT s.*,p.email,p.display_name FROM auth_sessions s JOIN oa_operators p ON p.id=s.person_id WHERE s.id=? AND s.revoked_at IS NULL AND s.expires_at>? AND p.status='active' AND p.version=s.person_version",code.session_id,ctx.now());
  if(!s||JSON.parse(s.amr).includes('dev')&&!ctx.local)return oauthError('invalid_grant');
- const scopes=JSON.parse(code.scopes),issued=await tokens(ctx,client,s,{scopes,nonce:code.nonce,withIdToken:true,withAccessToken:true});
+ const scopes=JSON.parse(code.scopes),issued=await tokens(ctx,client,s,{scopes,nonce:code.nonce,grantSid:code.refresh_consent_id,withIdToken:true,withAccessToken:true});
  if(!issued)return oauthError('invalid_grant');
  await audit(ctx,code.person_id,'id_token_issued',client.app_id);
+ if(code.refresh_consent_id) {
+  try {const offline=await initialFamily(ctx,client,code);return json({...issued,...offline},200,{pragma:'no-cache'});}
+  catch(error){if(error instanceof AuthError)return oauthError(error.message,error.status);throw error;}
+ }
  return json({...issued,scope:scopes.join(' ')},200,{pragma:'no-cache'});
 }

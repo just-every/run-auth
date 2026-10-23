@@ -1,3 +1,4 @@
+import {isRefreshAction,refreshAction,refreshInventory} from './tokens/routes.mjs';
 import {DECISIONS_READ,isDecisionAction,decisionsRead,decisionAction} from './decisions/routes.mjs';
 import {REVIEWS_READS,isReviewAction,reviewsRead,reviewAction} from './reviews/routes.mjs';
 import {REQUESTS_READ,isRequestAction,requestsRead,requestAction} from './requests/index.mjs';
@@ -74,6 +75,7 @@ function scopedRuntime(options) {
     if(path===FOLLOWUP_READ)return await followupRead(ctx,request);
     if(ERASURE_READS.includes(path))return await erasureRead(ctx,request,path);
     if(ROLE_READS.includes(path))return await roleRead(ctx,request,path);
+    if(path==='/api/auth/refresh')return json(await refreshInventory(ctx,request));
     if(path==='/api/auth/resource-apis')return await grantRead(ctx,request,path);
     if(path===TENANCY_READ)return await tenancyRead(ctx,request);
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
@@ -102,6 +104,7 @@ function scopedRuntime(options) {
     if(passkeyPath==='/auth/passkeys/authenticate/verify')return await authenticationVerify(ctx,request,data);
     if(path.startsWith('/api/auth/')) {
      const action=path.slice('/api/auth'.length);
+     if(isRefreshAction(action))return await refreshAction(ctx,request,action,data);
      if(isDecisionAction(action))return await decisionAction(ctx,request,action,data);
      if(isReviewAction(action))return await reviewAction(ctx,request,action,data);
      if(isRequestAction(action))return await requestAction(ctx,request,action,data);

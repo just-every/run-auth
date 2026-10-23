@@ -34,7 +34,7 @@ export async function grantCheck(ctx,request,data) {
   // A service is always itself; its owner is accountability, never a substituted subject.
   if(data.subject!==undefined)fail('subject_substitution_refused',403);
   personId=principal.ownerId;
-  guard=serviceGuard(ctx,principal.service,principal.expiresAt,principal.api.revision);
+  guard=principal.kind==='employee'?principal.guard:serviceGuard(ctx,principal.service,principal.expiresAt,principal.api.revision);
  } else {
   origin(ctx,request);
   const s=await requireSession(ctx,request);

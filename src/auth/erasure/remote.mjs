@@ -46,13 +46,13 @@ export async function remoteWork(ctx,plan,destinations=[]) {
     work:subject?{...baseBinding(ctx),type:'fence',partner,url:client.logout_uri,keyId:signing?.kid??null,alg:signing?.alg??'ES256',acceptReplay:true,claims:{aud:client.id,sub:subject,jti:random(),events:{[FENCE_EVENT]:{}}}}:null});
   }
  }
- for(const logged of rows(plan,'auth_oidc_sessions')) {
+ for(const logged of [...rows(plan,'auth_oidc_sessions'),...rows(plan,'auth_refresh_families').map(f=>({session_id:f.session_id,client_id:f.client_id,family_id:f.id,person_id:f.person_id}))]) {
   const session=rows(plan,'auth_sessions').find(s=>s.id===logged.session_id),client=rows(plan,'auth_oidc_clients').find(c=>c.client_id===logged.client_id);
   if(!session||!client?.backchannel_logout_uri||!(plan.reset||plan.kind==='person'&&session.person_id===plan.target||plan.kind==='app'&&client.app_id===plan.target))continue;
   const subject=client.subject_type==='public'?session.person_id:rows(plan,'auth_subjects').find(s=>s.sector_id==='oidc:'+client.client_id&&s.person_id===session.person_id)?.subject;
   const signing=await signer(ctx,plan,client.id_token_alg),partner=new URL(client.backchannel_logout_uri).origin;
   tasks.push({kind:'authority-fence',partner,appLabel:label(rows(plan,'auth_apps').find(app=>app.id===client.app_id)?.name),connection:signing?{signing}:null,
-   work:subject?{...baseBinding(ctx),type:'fence',partner,url:client.backchannel_logout_uri,keyId:signing?.kid??null,alg:client.id_token_alg,acceptReplay:false,claims:{aud:client.client_id,sub:subject,sid:session.id,jti:random(),events:{[LOGOUT_EVENT]:{}}}}:null});
+   work:subject?{...baseBinding(ctx),type:'fence',partner,url:client.backchannel_logout_uri,keyId:signing?.kid??null,alg:client.id_token_alg,acceptReplay:false,claims:{aud:client.client_id,sub:subject,sid:logged.family_id??session.id,jti:random(),events:{[LOGOUT_EVENT]:{}}}}:null});
  }
  tasks.sort((a,b)=>Number(mandatory(b.kind))-Number(mandatory(a.kind)));
  return Promise.all(tasks.map(async task=>{

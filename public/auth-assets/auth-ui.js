@@ -5,6 +5,28 @@
     if (url.origin !== window.location.origin || !organizationPrefix || url.pathname.startsWith('/org/')) return path
     return organizationPrefix + url.pathname + url.search + url.hash
   }
+  // Seed tooltip until the shared Base control is available: hover waits 300ms,
+  // keyboard focus is immediate, Escape dismisses, and the label fits the viewport.
+  const tip = document.createElement('span')
+  tip.className = 'auth-tooltip'; tip.id = 'auth-tooltip'; tip.role = 'tooltip'; tip.hidden = true
+  document.body.append(tip)
+  let tipTimer
+  const hideTip = () => { clearTimeout(tipTimer); tip.hidden = true; document.querySelectorAll('[aria-describedby="auth-tooltip"]').forEach(el => el.removeAttribute('aria-describedby')) }
+  const showTip = control => {
+    hideTip(); tip.textContent = control.dataset.tooltip; tip.hidden = false
+    control.setAttribute('aria-describedby', tip.id)
+    const box = control.getBoundingClientRect(), bounds = tip.getBoundingClientRect()
+    tip.style.left = `${Math.max(8, Math.min(innerWidth - bounds.width - 8, box.left + box.width / 2 - bounds.width / 2))}px`
+    tip.style.top = `${Math.max(8, Math.min(innerHeight - bounds.height - 8, box.bottom + 8))}px`
+  }
+  for (const control of document.querySelectorAll('[data-tooltip]')) {
+    control.addEventListener('mouseenter', () => { hideTip(); tipTimer = setTimeout(() => showTip(control), 300) })
+    control.addEventListener('mouseleave', hideTip)
+    control.addEventListener('focus', () => showTip(control))
+    control.addEventListener('blur', hideTip)
+  }
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') hideTip() })
+  document.addEventListener('scroll', hideTip, true)
   const root = document.documentElement
   const statuses = () => Array.from(document.querySelectorAll('[data-auth-status]'))
   const showStatus = (message, kind = 'info') => {
@@ -414,6 +436,7 @@
         payload.deadlineBusinessDays = Number(payload.deadlineBusinessDays)
       }
       const result = await requestJSON(form.action, payload)
+      if (form.hasAttribute('data-refresh-consent')) { window.location.assign(result.redirect); return }
       if (form.hasAttribute('data-organization-switch')) { window.location.assign(result.redirect); return }
       if (form.hasAttribute('data-organization-create')) {
         const output = form.querySelector('[data-organization-result]')

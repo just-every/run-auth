@@ -269,3 +269,6 @@ test('resource APIs use live app roles and tenant resources for employees and di
  const audit=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(audit.some(a=>a.event==='resource_permission_check'&&a.actor_id===service.clientId));
 
 });
+
+import {refreshLifecycle} from './refresh-flow.mjs';
+test('native offline consent and SDK rotation preserve device binding, detect reuse and concurrency, and end resource authority on expiry, revocation, suspension and app removal',refreshLifecycle);

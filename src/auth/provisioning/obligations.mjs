@@ -1,3 +1,4 @@
+import {maintainFamilies} from '../tokens/lifecycle.mjs';
 import {syncObligations} from '../obligations/sources.mjs';
 import {computedValues,scimValues} from '../mapping/program.mjs';
 // Provisioning obligations: what Auth still has to make true in an app, pushed
@@ -29,11 +30,14 @@ const groupsOf=async(ctx,appId,connector)=>connector?.push_groups?(await all(ctx
 
 // Everything an app should hold, after a connector or assignment change.
 export async function queueApp(ctx,appId,reason) {
+ if(reason==='app_removed')await maintainFamilies(ctx,{appId,reason});
+ else await maintainFamilies(ctx);
  const connector=await connectorOf(ctx,appId);if(!connector)return;
  await queue(ctx,appId,[...(await appSubjects(ctx,appId)).map(id=>['person',id]),...await groupsOf(ctx,appId,connector)],reason);
 }
 // A person's status changed: every app that has or should have their account.
 export async function personChanged(ctx,personId,reason) {
+ await maintainFamilies(ctx);
  const apps=await all(ctx,`SELECT DISTINCT c.app_id FROM auth_scim_connectors c WHERE EXISTS(SELECT 1 FROM auth_scim_accounts s WHERE s.app_id=c.app_id AND s.subject_type='person' AND s.subject_id=?)
   OR EXISTS(SELECT 1 FROM auth_app_assignments a LEFT JOIN auth_group_members m ON a.principal_type='group' AND m.group_id=a.principal_id WHERE a.app_id=c.app_id AND ((a.principal_type='person' AND a.principal_id=?) OR m.person_id=?))`,personId,personId,personId);
  for(const {app_id} of apps){const connector=await connectorOf(ctx,app_id);await queue(ctx,app_id,[['person',personId],...(connector.push_groups?(await all(ctx,"SELECT a.principal_id AS id FROM auth_app_assignments a JOIN auth_group_members m ON m.group_id=a.principal_id WHERE a.app_id=? AND a.principal_type='group' AND m.person_id=?",app_id,personId)).map(g=>['group',g.id]):[])],reason);}

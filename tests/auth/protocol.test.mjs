@@ -13,6 +13,8 @@ test('code flow preserves ES256 ID token claims and adds a userinfo access token
  const grant=await r.authorize();assert.equal(grant.response.status,302);
  const redirect=new URL(grant.response.headers.get('location'));assert.equal(redirect.searchParams.get('iss'),r.origin);assert.equal(redirect.searchParams.get('state'),'state-to-bind');
  const response=await r.redeem(grant);assert.equal(response.status,200);const body=await response.json();assert.ok(body.id_token);assert.ok(body.access_token);assert.equal(body.refresh_token,undefined);
+ assert.equal((await r.authorize({scope:'openid offline_access'})).response.status,400);
+ assert.equal((await r.redeem(grant,{grant_type:'refresh_token',refresh_token:'synthetic-auth-1'})).status,401);
  const keys=await (await r.call('/oidc/jwks')).json();const {payload,protectedHeader}=await jwtVerify(body.id_token,createLocalJWKSet(keys),{issuer:r.origin,audience:'app',currentDate:new Date(r.now)});
  assert.equal(protectedHeader.alg,'ES256');assert.equal(payload.nonce,'nonce-to-bind');assert.equal(payload.email,'owner@example.com');assert.equal(payload.name,'owner');assert.equal(payload.cost_center,'CC-42');assert.ok(verifiedHook(hook.secret,edge.received[0]));assert.equal(payload.role,undefined);assert.equal(payload.roles,undefined);assert.ok(payload.sid);assert.equal(payload.install_owner,true);assert.ok(payload.email_verified_at<r.now/1000+1);assert.notEqual(payload.sub,'owner');
  assert.equal((await r.redeem(grant)).status,400);

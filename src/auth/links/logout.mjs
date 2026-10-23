@@ -1,3 +1,4 @@
+import {maintainFamilies} from '../tokens/lifecycle.mjs';
 // Back-channel logout and identity fences for linked apps. Each delivery is a
 // signed logout+jwt with one stable jti, posted to the app's registered logout
 // path and retried until it is accepted or 24 hours have passed.
@@ -65,6 +66,7 @@ export async function deliverLogouts(ctx,ids=null) {
 export async function signOutEverywhere(ctx,request) {
  const s=await requireSession(ctx,request);
  await run(ctx,'UPDATE auth_sessions SET revoked_at=? WHERE person_id=? AND revoked_at IS NULL',ctx.now(),s.person_id);
+ await maintainFamilies(ctx,{personId:s.person_id,reason:'signed_out_everywhere'});
  const deliveries=await queueLogouts(ctx,s.person_id);
  await audit(ctx,s.person_id,'signed_out_everywhere',null);
  return json({ok:true,apps:deliveries.length},200,{'set-cookie':cookie(ctx,cookieName(ctx),'',0)});

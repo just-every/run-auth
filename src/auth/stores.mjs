@@ -23,6 +23,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
+  'auth_refresh_profiles',
   'auth_retention_runs',
   'auth_followup_settings', 'auth_admin_api_epoch', 'auth_admin_service_apps', 'auth_resource_services',
   'auth_delegated_agents', 'auth_delegated_tasks',
@@ -33,12 +34,14 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
+  'auth_refresh_families', 'auth_refresh_credentials',
   'auth_followup_link_tokens', 'auth_agent_keys', 'auth_erasure_remote', 'auth_event_subscriptions', 'auth_hooks',
   'auth_oidc_secrets', 'auth_recovery_tokens', 'auth_saml_keys', 'auth_scim_connectors',
   'auth_settings', 'auth_signing_keys', 'oa_credentials', 'oa_dev_credentials',
   'rer_dependency_keys',
  ],
  transient: [
+  'auth_refresh_consents', 'auth_refresh_proofs',
   'auth_admin_api_commits', 'auth_admin_service_assertions', 'auth_agent_proposals',
   'auth_delegation_assertions',
   'auth_delegation_dpop_nonces', 'auth_delegation_dpop_proofs',

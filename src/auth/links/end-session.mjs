@@ -1,3 +1,4 @@
+import {maintainFamilies} from '../tokens/lifecycle.mjs';
 // RP-initiated logout (OpenID Connect RP-Initiated Logout 1.0). A valid
 // id_token_hint for this browser's session ends it at once; anything else asks
 // the person to confirm with a same-origin POST. Apps that received tokens in
@@ -29,6 +30,7 @@ async function finish(ctx,s) {
  const clients=await all(ctx,'SELECT c.id FROM auth_session_clients sc JOIN auth_clients c ON c.id=sc.client_id WHERE sc.session_id=? AND c.disabled_at IS NULL AND c.logout_uri IS NOT NULL',s.id);
  await queueLogouts(ctx,s.person_id,{sid:s.id,clients});
  await audit(ctx,s.person_id,'signed_out_from_app',null);
+ await maintainFamilies(ctx);
  // General OIDC apps: back-channel tokens now, front-channel frames on the page.
  return endGenericSessions(ctx,s);
 }

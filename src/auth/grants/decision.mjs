@@ -45,5 +45,5 @@ export function evaluate(ctx,snapshot,data,principal=null) {
   const expected=relation==='$person'?snapshot.person_id:fields[relation.slice('$attribute:'.length)];
   if(expected===undefined||!Object.hasOwn(target.attributes,field)||target.attributes[field]!==expected)return denied('relation_denied');
  }
- return {allowed:true,apiId:snapshot.id,action:data.action,resource:target.id,organizationId:organization(ctx),principal:principal?{kind:'service',id:principal.id,ownerId:snapshot.person_id}:{kind:'person',id:snapshot.person_id},role:rule.role,revision:snapshot.revision};
+ return {allowed:true,apiId:snapshot.id,action:data.action,resource:target.id,organizationId:organization(ctx),principal:principal?{kind:principal.kind,id:principal.id,ownerId:snapshot.person_id}:{kind:'person',id:snapshot.person_id},role:rule.role,revision:snapshot.revision};
 }

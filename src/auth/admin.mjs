@@ -1,3 +1,5 @@
+import {maintainFamilies} from './tokens/lifecycle.mjs';
+import {refreshInventory} from './tokens/routes.mjs';
 import {requestsRead} from './requests/index.mjs';
 import {decisionsModel} from './decisions/policy.mjs';
 import {reviewsModel} from './reviews/routes.mjs';
@@ -78,7 +80,7 @@ export async function model(ctx,request,page='account') {
  if(page==='erasure'&&s.role==='owner'&&isAdmin)result.erasure=await erasureModel(ctx,request);
  result.organizations=await tenancyModel(ctx,request,s);
  result.launcher=await launcher(ctx,s.person_id);
- if(page==='account')result.profile=await profileModel(ctx,s);
+ if(page==='account'){result.profile=await profileModel(ctx,s);result.refresh=await refreshInventory(ctx,request,s);}
  if(page==='account'||page==='agents') {
   result.delegations=await (await delegationInventory(ctx,request)).json();
   const selected=new URL(request.url).searchParams.get('delegation');
@@ -98,6 +100,7 @@ const domainOf=data=>{const domain=String(data.domain||'').trim().toLowerCase();
 export async function adminAction(ctx,request,path,data) {
  if(path==='/signout') {
   const s=await requireSession(ctx,request);await run(ctx,'UPDATE auth_sessions SET revoked_at=? WHERE id=?',ctx.now(),s.id);
+  await maintainFamilies(ctx);
   return json({ok:true},200,{'set-cookie':cookie(ctx,cookieName(ctx),'',0)});
  }
  const s=await requireSession(ctx,request,true),owner=OWNER_ACTIONS.includes(path);

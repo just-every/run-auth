@@ -38,12 +38,12 @@ const modelNotices = (model: AuthPageModel): string => {
 }
 
 // The head every Auth document shares: fonts, the app stylesheet, the mark as favicon and the small client script.
-export const documentHead = (title: string): string => `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>${escape(title)}</title><link rel="icon" href="/brand/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/rer-theme.css"><link rel="stylesheet" href="/auth-assets/auth.css"><link rel="stylesheet" href="/auth-assets/shell.css"><link rel="stylesheet" href="/auth-assets/tables.css"><link rel="stylesheet" href="/auth-assets/pages.css"><link rel="stylesheet" href="/auth-assets/signin.css"><script src="/auth-assets/auth-ui.js" defer></script>`
+export const documentHead = (title: string): string => `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>${escape(title)}</title><link rel="icon" href="/brand/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/rer-theme.css"><link rel="stylesheet" href="/auth-assets/auth.css"><link rel="stylesheet" href="/auth-assets/shell.css"><link rel="stylesheet" href="/auth-assets/tables.css"><link rel="stylesheet" href="/auth-assets/pages.css"><link rel="stylesheet" href="/auth-assets/signin.css"><link rel="stylesheet" href="/auth-assets/tooltips.css"><script src="/auth-assets/auth-ui.js" defer></script>`
 
 export const brandLockup = (tag: 'div' | 'a' = 'div'): string =>
   `<${tag} class="brand"${tag === 'a' ? ' href="/app"' : ''}><img class="brand-mark" src="/brand/mark.svg" alt="" width="32" height="32"><span class="brand-text"><strong>Auth</strong><span class="brand-line">Identity for your business</span></span></${tag}>`
 
-const themeToggle = `<button class="icon-button" type="button" data-theme-toggle aria-label="Toggle color theme" aria-pressed="false">${icon('theme')}</button>`
+const themeToggle = `<button class="icon-button" type="button" data-theme-toggle data-tooltip="Color theme" aria-label="Toggle color theme" aria-pressed="false">${icon('theme')}</button>`
 
 export const renderShell = (model: AuthPageModel, page: AuthPage, content: string): string => {
   const user = model.user ?? model.me ?? null
@@ -54,7 +54,7 @@ export const renderShell = (model: AuthPageModel, page: AuthPage, content: strin
     `<a href="${item.href}"${item.page === page || (page === 'move-in' && item.page === 'people') ? ' class="active" aria-current="page"' : ''}>${icon(item.symbol)}<span>${item.label}</span></a>`
   ).join('')
   const accountBadge = user
-    ? `<a class="initials account-initials" href="/app/account" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
+    ? `<a class="initials account-initials" data-tooltip="My account" href="/app/account" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
     : ''
   const pageContent = model.isAdmin || !['people', 'move-in', 'agents', 'apps', 'activity'].includes(page)
     ? content

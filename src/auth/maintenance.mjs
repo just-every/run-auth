@@ -1,3 +1,4 @@
+import {maintainFamilies} from './tokens/lifecycle.mjs';
 import {maintainReviews} from './reviews/routes.mjs';
 import {maintainRequests} from './requests/index.mjs';
 import {maintainRetention} from './retention/index.mjs';
@@ -29,6 +30,8 @@ export async function maintainAuth(ctx) {
   ctx.db.prepare('DELETE FROM auth_oidc_codes WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_link_intents WHERE expires_at<=?').bind(now),
  ]);
+ await maintainFamilies(ctx);
+ await runRefreshCleanup(ctx);
  await deliverLogouts(ctx);
  await deliverGenericLogouts(ctx);
  await deliverEvents(ctx);
@@ -41,4 +44,8 @@ export async function maintainAuth(ctx) {
   const organizations=(await ctx.db.prepare("SELECT id FROM auth_organizations WHERE status='active' ORDER BY created_at,id").all()).results;
   for(const organization of organizations)await maintainAuth(await organizationContext(ctx,organization.id));
  }
+}
+
+async function runRefreshCleanup(ctx) {
+ await ctx.db.batch([ctx.db.prepare('DELETE FROM auth_refresh_proofs WHERE expires_at<=?').bind(ctx.now()),ctx.db.prepare('DELETE FROM auth_refresh_consents WHERE expires_at<=?').bind(ctx.now())]);
 }
