@@ -1,3 +1,4 @@
+import {legacyBridgeFlow} from './legacy-bridge-flow.mjs';
 import {hookServer,verifiedHook} from './hooks-server.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -115,3 +116,5 @@ test('a former Auth0 subject is data for app owners only: never accepted by a pr
  assert.equal(new URL(hinted.headers.get('location')).searchParams.get('error'),'login_required','a former subject never signs anyone in');
  assert.equal(await count(r,"SELECT count(*) AS n FROM auth_subjects WHERE subject=?",former),0);
 });
+
+test('reviewed custom-directory workers migrate at first legacy login with protected history, exact subject mapping, inherited hooks and permanent bridge shutdown',legacyBridgeFlow);

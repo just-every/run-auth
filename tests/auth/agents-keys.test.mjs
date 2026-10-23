@@ -1,3 +1,4 @@
+import {sdkAdminFlow} from './sdk-admin-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {emailSession,cookieOf} from './runtime.mjs';
@@ -319,3 +320,5 @@ test('scoped credential custodians own exact automation whose tokens and native 
  await change({kind:'revoke',grantId:assigned.id});
  assert.equal((await token(service)).status,401,'removing current custody authority stops the next token');assert.equal((await call('/groups')).status,401,'already-issued machine claims do not retain the removed human role');
 });
+
+test('a packed Node SDK installs in an empty app and enforces scoped private-key administration, pagination, ETags and live revocation over HTTP',sdkAdminFlow);

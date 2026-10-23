@@ -34,12 +34,13 @@ export async function directoryRead(ctx,request,path) {
  return json({...searchView(dir,{q:p.get('q'),state:p.get('state'),group:p.get('group'),conflicted:p.get('conflicts')==='1',fields,limit:p.get('limit'),offset:p.get('offset')}),attributes:attributesView(dir)});
 }
 
-export async function directoryAction(ctx,request,path,data,{notify}) {
+export async function directoryAction(ctx,request,path,data,{notify,additionalGuard}) {
  const s=await requireSession(ctx,request,true);
  const dir=await loadDirectory(ctx);
  if(path==='/directory/preview'){const plan=await planEdits(ctx,dir,expand(dir,data),s.person_id);return json({plan});}
  requireLocalEmail(ctx,s);
  let guard=authority(ctx,s,['owner','admin']);
+ if(additionalGuard)guard={clause:`(${guard.clause}) AND (${additionalGuard.clause})`,args:[...guard.args,...additionalGuard.args]};
  const run=async(edits,{bulk=false,digest}={})=>{
   const plan=await planEdits(ctx,dir,edits,s.person_id);
   if(digest!==undefined&&digest!==plan.digest)fail('preview_changed',409);

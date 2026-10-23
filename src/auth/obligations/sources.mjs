@@ -1,3 +1,5 @@
+import {hrFeedSource,hrFeedCandidates} from '../hris/files/followup.mjs';
+import {releaseSource,releaseState,releaseCandidates} from '../erasure/pair-erasure.mjs';
 import {caseProjection,withCase} from './records.mjs';
 import {appCandidates,appSourceState} from './app-sources.mjs';
 import {taskCandidates,taskSourceState} from './task-sources.mjs';
@@ -8,6 +10,8 @@ import {businessDue} from './calendar.mjs';
 // cannot manufacture successful enrollment or verified downstream revocation.
 export async function sourceState(ctx,ob) {
  ob=await withCase(ctx,ob);
+ const hrSource=await hrFeedSource(ctx,ob);if(hrSource)return hrSource;
+ if(releaseSource(ob))return releaseState(ctx,ob);
  if(['app_setup','app_link_proposal','app_link_token'].includes(ob.kind))return appSourceState(ctx,ob);
  if(ob.kind==='delegated_assignment')return taskSourceState(ctx,ob);
  if(ob.kind==='enrollment') {
@@ -49,15 +53,15 @@ export async function syncObligations(ctx) {
  const now=ctx.now(),p=await policy(ctx),owner=await one(ctx,"SELECT id FROM oa_operators WHERE status='active' AND role='owner' ORDER BY created_at,id LIMIT 1");
  const candidates=[...await all(ctx,`SELECT 'enrollment' AS kind,id AS source_id,id AS person_id,NULL AS app_id,created_at FROM oa_operators WHERE status='invited'
   UNION ALL SELECT 'recovery',id,person_id,NULL,created_at FROM auth_recoveries WHERE cancelled_at IS NULL AND completed_at IS NULL
-  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
+  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await hrFeedCandidates(ctx),...await releaseCandidates(ctx),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
  for(const c of candidates) {
   const existing=await one(ctx,'SELECT id,state FROM auth_obligations WHERE kind=? AND source_id=?',c.kind,c.source_id);
   if(existing) {
    // Reissuing an expired invitation restores only the follow-up record, using
    // the invitation's own renewed authority. The earlier history stays intact.
-   if(c.kind==='enrollment'&&existing.state==='expired'&&(await sourceState(ctx,c)).state==='open')await ctx.db.batch([
-    ctx.db.prepare("UPDATE auth_obligations SET state='open',stopped_at=NULL,reminders_stopped_at=NULL,next_due_at=?,deadline_at=?,calendar=? WHERE id=? AND state='expired'").bind(businessDue(now,p.reminderBusinessDays,p.calendar),businessDue(now,p.deadlineBusinessDays,p.calendar),JSON.stringify(p.calendar),existing.id),
-    ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,'invitation_reissued',? WHERE changes()>0").bind(random(),existing.id,now),
+   if((c.kind==='enrollment'&&existing.state==='expired'||releaseSource(c)&&existing.state==='completed')&&(await sourceState(ctx,c)).state==='open')await ctx.db.batch([
+    ctx.db.prepare("UPDATE auth_obligations SET state='open',stopped_at=NULL,reminders_stopped_at=NULL,next_due_at=?,deadline_at=?,calendar=? WHERE id=? AND state IN ('expired','completed')").bind(businessDue(now,p.reminderBusinessDays,p.calendar),businessDue(now,p.deadlineBusinessDays,p.calendar),JSON.stringify(p.calendar),existing.id),
+    ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,?,? WHERE changes()>0").bind(random(),existing.id,releaseSource(c)?'erasure_hold_released':'invitation_reissued',now),
    ]);
    continue;
   }
@@ -68,6 +72,7 @@ export async function syncObligations(ctx) {
   await ctx.db.batch([ctx.db.prepare(`INSERT OR IGNORE INTO auth_obligations(id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,created_at)
    VALUES(?,?,?,?,?,?,?,?,?,?,'open','source_satisfied_cancelled_or_authority_expired',?,?,?)`).bind(id,c.kind,c.source_id,c.owner_id??(c.kind==='recovery'?person?.id??owner?.id??null:owner?.id??null),person?.id??null,app?.id??null,source.action??'review_source',JSON.stringify(p.calendar),Math.min(source.expiresAt??Infinity,businessDue(created,p.deadlineBusinessDays,p.calendar)),businessDue(created,p.reminderBusinessDays,p.calendar),p.escalation,source.error??null,created),
    ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,'opened',? WHERE changes()>0").bind(random(),id,now),
+   ...(c.hr_feed_id?[ctx.db.prepare('INSERT OR IGNORE INTO auth_hr_feed_obligations(obligation_id,feed_id,episode) SELECT id,?,? FROM auth_obligations WHERE kind=? AND source_id=?').bind(c.hr_feed_id,c.episode,c.kind,c.source_id)]:[]),
    ...(c.case_id?[ctx.db.prepare('INSERT OR IGNORE INTO auth_followup_cases(obligation_id,case_id) SELECT id,? FROM auth_obligations WHERE kind=? AND source_id=?').bind(c.case_id,c.kind,c.source_id)]:[]),
   ]);
  }

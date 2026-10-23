@@ -3,6 +3,7 @@
 // A new managed store requires an explicit decision before either operation.
 const groups = {
  portable: [
+  'auth_import_history',
   'auth_app_role_order', 'auth_app_reductions', 'auth_app_denials', 'auth_privileged_resources', 'auth_privileged_app_roles', 'auth_decision_operations',
   'auth_reviews', 'auth_review_items', 'auth_review_events', 'auth_review_schedules',
   'auth_retention_expiry', 'auth_retention_policy', 'auth_retention_holds', 'auth_request_policies', 'auth_access_requests',
@@ -26,6 +27,7 @@ const groups = {
   'auth_refresh_profiles',
   'auth_retention_runs',
   'auth_followup_settings', 'auth_admin_api_epoch', 'auth_admin_service_apps', 'auth_resource_services',
+  'auth_delegation_resources', 'auth_delegation_agent_resources', 'auth_external_tasks',
   'auth_delegated_agents', 'auth_delegated_tasks',
   'auth_delegation_reversals',
   'auth_rer_trust', 'auth_role_epoch', 'oa_auth_audit', 'oa_auth_settings',
@@ -34,6 +36,10 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
+  'auth_hr_feeds',
+  'auth_migration_bridges', 'auth_migration_subjects',
+  'auth_employer_providers',
+  'auth_identity_pairs', 'auth_identity_release_notices', 'auth_erasure_person_receipts',
   'auth_refresh_families', 'auth_refresh_credentials',
   'auth_followup_link_tokens', 'auth_agent_keys', 'auth_erasure_remote', 'auth_event_subscriptions', 'auth_hooks',
   'auth_oidc_secrets', 'auth_recovery_tokens', 'auth_saml_keys', 'auth_scim_connectors',
@@ -41,9 +47,10 @@ const groups = {
   'rer_dependency_keys',
  ],
  transient: [
+  'auth_hr_files','auth_hr_file_rows','auth_hr_feed_obligations',
   'auth_refresh_consents', 'auth_refresh_proofs',
   'auth_admin_api_commits', 'auth_admin_service_assertions', 'auth_agent_proposals',
-  'auth_delegation_assertions',
+  'auth_delegation_resource_assertions', 'auth_delegation_assertions',
   'auth_delegation_dpop_nonces', 'auth_delegation_dpop_proofs',
   'auth_assertions', 'auth_challenges', 'auth_codes', 'auth_erasure_commits',
   'auth_erasure_previews', 'auth_erasure_reset_consents', 'auth_event_deliveries', 'auth_import_rows', 'auth_limits',

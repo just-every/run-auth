@@ -1,8 +1,10 @@
 import {one,fail,AuthError} from '../../core.mjs';
 import {principalFor} from '../../admin-api/credentials/authority.mjs';
 import {both,organization,CLIENT_PREFIX,SCOPE} from './common.mjs';
+import {externalTaskGuard} from './external-state.mjs';
 
-export const taskRow=(ctx,id)=>one(ctx,'SELECT * FROM auth_delegated_tasks WHERE id=?',id);
+export const taskTable=task=>task.resource_id?'auth_external_tasks':'auth_delegated_tasks';
+export const taskRow=async(ctx,id)=>await one(ctx,'SELECT * FROM auth_delegated_tasks WHERE id=?',id)??await one(ctx,'SELECT * FROM auth_external_tasks WHERE id=?',id);
 export async function agentRow(ctx,clientId) {
  const row=await one(ctx,`SELECT a.*,json_object('id',s.id,'client_id',s.client_id,'owner_id',s.owner_id,'revision',s.revision,'expires_at',s.expires_at,'revoked_at',s.revoked_at,'suspended_at',s.suspended_at,'jwks',s.jwks,'scopes',s.scopes,'resources',s.resources) AS service_json FROM auth_delegated_agents a JOIN auth_admin_service_apps s ON s.id=a.service_app_id WHERE a.client_id=?`,clientId);
  return row?{...row,service:JSON.parse(row.service_json)}:null;
@@ -18,6 +20,7 @@ export async function agentGuard(ctx,agent,expiresAt=agent.expires_at,principal=
  });
 }
 export async function taskGuard(ctx,agent,task,states=['approved'],{consent=true,approval=true,expiresAt=task.expires_at,principal=null}={}) {
+ if(task.resource_id)return externalTaskGuard(ctx,agent,task,states,{consent,approval,expiresAt,principal});
  const now=ctx.now();
  principal??=await machinePrincipal(ctx,agent,expiresAt);
  if(!principal.permits('apps',task.app_id)||!principal.permits('people',task.accountable_id)||!principal.ownerAllows('apps.assign',{appId:task.app_id,personId:task.accountable_id,write:true}))fail('delegation_owner_permission_required',403);

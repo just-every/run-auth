@@ -1,3 +1,4 @@
+import {releaseSource} from '../erasure/pair-erasure.mjs';
 import {one,run,random,hash} from '../core.mjs';
 import {policy} from './policy.mjs';
 import {recipientIds,recipient} from './recipients.mjs';
@@ -32,7 +33,7 @@ export async function dispatchOccurrence(ctx,ob,claim,{deadline=false,timing=fal
    }
    try {
     if(!ctx.mail)throw new Error('mail_not_configured');
-    await ctx.mail({to:target.email,subject:timing?'Auth downstream access unverified after 15 minutes':escalation?(deadline?'Auth follow-up deadline reached':'Auth follow-up recipient unavailable'):'Auth follow-up is due',text:`An Auth ${ob.kind} action is unresolved. The next action is to ${ob.next_action.replaceAll('_',' ')}. Review it in Auth: ${ctx.origin}${ctx.basePath??''}${['owner','admin'].includes(target.role)?'/app/activity':'/app/account'}\nReference: ${ob.id}\nA reminder does not confirm enrollment or removal of access.`,html:'<p>An Auth action remains unresolved. Sign in to Auth and review Activity. A reminder does not confirm enrollment or removal of access.</p>'});
+    await ctx.mail({to:target.email,subject:timing?'Auth downstream access unverified after 15 minutes':escalation?(deadline?'Auth follow-up deadline reached':'Auth follow-up recipient unavailable'):'Auth follow-up is due',text:`An Auth ${releaseSource(ob)?'identity release':ob.kind} action is unresolved. The next action is to ${ob.next_action.replaceAll('_',' ')}. Review it in Auth: ${ctx.origin}${ctx.basePath??''}${['owner','admin'].includes(target.role)?'/app/activity':'/app/account'}\nReference: ${ob.id}\nA reminder does not confirm enrollment or removal of access.`,html:'<p>An Auth action remains unresolved. Sign in to Auth and review Activity. A reminder does not confirm enrollment or removal of access.</p>'});
     await run(ctx,'UPDATE auth_obligation_history SET event=? WHERE id=?',escalation?'escalation_accepted':'reminder_accepted',event);
    } catch {
     lastError='mail_delivery_failed_check_transport';

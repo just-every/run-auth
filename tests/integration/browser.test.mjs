@@ -1,3 +1,4 @@
+import {docsJourney} from './helpers/docs-journey.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
@@ -121,3 +122,5 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  assert.deepEqual(errors,[],'no browser runtime errors');
  console.log('Auth journey: 20 real private-page screenshots; 1440/390 light/dark; axe serious/critical 0; browser email, setup, virtual hardware passkey, people, recovery cancellation');
 });
+
+test('docs pages support keyboard code scrolling and remain readable at desktop and mobile',docsJourney);

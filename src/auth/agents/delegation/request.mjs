@@ -3,12 +3,14 @@ import {body,exact,id,issuer,publicPath,both} from './common.mjs';
 import {canonicalEffect,effectDigest} from './effect.mjs';
 import {agentRow,agentGuard,machinePrincipal,held} from './state.mjs';
 import {privateAssertion} from './assertions.mjs';
+import {requestExternalTask} from './external-request.mjs';
 
 export async function requestDelegation(ctx,request,data) {
  data??=await body(ctx,request);
  exact(data,['clientId','clientAssertion','task']);
  if(request.headers.has('authorization'))fail('invalid_client',401);
  const agent=await agentRow(ctx,id(data.clientId))||fail('invalid_client',401);
+ if(data.task?.resourceId)return requestExternalTask(ctx,request,data,agent);
  const effect=canonicalEffect(ctx,data.task,{creating:true}),requestHash=await effectDigest(effect);
  if(effect.expiresAt>agent.expires_at||effect.expiresAt>agent.service.expires_at)fail('invalid_delegation_expiry');
  const principal=await machinePrincipal(ctx,agent,effect.expiresAt);

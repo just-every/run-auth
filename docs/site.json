@@ -20,6 +20,12 @@
       "title": "Reference",
       "pages": [
         { "slug": "admin-api", "title": "Machine administration API", "file": "admin-api.md", "summary": "Register scoped service apps and use the versioned REST API with private-key authentication, pagination and ETags." },
+        {"slug": "hr-file-feeds", "title": "Reviewed HR file feeds", "file": "hr-file-feeds.md", "summary": "Deliver key-authenticated CSV files, review exact native effects and track held or stale sources."},
+        {"slug": "identity-reports", "title": "Native identity reports", "file": "identity-reports.md", "summary": "Read scoped identity facts and audited exports with missing evidence kept explicit."},
+        {"slug": "progressive-migration", "title": "Reviewed first-login migration", "file": "progressive-migration.md", "summary": "Preserve reviewed subjects and history while enrolling legacy workers through Auth proof."},
+        {"slug": "delegated-agents", "title": "Delegated task identities", "file": "delegated-agents.md", "summary": "Register bounded native, API and MCP task profiles with independent approval and live revocation."},
+        {"slug": "employer-providers", "title": "Isolated employer providers", "file": "employer-providers.md", "summary": "Configure employer-local providers without transferring identity proof or custody."},
+        {"slug": "erasure", "title": "Erasure and separate identities", "file": "erasure.md", "summary": "Review owner erasure and privately requested release of independently proved memberships."},
         { "slug": "inline-hooks", "title": "Inline sign-in hooks", "file": "inline-hooks.md", "summary": "Configure signed, bounded extension points with protected identity and fail policies." },
         { "slug": "attribute-mapping", "title": "Attribute mapping", "file": "attribute-mapping.md", "summary": "Preview and version computed usernames, claims and provisioning fields." },
         { "slug": "commands", "title": "Auth commands", "file": "../AUTH-COMMANDS.md", "summary": "Setup, dev, recovery, private settings and export, in detail." },

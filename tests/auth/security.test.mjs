@@ -1,3 +1,5 @@
+import {scopedUpstreamFlow} from './scoped-upstream-flow.mjs';
+import {identityPairsFlow} from './identity-pairs-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPair,exportJWK,SignJWT} from 'jose';
@@ -172,6 +174,7 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  const memberB=await emailSession(b,'contractor@example.com');
  const personA=(await (await a.call('/api/auth/me',{cookie:memberA})).json()).user,personB=(await (await b.call('/api/auth/me',{cookie:memberB})).json()).user;
  assert.notEqual(personA.id,personB.id,'same-email memberships keep independent identities');
+ await scopedUpstreamFlow({r,a,b,adminA,adminB,owner,personA,personB});
  const inB=cookie=>cookie.replaceAll('_'+north.id+'=','_'+south.id+'=');
  assert.equal((await b.call('/api/auth/me',{cookie:inB(memberA)})).status,401,'renaming a synthetic session cookie cannot transplant its authority');
 
@@ -237,14 +240,14 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
   for(const secret of [connectorCredential,credentialApp.clientSecret])assert.ok(!text.includes(secret),'a public response/export excludes employer credential values');
   assert.doesNotMatch(text,/"(?:encrypted_private|encryptedPrivate|sealed_token|sealedToken|secret_hash|client_secret|clientSecret|private_key|privateKey|private_jwk|privateJwk|d|p|q|dp|dq|qi|oth|k)"\s*:/,'public issuer and directory responses expose no private key or credential fields');
  };
- const employerExports=['roles/export?personId='+personA.id,'roles/audit/export','move-in/subjects.csv?batch='+importA.batchId];
+ const employerExports=['reports/mfa-enrollment?format=csv','roles/export?personId='+personA.id,'roles/audit/export','move-in/subjects.csv?batch='+importA.batchId];
  for(const path of ['me','apps','company-apps','activity',...employerExports]) {
   const response=await a.call('/api/auth/'+path,{cookie:adminA.cookie});assert.equal(response.status,200,path);assertNoCredentials(await response.text());
  }
  const publicIssuer=await a.call('/oidc/jwks',{cookie:owner.cookie});assert.equal(publicIssuer.status,200);const published=await publicIssuer.text();assert.ok(JSON.parse(published).keys.length>0);assertNoCredentials(published);
  const connectorModel=await (await a.call('/api/auth/company-apps',{cookie:adminA.cookie})).json();
  assert.equal(connectorModel.companyApps.find(app=>app.id===credentialApp.id).provisioning.baseUrl,'https://scim.example.com/scim/v2','the credential-free response describes the populated connector');
- const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','delegations'];
+ const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','delegations','hr-feeds','reports','reports/mfa-enrollment','reports/mfa-enrollment?format=csv'];
  for(const path of reads) {
   const response=await b.call('/api/auth/'+path,{cookie:adminB.cookie});
   assert.equal(response.status,200,path+' '+await response.clone().text());
@@ -252,6 +255,9 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  }
  const issuerKeyPair=await generateKeyPair('ES256'),machineJwk={...await exportJWK(issuerKeyPair.publicKey),kid:'synthetic-auth-tenancy-2',alg:'ES256',use:'sig'};
  const isolatedWrites=[
+  ['hr-feeds/create',{name:'Foreign source',schedule:'daily',mapping:{sourceId:'ID',email:'Email',state:'State',effectiveAt:'Effective'},fingerprint:'synthetic-auth-invalid',confirm:true}],
+  ['hr-feeds/upload',{feedId:'synthetic-auth-foreign',fileName:'foreign.csv',text:'ID,Email,State,Effective'}],
+  ['hr-feeds/apply',{feedId:'synthetic-auth-foreign',fileId:'synthetic-auth-file',digest:'synthetic-auth-digest',rows:[0],confirm:true}],
   ['people/invite',{email:'intrusion@example.com'}],
   ['people/role',{personId:personA.id,role:'admin'}],
   ['directory/edit',{personId:personA.id,set:{title:'Installation intrusion'}}],
@@ -350,3 +356,5 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
 
 import {continuityFlow} from './continuity-flow.mjs';
 test('scheduled continuity drill exercises protected lost-factor recovery, upstream outage and expired signing-certificate replacement',continuityFlow);
+
+ test('voluntary independent identity pairs keep employer release notices private through installation erasure, holds, membership erasure and creator removal',identityPairsFlow);

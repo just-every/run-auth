@@ -14,6 +14,7 @@ export async function sendEarly(ctx,s,data) {
  const ob=await one(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE id=? AND state='open' AND reminders_stopped_at IS NULL`,String(data.id??''));
  if(!ob)fail('followup_unavailable',404);
  if(!await holdsObligation(ctx,s,ob))fail('followup_holder_required',403);
+ if(await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id))fail('hr_feed_delivery_not_consented',403);
  if(!(await policy(ctx)).enabled)fail('followup_policy_disabled',409);
  // This sends the already scheduled occurrence. It does not create another
  // occurrence, change the allowed recipients or advance the source's state.

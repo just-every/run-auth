@@ -34,6 +34,7 @@ export const unfinished=time=>`NOT EXISTS(SELECT 1 FROM auth_access_requests q W
  AND NOT EXISTS(SELECT 1 FROM auth_role_cases c WHERE c.state='open' AND c.created_at<=${time})
  AND NOT EXISTS(SELECT 1 FROM auth_agent_proposals p WHERE p.status='pending' AND p.created_at<=${time})
  AND NOT EXISTS(SELECT 1 FROM auth_delegated_tasks d WHERE d.state IN ('requested','consented','approved') AND d.created_at<=${time})
+ AND NOT EXISTS(SELECT 1 FROM auth_external_tasks d WHERE d.state IN ('requested','consented','approved') AND d.created_at<=${time})
  AND NOT EXISTS(SELECT 1 FROM auth_logout_deliveries d WHERE d.finished_at IS NULL AND d.created_at<=${time})
  AND NOT EXISTS(SELECT 1 FROM auth_oidc_logouts d WHERE d.finished_at IS NULL AND d.created_at<=${time})
  AND NOT EXISTS(SELECT 1 FROM auth_delegation_reversals r WHERE r.state='requested' AND r.created_at<=${time})

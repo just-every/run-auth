@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash,randomUUID} from 'node:crypto';
 import {generateKeyPair,exportJWK,SignJWT} from 'jose';
+import {createResourceAuthorizer} from '../../../packages/delegated-resource/index.mjs';
 import {expect} from '@playwright/test';
 
 // The browser owns consent and approval; a separate key-holding agent owns its
@@ -106,5 +107,44 @@ export async function delegatedAssignmentJourney({app,browser,owner,page,shoot})
  await row.getByRole('button',{name:'Revoke task'}).click();await ok(await revoked);
  await expect(row).toContainText('revoked');await shoot('task-revoked',worker.page);
  assert.equal((await execute(pending,pendingEffect,pendingToken)).status,401,'the existing task bearer loses its next target request');
+
+ // The same human ceremonies authorize an external operation. Its resource
+ // calls Auth before execution, and an issued token loses its next call after
+ // the employee uses the ordinary My account revoke control.
+ for(const kind of ['mcp','api']) {
+  const resourceKeys=await generateKeyPair('ES256'),resourceJwk={...await exportJWK(resourceKeys.publicKey),kid:'synthetic-auth-63',alg:'ES256',use:'sig'};
+  const resource=await json(await post(owner,'/api/auth/delegations/resources/register',{name:kind==='mcp'?'Expense MCP tools':'Expense API',kind,audience:`https://${kind}.example.com/tasks`,scopes:['expenses.update'],detailType:kind==='mcp'?'mcp_tool_task':'expense_task',operations:[kind==='mcp'?'update_expense':'expense.update'],jwks:{keys:[resourceJwk]}}),201);
+  const externalAgent=await json(await post(owner,'/api/auth/delegations/agents/register',{name:'Expense assistant',purpose:'One approved expense update',jwks:{keys:[jwk]},appIds:[],resourceIds:[resource.id],personIds:[worker.id],expiresAt:Date.now()+86400000}),201);
+  const effect={organizationId:'root',accountablePersonId:worker.id,personId:worker.id,purpose:'Categorize my approved travel expense',apiId:resource.id,resourceId:resource.id,detailType:resource.detailType,audience:resource.audience,resource:'expense:synthetic-auth-1',operation:resource.operations[0],scopes:['expenses.update'],expiresAt:Date.now()+3600000,arguments:{category:'Travel'}};
+  const externalAssertion=(url,claims)=>new SignJWT(claims).setProtectedHeader({alg:'ES256',kid:jwk.kid}).setIssuer(externalAgent.clientId).setSubject(externalAgent.clientId).setAudience(url).setIssuedAt().setExpirationTime('2m').setJti(randomUUID()).sign(keys.privateKey);
+  const filed=await fetch(app.origin+'/api/auth/delegations/request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({clientId:externalAgent.clientId,clientAssertion:await externalAssertion(app.origin+'/api/auth/delegations/request',{delegation_use:'request',request_hash:hash(JSON.stringify(effect))}),task:effect})});
+  assert.equal(filed.status,201,await filed.clone().text());const grant=await filed.json();
+  await worker.page.goto(app.origin+'/app/account?delegation='+grant.grantId);
+  const review=worker.page.locator('[data-delegation-review]');await expect(review).toContainText(resource.name);await expect(review).toContainText(effect.operation);await expect(review).toContainText('Travel');
+  await shoot(kind+'-task-consent',worker.page);
+  const consented=worker.page.waitForResponse(response=>response.url().endsWith('/api/auth/delegations/consent'));
+  await worker.page.getByRole('button',{name:'Consent to this task'}).click();await ok(await consented);
+  await reviewer.page.goto(app.origin+'/app/account?delegation='+grant.grantId);await shoot(kind+'-task-approval',reviewer.page);
+  const approved=reviewer.page.waitForResponse(response=>response.url().endsWith('/api/auth/delegations/approve'));
+  await reviewer.page.getByRole('button',{name:'Approve this task with passkey'}).click();await ok(await approved);
+  const tokenUrl=app.origin+'/oidc/token',clientAssertion=await externalAssertion(tokenUrl,{delegation_use:'token',grant_id:grant.grantId,effect_digest:grant.effectDigest});
+  const form=new URLSearchParams({grant_type:'client_credentials',client_id:externalAgent.clientId,grant_id:grant.grantId,resource:resource.audience,scope:'expenses.update',client_assertion_type:'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',client_assertion:clientAssertion});
+  const challenge=await fetch(tokenUrl,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded',DPoP:await dpop(tokenUrl)},body:form});
+  assert.equal(challenge.status,400);const tokenNonce=challenge.headers.get('dpop-nonce');assert.ok(tokenNonce);await challenge.body.cancel();
+  const issued=await fetch(tokenUrl,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded',DPoP:await dpop(tokenUrl,tokenNonce)},body:form});
+  assert.equal(issued.status,200,await issued.clone().text());const externalToken=(await issued.json()).access_token;
+  await worker.page.goto(app.origin+'/app/account');const externalRow=worker.page.locator(`[data-delegated-task="${grant.grantId}"]`);await expect(externalRow).toContainText('approved');
+  await shoot(kind+'-task-active',worker.page,async page=>{
+   for(const control of await page.locator('[data-tooltip]:visible').all()) {
+    await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();
+    await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true,'keyboard tooltip appears immediately');await page.keyboard.press('Escape');await control.blur();
+   }
+  });
+  const revoked=worker.page.waitForResponse(response=>response.url().endsWith('/api/auth/delegations/revoke'));
+  await externalRow.getByRole('button',{name:'Revoke task'}).click();await ok(await revoked);await expect(externalRow).toContainText('revoked');await shoot(kind+'-task-revoked',worker.page);
+  const authorize=createResourceAuthorizer({issuer:app.origin,resourceId:resource.id,clientId:resource.clientId,audience:resource.audience,privateKey:resourceKeys.privateKey,kid:resourceJwk.kid});
+  const denied=await authorize(new Request(resource.audience,{method:'POST',headers:{authorization:'DPoP '+externalToken,DPoP:await dpop(resource.audience,null,externalToken)}}),{...grant,task:effect,expected:{personId:worker.id,resource:effect.resource,operation:effect.operation,arguments:effect.arguments}});
+  assert.equal(denied.ok,false);assert.equal(denied.response.status,401,'My account revocation refuses the next external call');
+ }
  await worker.context.close();await reviewer.context.close();
 }

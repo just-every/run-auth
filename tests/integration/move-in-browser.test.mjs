@@ -1,3 +1,5 @@
+import {hookServer} from '../auth/hooks-server.mjs';
+import {migrationJourney} from './helpers/migration-journey.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
@@ -11,7 +13,7 @@ const exportFile=fileURLToPath(new URL('../fixtures/move-in/google-30.json',impo
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 
 test('move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop/mobile in both themes',async t=>{
- const app=await openApp();t.after(()=>app.close());await app.claim();
+ const edge=await hookServer(t),app=await openApp({outboundService:edge.fetch});t.after(()=>app.close());await app.claim();
  const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
@@ -30,6 +32,7 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
   await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();
   await expect(page.locator('h1')).toBeVisible();await accessible(`${width} ${theme} ${name}`);if(check)await check(width);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
+  for(const control of await page.locator('[data-tooltip]:visible').all()){await page.mouse.move(0,0);await control.blur();await expect(page.getByRole('tooltip')).toBeHidden();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
   await page.screenshot({path:join(directory,`move-in-${name}-${width}-${theme}.png`),fullPage:true});
  }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});};
 
@@ -86,6 +89,7 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
  await expect(page.locator('[data-row-status=undone]')).toHaveCount(21);
  await shoot('undone');
  await page.goto(app.origin+'/app/activity');await expect(page.locator('[data-activity-detail]').first()).toBeVisible();await shoot('activity');
+ await confirmEmail();await migrationJourney({app,edge,browser,owner:context,page,shoot});
  assert.deepEqual(errors,[],'no browser runtime errors');
  const measured={owner_actions:actions,owner_action_count:actions.length,screens:[...screens],people_admitted:22,invitations_sent:22};
  await writeFile(join(directory,'move-in-measurement.json'),JSON.stringify(measured,null,1)+'\n');

@@ -86,3 +86,61 @@ the grant family when a consumed refresh token is replayed. A timeout or failed
 storage write can follow successful server rotation: clear the local session
 and require deliberate user sign-in instead of retrying the old token.
 Restore and code exchange reject while another token operation is in flight.
+
+## Installable Node administration slice (0.1.0)
+
+This package can be packed and installed in an empty Node 22.20+ app. From the
+Auth checkout, run `npm pack ./packages/session-sdk --pack-destination /tmp`.
+In the empty app run `npm init -y`, then
+`npm install /tmp/runeditrun-auth-sdk-0.1.0.tgz`. Registry publication is not
+claimed. Import `createSessionClient` from `@runeditrun/auth-sdk` for the
+explicit public-client OAuth/DPoP profile documented above.
+
+The server-only `@runeditrun/auth-sdk/admin` export provides
+`createAdminClient({issuer,clientId,privateKey,kid,algorithm='ES256',scopes})`.
+It uses the v1 machine API in `/docs/admin-api`: register a service under a
+human custodian, with its public JWK, exact scopes, resources and expiry.
+Import the private PKCS8 key into WebCrypto with `jose.importPKCS8`; keep it in
+private server custody. HTTPS is required except at loopback during local
+installation. For an isolated employer use its full `/org/<id>` issuer, never
+a root token or a fabricated organization claim.
+
+```js
+import {createAdminClient} from '@runeditrun/auth-sdk/admin';
+const client = createAdminClient({issuer, clientId, privateKey, kid,
+  scopes: ['groups.manage']});
+const {data: group} = await client.request('POST', '/groups', {
+  body: {name: 'Engineering'},
+});
+const {etag} = await client.request('GET', '/groups/' + group.id);
+await client.request('DELETE', '/groups/' + group.id, {etag});
+```
+
+`request` returns `{data,status,etag,rateLimitRemaining}`. ETags are never
+silently fetched or retried: on 412 reread, review the change and deliberately
+submit again. `pages('/groups', {limit:100})` yields each response following
+`nextOffset`; it is a live offset traversal, not a frozen as-of export. There
+is no automatic write, failure retry, privilege escalation or redirect follow.
+Absolute URLs and path traversal are refused before any credential is sent.
+
+Private-key assertions use a unique jti, exact token audience and a sixty-second
+lifetime. Tokens remain in memory, shared by concurrent calls, and are renewed
+before expiry; the server rechecks live authority on every request. A 401 clears
+the cached token and returns the refusal without retry. Errors expose only the
+stable code, status and numeric retry-after, never provider bodies, keys,
+assertions or tokens. This client does not verify external JWTs or cache JWKS.
+For issuer signing-key rotation Auth verifies against its current local keys.
+To replace a service signing key, register a replacement service/key through
+the authorized human door, deploy a new client instance and revoke the old
+service; the SDK cannot mutate its own key custody.
+
+`examples/admin.mjs` is a complete read-only quickstart. Configure
+`AUTH_ISSUER`, `AUTH_CLIENT_ID`, `AUTH_KEY_ID` and `AUTH_PRIVATE_KEY_FILE` on
+your server, then run the installed package's example from `node_modules`.
+It prints permitted groups and safe errors, never authentication material.
+A scope/resource/IP refusal requires the registration's human custodian to
+review it. A wrong web redirect must be corrected in the app registration and
+SDK `redirectUri` together; callback validation remains exact and is never
+bypassed by editing SDK internals. The Node administration slice adds no web
+session or cross-employer authority. Next/React, Python, Hono, embedded
+components and complete fresh-install web journeys remain DEVELOPER-001 work.

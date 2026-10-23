@@ -79,7 +79,8 @@ export function parseExport({fileName,text,exportDate}) {
  const rows=users.map(user=>{
   const mapped=source.map(user),{email,problem}=addressOf(mapped.email);
   const name=clip(mapped.name,160);
-  return {sourceSystem:source.system,sourceId:clip(mapped.sourceId,256)||null,email,emailProblem:problem,displayName:name||null,formulaName:FORMULA.test(name),disabled:typeof mapped.disabled==='boolean'?mapped.disabled:null,groups:mapped.groups.map(g=>clip(g,200)).filter(Boolean),exportDate:date};
+  if(source.system==='custom'&&(!Array.isArray(mapped.history)||mapped.history.length>100||mapped.history.some(entry=>!entry||typeof entry.at!=='string'||!Number.isFinite(Date.parse(entry.at))||!entry.values||typeof entry.values!=='object'||Array.isArray(entry.values)||Object.entries(entry.values).some(([key,value])=>!['name','title','department','location','workerType'].includes(key)||typeof value!=='string'||value.length>320))))refuse('invalid_profile_history','Custom history must contain dated, bounded profile field snapshots.');
+  return {...(source.system==='custom'?{profileHistory:mapped.history,passwordResetRequired:true,factorReenrollmentRequired:true}:{}),sourceSystem:source.system,sourceId:clip(mapped.sourceId,256)||null,email,emailProblem:problem,displayName:name||null,formulaName:FORMULA.test(name),disabled:typeof mapped.disabled==='boolean'?mapped.disabled:null,groups:mapped.groups.map(g=>clip(g,200)).filter(Boolean),exportDate:date};
  });
  return {sourceSystem:source.system,format:source.format,label:source.label,fileName:name,exportDate:date,rows};
 }

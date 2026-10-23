@@ -1,3 +1,9 @@
+import {HR_FEEDS,isHrFeedAction,hrFeedAction,hrFeedRead,hrFeedIngress} from './hris/files/routes.mjs';
+import {REPORTS,reportsRead} from './reporting/reports.mjs';
+import {BRIDGE,bridgeRegister,bridgeDisable,legacyLogin} from './migration/bridge.mjs';
+import {EMPLOYER_PROVIDERS,configureEmployerProvider} from './tenancy/providers.mjs';
+import {PAIRS_PREFIX,isPairPath,pairAction,pairModel,personReceipt} from './erasure/pairs.mjs';
+import {releaseRead,releaseAction} from './erasure/pair-erasure.mjs';
 import {refreshCors} from './tokens/cors.mjs';
 import {isRefreshAction,refreshAction,refreshInventory} from './tokens/routes.mjs';
 import {DECISIONS_READ,isDecisionAction,decisionsRead,decisionAction} from './decisions/routes.mjs';
@@ -70,6 +76,8 @@ function scopedRuntime(options) {
     if(path==='/oidc/authorize')return await authorize(ctx,request);
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
+    if(path===PAIRS_PREFIX||path===PAIRS_PREFIX+'/export')return json(await pairModel(ctx,request),200,path.endsWith('/export')?{'content-disposition':'attachment; filename="auth-identity-links.json"'}:{});
+    if(path==='/api/auth/identity-release-notices')return releaseRead(ctx,request);
     if(path===DECISIONS_READ)return await decisionsRead(ctx,request);
     if(REVIEWS_READS.includes(path))return await reviewsRead(ctx,request,path);
     if(path===REQUESTS_READ)return await requestsRead(ctx,request);
@@ -83,6 +91,8 @@ function scopedRuntime(options) {
     if(path==='/api/auth/move-in/subjects.csv')return await formerSubjects(ctx,request);
     if(path==='/api/auth/hooks'){await requireSession(ctx,request,true);return json(await hookModel(ctx));}
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
+    if(path===HR_FEEDS)return await hrFeedRead(ctx,request);
+    if(path===REPORTS||path.startsWith(REPORTS+'/'))return await reportsRead(ctx,request,path);
     if(DIRECTORY_READS.includes(path))return await directoryRead(ctx,request,path);
     if(PROFILE_READS.includes(path))return await profileRead(ctx,request);
     // The event cursor reads its own read key, never a cookie.
@@ -96,7 +106,23 @@ function scopedRuntime(options) {
     if(path==='/oidc/token')return await delegationToken(ctx,request)??await resourceToken(ctx,request)??await adminToken(ctx,request)??await genericToken(ctx,request)??await token(ctx,request);
     if(path==='/api/auth/move-in/stage')return await stage(ctx,request);
     if(path==='/api/auth/resource-apis/check')return await grantCheck(ctx,request);
+    if(path===HR_FEEDS+'/ingest'||path===HR_FEEDS+'/upload') {
+     if(request.headers.get('origin')!==ctx.origin)fail('origin_required',403);
+     if(!(request.headers.get('content-type')??'').startsWith('application/json'))fail('unsupported_content_type',415);
+     if(Number(request.headers.get('content-length')??0)>2*1024*1024)fail('request_too_large',413);
+     const text=await request.text();if(new TextEncoder().encode(text).length>2*1024*1024)fail('request_too_large',413);
+     let body;try{body=JSON.parse(text);}catch{fail('invalid_json');}
+     if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(key=>!['feedId','fileName','text'].includes(key)))fail('invalid_hr_upload');
+     return path.endsWith('/ingest')?await hrFeedIngress(ctx,request,body):await hrFeedAction(ctx,request,'/hr-feeds/upload',body);
+    }
     const data=await input(ctx,request);
+    if(path===BRIDGE+'/register')return bridgeRegister(ctx,request,data);
+    if(path===BRIDGE+'/disable')return bridgeDisable(ctx,request,data);
+    if(path===BRIDGE+'/login')return legacyLogin(ctx,request,data);
+    if(path===EMPLOYER_PROVIDERS)return configureEmployerProvider(ctx,request,data);
+    if(path===PAIRS_PREFIX+'/receipt')return personReceipt(ctx,request,data);
+    if(isPairPath(path))return pairAction(ctx,request,path,data);
+    if(path==='/api/auth/identity-release-notices/hold')return releaseAction(ctx,request,data);
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);
     if(path==='/auth/identity/email/confirm')return await confirmEmail(ctx,request,{...data,token:data.token||url.searchParams.get('token')});
     const passkeyPath=path.replace('/auth/identity/passkeys/','/auth/passkeys/');
@@ -126,6 +152,7 @@ function scopedRuntime(options) {
      if(isAppAction(action))return await appAction(ctx,request,action,data);
      if(isTrustAction(action))return await trustAction(ctx,request,action,data);
      if(isProfileAction(action))return await profileAction(ctx,request,action,data,{upstreams});
+     if(isHrFeedAction(action))return await hrFeedAction(ctx,request,action,data);
      if(isDirectoryAction(action))return await directoryAction(ctx,request,action,data,{notify:sendInvitation});
      if(isHookAction(action))return await hookAction(ctx,request,action,data);
      if(isMappingAction(action))return await mappingAction(ctx,request,action,data);

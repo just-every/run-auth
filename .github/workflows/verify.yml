@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [ui, offline]
+        suite: [ui, offline, docs]
     permissions:
       contents: read
     env:

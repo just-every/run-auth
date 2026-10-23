@@ -1,7 +1,7 @@
 import {generateAuthenticationOptions,verifyAuthenticationResponse} from '@simplewebauthn/server';
 import {all,one,random,hash,cookie,scopedCookieName,cookies,challenge,consumeChallenge,unb64,json,fail,auditDetail} from '../../core.mjs';
 import {browserData,exact,id,consentingSession,personSessionGuard,both} from './common.mjs';
-import {taskRow,agentForTask,taskGuard,held} from './state.mjs';
+import {taskTable,taskRow,agentForTask,taskGuard,held} from './state.mjs';
 
 const bindingCookie=ctx=>scopedCookieName(ctx,ctx.local?'auth_delegation_consent':'__Host-auth_delegation_consent');
 async function pending(ctx,request,grantId,effectDigest) {
@@ -42,7 +42,7 @@ export async function consentDelegation(ctx,request,data) {
  const results=await ctx.db.batch([
   ctx.db.prepare(`INSERT INTO auth_admin_api_commits(id) SELECT ? WHERE ${guard.clause} AND EXISTS(SELECT 1 FROM auth_passkeys WHERE id=? AND person_id=? AND counter=?)`).bind(operation,...guard.args,key.id,s.person_id,key.counter),
   ctx.db.prepare(`UPDATE auth_passkeys SET counter=?,last_used_at=? WHERE id=? AND ${latch.clause}`).bind(checked.authenticationInfo.newCounter,ctx.now(),key.id,...latch.args),
-  ctx.db.prepare(`UPDATE auth_delegated_tasks SET state='consented',consented_by=?,consented_at=?,consent_session_id=?,revision=revision+1 WHERE id=? AND ${latch.clause}`).bind(s.person_id,ctx.now(),s.id,task.id,...latch.args),
+  ctx.db.prepare(`UPDATE ${taskTable(task)} SET state='consented',consented_by=?,consented_at=?,consent_session_id=?,revision=revision+1 WHERE id=? AND ${latch.clause}`).bind(s.person_id,ctx.now(),s.id,task.id,...latch.args),
   ctx.db.prepare('DELETE FROM auth_admin_api_commits WHERE id=?').bind(operation),
  ]);
  if(!results[0].meta.changes){await held(ctx,guard);fail('passkey_changed',409);}

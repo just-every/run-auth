@@ -10,8 +10,14 @@ import {revokeDelegation} from './revoke.mjs';
 import {executeDelegation} from './execute.mjs';
 import {requestReversal} from './reversal.mjs';
 
+import {registerResource,resourceInventory,disableResource} from './resources.mjs';
+import {redeemExternalTask} from './external-redeem.mjs';
+
 const PREFIX='/api/auth/delegations';
 const writes=new Map([
+ [PREFIX+'/resources/register',registerResource],
+ [PREFIX+'/resources/disable',disableResource],
+ [PREFIX+'/resources/redeem',redeemExternalTask],
  [PREFIX+'/agents/register',registerAgent],
  [PREFIX+'/agents/suspend',suspendAgent],
  [PREFIX+'/request',requestDelegation],
@@ -27,11 +33,12 @@ export const isDelegationPath=path=>path===TARGET_PATH||path===PREFIX||path.star
 export async function delegationRoute(ctx,request,path) {
  delete ctx.delegationActor;
  try {
- if(path!==TARGET_PATH&&path!==PREFIX+'/request') {
+ if(path!==TARGET_PATH&&path!==PREFIX+'/request'&&path!==PREFIX+'/resources/redeem') {
   const s=await session(ctx,request);
   if(s)ctx.delegationActor={actorId:s.person_id};
  }
  if(request.method==='GET') {
+  if(path===PREFIX+'/resources')return await resourceInventory(ctx,request);
   if(path===PREFIX)return await delegationInventory(ctx,request);
   if(path===PREFIX+'/consent')return await delegationConsentView(ctx,request,new URL(request.url).searchParams.get('id'));
  }

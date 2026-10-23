@@ -1,3 +1,4 @@
+import {privatePairStore} from './pair-erasure.mjs';
 import {followupReferences,followupErasure} from '../obligations/erasure.mjs';
 import {fail,hash,random} from '../core.mjs';
 import {snapshot,erasureTable} from './schema.mjs';
@@ -6,7 +7,7 @@ import {sourceOf,organizationOf} from './journal.mjs';
 import {resetConsent} from './reset-policy.mjs';
 
 const rowId=(table,index)=>table+':'+index;
-const serialized=new Set(['detail','data','subject','params','effect','target_state','reason','outcome','undo_report','metadata','message','payload','resources','program','plan','verification','policy','snapshot','purpose']);
+const serialized=new Set(['record','detail','data','subject','params','effect','target_state','reason','outcome','undo_report','metadata','message','payload','resources','program','plan','verification','policy','snapshot','purpose']);
 const staging=new Set(['rer_portability_jobs','rer_portability_parts','rer_portability_segments','rer_portability_owned']);
 const values=(stores,name)=>stores.get(name)?.rows||[];
 const text=v=>typeof v==='string'&&v.length>0;
@@ -33,22 +34,24 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  // Session/factor/grant identifiers can occur in copies without the person's ID.
  for(const name of ['auth_sessions','oa_sessions','auth_passkeys','auth_agent_keys','auth_admin_service_apps'])for(const row of values(stores,name))if(reset||row.person_id===target||row.operator_id===target||row.owner_id===target)for(const field of ['id','client_id'])if(text(row[field]))identifiers.add(row[field]);
  for(const row of values(stores,'auth_delegated_agents'))if(reset||row.registered_by===target||identifiers.has(row.client_id)){identifiers.add(row.id);identifiers.add(row.client_id);}
- for(const row of values(stores,'auth_delegated_tasks'))if(reset||contains(row,identifiers))identifiers.add(row.id);
+ for(const row of [...values(stores,'auth_delegated_tasks'),...values(stores,'auth_external_tasks')])if(reset||contains(row,identifiers))identifiers.add(row.id);
  if(kind==='app')for(const row of values(stores,'auth_oidc_clients'))if(row.app_id===target)identifiers.add(row.client_id);
  for(const name of ['auth_refresh_families','auth_refresh_consents'])for(const row of values(stores,name))if(reset||contains(row,identifiers))identifiers.add(row.id);
  followupReferences(stores,identifiers,reset);
  const holds=values(stores,'auth_erasure_holds').filter(h=>!h.released_at&&(reset||h.kind==='installation'||h.kind==='organization'&&h.target===organizationOf(ctx)||h.kind===kind&&identifiers.has(h.target)));
  const policy=values(stores,'auth_erasure_policy')[0];
  const removed=new Set(),updates=new Map(),decisions=[];
- const canMatch=(name,row)=>contains(row,identifiers);
+ // Role/state/type labels are values, never person identifiers. In particular,
+ // erasing a creator whose id is 'owner' must not select every owner role.
+ const canMatch=(name,row)=>contains(Object.fromEntries(Object.entries(row).filter(([column])=>!['role','state','status','kind','event','type'].includes(column))),identifiers);
  const steward=people.find(p=>p.id!==target&&p.role==='owner'&&p.status==='active')?.id;
  for(const table of stores.values())for(const [index,row] of table.rows.entries()) {
   const key=rowId(table.name,index),name=table.name;
   if(erasureTable(name)||['rer_portability_state','rer_portability_journal','rer_portability_epochs'].includes(name))continue;
   // Immutable task effects are authority, not editable provenance. Preserve
   // their anonymous decision before removing the exact grant and its bindings.
-  if(name==='auth_delegated_tasks'&&(reset||identifiers.has(row.id)||contains(row,identifiers))) {
-   removed.add(key);decisions.push({kind:'delegated_assignment',status:row.state,createdAt:row.created_at,decidedAt:row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});continue;
+  if(['auth_delegated_tasks','auth_external_tasks'].includes(name)&&(reset||identifiers.has(row.id)||contains(row,identifiers))) {
+   removed.add(key);decisions.push({kind:name==='auth_external_tasks'?'delegated_external_task':'delegated_assignment',status:row.state,createdAt:row.created_at,decidedAt:row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});continue;
   }
   const followup=followupErasure(table,row,{stores,identifiers,reset,reference});
   if(followup) {if(followup.remove)removed.add(key);else updates.set(key,followup.update);continue;}
@@ -99,7 +102,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
     if(column?.notnull&&!steward)fail('erasure_custody_transfer_required',409);
     updates.set(key,changed);
    }else {removed.add(key);updates.delete(key);added=true;
-    if(isEvidence(table.name)||table.name==='auth_delegated_tasks')decisions.push({kind:table.name==='auth_delegated_tasks'?'delegated_assignment':row.kind||row.event||row.type,status:row.status??row.state,createdAt:row.created_at||row.occurred_at,decidedAt:row.decided_at??row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});
+    if(isEvidence(table.name)||['auth_delegated_tasks','auth_external_tasks'].includes(table.name))decisions.push({kind:['auth_delegated_tasks','auth_external_tasks'].includes(table.name)?'delegated_assignment':row.kind||row.event||row.type,status:row.status??row.state,createdAt:row.created_at||row.occurred_at,decidedAt:row.decided_at??row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});
    }
   }
  }}
@@ -143,7 +146,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   confirmation:reset?`RESET ${sourceOf(ctx)}`:'ERASE',source:sourceOf(ctx),organization:organizationOf(ctx)};
 }
 export const keyOf=rowId;
-export const publicPlan=plan=>({kind:plan.kind,target:plan.target,confirmation:plan.confirmation,stores:plan.counts,
+export const publicPlan=plan=>({kind:plan.kind,target:plan.target,confirmation:plan.confirmation,stores:plan.counts.filter(row=>!privatePairStore(row.store)),
  remote:plan.remote.map(r=>({kind:r.kind,...(plan.installationReset?{app:r.appLabel||'Connected app',deletionPreauthorized:Boolean(plan.resetConsent?.destinations.includes(r.partner))}:{partner:r.partner}),state:r.work?'awaiting-confirmation':'partner-action-required'})),
  holds:plan.holds.map(h=>({id:h.id,kind:h.kind,...(plan.installationReset?{}:{reason:h.reason})})),policyConfigured:Boolean(plan.policy?.configured),
  limits:['Mailbox/provider owners must delete already delivered messages; Auth cannot recall them.','Installation owners must delete exported archive/backup copies or supply the later erasure journal on restore.','External audit receiver owners must delete delivered event copies; Auth cannot verify that independent storage.','Ask every named partner to delete its independently held copies and confirm completion.','Save the receipt and signed erasure journal before local reset; an old archive cannot discover a later journal.']});
