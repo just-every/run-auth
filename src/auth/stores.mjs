@@ -26,6 +26,7 @@ const groups = {
   'auth_refresh_profiles',
   'auth_retention_runs',
   'auth_followup_settings', 'auth_admin_api_epoch', 'auth_admin_service_apps', 'auth_resource_services',
+  'auth_delegation_resources', 'auth_delegation_agent_resources', 'auth_external_tasks',
   'auth_delegated_agents', 'auth_delegated_tasks',
   'auth_delegation_reversals',
   'auth_rer_trust', 'auth_role_epoch', 'oa_auth_audit', 'oa_auth_settings',
@@ -43,7 +44,7 @@ const groups = {
  transient: [
   'auth_refresh_consents', 'auth_refresh_proofs',
   'auth_admin_api_commits', 'auth_admin_service_assertions', 'auth_agent_proposals',
-  'auth_delegation_assertions',
+  'auth_delegation_resource_assertions', 'auth_delegation_assertions',
   'auth_delegation_dpop_nonces', 'auth_delegation_dpop_proofs',
   'auth_assertions', 'auth_challenges', 'auth_codes', 'auth_erasure_commits',
   'auth_erasure_previews', 'auth_erasure_reset_consents', 'auth_event_deliveries', 'auth_import_rows', 'auth_limits',

@@ -1,0 +1,9 @@
+{
+  "name": "@runeditrun/auth-delegated-resource",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./index.mjs",
+  "engines": {"node": ">=22"},
+  "peerDependencies": {"jose": "^6.2.12"},
+  "license": "MIT"
+}

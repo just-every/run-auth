@@ -9,3 +9,5 @@ export {revokeDelegation} from './revoke.mjs';
 export {CLIENT_PREFIX,SCOPE,API_ID,TARGET_PATH} from './common.mjs';
 export {isDelegationPath,delegationRoute} from './routes.mjs';
 export {requestReversal} from './reversal.mjs';
+export {registerResource,resourceInventory,disableResource} from './resources.mjs';
+export {redeemExternalTask} from './external-redeem.mjs';

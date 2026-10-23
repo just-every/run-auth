@@ -139,3 +139,72 @@ Public HTTP and browser journeys accompany this profile. CONTRACT.md and ACCEPTA
 ## Acceptance integration map
 
 Acceptance must exercise the complete published journey without reducing it to row deletion checks: create an exact task for one assignment and fixed deadline; render its concrete before/after effect and independent approval requirement; perform person consent and independent employer owner/admin WebAuthn/fresh-email approval; obtain a real private-key OAuth token; invoke the native target; and inspect separate agent/person/approver attribution. A second unfinished grant must be visible and revocable through My account, with its next token/target request refused. HTTP probes must substitute person, employer, purpose, app/resource, target/API, operation/role, scope, deadline, digest, agent/token/key and proof; exercise expiration, person/employer/agent suspension, task completion, revocation, assertion replay and concurrent execution. App/document instructions remain ordinary bounded text, and cannot introduce a field, target, scope or execution path. Consent and inventory UI proof is needed at the home's desktop/mobile sizes. These routes/UI, lifecycle-store integration and proofs are seed-owned work; an external OAuth/MCP provider is not a prerequisite for this documented native HTTP target.
+
+## Registered external API and MCP resources (v1)
+
+AUTH-AGENT-006 adds `auth-external-task-v1`. An employer owner with a hardware passkey and fresh email confirmation registers each resource through `POST /api/auth/delegations/resources/register`:
+
+```json
+{
+  "name": "Expenses MCP",
+  "kind": "mcp",
+  "audience": "https://expenses.example.com/mcp",
+  "scopes": ["expenses.update"],
+  "detailType": "mcp_tool_task",
+  "operations": ["update_expense"],
+  "jwks": {"keys": ["replace with a real public ES256 or RS256 JWK"]}
+}
+```
+
+Use `kind: "api"` for an external API; its operations name the API operations. Audience is one exact canonical HTTPS URL with no query, fragment or embedded credentials. Scopes, operations and the authorization-details type are explicitly published at registration. The response includes `id` and `clientId`. The resource retains its private key. The owner can inspect public registrations with `GET /api/auth/delegations/resources` and permanently disable one with `POST /api/auth/delegations/resources/disable` (`{resourceId}`). Disabling immediately ends every unfinished task and its issued tokens. Replacement keys or a changed audience require a new resource registration and new consent.
+
+Register the agent with `resourceIds: [id]`, explicit `personIds`, its own public JWKS and `appIds: []` (or explicit native apps). Resource registration grants no native app administration or automatic outbound execution. The dedicated agent custody credential still uses the existing internal `assignments.manage` envelope; an empty app set grants no native assignment authority. External task tokens instead carry only their one approved published resource scope.
+
+The external canonical task fields, in property order for the signed `request_hash`, are:
+
+```json
+{
+  "organizationId": "root",
+  "accountablePersonId": "employee-id",
+  "personId": "employee-id",
+  "purpose": "Categorize my travel expense",
+  "apiId": "registered-resource-id",
+  "resourceId": "registered-resource-id",
+  "detailType": "mcp_tool_task",
+  "audience": "https://expenses.example.com/mcp",
+  "resource": "expense:123",
+  "operation": "update_expense",
+  "scopes": ["expenses.update"],
+  "expiresAt": 1800003600000,
+  "arguments": {"category": "Travel"}
+}
+```
+
+Arguments are a JSON object, at most 8,000 serialized characters. Keep credentials and unnecessary personal data out of tasks. Arguments are displayed as escaped data during consent and independent approval; they never become instructions to Auth. `apiId` equals `resourceId`; the person, audience, type, published scope, operation, object, arguments, purpose and deadline are all immutable and digest-bound. Object key order is retained, so send the reviewed argument object unchanged. The same request, consent, independent approval, inventory and revoke doors apply. Unregistered audiences and resources, unpublished tools/operations/types/scopes, unapproved people and privileged employees receive no task token.
+
+At `/oidc/token`, request `resource=<registered audience>` and the exact task scope. Use the same private-key assertion and RFC 9449 DPoP nonce negotiation as the native profile. Tokens retain `act`, `cnf.jkt`, the exact task in `authorization_details`, tenant/person versions, unique `jti` and a maximum five-minute lifetime. The authorization-details type is the registered type. These tokens cannot sign in, reach UserInfo or act as ordinary admin API credentials.
+
+### Resource enforcement
+
+Use version `0.1.0` of the source package `packages/delegated-resource` (`@runeditrun/auth-delegated-resource`, Node 22+, jose 6). Copy the package into your app or install it from your checked-out source; no public registry publication is claimed. Configure the exact Auth issuer (including `/org/<id>` for an isolated employer), resource ID, resource client ID, audience and private signing key on the server. Never choose the issuer from an incoming token.
+
+```js
+import { createResourceAuthorizer } from './auth-delegated-resource/index.mjs'
+const authorize = createResourceAuthorizer({
+  issuer, resourceId, clientId, audience, privateKey, kid
+})
+// Parse and validate the actual request using this resource's own schema.
+const result = await authorize(request, {
+  grantId, effectDigest, task,
+  expected: { personId, resource: expense.id, operation: 'update_expense', arguments: validatedArguments }
+})
+if (!result.ok) return result.response
+// Execute this exact operation once, only after the successful receipt.
+return updateExpense(result.authorization.personId, validatedArguments)
+```
+
+For MCP, authenticate each `tools/call`: derive `operation` from the actual `params.name`, `arguments` from schema-validated `params.arguments`, and `personId`/object from the resource's own target route or record. Do not accept a different tool/operation or infer permission from tool discovery. For HTTP APIs derive the operation from the matched server route. The agent sends its approved task envelope alongside the request. The resource must replace its operation, person, object and arguments with the actual parsed values when calling `authorize`. Forward the agent's original `Authorization: DPoP …` and DPoP proof, whose `htu` is the exact registered resource URL and `htm` is POST. This bounded profile supports one POST operation per task, with an exact argument object; it does not claim general MCP OAuth discovery or arbitrary bearer interoperability.
+
+The SDK authenticates the resource with a private-key assertion to `POST <issuer>/api/auth/delegations/resources/redeem`, binding the token hash, original proof hash, grant and digest. Auth verifies both registered keys, audience/type/scope, actual task data and every live person/custodian/approver/resource boundary. The resource forwards `DPoP-Nonce`/`WWW-Authenticate` challenges to its client; the client repeats the same request with a fresh proof and nonce. The SDK never automatically retries an effect, caches authorization or accepts a JWT without a live check. Unavailable Auth is a failed operation, not an offline permission.
+
+A guarded transaction consumes the task and resource assertion exactly once, even with concurrent calls. A successful receipt authorizes one effect; it does not attest remote completion. A resource failure after consumption needs a new reviewed task and must not retry the old authority. Activity records agent/person/approver, resource, digest and execution receipt, with remote outcome explicitly unknown. My account revocation, person or approver departure, agent suspension, custodian demotion, resource disabling and employer reset refuse the next call. Revocation cannot undo an operation already performed. Resource operators remain responsible for their own durable effect/result and applicable downstream erasure. External task grants, registrations, keys and replay state never transfer in an archive; erasure includes them in the shared classified-store inventory.

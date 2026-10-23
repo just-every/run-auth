@@ -9,13 +9,14 @@ export function reversalView(row) {
   executionId:row.execution_id,completedAt:row.completed_at,before:{role:row.before_role},
   assignmentAtRequest:row.assignment_present?{role:row.assignment_role,createdBy:row.assignment_created_by,createdAt:row.assignment_created_at}:null};
 }
-export const canRequestReversal=(task,s,request)=>!request&&task.accountable_id===s.person_id&&task.completed_at!==null&&Boolean(task.execution_id)&&JSON.parse(s.amr).includes('hwk');
+export const canRequestReversal=(task,s,request)=>!task.resource_id&&!request&&task.accountable_id===s.person_id&&task.completed_at!==null&&Boolean(task.execution_id)&&JSON.parse(s.amr).includes('hwk');
 
 export async function requestReversal(ctx,request,data) {
  data=await browserData(ctx,request,data);exact(data,['grantId']);
  const s=await consentingSession(ctx,request),task=await taskRow(ctx,id(data.grantId))||fail('delegation_not_found',404);
  ctx.delegationActor={actorId:s.person_id};
  if(task.accountable_id!==s.person_id||task.organization_id!==organization(ctx))fail('delegation_person_refused',403);
+ if(task.resource_id)fail('external_reversal_requires_resource_owner',403);
  if(task.completed_at===null||!task.execution_id)fail('delegation_not_completed',409);
  const guard=both(personSessionGuard(ctx,s),employerGuard(ctx)),requestId=random(),now=ctx.now();
  // Snapshot the actual assignment in the same statement as the live person and

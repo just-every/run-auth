@@ -8,22 +8,22 @@ import {requireDpop,DpopError} from './dpop.mjs';
 
 const invalidToken=()=>{throw new DpopError('invalid_token',401);};
 
-async function authenticate(ctx,request) {
+export async function authenticate(ctx,request,{external=false}={}) {
  const match=/^DPoP ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/i.exec(request.headers.get('authorization')??'');
  if(!match||match[1].length>16384)invalidToken();
  const keys=(await all(ctx,'SELECT public_jwk FROM auth_signing_keys WHERE retire_at IS NULL OR retire_at>?',ctx.now())).map(r=>JSON.parse(r.public_jwk));
  let claims;
  try {
-  ({payload:claims}=await jwtVerify(match[1],createLocalJWKSet({keys}),{issuer:issuer(ctx),audience:target(ctx),typ:'at+jwt',algorithms:['ES256','RS256'],currentDate:new Date(ctx.now()),requiredClaims:['iss','exp','aud','iat','jti','sub','grant_id','effect_digest','scope','client_id','act','cnf','authorization_details']}));
+  ({payload:claims}=await jwtVerify(match[1],createLocalJWKSet({keys}),{issuer:issuer(ctx),typ:'at+jwt',algorithms:['ES256','RS256'],currentDate:new Date(ctx.now()),requiredClaims:['iss','exp','aud','iat','jti','sub','grant_id','effect_digest','scope','client_id','act','cnf','authorization_details']}));
  }catch{invalidToken();}
  const now=Math.floor(ctx.now()/1000);
- if(claims.delegation_profile!=='auth-assignment-task-v1'||claims.aud!==target(ctx)||claims.organization_id!==organization(ctx)||claims.scope!==SCOPE||!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.iat>now+30||claims.exp<=claims.iat||claims.exp-claims.iat>300||typeof claims.jti!=='string'||!claims.jti||claims.sid!==undefined||claims.amr!==undefined||claims.admin_service_app!==undefined||!claims.cnf||typeof claims.cnf.jkt!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(claims.cnf.jkt)||Object.keys(claims.cnf).length!==1)invalidToken();
+ if(claims.delegation_profile!==(external?'auth-external-task-v1':'auth-assignment-task-v1')||!external&&(claims.aud!==target(ctx)||claims.scope!==SCOPE)||claims.organization_id!==organization(ctx)||!Number.isSafeInteger(claims.iat)||!Number.isSafeInteger(claims.exp)||claims.iat>now+30||claims.exp<=claims.iat||claims.exp-claims.iat>300||typeof claims.jti!=='string'||!claims.jti||claims.sid!==undefined||claims.amr!==undefined||claims.admin_service_app!==undefined||!claims.cnf||typeof claims.cnf.jkt!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(claims.cnf.jkt)||Object.keys(claims.cnf).length!==1)invalidToken();
  let agent,task;
  try {agent=await agentRow(ctx,id(claims.client_id));task=await taskRow(ctx,id(claims.grant_id));}catch(error){if(error instanceof AuthError)invalidToken();throw error;}
  const completed=task?.state==='completed'&&task.execution_id&&claims.grant_revision===task.revision-1;
  if(!agent||!task||task.agent_id!==agent.id||claims.sub!==task.accountable_id||!sameDetails(claims.act,{iss:issuer(ctx),sub:'agent:'+agent.id})||claims.agent_id!==agent.id||claims.agent_revision!==agent.revision||claims.delegated_admin_service!==agent.service.id||claims.service_revision!==agent.service.revision||claims.grant_revision!==task.revision&&!completed||claims.effect_digest!==task.effect_digest||claims.accountable_person!==task.accountable_id||claims.person_version!==task.accountable_version||!sameDetails(claims.authorization_details,authorizationDetails(task)))invalidToken();
  const effect=JSON.parse(task.effect);
- if(claims.api_id!==effect.apiId||claims.resource!==effect.resource||claims.exp*1000>task.expires_at)invalidToken();
+ if(Boolean(task.resource_id)!==external||claims.aud!==effect.audience||claims.scope!==effect.scopes.join(' ')||claims.api_id!==effect.apiId||claims.resource!==effect.resource||claims.exp*1000>task.expires_at)invalidToken();
  return {agent,task,claims,raw:match[1]};
 }
 export async function executeDelegation(ctx,request,data) {

@@ -7,6 +7,10 @@ import {authenticator,register} from './webauthn.mjs';
 import {issueClient} from './policy-helpers.mjs';
 import {ownerInstall,passkeyPerson,mint,preparer,file,approve,approvalProof,reject,post,table,proposal,person,activity,signInAgain} from './agents-helpers.mjs';
 
+import {externalDelegationFlow} from './external-delegation-flow.mjs';
+
+test('registered MCP and external API resources execute one person-consented task; operation, person, scope, audience, replay, expiry and live revocation are enforced at each resource',externalDelegationFlow);
+
 const ADA='ada@northwind.example.com',IVY='ivy@northwind.example.com',SAM='sam@northwind.example.com';
 const PROVIDERS=[{id:'company',label:'Company Google',preset:'google',clientId:'agent-test',tokenAuthMethod:'client_secret_basic',clientSecret:'test-edge-only'}];
 

@@ -19,6 +19,7 @@ export async function maintainAuth(ctx) {
   ctx.db.prepare('DELETE FROM auth_assertions WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_admin_service_assertions WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_delegation_assertions WHERE expires_at<=?').bind(now),
+  ctx.db.prepare('DELETE FROM auth_delegation_resource_assertions WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_delegation_dpop_nonces WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_delegation_dpop_proofs WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_codes WHERE expires_at<=?').bind(now),

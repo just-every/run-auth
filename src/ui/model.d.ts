@@ -224,7 +224,7 @@ export interface ProfileModel {
 export interface DelegatedTask {
   id:string;grantId:string;agentName?:string;personName?:string;personEmail?:string;appName?:string
   organizationId:string;state:string;authorityCurrent:boolean;effectDigest:string;expiresAt:number
-  task:{personId:string;purpose:string;audience:string;apiId:string;scopes:string[];appId:string;role:string;expiresAt:number}
+  task:{personId:string;purpose:string;audience:string;apiId:string;scopes:string[];appId?:string;role?:string;resourceId?:string;resource?:string;operation?:string;arguments?:Record<string,unknown>;expiresAt:number}
   before:{role:string|null};after:{role:string};requiredApprovals:string[]
   reversalRequest?:{id:string;state:string;createdAt:number}|null;canRequestReversal?:boolean
   revocationReach:{local:string;completedEffect:string;downstream:string}
