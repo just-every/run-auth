@@ -116,4 +116,11 @@ export async function externalDelegationFlow(t) {
   for(const secret of [token,revocableToken,expiringToken,disabledToken])assert.ok(!JSON.stringify(audit).includes(secret),'no access token in audit');
   await new Promise(done=>server.close(done));
  }
+ await json(await command('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true}));
+ const preview=await json(await command('erasure/preview',{kind:'person',target:'worker'}));
+ assert.ok(preview.stores.find(row=>row.store==='auth_external_tasks').deleted>0);
+ const erased=await json(await command('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',destinations:[]}));assert.equal(erased.local,'complete');
+ assert.equal((await r.call('/api/auth/me',{cookie:worker.cookie})).status,401);
+ assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM auth_external_tasks WHERE accountable_id='worker'").first()).n,0,'immutable external effects are erased');
+ assert.ok(!JSON.stringify(await json(await r.call('/api/auth/activity',{cookie:owner.cookie}))).includes('worker@example.com'),'audit is anonymized');
 }
