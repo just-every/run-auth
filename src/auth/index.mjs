@@ -1,3 +1,4 @@
+import {refreshCors} from './tokens/cors.mjs';
 import {isRefreshAction,refreshAction,refreshInventory} from './tokens/routes.mjs';
 import {DECISIONS_READ,isDecisionAction,decisionsRead,decisionAction} from './decisions/routes.mjs';
 import {REVIEWS_READS,isReviewAction,reviewsRead,reviewAction} from './reviews/routes.mjs';
@@ -48,6 +49,7 @@ function scopedRuntime(options) {
  return {context:ctx,async upstreamProviders(){const current=await resolved();return current.upstreamProviders?.length?createUpstreams(current).providers.list():[];},async model(request,page){return model(await resolved(),request,page);},async fetch(request) {
   const ctx=await resolved(),upstreams=ctx.upstreamProviders?.length?createUpstreams(ctx):null;
   const url=new URL(request.url),path=url.pathname;
+  if(request.method==='OPTIONS'){const cors=await refreshCors(ctx,request);if(cors)return cors;}
   if(path.startsWith('/auth/oidc/')&&upstreams)return upstreams.fetch(request);
   if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path)&&!isSamlPath(path))return null;
   try {
@@ -153,6 +155,6 @@ export function createAuthRuntime(options) {
  return {context:root,
   async upstreamProviders(){return scopedRuntime(await organizationContext(root,options.organizationId??'root')).upstreamProviders();},
   async model(request,page){const selected=await select(request);return scopedRuntime(selected.ctx).model(selected.request,page);},
-  async fetch(request){return organizationError(async()=>{if(new URL(request.url).origin!==root.origin)fail('wrong_issuer',400);const selected=await select(request);return organizationResponse(selected.ctx,await scopedRuntime(selected.ctx).fetch(selected.request));});},
+  async fetch(request){return organizationError(async()=>{if(new URL(request.url).origin!==root.origin)fail('wrong_issuer',400);const selected=await select(request);const response=await scopedRuntime(selected.ctx).fetch(selected.request);return organizationResponse(selected.ctx,await refreshCors(selected.ctx,selected.request,response));});},
  };
 }

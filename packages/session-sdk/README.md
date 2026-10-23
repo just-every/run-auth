@@ -14,10 +14,10 @@ import { createSessionClient } from './packages/session-sdk/index.mjs';
 const client = await createSessionClient({
   issuer: 'https://identity.example.com',
   clientId: 'registered-native-client',
-  redirectUri: 'example-app:/oauth/callback',
+  redirectUri: 'com.example.documents:/oauth/callback',
 });
 const { url } = await client.authorization({
-  resource: 'https://identity.example.com/api/auth/resource-apis/check',
+  resource: 'https://documents.example.com/api',
   scopes: ['records.read'],
   deviceName: 'Personal phone',
 });

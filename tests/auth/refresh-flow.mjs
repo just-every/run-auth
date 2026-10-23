@@ -11,15 +11,17 @@ export async function refreshLifecycle(t) {
  await new Promise(done=>edge.listen(0,'127.0.0.1',done));t.after(()=>new Promise(done=>edge.close(done)));
  r.edges={'https://native.example.com':`http://127.0.0.1:${edge.address().port}`};
  const command=async(path,data,status=200,cookie=r.owner.cookie)=>{const response=await r.call('/api/auth/'+path,{method:'POST',data,cookie});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
- const app=await command('oidc-apps/create',{name:'Northwind field documents',authMethod:'none',redirectUris:'com.northwind.field:/callback',backchannelLogoutUri:'https://native.example.com/logout'},201);
+ const app=await command('oidc-apps/create',{name:'Northwind field documents',authMethod:'none',redirectUris:['com.northwind.field:/callback','https://native.example.com/callback'],backchannelLogoutUri:'https://native.example.com/logout'},201);
  const api=await command('resource-apis/register',{appId:app.id,name:'Field documents API',audience:'https://native.example.com/documents',scopes:['read','write'],roles:[{role:'reader',scopes:['read'],resources:['document:*']},{role:'editor',scopes:['read','write'],resources:['document:*']}],resources:[{id:'document:budget'},{id:'document:private'}]},201);
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'ada',role:'reader'});
  const profile=async(extra={})=>command('refresh/profile',{clientId:app.clientId,apiId:api.id,scopes:['read','write'],idleHours:1,absoluteHours:24,...extra});
  await profile();
+ const cors=await r.call('/oidc/token',{method:'OPTIONS',headers:{origin:'https://native.example.com','access-control-request-method':'POST','access-control-request-headers':'dpop,content-type'}});assert.equal(cors.status,204);assert.equal(cors.headers.get('access-control-allow-origin'),'https://native.example.com');
+ assert.equal((await r.call('/oidc/token',{method:'OPTIONS',headers:{origin:'https://unregistered.example.com','access-control-request-method':'POST'}})).status,404);
  await command('refresh/profile',{clientId:app.clientId,apiId:api.id,scopes:['read'],idleHours:1,absoluteHours:24},403,r.ada);
  const key=await generateKeyPair('ES256',{extractable:true}),publicJwk=await exportJWK(key.publicKey),jkt=await calculateJwkThumbprint(publicJwk);
  let calls=0,saved=[],cleared=0;
- const transport=async(url,options={})=>{const u=new URL(url);if(u.pathname==='/oidc/token')calls++;return r.call(u.pathname+u.search,{method:options.method,headers:Object.fromEntries(new Headers(options.headers)),form:options.body?Object.fromEntries(new URLSearchParams(options.body)):undefined});};
+ const transport=async(url,options={})=>{const u=new URL(url);if(u.pathname==='/oidc/token')calls++;const headers={...Object.fromEntries(new Headers(options.headers)),origin:'https://native.example.com'},jsonBody=headers['content-type']==='application/json';const response=await r.call(u.pathname+u.search,{method:options.method,headers,...(jsonBody?{data:JSON.parse(options.body)}:{form:options.body?Object.fromEntries(new URLSearchParams(options.body)):undefined})});assert.equal(response.headers.get('access-control-allow-origin'),'https://native.example.com');return response;};
  const make=()=>createSessionClient({issuer:r.origin,clientId:app.clientId,redirectUri:'com.northwind.field:/callback',keyPair:key,fetch:transport,storage:{async save(v){saved.push(v);},async clear(){cleared++;}}});
  const connect=async({scopes=['read'],deviceName='Erin’s managed field tablet',decision='approve',who=r.ada}={})=>{
   const sdk=await make(),auth=await sdk.authorization({resource:'https://native.example.com/documents',scopes,deviceName});
@@ -45,6 +47,7 @@ export async function refreshLifecycle(t) {
  const first=await connect(),before=calls;assert.equal(first.error,undefined,'approved native flow');
  const rotations=await Promise.all([first.sdk.refresh(),first.sdk.refresh(),first.sdk.refresh()]);
  assert.equal(calls-before,1,'one SDK refresh serves concurrent callers');assert.equal(new Set(rotations.map(v=>v.refresh_token)).size,1);assert.notEqual(rotations[0].refresh_token,first.tokens.refresh_token);assert.equal(saved.at(-1).refresh_token,rotations[0].refresh_token);
+ assert.equal((await first.sdk.resourceRequest('/api/auth/resource-apis/check',{apiId:api.id,action:'read',resource:'document:budget'})).allowed,true);
  assert.equal((await check(rotations[0].access_token)).status,200);assert.equal((await (await check(rotations[0].access_token)).json()).allowed,true);
  assert.equal((await (await check(rotations[0].access_token,{action:'write'})).json()).allowed,false);
  const stranger=await generateKeyPair('ES256',{extractable:true});assert.equal((await rawRefresh(rotations[0].refresh_token,{},stranger)).status,401,'wrong device does not revoke a rightful grant');
@@ -58,6 +61,7 @@ export async function refreshLifecycle(t) {
  await command('refresh/revoke',{id:revoke.tokens.grant_id},200,r.ada);
  assert.equal((await check(revoke.tokens.access_token)).status,401);assert.equal((await rawRefresh(revoke.tokens.refresh_token)).status,400);
  assert.ok((await inventory()).some(g=>g.id===revoke.tokens.grant_id&&g.status==='revoked'));
+ const persistence=await connect({deviceName:'Storage failure tablet'}),storageFailure=await createSessionClient({issuer:r.origin,clientId:app.clientId,redirectUri:'com.northwind.field:/callback',keyPair:key,fetch:transport,storage:{async save(){throw new Error('synthetic-auth-storage-unavailable');},async clear(){cleared++;}}});storageFailure.restore(persistence.tokens);await assert.rejects(storageFailure.refresh(),/synthetic-auth-storage-unavailable/);assert.equal(storageFailure.getTokens(),null);assert.equal((await rawRefresh(persistence.tokens.refresh_token)).status,400);
  const race=await connect({deviceName:'Concurrent raw clients'});
  const contested=await Promise.all([rawRefresh(race.tokens.refresh_token),rawRefresh(race.tokens.refresh_token)]);
  assert.ok(contested.some(res=>res.status===400));

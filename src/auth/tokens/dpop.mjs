@@ -13,7 +13,7 @@ export async function deviceProof(ctx,request,jkt,accessToken=null) {
   thumbprint=await calculateJwkThumbprint(key,'sha256');
   if(thumbprint!==jkt)throw Error();
   ({payload}=await jwtVerify(raw,await importJWK(key,'ES256'),{algorithms:['ES256'],typ:'dpop+jwt',currentDate:new Date(ctx.now()),requiredClaims:['jti','iat','htm','htu']}));
-  const now=Math.floor(ctx.now()/1000),endpoint=new URL(request.url);endpoint.search='';endpoint.hash='';
+  const now=Math.floor(ctx.now()/1000),endpoint=new URL(request.url);endpoint.search='';endpoint.hash='';endpoint.pathname=(ctx.basePath??'')+endpoint.pathname;
   if(typeof payload.jti!=='string'||!payload.jti||payload.jti.length>200||!Number.isSafeInteger(payload.iat)||payload.iat>now+30||payload.iat<now-60||payload.htm!==request.method||payload.htu!==endpoint.href||accessToken!==null&&payload.ath!==await hash(accessToken))throw Error();
  }catch{fail('invalid_dpop_proof',401);}
  try {await run(ctx,'INSERT INTO auth_refresh_proofs(jkt,jti,expires_at) VALUES(?,?,?)',thumbprint,payload.jti,Math.max(ctx.now()+61000,(payload.iat+61)*1000));}

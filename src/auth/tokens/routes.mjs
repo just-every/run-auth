@@ -37,7 +37,7 @@ export async function refreshAction(ctx,request,path,data) {
   if(f.person_id!==s.person_id) {
    requireHardware(s);requireLocalEmail(ctx,s);
    const client=await genericClient(ctx,f.client_id);if(!client)fail('grant_not_found',404);
-   const {guard}=await configuration(ctx,request,'/register',{appId:client.app_id});
+   const {guard}=await configuration(ctx,request,'/register',{appId:client.app_id,ownerId:f.person_id});
    const rank=await requireAccountRank(ctx,s,f.person_id,guard);
    const changed=await run(ctx,`UPDATE auth_refresh_families SET revoked_at=?,reason='administrator_revoked' WHERE id=? AND revoked_at IS NULL AND ${rank.clause}`,ctx.now(),f.id,...rank.args);
    if(!changed.meta.changes)await requireAuthority(ctx,s,rank);
