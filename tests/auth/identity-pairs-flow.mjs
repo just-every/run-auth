@@ -42,7 +42,25 @@ export async function identityPairsFlow(t) {
  const relink=await r.call('/api/auth/identity-pairs/options',post({organizationId:a.org.id},both)),relinkOptions=await json(relink);
  const linked=await command(r,both+'; '+cookieOf(relink),'identity-pairs/confirm',{transaction:relinkOptions.transaction,rootResponse:worker.key.authenticate(relinkOptions.rootOptions),memberResponse:a.member.key.authenticate(relinkOptions.memberOptions),confirm:true},201);
  assert.notEqual(linked.handle,pair.handle);
- const receiptKey=(await command(r,worker.cookie,'identity-pairs/receipt-key',{confirm:true},201)).receiptKey;
+ // A receipt key is requested explicitly by the independently proved person.
+ const issue='identity-pairs/receipt-key',read='identity-pairs/receipt',revoke='identity-pairs/receipt-revoke';
+ await command(r,worker.cookie,issue,{confirm:false},403);
+ await command(r,undefined,issue,{confirm:true},401);
+ const emailOnly=await emailSession(r,'worker@example.com');
+ await command(r,emailOnly,issue,{confirm:true},403);
+ await command(r,worker.cookie,issue,{confirm:true,personId:'outsider'},400);
+ const issued=await command(r,worker.cookie,issue,{confirm:true},201),receiptKey=issued.receiptKey;
+ const expiring=(await command(r,worker.cookie,issue,{confirm:true},201)).receiptKey;
+ const outsiderKey=(await command(r,outsider.cookie,issue,{confirm:true},201)).receiptKey;
+ assert.equal((await command(r,undefined,read,{receiptKey:outsiderKey})).state,'awaiting-installation-erasure');
+ const stored=(await r.db.prepare('SELECT * FROM auth_erasure_person_receipts').all()).results;
+ for(const raw of [receiptKey,expiring,outsiderKey])assert.ok(!JSON.stringify(stored).includes(raw),'only digests are persisted');
+ assert.ok(issued.expiresAt>r.now);
+ for(const path of ['/api/auth/me','/api/auth/identity-pairs','/api/auth/identity-pairs/export'])assert.equal((await r.call(path,{headers:{authorization:'Bearer '+receiptKey}})).status,401,'receipt authority never signs in or lists memberships');
+ assert.equal((await r.call('/api/auth/erasure/policy',{...post({confirm:true,receiptKey}),headers:{authorization:'Bearer '+receiptKey}})).status,401,'receipt authority cannot erase');
+ assert.equal((await r.call('/api/auth/'+read+'?receiptKey='+receiptKey,post({receiptKey}))).status,400,'a URL is never a receipt-key transport');
+ assert.equal((await r.call('/api/auth/'+read+'?receiptKey='+receiptKey)).status,404);
+ await command(r,undefined,read,{receiptKey:'synthetic-auth-1'},404);
  assert.equal((await command(r,undefined,'identity-pairs/receipt',{receiptKey})).state,'awaiting-installation-erasure');
  await command(r,owner.cookie,'erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
  const preview=await command(r,owner.cookie,'erasure/preview',{kind:'person',target:'worker'});
@@ -65,9 +83,17 @@ export async function identityPairsFlow(t) {
  assert.equal((await json(await a.client.call('/api/auth/followup',{cookie:a.admin.cookie}))).obligations.find(row=>row.kind==='identity_release').state,'open');
  const memberPreview=await command(a.client,a.admin.cookie,'erasure/preview',{kind:'person',releaseNoticeId:aNotices[0].id});
  await command(a.client,a.admin.cookie,'erasure/confirm',{previewId:memberPreview.id,confirmation:'ERASE',destinations:[]});
- const receipt=await command(r,undefined,'identity-pairs/receipt',{receiptKey});assert.deepEqual(receipt.notices,[{organization:a.org.name,state:'erased'}]);assert.equal(receipt.message,'Auth erased your installation identity. Memberships you did not link are held separately by those employers; Auth did not see or erase them. Ask each employer to erase them.');
+ const receipt=await command(r,undefined,'identity-pairs/receipt',{receiptKey});assert.deepEqual(receipt.notices,[{handle:linked.handle,erasureReference:erased.reference,state:'erased'}]);
+ for(const org of organizations)for(const value of [org.org.name,org.org.id])assert.ok(!JSON.stringify(receipt).includes(value),'receipt contains no employer identity');
+ assert.deepEqual(Object.keys(receipt).sort(),['message','notices','state']);assert.equal(receipt.message,'Auth erased your installation identity. Memberships you did not link are held separately by those employers; Auth did not see or erase them. Ask each employer to erase them.');
  assert.equal((await c.client.call('/api/auth/me',{cookie:c.member.cookie})).status,200,'unlinked membership is not erased');
  await r.restart();assert.equal((await command(r,undefined,'identity-pairs/receipt',{receiptKey})).notices[0].state,'erased','receipt and notice survive restart');
+ assert.equal((await command(r,undefined,read,{receiptKey:outsiderKey})).state,'awaiting-installation-erasure','each key reads only its own receipt');
+ await command(r,undefined,revoke,{receiptKey,confirm:false},403);
+ await command(r,undefined,revoke,{receiptKey,confirm:true});
+ await command(r,undefined,read,{receiptKey},404);
+ await r.restart();await command(r,undefined,read,{receiptKey},404);
+ assert.ok((await r.db.prepare('SELECT revoked_at FROM auth_erasure_person_receipts WHERE revoked_at IS NOT NULL').first()).revoked_at,'revocation leaves a retained anonymous fact');
  const activity=await json(await r.call('/api/auth/activity',{cookie:owner.cookie}));assert.ok(!JSON.stringify(activity).includes(linked.handle));assert.ok(!JSON.stringify(activity).includes(receiptKey));
  // An installation creator is provenance, never ownership of the employer's
  // independent records. A second root owner can erase that creator alone.
@@ -75,4 +101,12 @@ export async function identityPairsFlow(t) {
  const creatorPreview=await command(r,successor.cookie,'erasure/preview',{kind:'person',target:'owner'});
  await command(r,successor.cookie,'erasure/confirm',{previewId:creatorPreview.id,confirmation:'ERASE',destinations:[]});
  assert.equal((await c.client.call('/api/auth/me',{cookie:c.admin.cookie})).status,200,'erasing the root creator leaves the employer and its independent owner');
+ r.now=issued.expiresAt;
+ await command(r,undefined,read,{receiptKey:expiring},404);
+ await r.call('/scheduled',{action:'maintain'});await r.restart();
+ await command(r,undefined,read,{receiptKey:expiring},404);
+ const facts=(await r.db.prepare('SELECT * FROM auth_erasure_person_receipts').all()).results;
+ assert.ok(facts.every(row=>row.expired_at===row.expires_at),'expiry leaves retained facts even without a read');
+ assert.ok(facts.every(row=>row.person_id===null&&row.notices==='[]'),'ended keys retain no receipt payload or identity');
+ assert.ok(facts.some(row=>row.revoked_at!==null),'expiry preserves the prior revocation fact');
 }

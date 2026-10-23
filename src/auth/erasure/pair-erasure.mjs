@@ -16,14 +16,14 @@ export async function pairErasureWork(ctx,plan) {
  if(plan.kind==='person'&&(ctx.organizationId??'root')==='root') {
   const pairs=plan.stores.get('auth_identity_pairs')?.rows.filter(pair=>pair.person_id===plan.target)??[],notices=[];
   for(const pair of pairs) {
-   const employer=await root.prepare("SELECT id,name FROM auth_organizations WHERE id=? AND status='active'").bind(pair.organization_id).first();
+   const employer=await root.prepare("SELECT id FROM auth_organizations WHERE id=? AND status='active'").bind(pair.organization_id).first();
    if(!employer)continue;
    await organizationContext({...ctx,db:root},employer.id);
    const ns=namespace(employer.id),noticeId=random();
    before.push({sql:`INSERT OR IGNORE INTO ${ns}auth_identity_release_notices(id,handle,erasure_reference,created_at,updated_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM ${ns}auth_identity_pairs WHERE handle=?) AND EXISTS(SELECT 1 FROM auth_organizations WHERE id=? AND status='active')`,args:[noticeId,pair.handle,plan.reference,ctx.now(),ctx.now(),pair.handle,employer.id]});
-   notices.push({organizationId:employer.id,name:employer.name,noticeId});
+   notices.push({organizationId:employer.id,handle:pair.handle,erasureReference:plan.reference,noticeId});
   }
-  for(const receipt of await all(ctx,'SELECT token_hash FROM auth_erasure_person_receipts WHERE person_id=? AND erased_at IS NULL',plan.target)) {
+  for(const receipt of await all(ctx,'SELECT token_hash FROM auth_erasure_person_receipts WHERE person_id=? AND erased_at IS NULL AND revoked_at IS NULL AND expired_at IS NULL',plan.target)) {
    const encrypted=await seal(ctx,'personal-erasure-receipt:'+receipt.token_hash,notices);
    after.push({sql:'UPDATE auth_erasure_person_receipts SET person_id=NULL,erased_at=?,notices=? WHERE token_hash=? AND person_id=?',args:[ctx.now(),encrypted,receipt.token_hash,plan.target]});
   }

@@ -14,7 +14,7 @@ export async function maintainAuth(ctx) {
  const now=ctx.now();
  await ctx.db.batch([
   ctx.db.prepare("UPDATE auth_migration_bridges SET state='disabled',sealed_credential=NULL,disabled_at=? WHERE state='active' AND expires_at<=?").bind(now,now),
-  ctx.db.prepare('DELETE FROM auth_erasure_person_receipts WHERE expires_at<=?').bind(now),
+  ctx.db.prepare("UPDATE auth_erasure_person_receipts SET expired_at=expires_at,person_id=NULL,notices='[]' WHERE expires_at<=? AND expired_at IS NULL").bind(now),
   ctx.db.prepare('DELETE FROM auth_upstream_proofs WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_challenges WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_limits WHERE expires_at<=?').bind(now),

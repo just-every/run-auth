@@ -2,13 +2,14 @@ import {HR_FEEDS,isHrFeedAction,hrFeedAction,hrFeedRead,hrFeedIngress} from './h
 import {REPORTS,reportsRead} from './reporting/reports.mjs';
 import {BRIDGE,bridgeRegister,bridgeDisable,legacyLogin} from './migration/bridge.mjs';
 import {EMPLOYER_PROVIDERS,configureEmployerProvider} from './tenancy/providers.mjs';
-import {PAIRS_PREFIX,isPairPath,pairAction,pairModel,personReceipt} from './erasure/pairs.mjs';
+import {PAIRS_PREFIX,isPairPath,pairAction,pairModel} from './erasure/pairs.mjs';
 import {releaseRead,releaseAction} from './erasure/pair-erasure.mjs';
 import {refreshCors} from './tokens/cors.mjs';
 import {isRefreshAction,refreshAction,refreshInventory} from './tokens/routes.mjs';
 import {DECISIONS_READ,isDecisionAction,decisionsRead,decisionAction} from './decisions/routes.mjs';
 import {REVIEWS_READS,isReviewAction,reviewsRead,reviewAction} from './reviews/routes.mjs';
 import {REQUESTS_READ,isRequestAction,requestsRead,requestAction} from './requests/index.mjs';
+import {personReceipt,receiptAction} from './erasure/personal-receipts.mjs';
 import {RETENTION_READS,isRetentionAction,retentionRead,retentionAction} from './retention/index.mjs';
 import {syncObligations} from './obligations/sources.mjs';
 import {FOLLOWUP_READ,isFollowupAction,followupRead,followupAction} from './obligations/routes.mjs';
@@ -115,12 +116,14 @@ function scopedRuntime(options) {
      if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(key=>!['feedId','fileName','text'].includes(key)))fail('invalid_hr_upload');
      return path.endsWith('/ingest')?await hrFeedIngress(ctx,request,body):await hrFeedAction(ctx,request,'/hr-feeds/upload',body);
     }
+    if(isPairPath(path)&&url.search)fail('receipt_body_required',400);
     const data=await input(ctx,request);
     if(path===BRIDGE+'/register')return bridgeRegister(ctx,request,data);
     if(path===BRIDGE+'/disable')return bridgeDisable(ctx,request,data);
     if(path===BRIDGE+'/login')return legacyLogin(ctx,request,data);
     if(path===EMPLOYER_PROVIDERS)return configureEmployerProvider(ctx,request,data);
     if(path===PAIRS_PREFIX+'/receipt')return personReceipt(ctx,request,data);
+    if(path===PAIRS_PREFIX+'/receipt-key'||path===PAIRS_PREFIX+'/receipt-revoke')return receiptAction(ctx,request,path,data);
     if(isPairPath(path))return pairAction(ctx,request,path,data);
     if(path==='/api/auth/identity-release-notices/hold')return releaseAction(ctx,request,data);
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);

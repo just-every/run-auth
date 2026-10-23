@@ -1,8 +1,7 @@
 import {generateAuthenticationOptions,verifyAuthenticationResponse} from '@simplewebauthn/server';
-import {all,one,random,hash,requireSession,session,fail,json,challenge,consumeChallenge,cookies,cookie,scopedCookieName,unb64} from '../core.mjs';
+import {all,one,random,hash,requireSession,fail,json,challenge,consumeChallenge,cookies,cookie,scopedCookieName,unb64} from '../core.mjs';
 import {personSessionGuard,both} from '../agents/delegation/common.mjs';
 import {organizationContext} from '../tenancy/context.mjs';
-import {seal,unseal} from '../keys.mjs';
 
 export const PAIRS_PREFIX='/api/auth/identity-pairs';
 export const isPairPath=path=>path===PAIRS_PREFIX||path.startsWith(PAIRS_PREFIX+'/');
@@ -74,26 +73,5 @@ export async function pairAction(ctx,request,path,data) {
   ]);
   await held(ctx,guard);return json({removed:true});
  }
- if(path===PAIRS_PREFIX+'/receipt-key') {
-  exact(data,['confirm']);if(data.confirm!==true)fail('explicit_receipt_consent_required',403);
-  const s=await passkey(ctx,request),token=random()+random(),guard=personSessionGuard(ctx,s),expires=new Date(ctx.now());expires.setUTCMonth(expires.getUTCMonth()+13);
-  const result=await ctx.db.prepare(`INSERT INTO auth_erasure_person_receipts(token_hash,person_id,created_at,expires_at,notices) SELECT ?,?,?,?,'[]' WHERE ${guard.clause}`).bind(await hash(token),s.person_id,ctx.now(),expires.getTime(),...guard.args).run();
-  if(!result.meta.changes){await held(ctx,guard);fail('receipt_key_refused',409);}
-  return json({receiptKey:token,expiresAt:expires.getTime(),instruction:'Save privately. POST this key in the request body to read only your erasure receipt. Never put it in a URL.'},201);
- }
  fail('not_found',404);
-}
-export const UNLINKED_RECEIPT='Auth erased your installation identity. Memberships you did not link are held separately by those employers; Auth did not see or erase them. Ask each employer to erase them.';
-export async function personReceipt(ctx,request,data) {
- rootOnly(ctx);exact(data,['receiptKey']);if(typeof data.receiptKey!=='string'||!/^[A-Za-z0-9_-]{86}$/.test(data.receiptKey))fail('receipt_unavailable',404);
- const row=await one(ctx,'SELECT * FROM auth_erasure_person_receipts WHERE token_hash=? AND expires_at>?',await hash(data.receiptKey),ctx.now())||fail('receipt_unavailable',404);
- if(!row.erased_at)return json({state:'awaiting-installation-erasure',notices:[]});
- const notices=await unseal(ctx,'personal-erasure-receipt:'+row.token_hash,row.notices),visible=[];
- for(const entry of notices) {
-  const org=await one(ctx,"SELECT status FROM auth_organizations WHERE id=?",entry.organizationId);
-  const notice=org?.status==='active'?await ctx.db.prepare(`SELECT state,hold_id FROM ${prefix(entry.organizationId)}auth_identity_release_notices WHERE id=?`).bind(entry.noticeId).first():null;
-  const activeHold=notice?.state==='held'&&await ctx.db.prepare(`SELECT id FROM ${prefix(entry.organizationId)}auth_erasure_holds WHERE id=? AND released_at IS NULL`).bind(notice.hold_id).first();
-  visible.push({organization:entry.name,state:org?.status==='erased'?'employer-erased':notice?.state==='held'&&!activeHold?'pending':notice?.state??'unknown'});
- }
- return json({state:'installation-erased',erasedAt:row.erased_at,notices:visible,message:UNLINKED_RECEIPT});
 }
