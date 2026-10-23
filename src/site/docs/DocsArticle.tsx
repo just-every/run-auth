@@ -9,7 +9,7 @@ export function DocsArticle({ slug }: { slug: string }) {
   if (!page) throw new Error(`No docs page ${slug}`)
   const next = pages[index + 1]
   let example = 0
-  const html = page.html.replaceAll('<pre>', () => `<pre tabindex="0" role="region" aria-label="Code example ${++example}">`)
+  const html = page.html.replace(/<pre\b([^>]*)>/g, (_match, attributes: string) => `<pre${attributes} tabindex="0" role="region" aria-label="Code example ${++example}">`)
   return (
     <SiteFrame className="docs">
       <div className="docs-layout">
