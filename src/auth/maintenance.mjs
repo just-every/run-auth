@@ -47,5 +47,8 @@ export async function maintainAuth(ctx) {
 }
 
 async function runRefreshCleanup(ctx) {
- await ctx.db.batch([ctx.db.prepare('DELETE FROM auth_refresh_proofs WHERE expires_at<=?').bind(ctx.now()),ctx.db.prepare('DELETE FROM auth_refresh_consents WHERE expires_at<=?').bind(ctx.now())]);
+ await ctx.db.batch([
+  ctx.db.prepare('DELETE FROM auth_refresh_credentials WHERE family_id IN (SELECT id FROM auth_refresh_families WHERE revoked_at IS NOT NULL)'),
+  ctx.db.prepare('UPDATE auth_refresh_families SET current_hash=NULL WHERE revoked_at IS NOT NULL'),
+  ctx.db.prepare('DELETE FROM auth_refresh_proofs WHERE expires_at<=?').bind(ctx.now()),ctx.db.prepare('DELETE FROM auth_refresh_consents WHERE expires_at<=?').bind(ctx.now())]);
 }

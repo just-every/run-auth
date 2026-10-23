@@ -1,7 +1,8 @@
 import {all,auditDetail,fail,json,one,requireSession,run} from '../core.mjs';
 import {configuration,configurationView} from '../grants/configuration.mjs';
-import {authority,requireAuthority,requireLocalEmail} from '../local-email.mjs';
-import {requireHardware} from '../roles/policy.mjs';
+import {requireAuthority,requireLocalEmail} from '../local-email.mjs';
+import {roleState} from '../roles/state.mjs';
+import {permitted,requireHardware} from '../roles/policy.mjs';
 import {requireAccountRank} from '../ranks.mjs';
 import {genericClient} from '../oidc-apps/clients.mjs';
 import {consentView,decideConsent} from './consent.mjs';
@@ -13,14 +14,15 @@ const view=f=>({id:f.id,personId:f.person_id,personEmail:f.person_email,appName:
 export async function refreshInventory(ctx,request,s=null) {
  s??=await requireSession(ctx,request);
  const admin=new URL(request.url).searchParams.get('refreshAdmin')==='1';
- let apiIds=null;
+ let apiIds=null,state=null;
  if(admin) {
   const apis=await all(ctx,'SELECT id,app_id AS appId FROM auth_resource_apis');
   apiIds=new Set((await configurationView(ctx,request,{apis,services:[]})).apis.map(a=>a.id));
+  if(!['owner','admin'].includes(s.role))state=await roleState(ctx,s);
  }
- const rows=await all(ctx,`SELECT f.*,p.email AS person_email,a.name AS app_name,api.audience FROM auth_refresh_families f JOIN oa_operators p ON p.id=f.person_id JOIN auth_oidc_clients c ON c.client_id=f.client_id JOIN auth_apps a ON a.id=c.app_id JOIN auth_resource_apis api ON api.id=f.api_id ${admin?'':'WHERE f.person_id=?'} ORDER BY f.created_at DESC LIMIT 200`,...(admin?[]:[s.person_id]));
+ const rows=await all(ctx,`SELECT f.*,p.email AS person_email,c.app_id AS app_id,a.name AS app_name,api.audience FROM auth_refresh_families f JOIN oa_operators p ON p.id=f.person_id JOIN auth_oidc_clients c ON c.client_id=f.client_id JOIN auth_apps a ON a.id=c.app_id JOIN auth_resource_apis api ON api.id=f.api_id ${admin?'':'WHERE f.person_id=?'} ORDER BY f.created_at DESC,f.id DESC`,...(admin?[]:[s.person_id]));
  const grants=[];
- for(const f of rows)if(!apiIds||apiIds.has(f.api_id))grants.push(view({...f,live:await liveFamily(ctx,f)}));
+ for(const f of rows)if((!apiIds||apiIds.has(f.api_id))&&(!state||permitted(state,'apps.view',{appId:f.app_id,personId:f.person_id})))grants.push(view({...f,live:await liveFamily(ctx,f)}));
  const canManage=['owner','admin'].includes(s.role)&&JSON.parse(s.amr).includes('hwk');
  const clients=canManage?await all(ctx,'SELECT c.client_id AS clientId,a.name FROM auth_oidc_clients c JOIN auth_apps a ON a.id=c.app_id WHERE a.disabled_at IS NULL ORDER BY a.name'):[];
  const apis=canManage?await all(ctx,'SELECT id,app_id AS appId,name,audience FROM auth_resource_apis'):[];

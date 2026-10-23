@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {SignJWT,calculateJwkThumbprint,decodeJwt,exportJWK,generateKeyPair} from 'jose';
+import {SignJWT,calculateJwkThumbprint,createLocalJWKSet,decodeJwt,exportJWK,generateKeyPair,jwtVerify} from 'jose';
 import {samlInstall,browse} from './saml-helpers.mjs';
 import {createSessionClient} from '../../packages/session-sdk/index.mjs';
 
@@ -21,7 +21,7 @@ export async function refreshLifecycle(t) {
  await command('refresh/profile',{clientId:app.clientId,apiId:api.id,scopes:['read'],idleHours:1,absoluteHours:24},403,r.ada);
  const key=await generateKeyPair('ES256',{extractable:true}),publicJwk=await exportJWK(key.publicKey),jkt=await calculateJwkThumbprint(publicJwk);
  let calls=0,saved=[],cleared=0;
- const transport=async(url,options={})=>{const u=new URL(url);if(u.pathname==='/oidc/token')calls++;const headers={...Object.fromEntries(new Headers(options.headers)),origin:'https://native.example.com'},jsonBody=headers['content-type']==='application/json';const response=await r.call(u.pathname+u.search,{method:options.method,headers,...(jsonBody?{data:JSON.parse(options.body)}:{form:options.body?Object.fromEntries(new URLSearchParams(options.body)):undefined})});assert.equal(response.headers.get('access-control-allow-origin'),'https://native.example.com');return response;};
+ const transport=async(url,options={})=>{const u=new URL(url);if(u.pathname==='/oidc/token')calls++;const headers={...Object.fromEntries(new Headers(options.headers)),origin:'https://native.example.com'},jsonBody=headers['content-type']==='application/json';const response=await r.call(u.pathname+u.search,{method:options.method,headers,...(jsonBody?{data:JSON.parse(options.body)}:{form:options.body?Object.fromEntries(new URLSearchParams(options.body)):undefined})});assert.equal(response.headers.get('access-control-allow-origin'),'https://native.example.com');if(response.ok&&u.pathname==='/oidc/token'&&new URLSearchParams(options.body).get('grant_type')==='authorization_code'){const out=await response.clone().json(),verified=await jwtVerify(out.id_token,createLocalJWKSet(await (await r.call('/oidc/jwks')).json()),{issuer:r.origin,audience:app.clientId,currentDate:new Date(r.now)});assert.equal(verified.payload.sid,out.grant_id);if(verified.payload.at_hash)assert.equal(verified.payload.at_hash,Buffer.from(await (await import('../../src/auth/core.mjs')).hash(out.access_token),'base64url').subarray(0,16).toString('base64url'));}return response;};
  const make=()=>createSessionClient({issuer:r.origin,clientId:app.clientId,redirectUri:'com.northwind.field:/callback',keyPair:key,fetch:transport,storage:{async save(v){saved.push(v);},async clear(){cleared++;}}});
  const connect=async({sdk:existing,scopes=['read'],deviceName='Erin’s managed field tablet',decision='approve',who=r.ada}={})=>{
   const sdk=existing??await make(),auth=await sdk.authorization({resource:'https://native.example.com/documents',scopes,deviceName});
@@ -86,12 +86,22 @@ export async function refreshLifecycle(t) {
  r.now+=2500;assert.equal((await rawRefresh(absolute.sdk.getTokens().refresh_token)).status,400,'absolute expiry never slides');assert.equal((await check(absolute.sdk.getTokens().access_token)).status,401);
  r.tick=()=>{r.now=Date.now();};r.tick();await profile();
  const adminEnded=await connect({deviceName:'Administrator inventory'});assert.ok((await inventory(r.owner.cookie,'?refreshAdmin=1')).some(g=>g.id===adminEnded.tokens.grant_id));await command('refresh/revoke',{id:adminEnded.tokens.grant_id});assert.equal((await check(adminEnded.tokens.access_token)).status,401);
+ const {passkeyPerson}=await import('./agents-helpers.mjs'),support=await passkeyPerson(r,'field-support','field-support@example.com');
+ const plan=async data=>{const preview=await command('roles/preview',data);return (await command('roles/apply',{previewId:preview.previewId})).plan;};
+ const supportRole=await plan({kind:'role',role:{name:'Field grant support',rank:50,permissions:['apps.view','apps.edit']}});
+ await plan({kind:'grant',personId:'field-support',roleId:supportRole.role.id,resources:{view:{apps:[app.id],people:['ada']},edit:{apps:[app.id]}}});
+ const scoped=await connect({deviceName:'Scoped support tablet'});await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'bob',role:'reader'});const hidden=await connect({who:r.bob,deviceName:'Separate employee tablet'});
+ const scopedInventory=await inventory(support.cookie,'?refreshAdmin=1');assert.ok(scopedInventory.some(g=>g.id===scoped.tokens.grant_id));assert.ok(!scopedInventory.some(g=>g.personId==='bob'));
+ await command('refresh/revoke',{id:scoped.tokens.grant_id},403,support.cookie);assert.equal((await check(scoped.tokens.access_token)).status,200);
+ await plan({kind:'grant',personId:'field-support',roleId:supportRole.role.id,resources:{view:{apps:[app.id],people:['ada']},edit:{apps:[app.id],people:['ada']}}});
+ await command('refresh/revoke',{id:scoped.tokens.grant_id},200,support.cookie);assert.equal((await check(scoped.tokens.access_token)).status,401);await command('refresh/revoke',{id:hidden.tokens.grant_id},403,support.cookie);
  const suspended=await connect({deviceName:'Suspended worker tablet'});await command('people/suspend',{personId:'ada'});assert.equal((await rawRefresh(suspended.tokens.refresh_token)).status,400);assert.equal((await check(suspended.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===suspended.tokens.grant_id));
  // A second active worker proves app removal independently of suspension.
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'bob',role:'reader'});
  const removed=await connect({who:r.bob,deviceName:'Bob’s field tablet'});await command('company-apps/remove',{id:app.id});assert.notEqual((await rawRefresh(removed.tokens.refresh_token)).status,200);assert.equal((await check(removed.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===removed.tokens.grant_id));
  await command('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});const preview=await command('erasure/preview',{kind:'person',target:'bob'});const erased=await command('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:false,destinations:[]});assert.equal(erased.local,'complete');assert.equal((await check(removed.tokens.access_token)).status,401);const receipt=(await (await r.call('/api/auth/erasure/receipts',{cookie:r.owner.cookie})).json()).receipts.find(x=>x.id===erased.id);assert.ok(receipt.stores.find(store=>store.store==='auth_refresh_families').deleted);assert.ok(receipt.stores.find(store=>store.store==='auth_refresh_credentials').deleted);
  const audit=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(audit.some(row=>row.event==='refresh_consent_approved'));assert.ok(audit.some(row=>row.event==='refresh_rotated'));assert.ok(audit.some(row=>row.event==='refresh_family_ended'));
+ assert.equal((await r.call('/',{action:'maintain'})).status,200);assert.equal((await r.db.prepare('SELECT count(*) AS n FROM auth_refresh_credentials').first()).n,0);assert.equal((await rawRefresh(suspended.tokens.refresh_token)).status,401);
  // Strict RER discovery/issuance remains covered by protocol.test's live code
  // flow, which asserts there is no refresh token and refuses offline_access.
 }

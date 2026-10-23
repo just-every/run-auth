@@ -22,7 +22,7 @@ CREATE TABLE auth_refresh_families (
  person_version INTEGER NOT NULL, session_id TEXT NOT NULL,
  profile_revision INTEGER NOT NULL, api_revision INTEGER NOT NULL, app_version INTEGER NOT NULL,
  scopes TEXT NOT NULL, jkt TEXT NOT NULL, device_name TEXT NOT NULL,
- current_hash TEXT NOT NULL, generation INTEGER NOT NULL DEFAULT 0,
+ current_hash TEXT, generation INTEGER NOT NULL DEFAULT 0,
  created_at INTEGER NOT NULL, last_used_at INTEGER NOT NULL,
  idle_expires_at INTEGER NOT NULL, absolute_expires_at INTEGER NOT NULL,
  revoked_at INTEGER, reason TEXT, logout_queued_at INTEGER

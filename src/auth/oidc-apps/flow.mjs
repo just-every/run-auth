@@ -112,9 +112,12 @@ export async function genericToken(ctx,request) {
  if(code.challenge?!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier||'')||code.challenge!==await hash(verifier):verifier!==null)return oauthError('invalid_grant');
  const s=await one(ctx,"SELECT s.*,p.email,p.display_name FROM auth_sessions s JOIN oa_operators p ON p.id=s.person_id WHERE s.id=? AND s.revoked_at IS NULL AND s.expires_at>? AND p.status='active' AND p.version=s.person_version",code.session_id,ctx.now());
  if(!s||JSON.parse(s.amr).includes('dev')&&!ctx.local)return oauthError('invalid_grant');
- const scopes=JSON.parse(code.scopes),issued=await tokens(ctx,client,s,{scopes,nonce:code.nonce,grantSid:code.refresh_consent_id,withIdToken:true,withAccessToken:true});
+ const scopes=JSON.parse(code.scopes),issued=await tokens(ctx,client,s,{scopes,nonce:code.nonce,grantSid:code.refresh_consent_id,withIdToken:true,withAccessToken:!code.refresh_consent_id});
  if(!issued)return oauthError('invalid_grant');
  await audit(ctx,code.person_id,'id_token_issued',client.app_id);
+ // The offline code response replaces UserInfo access with a resource token.
+ // Its code-flow ID token omits the optional at_hash instead of binding a
+ // discarded UserInfo token. Strict and ordinary OIDC issuance is unchanged.
  if(code.refresh_consent_id) {
   try {const offline=await initialFamily(ctx,client,code);return json({...issued,...offline},200,{pragma:'no-cache'});}
   catch(error){if(error instanceof AuthError)return oauthError(error.message,error.status);throw error;}
