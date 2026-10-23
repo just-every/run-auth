@@ -46,6 +46,10 @@ export async function legacyBridgeFlow(t) {
  assert.equal(await (await r.call('/api/auth/move-in/subjects.csv?batch='+staged.batchId,{cookie:owner.cookie})).text(),mapping.replace('synthetic-auth-81,legacy@example.com,invited,','synthetic-auth-81,legacy@example.com,active,'),'reviewed downstream old-subject mapping survives first login and enrollment');
  const verifiedCalls=edge.received.filter(row=>row.path==='/legacy').length;
  assert.equal((await json(await login('synthetic-auth-81'),202)).state,'already-migrated');assert.equal(edge.received.filter(row=>row.path==='/legacy').length,verifiedCalls,'completed migration never rechecks or trusts the old password');
+ const verifier=edge.responses.get('/legacy');edge.responses.set('/legacy',{status:503,body:{}});
+ assert.equal((await login('synthetic-auth-83')).status,503,'verifier outage is unavailable and creates no migration completion');
+ assert.equal((await r.db.prepare('SELECT completed_at FROM auth_migration_subjects WHERE person_id=?').bind(interrupted.id).first()).completed_at,null);
+ edge.responses.set('/legacy',verifier);
  // A mail transport interruption occurs after the durable one-time completion.
  const deliveredBefore=(await r.mails()).length;r.mailEdge='http://127.0.0.1:1';const interruptedReply=await login('synthetic-auth-83');assert.equal(interruptedReply.status,202,'email requests preserve their anti-enumeration response during outage');assert.equal((await r.mails()).length,deliveredBefore,'the transport outage delivers no proof');assert.ok(await r.db.prepare("SELECT id FROM auth_activity WHERE event='email_delivery_failed' AND subject_id=?").bind(interrupted.id).first(),'actual delivery failure is retained');assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_sessions WHERE person_id=?').bind(interrupted.id).first()).n,0);delete r.mailEdge;
  await r.restart();assert.equal((await json(await login('synthetic-auth-83'),202)).state,'already-migrated');assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_migration_subjects WHERE person_id=? AND completed_at IS NOT NULL').bind(interrupted.id).first()).n,1);

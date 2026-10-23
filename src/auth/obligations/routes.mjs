@@ -20,7 +20,7 @@ export async function followupRead(ctx,request) {
   obligationPage(ctx,request,{table:'auth_obligations',columns:`id,kind,source_id,${caseProjection},owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at`,prefix:'obligation',defaultLimit:200,filter}),
   obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100,filter:{clause:`obligation_id IN (SELECT id FROM auth_obligations WHERE ${filter.clause})`,args:filter.args}}),
  ]);
- for(const ob of obligations.items){ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);if(releaseSource(ob))ob.kind='identity_release';}
+ for(const ob of obligations.items){ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);if(releaseSource(ob))ob.kind='identity_release';if(await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id)){ob.kind='hr_file_feed';ob.canSend=false;}}
  const live=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),access.state.epoch);
  if(!live)fail('role_authority_changed',409);
  const saved=await policy(ctx),visiblePolicy=access.canManage?saved:{enabled:saved.enabled,calendar:saved.calendar,reminderBusinessDays:saved.reminderBusinessDays,deadlineBusinessDays:saved.deadlineBusinessDays,escalation:saved.escalation,recipients:[],escalationRecipients:[]};

@@ -1,3 +1,4 @@
+import {hrFilePreviewFlow,sftpIngressFlow,hrFileApplyFlow} from './hr-file-flow.mjs';
 import {mfaReportFlow,administratorsReportFlow,dormantReportFlow,terminatedReportFlow} from './reporting-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -287,3 +288,8 @@ test('native MFA reports reconcile every scoped directory row and keep no-factor
 test('the administrators report follows a live published custom role grant and its revocation',administratorsReportFlow);
 test('the dormant report distinguishes an aged successful sign-in from recent activity and explicit unknown history',dormantReportFlow);
 test('terminated reports retain held app names and verified remote outcomes while connector failures and unmeasured timing stay explicit',terminatedReportFlow);
+
+test('saved HR file mappings hold destructive, empty and malformed deliveries, preview current and future rows, and retain one stale-feed follow-up across restart',hrFilePreviewFlow);
+test('a real SFTP listener admits only the employer key, stages bounded files through Auth, refuses traversal and shells, and ends ingress after disabling',sftpIngressFlow);
+
+test('an explicitly approved HR file applies reviewed hires, moves and leavers through native directory proof while preserving enrollment and replay refusals',hrFileApplyFlow);

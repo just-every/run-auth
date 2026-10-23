@@ -247,7 +247,7 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  const publicIssuer=await a.call('/oidc/jwks',{cookie:owner.cookie});assert.equal(publicIssuer.status,200);const published=await publicIssuer.text();assert.ok(JSON.parse(published).keys.length>0);assertNoCredentials(published);
  const connectorModel=await (await a.call('/api/auth/company-apps',{cookie:adminA.cookie})).json();
  assert.equal(connectorModel.companyApps.find(app=>app.id===credentialApp.id).provisioning.baseUrl,'https://scim.example.com/scim/v2','the credential-free response describes the populated connector');
- const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','delegations','reports','reports/mfa-enrollment','reports/mfa-enrollment?format=csv'];
+ const reads=['me','people','directory','directory/groups','apps','activity','agents','move-in','hooks','roles','roles/people','roles/export','resource-apis','delegations','hr-feeds','reports','reports/mfa-enrollment','reports/mfa-enrollment?format=csv'];
  for(const path of reads) {
   const response=await b.call('/api/auth/'+path,{cookie:adminB.cookie});
   assert.equal(response.status,200,path+' '+await response.clone().text());
@@ -255,6 +255,9 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  }
  const issuerKeyPair=await generateKeyPair('ES256'),machineJwk={...await exportJWK(issuerKeyPair.publicKey),kid:'synthetic-auth-tenancy-2',alg:'ES256',use:'sig'};
  const isolatedWrites=[
+  ['hr-feeds/create',{name:'Foreign source',schedule:'daily',mapping:{sourceId:'ID',email:'Email',state:'State',effectiveAt:'Effective'},fingerprint:'synthetic-auth-invalid',confirm:true}],
+  ['hr-feeds/upload',{feedId:'synthetic-auth-foreign',fileName:'foreign.csv',text:'ID,Email,State,Effective'}],
+  ['hr-feeds/apply',{feedId:'synthetic-auth-foreign',fileId:'synthetic-auth-file',digest:'synthetic-auth-digest',rows:[0],confirm:true}],
   ['people/invite',{email:'intrusion@example.com'}],
   ['people/role',{personId:personA.id,role:'admin'}],
   ['directory/edit',{personId:personA.id,set:{title:'Installation intrusion'}}],

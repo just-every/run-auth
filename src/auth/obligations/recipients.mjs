@@ -32,6 +32,7 @@ export async function recipientIds(ctx,ob,selectors) {
 }
 export async function recipient(ctx,ob,id,selectors,{escalation=false}={}) {
  ob=await withCase(ctx,ob);
+ if(ob.id&&await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id))return null;
  const person=await one(ctx,"SELECT id,email,role,status FROM oa_operators WHERE id=?",id);
  if(!person)return null;
  if(releaseSource(ob))return person.id===ob.owner_id&&person.role==='owner'&&person.status==='active'&&selectors.includes(person.id)?person:null;

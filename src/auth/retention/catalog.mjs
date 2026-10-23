@@ -3,6 +3,8 @@
 const terminated=person=>`EXISTS(SELECT 1 FROM oa_operators p JOIN auth_people d ON d.person_id=p.id WHERE p.id=${person} AND p.status='inactive' AND d.terminated_at IS NOT NULL)`;
 const end=person=>`(SELECT d.terminated_at FROM auth_people d WHERE d.person_id=${person})`;
 export const CATALOG=Object.freeze([
+ {table:'auth_hr_file_rows',class:'sourceSnapshots',time:'(SELECT f.received_at FROM auth_hr_files f WHERE f.id=t.file_id)',key:['file_id','idx'],where:"EXISTS(SELECT 1 FROM auth_hr_files f WHERE f.id=t.file_id AND f.state='reviewed')"},
+ {table:'auth_hr_files',class:'sourceSnapshots',time:'t.received_at',key:['id'],where:"t.state='reviewed' AND NOT EXISTS(SELECT 1 FROM auth_hr_file_rows r WHERE r.file_id=t.id)"},
  {table:'auth_import_history',class:'sourceSnapshots',time:'(SELECT b.created_at FROM auth_import_batches b WHERE b.id=t.batch_id)',key:['batch_id','idx'],where:"EXISTS(SELECT 1 FROM auth_import_rows r WHERE r.batch_id=t.batch_id AND r.idx=t.idx AND r.status IN ('admitted','undone'))"},
  {table:'auth_refresh_families',class:'authentication',time:'COALESCE(t.revoked_at,t.absolute_expires_at)',key:['id'],where:"(t.revoked_at IS NOT NULL OR t.absolute_expires_at<=:now) AND NOT EXISTS(SELECT 1 FROM auth_oidc_logouts l WHERE l.sid=t.id AND l.finished_at IS NULL)",columns:['id','client_id','api_id','person_id','device_name','scopes','created_at','last_used_at','idle_expires_at','absolute_expires_at','revoked_at','reason']},
  {table:'auth_activity_details',class:'audit',time:'(SELECT a.created_at FROM auth_activity a WHERE a.id=t.activity_id)',key:['activity_id'],where:"EXISTS(SELECT 1 FROM auth_activity a WHERE a.id=t.activity_id AND substr(a.event,1,6)!='model_')"},
