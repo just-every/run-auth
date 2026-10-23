@@ -453,9 +453,9 @@ AUTH-TENANCY-001, AUTH-ROLES-001, AUTH-GRANTS-001 and AUTH-ERASURE-001 pass at `
 
 | Clauses | Done | Partial | Missing | Total |
 | --- | ---: | ---: | ---: | ---: |
-| Published | 11 | 0 | 0 | 11 |
+| Published | 13 | 0 | 0 | 13 |
 | Target and push further | 18 | 34 | 26 | 78 |
-| All | 29 | 34 | 26 | 89 |
+| All | 31 | 34 | 26 | 91 |
 
 | Clause | Title | Kind | Status | Evidence | Gap |
 | --- | --- | --- | --- | --- | --- |
