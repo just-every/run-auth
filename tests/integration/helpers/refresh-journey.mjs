@@ -1,3 +1,4 @@
+import {requestRefreshSignIn} from './refresh-signin.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -23,8 +24,8 @@ export async function refreshJourney(t) {
   const consent=page.locator('section[aria-label="Offline access consent"]');if(await consent.count())await consent.screenshot({path:join(directory,`refresh-consent-card-${width}.png`)});
   await page.locator('#offline-grants').screenshot({path:join(directory,`refresh-${name}-panel-${width}.png`)});
  }await page.setViewportSize({width:1440,height:1000});};
- await owner.goto(app.origin+'/signin?returnTo=%2Fsetup');await owner.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);await owner.getByRole('button',{name:'Email me a sign-in link'}).click();
- await owner.goto((await app.link()).href);await owner.getByRole('button',{name:'Continue to Auth'}).click();await expect(owner).toHaveURL(app.origin+'/setup');await owner.getByRole('checkbox').check();await owner.getByRole('button',{name:'Finish setup'}).click();
+ await owner.goto(app.origin+'/signin?returnTo=%2Fsetup');await owner.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);const ownerLink=await requestRefreshSignIn(app,owner,app.vars.OWNER_EMAIL);
+ await owner.goto(ownerLink.href);await owner.getByRole('button',{name:'Continue to Auth'}).click();await expect(owner).toHaveURL(app.origin+'/setup');await owner.getByRole('checkbox').check();await owner.getByRole('button',{name:'Finish setup'}).click();
  await owner.goto(app.origin+'/app/methods');const enrolled=owner.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await saved(owner,()=>owner.getByRole('button',{name:'Register a passkey'}).click());assert.equal((await enrolled).status(),200);
  const signing=await post(root,'keys/stage',{alg:'ES256'},201);
  const employee=await post(root,'directory/onboard',{email:'erin@northwind.example.com',name:'Erin Park',kind:'employee',set:{department:'Field engineering'}},201);
@@ -36,7 +37,7 @@ export async function refreshJourney(t) {
  await saved(owner,()=>settings.getByRole('button',{name:'Publish offline profile'}).click());
  await shoot('profile-published',owner,async()=>owner.getByText('Manage offline profiles',{exact:true}).click());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();page.on('dialog',dialog=>dialog.accept());page.on('pageerror',e=>errors.push(e.message));
- await page.goto(app.origin+'/signin?returnTo=%2Fapp%2Faccount');await page.getByLabel('Email address',{exact:true}).fill('erin@northwind.example.com');await page.getByRole('button',{name:'Email me a sign-in link'}).click();await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();await expect(page).toHaveURL(app.origin+'/app/account');
+ await page.goto(app.origin+'/signin?returnTo=%2Fapp%2Faccount');await page.getByLabel('Email address',{exact:true}).fill('erin@northwind.example.com');const employeeLink=await requestRefreshSignIn(app,page,'erin@northwind.example.com');await page.goto(employeeLink.href);await page.getByRole('button',{name:'Continue to Auth'}).click();await expect(page).toHaveURL(app.origin+'/app/account');
  const sdk=await createSessionClient({issuer:app.origin,clientId:native.clientId,redirectUri:'https://field.example.com/callback'});
  const authorization=await sdk.authorization({resource:'https://field.example.com/documents',scopes:['read'],deviceName:'Erin’s managed iPad · Field engineering'});
  await page.goto(authorization.url);await expect(page.getByRole('heading',{name:'Allow Northwind field documents offline access?'})).toBeVisible();await shoot('consent',page);
