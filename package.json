@@ -1,6 +1,6 @@
 {
   "name": "@identity/auth",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "repository": "https://github.com/just-every/run-auth",
   "homepage": "https://run-auth.com",
@@ -42,7 +42,10 @@
     "test:site": "node --test tests/site/run-site.test.mjs",
     "drill:continuity": "node --test --test-concurrency=1 --test-name-pattern=\"scheduled continuity|scheduled installation continuity|a provider answering\" tests/auth/security.test.mjs tests/auth/provisioning.test.mjs tests/integration/http.test.mjs",
     "test:browser:offline": "node --test tests/integration/refresh-browser.test.mjs",
-    "test:browser:docs": "rer build --site --non-interactive && node --test --test-name-pattern=^docs tests/integration/browser.test.mjs"
+    "test:browser:docs": "rer build --site --non-interactive && node --test --test-name-pattern=^docs tests/integration/browser.test.mjs",
+    "delivery:spec": "node scripts/build-deployment-spec.mjs",
+    "check:deployment-spec": "node scripts/build-deployment-spec.mjs --check",
+    "check:sources": "node scripts/edition-authoring/cli.mjs check && node scripts/edition-authoring/cli.mjs verify-base --offline"
   },
   "dependencies": {
     "@simplewebauthn/server": "13.3.3",
@@ -59,7 +62,7 @@
     "@cloudflare/workers-types": "5.20260908.1",
     "@node-saml/node-saml": "5.1.0",
     "@playwright/test": "1.55.1",
-    "@runeditrun/rer": "0.2.45",
+    "@runeditrun/rer": "0.2.80",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "6.1.1",

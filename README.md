@@ -46,3 +46,5 @@ Auth is an `oidc-provider@1` link provider: the Apps page approves and removes a
 People, **Move people in** stages a user list exported from Google Workspace, Microsoft Entra, Auth0, Okta or JumpCloud, shows what needs a decision, admits chosen rows as ordinary invitations and can undo the batch. Nothing but email, name, disabled state and the provider's id moves: no passwords, factors, roles, groups, sessions or apps. `rer export` leaves out staged rows that were never admitted. Read [MOVE-IN.md](MOVE-IN.md) before using it, including who should keep their current provider.
 
 See [Auth commands](AUTH-COMMANDS.md) for browser sign-in, recovery, private settings and the exceptions to the copied [Base command contract](SEED-COMMAND-CONTRACT.md). [Acceptance](ACCEPTANCE.md) names the real checks and remaining dependencies.
+
+Hosted mail and deployment inputs are documented in [Host Auth](HOSTING.md).

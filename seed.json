@@ -1,7 +1,7 @@
 {
   "id": "auth",
   "name": "Auth",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "maturity": "development",
   "category": "identity",
   "spine": {
@@ -75,5 +75,10 @@
   },
   "provides": [
     "oidc-provider@1"
+  ],
+  "replaces": [
+    "Okta Workforce Identity",
+    "Microsoft Entra ID",
+    "JumpCloud"
   ]
 }

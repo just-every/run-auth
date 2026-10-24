@@ -3,5 +3,21 @@
   "projectId": "just-every/run-auth",
   "name": "Auth",
   "sourceRepository": "https://github.com/just-every/run-auth",
-  "license": "MIT"
+  "license": "MIT",
+  "deployment": {
+    "target": "cloudflare-workers",
+    "artifactFile": "rer-worker-artifact.json"
+  },
+  "operations": {
+    "setup": "pnpm install --frozen-lockfile && pnpm exec rer install",
+    "build": "pnpm run build",
+    "verify": "pnpm exec rer check --profile first-party && pnpm check:sources && pnpm check:deployment-spec && pnpm run verify",
+    "artifact": "node scripts/delivery/base/cli.mjs artifact --config packaging.json",
+    "recovery": "Stop the owned Auth processes before export. Follow docs/backup-and-restore.md: retain the source and private configuration, export using rer export, restore using rer import into a fresh empty installation, then verify owner sign-in, linked apps and a real re-export before routing traffic. Keep the issuer host and unchanged applied migration bytes. Active isolated employers refuse installation export and restore; do not bypass this boundary."
+  },
+  "verifyWorkflow": "verify.yml",
+  "setup": {
+    "path": "rer-setup.json",
+    "sha256": "0d3620d6c49a89a3fd4848aa0fdd9e42d4e379cd4e8c1a5521f15fdff50f48b4"
+  }
 }

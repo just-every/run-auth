@@ -19,3 +19,7 @@ playwright-report/
 
 # Restricted local OpenID conformance evidence.
 /conformance-current-results/
+
+# Delivery outputs are generated locally.
+rer-package/
+delivery-artifact/

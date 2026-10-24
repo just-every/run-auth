@@ -18,5 +18,14 @@
       "database_id": "local-auth-only",
       "migrations_dir": "migrations/core"
     }
-  ]
+  ],
+  "vars": {
+    "AUTH_LOCAL": "false",
+    "AUTH_ORIGIN": "",
+    "MAIL_PROVIDER": "resend",
+    "MAIL_FROM": "auth@example.invalid",
+    "MAIL_RELAY_URL": "",
+    "MAIL_ACCOUNT_ID": "",
+    "OWNER_EMAIL": ""
+  }
 }
