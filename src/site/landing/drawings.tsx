@@ -53,7 +53,7 @@ const commands = [
   '# Already have Node 22 or later? npx -y @runeditrun/rer dev just-every/run-auth',
 ]
 const Terminal = () => (
-  <pre className="draw-terminal" aria-label={commands[0]}><code>{commands.map(line => <span key={line}><span className="prompt" aria-hidden="true">$ </span>{line}{'\n'}</span>)}</code></pre>
+  <pre className="draw-terminal" aria-label={commands[0]}><code>{commands.map(line => <span key={line}><span className="prompt" aria-hidden="true">$ </span>{line === commands[0] ? <><span className="draw-command-part">{line.slice(0, line.indexOf('|'))}</span><wbr /><span className="draw-command-part">{line.slice(line.indexOf('|'))}</span></> : line}{'\n'}</span>)}</code></pre>
 )
 
 export const drawings: Record<string, () => JSX.Element> = { passkeys: Passkeys, apps: Apps, people: People, 'move-in': MoveIn, free: Licence, ownership: Terminal }

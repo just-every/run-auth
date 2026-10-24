@@ -44,8 +44,10 @@
 .draw-card.licence strong { font-family: var(--rer-font-heading); font-size: 22px; font-weight: 600; }
 .draw-terminal {
   margin: 0; padding: 30px 32px; border-radius: 18px; background: #1F2428; color: #F1EEE7; overflow-x: auto;
+  white-space: pre-wrap;
   font: 15px/1.95 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; box-shadow: 0 12px 32px rgb(31 36 40 / .16);
 }
+.draw-terminal .draw-command-part { white-space: pre; }
 .draw-terminal .prompt { color: #6FB3CC; }
 :root[data-theme="dark"] .draw-terminal { background: #0B0E10; border: 1px solid var(--rer-border); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .draw-terminal { background: #0B0E10; border: 1px solid var(--rer-border); } }
@@ -110,6 +112,7 @@
   .draw-row strong.draw-text { flex: 1 1 auto; min-width: auto; white-space: nowrap; }
   .draw-row .draw-meta { font-size: 13px; }
   .draw-terminal { padding: 20px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .draw-terminal .draw-command-part { white-space: pre-wrap; }
   .draw-terminal > code > span { display: block; padding-left: 1.3em; text-indent: -1.3em; margin-bottom: 4px; }
   .draw-card.licence { padding: 24px; }
 
