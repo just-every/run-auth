@@ -1,6 +1,6 @@
 import { fileURLToPath as __rerTestEntryPath } from 'node:url';
 const __rerTestEntry = __rerTestEntryPath(import.meta.resolve('@runeditrun/rer/internal/bin/rer.mjs'));
-const __rerTestEntryArgs = args => args[1] === 'dev' && !args.some(arg => ['--foreground', '--detach', '--stop', '--help'].includes(arg)) ? [...args, '--foreground'] : args;
+const __rerTestEntryArgs = args => ['dev', 'preview'].includes(args[1]) && !args.some(arg => ['--foreground', '--detach', '--stop', '--help'].includes(arg)) ? [...args, '--foreground'] : args;
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
@@ -76,8 +76,8 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  for(const path of privatePaths)assert.equal((await request(path)).status,404,path);
  const signedOut=await request('/auth/dev/enter?as=signed-out',{cookie:cookies.join('; ')});assert.equal(signedOut.status,303);
  assert.equal((await request('/api/auth/me',{cookie:cookies.join('; ')})).status,401,'persona signout revokes the Auth session');
- const stopped=command(['dev','--stop','--non-interactive']);assert.equal(await new Promise(resolve=>stopped.child.once('exit',resolve)),0);
- await new Promise(resolve=>dev.child.exitCode!==null?resolve():dev.child.once('exit',resolve));
+ const stopped=new Promise(resolve=>dev.child.once('exit',resolve));dev.child.kill('SIGTERM');
+ assert.equal(await stopped,0,'the owned foreground dev process stops cleanly');
  const preview=command(['preview','--non-interactive','--json']);let previewReady;
  for(let attempt=0;attempt<480;attempt++){
   assert.equal(preview.child.exitCode,null,preview.child.exitCode===null?'rer preview stays running':`rer preview stays running; ${startupDiagnostic(preview)}`);
@@ -86,7 +86,8 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  }
  assert.ok(previewReady,'rer preview ready');
  for(const path of privatePaths)assert.equal((await fetch(previewReady.url+path,{redirect:'manual'})).status,404,`preview ${path}`);
- const previewStop=command(['preview','--stop','--non-interactive']);assert.equal(await new Promise(resolve=>previewStop.child.once('exit',resolve)),0);await new Promise(resolve=>preview.child.exitCode!==null?resolve():preview.child.once('exit',resolve));
+ const previewStopped=new Promise(resolve=>preview.child.once('exit',resolve));preview.child.kill('SIGTERM');
+ assert.equal(await previewStopped,0,'the owned foreground preview process stops cleanly');
  const recovery=command([],['scripts/auth-recovery.mjs','--local']);assert.equal(await new Promise(resolve=>recovery.child.once('exit',resolve)),0);const tokenFile=join(directory,'.rer/local/recovery-token');assert.equal((await stat(tokenFile)).mode&0o777,0o600);const token=(await readFile(tokenFile,'utf8')).trim();assert.ok(!recovery.output().includes(token),'recovery wrapper never prints the token');
  // Export carries people and the signed grant map, never sessions, signing keys or the pairwise key.
  const transfer=command(['export','--output','exports/auth.rer','--non-interactive','--json']);assert.equal(await new Promise(resolve=>transfer.child.once('exit',resolve)),0,transfer.output());

@@ -69,6 +69,9 @@ const groups = {
   'rer_portability_guard', 'rer_portability_jobs', 'rer_portability_journal',
   'rer_portability_owned', 'rer_portability_parts', 'rer_portability_segments',
   'rer_portability_state',
+  // Base 0.2.80 adds private import leases and retained recovery audit.
+  // Platform's migration ledger is controller bookkeeping, never product data.
+  'rer_portability_import_leases', 'rer_portability_recovery_audit', 'rer_migrations',
  ],
 };
 const globalOnly = new Set(['auth_organizations', 'oc_owner_claims']);
