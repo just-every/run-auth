@@ -1,3 +1,4 @@
+import {hrFileJourney} from './hr-file-journey.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -12,7 +13,7 @@ export async function accessReviewJourney(t) {
  const errors=[];
  const hardware=async(context,page)=>{page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);page.on('pageerror',e=>errors.push(e.message));const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});};
  await hardware(root,owner);
- const post=async(context,path,data,status=200)=>{const response=await context.request.post(app.origin+'/api/auth/'+path,{data,headers:{origin:app.origin}});assert.equal(response.status(),status,path+' '+await response.text());return response.json();};
+ const post=async(context,path,data,status=200)=>{const response=await context.request.post(app.origin+'/api/auth/'+path.replace(/^\/+/,''),{data,headers:{origin:app.origin}});assert.equal(response.status(),status,path+' '+await response.text());return response.json();};
  const signin=async(context,page,email,setup=false)=>{
   await page.goto(app.origin+'/signin?returnTo='+encodeURIComponent(setup?'/setup':'/app/methods'));
   await page.getByLabel('Email address',{exact:true}).fill(email);await page.getByRole('button',{name:'Email me a sign-in link'}).click();
@@ -23,6 +24,9 @@ export async function accessReviewJourney(t) {
  };
  const shoot=async(name,page,panels,prepare=async()=>{})=>{for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});await page.reload();await prepare();await expect(page.locator('h1')).toBeVisible();
+  for(const control of await page.locator('[data-tooltip]:visible').all()){
+   await page.mouse.move(0,0);await control.blur();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();
+  }
   await page.screenshot({path:join(directory,`access-${name}-${width}.png`),fullPage:true});
   const layout=await page.evaluate(()=>({fits:document.documentElement.scrollWidth<=innerWidth,overflow:[...document.querySelectorAll('main *')].filter(e=>e.scrollWidth>e.clientWidth+1&&getComputedStyle(e).overflowX==='visible').slice(-6).map(e=>({tag:e.tagName,classes:e.className,text:e.textContent.slice(0,100),width:e.clientWidth,scroll:e.scrollWidth}))}));
   assert.ok(layout.fits,name+' fits '+width+' '+JSON.stringify(layout));
@@ -77,7 +81,34 @@ export async function accessReviewJourney(t) {
  await create.getByRole('checkbox',{name:'Include Auth administrator roles and grants'}).check();
  await saved(owner,()=>create.getByRole('button',{name:'Create quarterly review'}).click());
  const view=await(await root.request.get(app.origin+'/api/auth/reviews')).json(),review=view.reviews[0],item=review.items.find(i=>i.subject_id===workerData.id);
- assert.ok(item);const native=review.items.find(i=>i.principal_type==='installation_role');assert.ok(native);
+ assert.ok(item);
+ // Keep all three source families unresolved in the real built Activity page.
+ const followupApp=await post(root,'/company-apps/create',{name:'Weekend approval workspace',entityId:'https://followup.example.com',acsUrl:'https://followup.example.com/acs'},201);
+ const ownerId=(await(await root.request.get(app.origin+'/api/auth/me')).json()).user.id;
+ await post(root,'/requests/policy',{appId:followupApp.id,deciderId:ownerId,maxDurationMs:3600000});
+ await manager.reload();const pendingRequest=manager.locator('[data-access-form=request-create]');
+ await pendingRequest.locator('[name=appId]').selectOption(followupApp.id);await pendingRequest.getByLabel('Purpose',{exact:true}).fill('Weekend approval follow-up');await pendingRequest.getByLabel('Duration in minutes').fill('60');
+ await saved(manager,()=>pendingRequest.getByRole('button',{name:'Request temporary access with passkey'}).click());
+ await hrFileJourney({app,context:root,page:owner,shoot:async name=>shoot(name,owner,['[data-followup-panel]'])});
+ const followups=await(await root.request.get(app.origin+'/api/auth/followup')).json();
+ for(const kind of ['access_request','review_item','hr_file_feed'])assert.ok(followups.obligations.some(row=>row.kind===kind&&row.state==='open'));
+ await owner.goto(app.origin+'/app/activity');
+ await shoot('followup-sources',owner,['[data-followup-panel]'],async()=>{
+  await owner.locator('[data-followup-panel]').getByText('Reminder settings and approved recipients',{exact:true}).click();
+  await expect(owner.getByRole('checkbox',{name:'HR source owner for stale deliveries'})).toBeVisible();
+  await expect(owner.locator('[data-followup-panel]')).toContainText('access request');await expect(owner.locator('[data-followup-panel]')).toContainText('review item');
+ });
+ // Authorize the new source duty through the real settings form. No feed
+ // registration or legacy reviewer policy supplies this outbound consent.
+ const consent=owner.locator('[data-followup-settings]');
+ await consent.locator('[name=enabled]').check();await consent.locator('[name=recipients][value=decider]').check();await consent.locator('[name=recipients][value=source_owner]').check();
+ await consent.locator('[name=escalationRecipients]').check();await consent.locator('[name=confirm]').check();
+ await saved(owner,()=>consent.getByRole('button',{name:'Save follow-up settings'}).click());
+ assert.deepEqual((await(await root.request.get(app.origin+'/api/auth/followup')).json()).policy.recipients,['decider','source_owner']);
+ await shoot('followup-source-consent',owner,['[data-followup-panel]'],async()=>{
+  await owner.locator('[data-followup-panel]').getByText('Reminder settings and approved recipients',{exact:true}).click();await expect(owner.getByRole('checkbox',{name:'HR source owner for stale deliveries'})).toBeChecked();
+ });
+ const native=review.items.find(i=>i.principal_type==='installation_role');assert.ok(native);
  // Delegation is a hardware-and-email administrator write.
  const self=review.items.find(i=>i.subject_id===managerData.id);await post(root,'reviews/delegate',{itemId:self.id,reviewerId:(await(await root.request.get(app.origin+'/api/auth/me')).json()).user.id,reason:'Independent owner review of manager access'});
  await manager.reload();const serviceItem=review.items.find(i=>i.subject_id===serviceData.id);assert.ok(serviceItem);

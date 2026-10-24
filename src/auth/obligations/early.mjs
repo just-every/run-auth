@@ -1,3 +1,5 @@
+import {decisionKind,reviewSourceId} from './decision-sources.mjs';
+import {maintainReviewReminders} from '../reviews/reminders.mjs';
 import {caseProjection} from './records.mjs';
 import {one,run,random,fail,json} from '../core.mjs';
 import {authority,requireLocalEmail,requireAuthority} from '../local-email.mjs';
@@ -14,8 +16,13 @@ export async function sendEarly(ctx,s,data) {
  const ob=await one(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE id=? AND state='open' AND reminders_stopped_at IS NULL`,String(data.id??''));
  if(!ob)fail('followup_unavailable',404);
  if(!await holdsObligation(ctx,s,ob))fail('followup_holder_required',403);
- if(await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id))fail('hr_feed_delivery_not_consented',403);
+ if(!(await policy(ctx)).recipients.includes('source_owner')&&await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id))fail('hr_feed_delivery_not_consented',403);
  if(!(await policy(ctx)).enabled)fail('followup_policy_disabled',409);
+ if(decisionKind(ob)==='review_item') {
+  const earlyCurrent=async()=>Boolean(await one(ctx,`SELECT 1 WHERE ${authority(ctx,s).clause}`,...authority(ctx,s).args))&&await holdsObligation(ctx,s,ob);
+  await maintainReviewReminders(ctx,{itemId:reviewSourceId(ob),early:true,earlyCurrent});
+  await syncObligations(ctx);return json({ok:true});
+ }
  // This sends the already scheduled occurrence. It does not create another
  // occurrence, change the allowed recipients or advance the source's state.
  const state=await roleState(ctx,s),guard=roleGuard(ctx,s,state),claim=random();

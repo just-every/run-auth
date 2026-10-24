@@ -331,3 +331,6 @@ test('follow-up duties resolve employees and scoped case holders, restrict early
 
 import {retentionIntegrityFlow} from './retention-integrity-flow.mjs';
 test('scheduled retention expiry preserves erasure audit verification while altered expiry commitments fail',retentionIntegrityFlow);
+
+import {followupDecisionsFlow} from './followup-decisions-flow.mjs';
+test('request, review and stale HR obligations retain decider reminders and resolution history across DST and restart',followupDecisionsFlow);

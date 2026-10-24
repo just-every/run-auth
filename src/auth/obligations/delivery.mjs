@@ -14,7 +14,13 @@ export async function maintainObligations(ctx) {
   const {lastError}=await dispatchOccurrence(ctx,ob,claim,{timing:true});
   await finishTiming(ctx,ob,claim,lastError);
  }
- for(const ob of await all(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=? ORDER BY next_due_at,id LIMIT 50`,ctx.now(),ctx.now())) {
+ // Exclude work owned by the review scheduler, and duties without consent,
+ // before limiting the batch so they cannot starve other due obligations.
+ for(const ob of await all(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=?
+  AND NOT(kind='app_setup' AND source_id LIKE 'review-item:%')
+  AND (?=1 OR NOT EXISTS(SELECT 1 FROM auth_hr_feed_obligations WHERE obligation_id=auth_obligations.id))
+  AND (?=1 OR deadline_at<=? OR kind!='app_setup' OR source_id NOT LIKE 'access-request:%')
+  ORDER BY next_due_at,id LIMIT 50`,ctx.now(),ctx.now(),Number(p.recipients.includes('source_owner')),Number(p.recipients.includes('decider')),ctx.now())) {
   const c=JSON.parse(ob.calendar);if(!deliveryWindow(ctx.now(),c))continue;
   const claim=random(),claimed=await run(ctx,"UPDATE auth_obligations SET claim_id=?,claimed_until=? WHERE id=? AND state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=?",claim,ctx.now()+LEASE,ob.id,ctx.now(),ctx.now());
   if(!claimed.meta.changes)continue;

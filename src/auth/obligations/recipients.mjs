@@ -1,3 +1,4 @@
+import {decisionKind,decisionSource,decisionHolder} from './decision-sources.mjs';
 import {releaseSource} from '../erasure/pair-erasure.mjs';
 import {withCase} from './records.mjs';
 import {one} from '../core.mjs';
@@ -16,7 +17,7 @@ export async function holdsCase(ctx,id,caseId) {
  return permitted(state,'cases.verify',{caseId,write:true});
 }
 // Selectors name duties. The stored person IDs in older policies name only
-// owner/administrator roles, and retain exactly their earlier consent.
+// owner and administrator roles, and retain exactly their earlier consent.
 export async function recipientIds(ctx,ob,selectors) {
  ob=await withCase(ctx,ob);
  if(releaseSource(ob))return selectors.includes(ob.owner_id)?[ob.owner_id]:[];
@@ -24,6 +25,10 @@ export async function recipientIds(ctx,ob,selectors) {
  for(const selector of selectors) {
   if(selector==='employee') {
    if(!ob.case_id&&['enrollment','recovery'].includes(ob.kind)&&ob.person_id)ids.push(ob.person_id);
+  }else if(selector==='source_owner') {
+   const feed=ob.id&&await one(ctx,'SELECT f.created_by FROM auth_hr_feed_obligations b JOIN auth_hr_feeds f ON f.id=b.feed_id WHERE b.obligation_id=?',ob.id);if(feed)ids.push(feed.created_by);
+  }else if(selector==='decider') {
+   const source=await decisionSource(ctx,ob);if(source?.state==='open')ids.push(source.deciderId);
   }else if(selector==='help_desk') {
    const holder=await caseHolder(ctx,ob);if(holder)ids.push(holder.id);
   }else ids.push(selector);
@@ -32,10 +37,12 @@ export async function recipientIds(ctx,ob,selectors) {
 }
 export async function recipient(ctx,ob,id,selectors,{escalation=false}={}) {
  ob=await withCase(ctx,ob);
- if(ob.id&&await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id))return null;
+ const feed=ob.id&&await one(ctx,'SELECT f.* FROM auth_hr_feed_obligations b JOIN auth_hr_feeds f ON f.id=b.feed_id WHERE b.obligation_id=?',ob.id);
  const person=await one(ctx,"SELECT id,email,role,status FROM oa_operators WHERE id=?",id);
  if(!person)return null;
+ if(feed)return person.status==='active'&&['owner','admin'].includes(person.role)&&(escalation?selectors.includes(id):selectors.includes('source_owner')&&feed.created_by===id&&Boolean(await one(ctx,'SELECT 1 FROM oa_operators WHERE id=? AND version=?',feed.created_by,feed.owner_version)))?person:null;
  if(releaseSource(ob))return person.id===ob.owner_id&&person.role==='owner'&&person.status==='active'&&selectors.includes(person.id)?person:null;
+ if(decisionKind(ob)&&!escalation)return selectors.includes('decider')&&await decisionHolder(ctx,ob,id)?person:null;
  if(selectors.includes(id)&&person.status==='active'&&['owner','admin'].includes(person.role))return person;
  if(escalation)return null;
  if(selectors.includes('employee')&&!ob.case_id&&['enrollment','recovery'].includes(ob.kind)&&ob.person_id===id&&['invited','active'].includes(person.status))return person;
@@ -44,6 +51,7 @@ export async function recipient(ctx,ob,id,selectors,{escalation=false}={}) {
 }
 export async function holdsObligation(ctx,s,ob) {
  ob=await withCase(ctx,ob);
+ if(decisionKind(ob))return decisionHolder(ctx,ob,s.person_id);
  if(releaseSource(ob))return s.role==='owner'&&ob.owner_id===s.person_id;
  if(!ob.case_id&&['enrollment','recovery'].includes(ob.kind)&&ob.person_id===s.person_id)return true;
  const holder=await caseHolder(ctx,ob);

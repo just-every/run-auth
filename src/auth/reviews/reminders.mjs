@@ -38,7 +38,8 @@ async function update(ctx,id,event,detail) {
   .bind(id+':outcome',event,JSON.stringify(detail),ctx.now(),id).run();
 }
 
-async function dispatch(ctx,item,approved,slot,recipientId,kind) {
+async function dispatch(ctx,item,approved,slot,recipientId,kind,earlyCurrent) {
+ if(earlyCurrent&&!await earlyCurrent())return 'stopped';
  const live=await current(ctx,item,approved);if(!live)return 'stopped';
  const {settings}=approved,target=await person(ctx,recipientId),escalation=kind!=='reminder';
  const eligible=escalation?settings.escalationRecipients.includes(recipientId)&&activeAdmin(target):
@@ -53,7 +54,7 @@ async function dispatch(ctx,item,approved,slot,recipientId,kind) {
  // The durable per-recipient attempt precedes transport. Its unknown outcome
  // is consumed forever; a Worker restart cannot retry this scheduled slot.
  const again=await current(ctx,item,approved),recipient=await person(ctx,recipientId);
- if(!again||again.epoch!==live.epoch||JSON.stringify(recipient)!==JSON.stringify(target)||
+ if(earlyCurrent&&!await earlyCurrent()||!again||again.epoch!==live.epoch||JSON.stringify(recipient)!==JSON.stringify(target)||
   !await one(ctx,`SELECT 1 WHERE ${sourceGuard} AND ${policyGuard} AND ${epochGuard}`,...sourceArgs(item),approved.raw,live.epoch)) {
   await update(ctx,id,'review_dispatch_skipped',{...detail,reason:'authority_or_source_changed'});
   return again?'unavailable':'stopped';
@@ -71,22 +72,28 @@ async function dispatch(ctx,item,approved,slot,recipientId,kind) {
  return 'attempted';
 }
 
-export async function maintainReviewReminders(ctx) {
+export async function maintainReviewReminders(ctx,{itemId=null,early=false,earlyCurrent=null}={}) {
  const approved=await consent(ctx);if(!approved)return;
  const p=approved.settings;
- if(!deliveryWindow(ctx.now(),p.calendar))return;
+
  const items=await all(ctx,`SELECT i.*,r.status AS review_status,r.created_at,r.due_at
   FROM auth_review_items i JOIN auth_reviews r ON r.id=i.review_id
   WHERE i.decision IS NULL AND r.status='open' ORDER BY r.created_at,i.id`);
  for(const item of items) {
+  if(itemId&&item.id!==itemId||earlyCurrent&&!await earlyCurrent())continue;
+  const obligation=await one(ctx,"SELECT * FROM auth_obligations WHERE kind='app_setup' AND source_id=?",'review-item:'+item.id);
+  const calendar=obligation?JSON.parse(obligation.calendar):p.calendar;
+  if(obligation?.reminders_stopped_at||!early&&!deliveryWindow(ctx.now(),calendar))continue;
   const last=await one(ctx,"SELECT detail,created_at FROM auth_review_events WHERE item_id=? AND event='review_reminder_occurrence' ORDER BY created_at DESC,id DESC LIMIT 1",item.id);
   const previous=last&&JSON.parse(last.detail);
+  if(early&&previous?.scheduledDue>ctx.now())continue;
   if(p.escalation==='stop_at_deadline'&&previous?.kind==='overdue')continue;
-  const deadline=Math.min(item.due_at,businessDue(item.created_at,p.deadlineBusinessDays,p.calendar));
-  const scheduledDue=businessDue(last?.created_at??item.created_at,p.reminderBusinessDays,p.calendar);
+  const deadline=Math.min(item.due_at,obligation?.deadline_at??businessDue(item.created_at,p.deadlineBusinessDays,calendar));
+  const changed=obligation&&await one(ctx,"SELECT created_at FROM auth_obligation_history WHERE obligation_id=? AND event='schedule_changed' ORDER BY created_at DESC LIMIT 1",obligation.id);
+  const scheduledDue=changed&&(!last||changed.created_at>=last.created_at)?obligation.next_due_at:businessDue(last?Math.max(last.created_at,previous.scheduledDue):item.created_at,p.reminderBusinessDays,calendar);
   const overdue=ctx.now()>=deadline;
   // A declared review deadline can fall before the next ordinary reminder.
-  if(ctx.now()<scheduledDue&&(!overdue||last?.created_at>=deadline))continue;
+  if(!early&&ctx.now()<scheduledDue&&(!overdue||last?.created_at>=deadline))continue;
   const reviewer=await person(ctx,item.reviewer_id);
   let kind=overdue?'overdue':reviewer?.status!=='active'||reviewer.id===item.subject_id||await itemDrift(ctx,item)?'reviewer_unavailable':'reminder';
   if(kind==='reminder'&&!p.recipients.includes('decider'))continue;
@@ -98,12 +105,12 @@ export async function maintainReviewReminders(ctx) {
    .bind(id,item.review_id,item.id,JSON.stringify(slot),ctx.now(),...sourceArgs(item),approved.raw,live.epoch).run();
   if(!claimed.meta.changes)continue;
   if(kind==='reminder') {
-   const result=await dispatch(ctx,item,approved,slot,item.reviewer_id,kind);
+   const result=await dispatch(ctx,item,approved,slot,item.reviewer_id,kind,earlyCurrent);
    if(result!=='unavailable')continue;
    kind='reviewer_unavailable';
   }
   for(const recipientId of p.escalationRecipients) {
-   if(await dispatch(ctx,item,approved,slot,recipientId,kind)==='stopped')break;
+   if(await dispatch(ctx,item,approved,slot,recipientId,kind,earlyCurrent)==='stopped')break;
   }
  }
 }
