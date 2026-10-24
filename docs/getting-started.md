@@ -7,10 +7,10 @@ The pages on https://run-auth.com are built from this repository's `docs/` folde
 ## Get Auth and start it
 
 ```sh
-npx -y @runeditrun/rer dev just-every/run-auth
+curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth
 ```
 
-That one line installs and runs `rer`, the Run Edit Run command, clones Auth into `run-auth`, installs everything and starts it. It needs Node 22 or later; without Node, `curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth` brings its own. To set Auth up without starting it, use `npx -y @runeditrun/rer setup just-every/run-auth`. Auth runs on macOS, Linux or Windows with WSL2, with git; rer brings pnpm. To start it again later, run `cd run-auth && rer dev`.
+That one line installs and runs `rer`, the Run Edit Run command, clones Auth into `run-auth`, installs everything and starts it. Git is required; rer brings Node and pnpm. Already have Node 22 or later? `npx -y @runeditrun/rer dev just-every/run-auth` does the same. To set Auth up without starting it, use `npx -y @runeditrun/rer setup just-every/run-auth`. Auth runs on macOS, Linux or Windows with WSL2, with git; rer brings pnpm. To start it again later, run `cd run-auth && rer dev`.
 
 The first start installs everything, sets up a local database, makes you the owner and prints two lines:
 

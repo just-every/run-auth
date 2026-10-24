@@ -49,11 +49,11 @@ const Licence = () => (
 )
 
 const commands = [
-  'curl -fsSL https://runeditrun.com/install.sh | sh',
-  'rer dev just-every/run-auth',
+  'curl -fsSL https://runeditrun.com/install.sh | sh -s -- dev just-every/run-auth',
+  '# Already have Node 22 or later? npx -y @runeditrun/rer dev just-every/run-auth',
 ]
 const Terminal = () => (
-  <pre className="draw-terminal" aria-label="Start Auth on your computer"><code>{commands.map(line => <span key={line}><span className="prompt" aria-hidden="true">$ </span>{line}{'\n'}</span>)}</code></pre>
+  <pre className="draw-terminal" aria-label={commands[0]}><code>{commands.map(line => <span key={line}><span className="prompt" aria-hidden="true">$ </span>{line}{'\n'}</span>)}</code></pre>
 )
 
 export const drawings: Record<string, () => JSX.Element> = { passkeys: Passkeys, apps: Apps, people: People, 'move-in': MoveIn, free: Licence, ownership: Terminal }
