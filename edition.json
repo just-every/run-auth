@@ -33,8 +33,7 @@
           "src/base",
           "src/modules",
           "src/server.dev.ts",
-          "scripts/installer",
-          "scripts/delivery/base/setup-manifest.mjs"
+          "scripts/installer"
         ],
         "origin": {
           "repository": "https://github.com/runeditrun/base.git",
@@ -67,10 +66,30 @@
           {
             "path": "scripts/installer",
             "originPath": "foundation/template/scripts/installer"
-          },
+          }
+        ]
+      }
+    },
+    {
+      "id": "runeditrun/delivery-producer",
+      "role": "module",
+      "source": {
+        "kind": "local",
+        "paths": [
+          "scripts/delivery/base"
+        ],
+        "origin": {
+          "repository": "https://github.com/runeditrun/base.git",
+          "revision": "11f94fec479228d71ba6d7dd6ea7796c0d42c544",
+          "path": ".",
+          "paths": [
+            "modules/delivery-producer"
+          ]
+        },
+        "mappings": [
           {
-            "path": "scripts/delivery/base/setup-manifest.mjs",
-            "originPath": "modules/delivery-producer/setup-manifest.mjs"
+            "path": "scripts/delivery/base",
+            "originPath": "modules/delivery-producer"
           }
         ]
       }

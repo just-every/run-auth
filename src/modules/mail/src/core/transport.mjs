@@ -3,7 +3,7 @@ import { validateSendResult } from './validation.mjs';
 /** What a caller that asked for redirect: 'error' receives for any 3xx. */
 export const redirected = Object.freeze({ redirected: true });
 
-/** One bounded request. Fetch exceptions never escape with credential/body text.
+/** One bounded request. Fetch exceptions never escape with credential or body text.
  * Workers reject redirect: 'error', so every request is manual and never follows. */
 export async function requestProvider(url, init, dependencies = {}) {
   const timeout = dependencies.timeoutMilliseconds ?? 15_000;

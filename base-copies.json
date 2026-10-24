@@ -164,6 +164,15 @@
       },
       "modes": {
         "scripts/delivery/base/capabilities.mjs": "100644"
+      },
+      "adapted": {
+        "scripts/delivery/base/capabilities.mjs": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "scripts/delivery/base/capabilities.mjs": {
+          "sha256": "c09cbfd74f1497b038676e1f886eb8f7b05dc67741dd7ed08ac348ef92a11934",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -241,6 +250,15 @@
       },
       "modes": {
         "scripts/delivery/base/generators/validation.mjs": "100644"
+      },
+      "adapted": {
+        "scripts/delivery/base/generators/validation.mjs": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "scripts/delivery/base/generators/validation.mjs": {
+          "sha256": "3cd1f48901258b5a85608ebafd7b548d6bfdafaa2cbc72adccf69b2f4b17944f",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -307,6 +325,15 @@
       },
       "modes": {
         "scripts/delivery/base/payloads.mjs": "100644"
+      },
+      "adapted": {
+        "scripts/delivery/base/payloads.mjs": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "scripts/delivery/base/payloads.mjs": {
+          "sha256": "7d45913a406dee21619f407aec32fbcf4b1c078ac0fd759868ff8eb6fe8ed914",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -359,6 +386,15 @@
       },
       "modes": {
         "scripts/delivery/base/sql-statements.mjs": "100644"
+      },
+      "adapted": {
+        "scripts/delivery/base/sql-statements.mjs": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "scripts/delivery/base/sql-statements.mjs": {
+          "sha256": "afc15f607f3afc9a954aa024aaae5a0c76917ed1b7c84d425a525f2ebc370c93",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -425,6 +461,15 @@
       },
       "modes": {
         "src/base/contract-style.ts": "100644"
+      },
+      "adapted": {
+        "src/base/contract-style.ts": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "src/base/contract-style.ts": {
+          "sha256": "70a9074943c353cce3dba29191f2f128d8404fe81fd6bb899bed825548261127",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -502,6 +547,15 @@
       },
       "modes": {
         "src/base/icon-head.ts": "100644"
+      },
+      "adapted": {
+        "src/base/icon-head.ts": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "src/base/icon-head.ts": {
+          "sha256": "50bd80b5b2eefe1d9dc3dad5f01834b46b37f070696ae6186502d4436857884c",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -513,6 +567,15 @@
       },
       "modes": {
         "src/base/run-site.ts": "100644"
+      },
+      "adapted": {
+        "src/base/run-site.ts": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "src/base/run-site.ts": {
+          "sha256": "62759c202a14ee1dbbfbd415236de9d5a2502fba27306bc8d22d3018880a11b8",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -700,6 +763,15 @@
       },
       "modes": {
         "src/modules/mail/README.md": "100644"
+      },
+      "adapted": {
+        "src/modules/mail/README.md": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "src/modules/mail/README.md": {
+          "sha256": "37da88d053b21dea89f108245570bc4f6983d2b285989e0785932e868d07459c",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -854,6 +926,15 @@
       },
       "modes": {
         "src/modules/mail/src/adapters/rer/list-headers.mjs": "100644"
+      },
+      "adapted": {
+        "src/modules/mail/src/adapters/rer/list-headers.mjs": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "src/modules/mail/src/adapters/rer/list-headers.mjs": {
+          "sha256": "8503da7a34e69ee45e37460ae4af5d519778cb9c9963947ab19de53412a1aed9",
+          "mode": "100644"
+        }
       }
     },
     {
@@ -964,6 +1045,15 @@
       },
       "modes": {
         "src/modules/mail/src/core/transport.mjs": "100644"
+      },
+      "adapted": {
+        "src/modules/mail/src/core/transport.mjs": "11f94fec479228d71ba6d7dd6ea7796c0d42c544"
+      },
+      "acknowledged": {
+        "src/modules/mail/src/core/transport.mjs": {
+          "sha256": "a05aba508a33dbc0842b1ab49832d520fcf1c78547998541a20b05c463701436",
+          "mode": "100644"
+        }
       }
     },
     {
