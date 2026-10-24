@@ -3223,7 +3223,7 @@
       "executable": false
     },
     "tests/integration/dev.test.mjs": {
-      "sha256": "e270ebc3eeb044bcdc12d1810731b4e36ee382c2949daa8b650857185421c1c7",
+      "sha256": "6d4331065be15f3818ecf2160b35614131369e5e0803bedd56b32fd9b2f4f51d",
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {

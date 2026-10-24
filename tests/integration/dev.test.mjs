@@ -77,7 +77,7 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  const signedOut=await request('/auth/dev/enter?as=signed-out',{cookie:cookies.join('; ')});assert.equal(signedOut.status,303);
  assert.equal((await request('/api/auth/me',{cookie:cookies.join('; ')})).status,401,'persona signout revokes the Auth session');
  const stopped=new Promise(resolve=>dev.child.once('exit',resolve));dev.child.kill('SIGTERM');
- assert.equal(await stopped,0,'the owned foreground dev process stops cleanly');
+ assert.equal(await stopped,143,'the owned foreground dev process reports its SIGTERM shutdown');
  const preview=command(['preview','--non-interactive','--json']);let previewReady;
  for(let attempt=0;attempt<480;attempt++){
   assert.equal(preview.child.exitCode,null,preview.child.exitCode===null?'rer preview stays running':`rer preview stays running; ${startupDiagnostic(preview)}`);
@@ -87,7 +87,7 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  assert.ok(previewReady,'rer preview ready');
  for(const path of privatePaths)assert.equal((await fetch(previewReady.url+path,{redirect:'manual'})).status,404,`preview ${path}`);
  const previewStopped=new Promise(resolve=>preview.child.once('exit',resolve));preview.child.kill('SIGTERM');
- assert.equal(await previewStopped,0,'the owned foreground preview process stops cleanly');
+ assert.equal(await previewStopped,143,'the owned foreground preview process reports its SIGTERM shutdown');
  const recovery=command([],['scripts/auth-recovery.mjs','--local']);assert.equal(await new Promise(resolve=>recovery.child.once('exit',resolve)),0);const tokenFile=join(directory,'.rer/local/recovery-token');assert.equal((await stat(tokenFile)).mode&0o777,0o600);const token=(await readFile(tokenFile,'utf8')).trim();assert.ok(!recovery.output().includes(token),'recovery wrapper never prints the token');
  // Export carries people and the signed grant map, never sessions, signing keys or the pairwise key.
  const transfer=command(['export','--output','exports/auth.rer','--non-interactive','--json']);assert.equal(await new Promise(resolve=>transfer.child.once('exit',resolve)),0,transfer.output());
