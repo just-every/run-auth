@@ -1523,7 +1523,7 @@
       "executable": false
     },
     "src/auth/notifications/routes.mjs": {
-      "sha256": "3a64f675c5395a6e2f2fdab099d73248a5a806a3f55d233980d95809da84b606",
+      "sha256": "7cb3c8291bb59e75739185feb69a084ecf433629c62e15cf5f6644c57b663419",
       "executable": false
     },
     "src/auth/notifications/service.mjs": {
@@ -2927,7 +2927,7 @@
       "executable": false
     },
     "src/ui/pages/notifications.ts": {
-      "sha256": "3b3c77160c1ed4ed77a52fbb504534ce42173350f5cd42368aad99217d3a7a4f",
+      "sha256": "aab66c9a8d39defbaca6682fdbaf67d273a8f1db8dcc2f63a999f68e4940b944",
       "executable": false
     },
     "src/ui/pages/organizations.ts": {
