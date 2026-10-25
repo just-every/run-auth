@@ -3019,7 +3019,7 @@
       "executable": false
     },
     "tests/auth/domains.test.mjs": {
-      "sha256": "6041c953e4500b3fc2d8cebfe0594370fe5c29e46f6ac6dba055d98679f5b640",
+      "sha256": "bf7c1bd4616b273caf7aae966abd74b86e172863bb42c4bcf3d3e1c7b07cf594",
       "executable": false
     },
     "tests/auth/events.test.mjs": {
