@@ -2927,7 +2927,7 @@
       "executable": false
     },
     "src/ui/pages/notifications.ts": {
-      "sha256": "aab66c9a8d39defbaca6682fdbaf67d273a8f1db8dcc2f63a999f68e4940b944",
+      "sha256": "388911eee98de46cb9c6a4c6523909f524f882f3dd25e8eaaaa66fb73002de80",
       "executable": false
     },
     "src/ui/pages/organizations.ts": {
