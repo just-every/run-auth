@@ -13,7 +13,7 @@ const reportLink=mail=>mail.text.match(/Report suspicious activity: (https?:\/\/
 const deviceCookie=response=>response.headers.getSetCookie().map(v=>v.split(';')[0]).find(v=>v.startsWith('__Host-auth_device='));
 async function signIn(r,key,device) {
  const offered=await r.call('/auth/passkeys/authenticate/options',{method:'POST',data:{}}),tx=await offered.json();
- const response=await r.call('/auth/passkeys/authenticate/verify',{method:'POST',cookie:[cookieOf(offered),device].filter(Boolean).join('; '),headers:{'user-agent':'Synthetic Auth Browser'},data:{transaction:tx.transaction,response:key.authenticate(tx.options)}});
+ const response=await r.call('/auth/passkeys/authenticate/verify',{method:'POST',cookie:[cookieOf(offered),device].filter(Boolean).join('; '),headers:{'user-agent':'Synthetic Auth Browser <script>untrusted</script>'},data:{transaction:tx.transaction,response:key.authenticate(tx.options)}});
  assert.equal(response.status,200,await response.clone().text());return {cookie:cookieOf(response),device:deviceCookie(response)};
 }
 async function edge(t,handler) {
@@ -48,6 +48,7 @@ export async function notificationsFlow(t) {
  await post('/notifications/settings',{...policy,slackEnabled:true,endSessionsOnReport:true});
  const first=await signIn(r,employee.key),notice=(await r.mails()).findLast(mail=>mail.subject==='Auth sign-in from a new browser');
  assert.ok(first.device);assert.equal(notice.to,'employee@example.com');assert.match(notice.text,/App: Auth\nTime: .*\nApproximate location: Unavailable\nIP: 192.0.2.10\nDevice: Synthetic Auth Browser/);
+ assert.match(notice.html,/&lt;script&gt;untrusted&lt;\/script&gt;/);assert.doesNotMatch(notice.html,/<script>/);
  const link=reportLink(notice);assert.ok(link);assert.doesNotMatch(notice.text,/email\/confirm|sign-in link|[?&]code=/i);
  const before=(await r.mails()).filter(mail=>mail.subject==='Auth sign-in from a new browser').length;
  const recognized=await signIn(r,employee.key,first.device);

@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "ecf66f3f2369554396d3d8afaa74c931a0fcc7b239de7badb21946e6cadcd203",
+      "sha256": "53a54ab7db28fa0b071df688584a5347bd3b678da9a9c581f5b7f5f9f638f31e",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "9f1504136067670d1397ca199ae1d7fe502ef20ca7929783aa57a9d5f6391e07",
+      "sha256": "6268e6c69dbd0bb4f9682c0afbd14c761e5d16a02a96cadc3a98c3bef96b1b0e",
       "executable": false
     },
     "deploy-site.json": {
@@ -1515,7 +1515,7 @@
       "executable": false
     },
     "src/auth/notifications/messages.mjs": {
-      "sha256": "b9031556cab9678ab0ac8d3911d9e3766e28c4738b8fb676356cb478642f021d",
+      "sha256": "637c664d814f7443061e505404bf66dce7103705d2f985b533e520d54078ac14",
       "executable": false
     },
     "src/auth/notifications/policy.mjs": {
@@ -3111,7 +3111,7 @@
       "executable": false
     },
     "tests/auth/notifications-flow.mjs": {
-      "sha256": "cb500dfb527c199ab67f0839d7a922bff747f4134599f7155d279147ad371c06",
+      "sha256": "bb3d2154016cb21bf952545753df7639c104b4fbf66ad6f6b349aa4fc552131e",
       "executable": false
     },
     "tests/auth/notifications.test.mjs": {
