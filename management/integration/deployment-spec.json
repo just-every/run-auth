@@ -360,6 +360,12 @@
       "name": "0062_auth_personal_receipt_lifecycle.sql",
       "sha256": "47a2ed66646f5525fb63715d2e4df32857ed1c9cc1b13d7c4fa80960a9b046fb",
       "sql": "-- Retain anonymous key lifecycle facts after its read authority ends.\nALTER TABLE auth_erasure_person_receipts ADD COLUMN revoked_at INTEGER;\nALTER TABLE auth_erasure_person_receipts ADD COLUMN expired_at INTEGER;\n"
+    },
+    {
+      "binding": "DB",
+      "name": "0063_auth_hr_approvals.sql",
+      "sha256": "afe32f34f03afb3606324a8c68ab12b2c79907e64a038f561735d6453e26d832",
+      "sql": "-- Exact human-approved rows; feed credentials cannot create these receipts.\nCREATE TABLE auth_hr_approved_rows (\n file_id TEXT NOT NULL, idx INTEGER NOT NULL, id TEXT NOT NULL UNIQUE,\n approved_by TEXT NOT NULL, approver_version INTEGER NOT NULL,\n approved_at INTEGER NOT NULL, approved_digest TEXT NOT NULL,\n file_digest TEXT NOT NULL, record TEXT NOT NULL, plan_digest TEXT NOT NULL,\n target_id TEXT, due_at INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending',\n applied_at INTEGER, error TEXT,\n PRIMARY KEY(file_id,idx),\n FOREIGN KEY(file_id) REFERENCES auth_hr_files(id) ON DELETE CASCADE\n);\nCREATE INDEX auth_hr_approved_due ON auth_hr_approved_rows(state,due_at);\n"
     }
   ],
   "compatibilityDate": "2026-09-08",

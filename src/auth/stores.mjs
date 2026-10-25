@@ -47,7 +47,7 @@ const groups = {
   'rer_dependency_keys',
  ],
  transient: [
-  'auth_hr_files','auth_hr_file_rows','auth_hr_feed_obligations',
+  'auth_hr_approved_rows','auth_hr_files','auth_hr_file_rows','auth_hr_feed_obligations',
   'auth_refresh_consents', 'auth_refresh_proofs',
   'auth_admin_api_commits', 'auth_admin_service_assertions', 'auth_agent_proposals',
   'auth_delegation_resource_assertions', 'auth_delegation_assertions',

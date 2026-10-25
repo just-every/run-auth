@@ -150,5 +150,80 @@ export async function hrFileApplyFlow(t) {
  const stopped=await r.call('/api/auth/hr-feeds/apply',post({feedId:feed.id,fileId:pending.fileId,digest:pendingView.digest,rows:[0],confirm:true},owner.cookie));
  assert.ok([403,409].includes(stopped.status),'disabling during an import hook fences the native commit');
  assert.equal(await r.db.prepare('SELECT id FROM oa_operators WHERE email=?').bind('synthetic-auth-156@example.com').first(),null);
+ await approvedHrLifecycleFlow(t);
 
+}
+
+async function approvedHrLifecycleFlow(t) {
+ const {r,owner,key}=await fixture(t);
+ const command=async(path,data,status=200)=>result(await r.call('/api/auth'+path,post(data,owner.cookie)),status);
+ const feed=await command('/hr-feeds/create',{name:'Dated source managers',schedule:'hourly',fingerprint:keyFingerprint(key),mapping:{...mapping,managerSourceId:'Manager ID'},confirm:true},201);
+ for(const [id,email] of [['manager','synthetic-auth-160@example.com'],['mover','synthetic-auth-161@example.com'],['leaver','synthetic-auth-173@example.com']])await r.person(id,email);
+ await command('/directory/source',{source:'hr',records:[{sourceId:feed.id+':manager',personId:'manager',email:'synthetic-auth-160@example.com',fields:{department:'Engineering'}},{sourceId:feed.id+':mover',personId:'mover',email:'synthetic-auth-161@example.com',fields:{department:'Support'}}]});
+ await command('/directory/source',{source:'hr',records:[{sourceId:feed.id+':leaver',personId:'leaver',email:'synthetic-auth-173@example.com',fields:{department:'Support'}}]});
+ const upload=async(name,rows)=>command('/hr-feeds/upload',{feedId:feed.id,fileName:name+'.csv',text:'Employee ID,Work email,Name,Department,Status,Effective,Manager ID\n'+rows.map(row=>row.join(',')).join('\n')+'\n'},202);
+ const view=async file=>(await result(await r.call('/api/auth/hr-feeds?fileId='+file.fileId,{cookie:owner.cookie}))).preview;
+ const approve=async(file,rows=[0])=>{const preview=await view(file);await command('/hr-feeds/approve',{feedId:feed.id,fileId:file.fileId,digest:preview.digest,rows,confirm:true,confirmHeld:true});return preview.digest;};
+ const tick=async()=>result(await r.call('/',{action:'maintain'}));
+ const effective=new Date(r.now+3600000).toISOString();
+ const dated=await upload('dated', [['mover','synthetic-auth-161@example.com','Dated mover','Engineering','active',effective,'manager'],['dated-hire','synthetic-auth-174@example.com','Dated hire','Engineering','active',effective,'manager'],['leaver','synthetic-auth-173@example.com','Dated leaver','Support','terminated',effective,'manager']]);
+ const preview=await view(dated);assert.equal(preview.outcomes[0].outcome,'future_effective');assert.ok(preview.plan.entries[0].writes.some(w=>w.field==='manager'&&w.value==='manager'),'manager source ID resolves only within this employer feed');
+ assert.equal((await r.call('/api/auth/hr-feeds/approve',post({feedId:feed.id,fileId:dated.fileId,digest:preview.digest,rows:[0],confirm:true},cookieOf((await authenticate(r,owner.key)).response)))).status,403,'future approval needs fresh email as well as the hardware session');
+ const digest=await approve(dated,[0,1,2]);
+ await upload('unapproved',[['unapproved','synthetic-auth-162@example.com','Unapproved','Engineering','active',effective,'manager']]);
+ await tick();assert.equal(await r.db.prepare("SELECT value FROM auth_person_fields WHERE person_id='mover' AND field='manager'").first(),null,'approval does not apply early');
+ r.now+=3600000;await r.restart();await Promise.all([tick(),tick()]);
+ assert.equal((await r.db.prepare("SELECT value FROM auth_person_fields WHERE person_id='mover' AND field='manager'").first()).value,'manager');
+ assert.equal((await r.db.prepare("SELECT value FROM auth_person_fields WHERE person_id='mover' AND field='department' AND source='hr'").first()).value,'Engineering');
+ assert.equal(await r.db.prepare('SELECT id FROM oa_operators WHERE email=?').bind('synthetic-auth-162@example.com').first(),null,'an unapproved recurring delivery never applies');
+ const rows=(await r.db.prepare("SELECT a.actor_id,d.detail FROM auth_activity a JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event='hr_file_row_applied'").all()).results;
+ const proof=rows.filter(v=>JSON.parse(v.detail).fileId===dated.fileId);assert.equal(proof.length,3,'concurrent scheduled workers apply each approved row exactly once');assert.equal(new Set(proof.map(v=>JSON.parse(v.detail).row)).size,3);
+ const datedHire=await r.db.prepare('SELECT id,status,role FROM oa_operators WHERE email=?').bind('synthetic-auth-174@example.com').first();assert.equal(datedHire.status,'invited');assert.equal(datedHire.role,'member');assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_sessions WHERE person_id=?').bind(datedHire.id).first()).n,0);assert.equal((await r.db.prepare("SELECT status FROM oa_operators WHERE id='leaver'").first()).status,'inactive');assert.equal(proof[0].actor_id,'owner');assert.equal(JSON.parse(proof[0].detail).digest,digest);
+ owner.cookie=(await signInAgain(r,owner,'owner@example.com')).cookie;
+ // Authority, file content and target changes each return to explicit review.
+ const custody=await passkeyPerson(r,'approver','synthetic-auth-163@example.com','admin');
+ const removed=await passkeyPerson(r,'removed-approver','synthetic-auth-172@example.com','admin');
+ const cases=[];
+ for(const suffix of ['digest','target','demoted','removed']){
+  const file=await upload(suffix,[[suffix,'synthetic-auth-'+({digest:164,target:165,demoted:166,removed:167}[suffix])+'@example.com','Approved hire','Engineering','active',new Date(r.now+3600000).toISOString(),'manager']]);
+  const p=await view(file);
+  const approver=suffix==='demoted'?custody:suffix==='removed'?removed:owner;
+  await result(await r.call('/api/auth/hr-feeds/approve',post({feedId:feed.id,fileId:file.fileId,digest:p.digest,rows:[0],confirm:true},approver.cookie)));
+  cases.push({suffix,file});
+ }
+ await r.db.prepare('UPDATE auth_hr_files SET digest=? WHERE id=?').bind('synthetic-auth-changed-digest',cases[0].file.fileId).run();
+ await r.person('foreign-target','synthetic-auth-168@example.com');
+ await command('/directory/source',{source:'hr',records:[{sourceId:feed.id+':target',personId:'foreign-target',email:'synthetic-auth-168@example.com',fields:{department:'Support'}}]});
+ await command('/people/role',{personId:'approver',role:'member'});
+ // Remove an already-suspended approver from the fixture directory to cover
+ // absence as well as demotion at the real scheduled execution door.
+ await command('/people/suspend',{personId:'removed-approver'});
+ await command('/erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ const removal=await command('/erasure/preview',{kind:'person',target:'removed-approver'});await command('/erasure/confirm',{previewId:removal.id,confirmation:'ERASE',destinations:[]});
+ assert.equal(await r.db.prepare("SELECT id FROM oa_operators WHERE id='removed-approver'").first(),null);
+ r.now+=3600000;await r.restart();await tick();
+ for(const {suffix,file} of cases){
+  const approval=await r.db.prepare('SELECT state FROM auth_hr_approved_rows WHERE file_id=?').bind(file.fileId).first();
+  if(suffix==='removed'){assert.equal(approval,null,'erasure destroys the absent approver receipt');assert.equal((await view(file)).outcomes[0].outcome,'new_hire_review_required');}
+  else assert.equal(approval.state,'review_required',suffix+' refuses and returns to review');
+ }
+ assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM oa_operators WHERE email IN ('synthetic-auth-164@example.com','synthetic-auth-165@example.com','synthetic-auth-166@example.com','synthetic-auth-167@example.com')").first()).n,0);
+ owner.cookie=(await signInAgain(r,owner,'owner@example.com')).cookie;
+ const missing=await upload('unknown-manager',[['unresolved','synthetic-auth-169@example.com','Unresolved','Engineering','active',new Date(r.now-1).toISOString(),'missing-manager']]);
+ assert.equal((await view(missing)).outcomes[0].outcome,'manager_source_review_required');
+ // A fail-closed network-edge outage after the first native commit interrupts
+ // the multi-row file. Durable row receipts survive restart without replay.
+ const {hookServer}=await import('./hooks-server.mjs'),edge=await hookServer(t);r.edges=edge.edges;
+ await command('/hooks/register',{point:'user_import',url:'https://hooks.example.com/interrupted-hr',allowedFields:[]},201);
+ const interrupted=await upload('interrupted',[
+  ['resume-one','synthetic-auth-170@example.com','First hire','Engineering','active',new Date(r.now-1).toISOString(),'manager'],
+  ['resume-two','synthetic-auth-171@example.com','Second hire','Engineering','active',new Date(r.now-1).toISOString(),'manager']]);
+ edge.responses.set('/interrupted-hr',{body:{allow:true}});await approve(interrupted,[0,1]);
+ edge.responses.set('/interrupted-hr',async()=>({status:(await r.db.prepare('SELECT applied_at FROM auth_hr_file_rows WHERE file_id=? AND idx=0').bind(interrupted.fileId).first()).applied_at?503:200,body:{allow:true}}));
+ await tick();assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM auth_hr_approved_rows WHERE file_id=? AND state='completed'").bind(interrupted.fileId).first()).n,1);
+ edge.responses.set('/interrupted-hr',{body:{allow:true}});await r.restart();await tick();await tick();
+ const status=await view(interrupted);assert.ok(status.outcomes.every(v=>v.outcome==='locally_applied'));
+ for(const address of ['synthetic-auth-170@example.com','synthetic-auth-171@example.com'])assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM oa_operators WHERE email=?').bind(address).first()).n,1);
+ const audits=(await r.db.prepare("SELECT d.detail FROM auth_activity a JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event='hr_file_row_applied'").all()).results.filter(v=>JSON.parse(v.detail).fileId===interrupted.fileId);assert.equal(audits.length,2,'each resumed row has one approver and digest receipt');
+ assert.ok(status.approvals.every(v=>v.approved_by==='owner'&&v.state==='completed'));
 }

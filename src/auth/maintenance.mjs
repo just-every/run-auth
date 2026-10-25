@@ -1,3 +1,4 @@
+import {executeHrRows} from './hris/files/apply.mjs';
 import {maintainFamilies} from './tokens/lifecycle.mjs';
 import {maintainReviews} from './reviews/routes.mjs';
 import {maintainRequests} from './requests/index.mjs';
@@ -34,6 +35,7 @@ export async function maintainAuth(ctx) {
   ctx.db.prepare('DELETE FROM auth_oidc_codes WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_link_intents WHERE expires_at<=?').bind(now),
  ]);
+ await executeHrRows(ctx);
  await maintainFamilies(ctx);
  await runRefreshCleanup(ctx);
  await deliverLogouts(ctx);

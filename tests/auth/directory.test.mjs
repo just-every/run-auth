@@ -292,4 +292,4 @@ test('terminated reports retain held app names and verified remote outcomes whil
 test('saved HR file mappings hold destructive, empty and malformed deliveries, preview current and future rows, and retain one stale-feed follow-up across restart',hrFilePreviewFlow);
 test('a real SFTP listener verifies the employer key, applies reviewed hires, moves and leavers, refuses traversal and shells, and ends ingress after disabling',sftpIngressFlow);
 
-test('an explicitly approved HR file applies reviewed hires, moves and leavers through native directory proof while preserving enrollment and replay refusals',hrFileApplyFlow);
+test('an explicitly approved HR file applies current and dated hires, moves and leavers once, resolves managers and resumes interruptions while preserving enrollment and authority refusals',hrFileApplyFlow);

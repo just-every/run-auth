@@ -3,8 +3,9 @@
 Auth accepts mapped CSV deliveries from a real Auth-hosted, key-authenticated
 SFTP listener or an administrator upload. The current profile is deliberately
 reviewed: a delivery can stage data and raise an obligation; it cannot sign in,
-create an active worker, change an administrator or automatically terminate
-someone. Routine automatic lifecycle policy is not implemented.
+create an active worker, change an administrator or terminate someone without
+explicit approval of that exact file and its preview. Approved rows execute
+only at their effective dates under the current approver authority.
 
 ## Register one employer's source
 
@@ -51,8 +52,12 @@ Identity binding uses `hr` plus `<feed ID>:<source ID>`, never an email match.
 An existing source can be explicitly bound through the ordinary reviewed
 `/api/auth/directory/source` command before its first feed. A new ID whose
 email already exists remains a collision requiring separate identity review.
-Manager cells currently name an existing Auth person ID; translating external
-manager source IDs is not implemented. The field precedence remains manual
+A `manager` mapping names an existing Auth person ID. Alternatively map
+`managerSourceId` to an external manager ID: it resolves only through an
+existing HR source binding in this same employer and feed. Unknown IDs remain
+in review; there is no email match or cross-employer fallback. For a new
+manager in the same delivery, apply that manager first, then preview and
+approve the dependent rows. Do not map both manager columns. The field precedence remains manual
 override, HR, directory, self. Import hooks
 run with the signed minimal source/email/name payload before review and apply;
 they can change only an allowed name, never identity, proof, roles or policy.
@@ -107,12 +112,15 @@ using the same normal administrator gates. A termination-threshold hold also
 needs `confirmHeld:true`; malformed files cannot be confirmed into validity.
 The current reviewed data/hooks must still match the digest. The selected rows
 must be current and eligible; future dates, identity collisions and changed
-source/email bindings refuse. A future row requires a new review when due.
+source or email bindings refuse at this immediate-application door.
 Each current effect uses the native directory commands and their source,
-rank, rule, authority and optimistic-plan checks. Applied rows retain local
-progress and attributed audit, so an interruption is visible and a stable HR
-source cannot silently become a second person. Re-preview partial work before
-continuing; there is no automatic failure retry or whole-file atomicity claim.
+rank, rule, authority and optimistic-plan checks. The native change, durable row progress and approver and digest audit receipt
+commit in one transaction. After an interruption, scheduled maintenance
+resumes only the remaining approved rows and reconciles pending local effects.
+A stable HR source cannot silently become a second person. A temporary
+fail-closed hook outage leaves work pending; a changed hook result, target,
+source binding or authority returns it to review. There is no whole-file
+atomicity claim.
 
 A new hire remains invited, with no session, factor, administrator right or
 outbound invitation. Their normal browser-bound Auth email proof and factor
@@ -121,6 +129,31 @@ remote provisioning/read-back: `remote: "unverified"` never means downstream
 access is finished. Close a reviewed file with POST
 `/api/auth/hr-feeds/close-file` and `{feedId,fileId,confirm:true}`; this closes
 review without performing another directory action.
+
+## Approve exact dated work
+
+Use POST `/api/auth/hr-feeds/approve` with the same explicit file, preview
+`digest`, selected `rows` and `confirm:true`. A destructive hold also needs
+`confirmHeld:true`. This approval requires a hardware-passkey administrator
+session and fresh local email proof. It authorizes only those rows of that
+file, including their exact future effects. It grants no recurring feed policy.
+
+The scheduled Worker executes an approved row no earlier than its effective
+instant or its mapped start date at UTC midnight, whichever is later. Current
+rows execute at the next scheduled maintenance pass. No human session is
+stored or fabricated. The approver must still be an active owner or
+administrator at the approved version; the feed custodian must also retain
+current authority. The original file digest, row content, source binding,
+target and native plan must still match. Any change returns the row to
+`review_required`; read the preview again and explicitly approve the new plan.
+Demotion, removal, disabling the feed or closing the file prevents pending work.
+
+GET the file preview to inspect `approvals`: due times, approving person,
+approved digest, progress and any refusal. Activity records one native
+application receipt per row with its approver and digest. Repeated or concurrent
+maintenance does not repeat a committed directory change. Completion remains
+local; remote provisioning is separately unverified. No approval authorizes
+outbound invitations, reminder messages or a later unapproved delivery.
 
 ## Freshness, retention and shutdown
 
@@ -131,7 +164,9 @@ read; its effects remain held until explicit approval.
 A durable owner-held follow-up appears in Activity/API, is deduplicated across
 restart, and stops when a valid next delivery restores freshness or the source
 is disabled. This profile adds no outbound recipient consent: HR-source email
-reminders and early-send stay disabled pending a separate explicit policy.
+reminders and early-send stay disabled unless an explicit audited follow-up
+policy separately selects the source-owner duty. Registering or approving a
+file never selects that duty.
 A reminder would not prove lifecycle or provisioning completion.
 
 POST `/api/auth/hr-feeds/disable` with `{feedId}` under fresh administrator proof
@@ -144,10 +179,8 @@ that person's retained rows without deleting another worker's snapshot.
 Feed credential/configuration, staged files and jobs are excluded from transfer
 archives; a destination must establish its own custody and consent.
 
-AUTH-HRIS-002 stays partial: explicit current-file review/application is proved,
-but automatic approved routine/effective-date lifecycle, recovery of an interrupted
-multi-row apply and separately consented outbound stale reminders are
-not. Default ADOPTED pending CT: every file requires explicit hardware/fresh-
-email approval; future rows require renewed review; stale-source follow-up
-confers no new outbound consent. HRIS-001 and SCIM-002 inherit these identity,
-hook, hold, live-authority and consent obligations before adding automation.
+AUTH-HRIS-002 uses CT's 24 October approval: each exact file requires explicit
+human approval, and only its approved dated changes may execute. Unapproved
+recurring pulls never apply; outbound actions require separate consent.
+HRIS-001 and SCIM-002 inherit these identity, hook, hold, current-authority,
+exact-approval, interruption-recovery and consent obligations before automation.

@@ -6,7 +6,7 @@ import {loadDirectory} from '../../workforce/people/load.mjs';
 import {normalize} from '../../workforce/people/fields.mjs';
 import {MAX_BYTES,feedMapping,parseFeed} from './parse.mjs';
 export const HR_FEEDS='/api/auth/hr-feeds';
-export const isHrFeedAction=action=>['/hr-feeds/create','/hr-feeds/upload','/hr-feeds/disable','/hr-feeds/close-file','/hr-feeds/apply'].includes(action);
+export const isHrFeedAction=action=>['/hr-feeds/create','/hr-feeds/upload','/hr-feeds/disable','/hr-feeds/close-file','/hr-feeds/apply','/hr-feeds/approve'].includes(action);
 async function administrator(ctx,request,write=false) {
  const s=await requireSession(ctx,request,true);if(!['owner','admin'].includes(s.role))fail('administrator_required',403);
  if(write)requireLocalEmail(ctx,s);return s;
@@ -26,7 +26,8 @@ export async function hrFeedRead(ctx,request) {
  let preview=null;
  if(fileId) {
   const reviewed=await reviewFile(ctx,s,fileId);
-  const {feed,records,edits,...publicPreview}=reviewed;preview=publicPreview;
+  const {feed,records,edits,epoch,...publicPreview}=reviewed;preview=publicPreview;
+  preview.approvals=await all(ctx,'SELECT idx,approved_by,approved_at,approved_digest,due_at,state,applied_at,error FROM auth_hr_approved_rows WHERE file_id=? ORDER BY idx',fileId);
  }
  const current=await requireSession(ctx,request,true);if(current.id!==s.id)fail('session_authority_changed',403);
  return json({feeds:feeds.map(feed=>publicFeed(ctx,feed)),files:files.map(file=>({...file,reasons:JSON.parse(file.reasons)})),preview},200,{'cache-control':'no-store'});
@@ -38,7 +39,7 @@ async function receive(ctx,feed,data,transport,guard) {
  const digest=await hash(data.text),prior=await one(ctx,'SELECT id,state FROM auth_hr_files WHERE feed_id=? AND digest=?',feed.id,digest);
  if(prior)return json({fileId:prior.id,state:prior.state,replayed:true},202);
  const parsed=parseFeed(data.text,JSON.parse(feed.mapping)),reasons=[...parsed.errors],directory=await loadDirectory(ctx);
- for(const row of parsed.records)for(const [field,value] of Object.entries(row.fields)){try{await normalize(ctx,directory.defs.get(field),value);}catch{if(!reasons.includes('invalid_profile_field'))reasons.push('invalid_profile_field');}}
+ for(const row of parsed.records)for(const [field,value] of Object.entries(row.fields)){try{if(field==='managerSourceId'){if(value.length>80||/[\x00-\x20]/.test(value))fail('invalid_manager_source');}else await normalize(ctx,directory.defs.get(field),value);}catch{if(!reasons.includes('invalid_profile_field'))reasons.push('invalid_profile_field');}}
  const workers=[...directory.people.values()].filter(person=>person.role==='member'&&person.status==='active').length;
  const terminations=parsed.records.filter(row=>row.state==='terminated'&&directory.people.get(directory.sources.get('hr:'+feed.id+':'+row.sourceId))?.state!=='terminated').length;
  if(terminations&&(!workers||terminations*100>workers*feed.termination_percent))reasons.push('termination_threshold_exceeded');
@@ -74,7 +75,7 @@ export async function hrFeedAction(ctx,request,action,data) {
   return json({id,ingressToken:credential,fingerprint:data.fingerprint,policy:'review_only'},201);
  }
  const feed=await liveFeed(ctx,String(data.feedId??''))||fail('hr_feed_not_found',404);
- if(action==='/hr-feeds/apply')return applyHrFile(ctx,request,s,data);
+ if(action==='/hr-feeds/apply'||action==='/hr-feeds/approve')return applyHrFile(ctx,request,s,data,{scheduled:action==='/hr-feeds/approve'});
  if(action==='/hr-feeds/close-file') {
   if(data.confirm!==true)fail('explicit_hr_review_close_required',403);
   const done=await ctx.db.prepare(`UPDATE auth_hr_files SET state='reviewed' WHERE id=? AND feed_id=? AND ${guard.clause}`).bind(String(data.fileId??''),feed.id,...guard.args).run();

@@ -62,11 +62,12 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
  const results=[];
  for(const e of planned.entries) {
   if(!touched(e)){results.push({personId:e.personId,changed:false});continue;}
-  const {statements,stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e);
+  const build=g=>[...entryStatements(ctx,g,actor.actorId,dir,e).statements,...(actor.receiptStatements?.(g,e.personId)??[])];
+  const {stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e),statements=build(guard);
   let done;
   try {
    const accountEdit=(e.writes.length||e.state||e.emailChange||e.nameChange)&&!(e.source==='self'&&e.personId===actor.actorId);
-   done=accountEdit?await commitAccountWrite(ctx,actor,e.personId,guard,g=>entryStatements(ctx,g,actor.actorId,dir,e).statements):await (actor.commit??(statements=>ctx.db.batch(statements)))(statements);
+   done=accountEdit?await commitAccountWrite(ctx,actor,e.personId,guard,build):await (actor.commit??(statements=>ctx.db.batch(statements)))(statements);
   }
   catch(error) {
    await actor.assertAuthority();
@@ -99,7 +100,7 @@ export async function onboardAuthorizedPerson(ctx,actor,guard,dir,data,notify) {
  if(e.refusals.length)return {refused:e.refusals,plan:e};
  const {statements}=entryStatements(ctx,guard,actor.actorId,dir,{...e,emailChange:null});
  const insert=ctx.db.prepare(`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${guard.clause} AND NOT EXISTS(SELECT 1 FROM oa_operators WHERE email=?)`).bind(probe.id,probe.email,probe.name,ctx.now(),...guard.args,probe.email);
- try {await (actor.commit??(statements=>ctx.db.batch(statements)))([insert,...statements]);}
+ try {await (actor.commit??(statements=>ctx.db.batch(statements)))([insert,...statements,...(actor.receiptStatements?.(guard,probe.id)??[])]);}
  catch(error) {await actor.assertAuthority();if(/UNIQUE|constraint/i.test(String(error?.message)))fail(data.sourceId?'source_id_in_use':'person_exists',409);throw error;}
  await actor.assertAuthority();
  await auditDetail(ctx,actor.actorId,'person_onboarded',probe.id,{email:probe.email,source:e.source,fields:e.writes.map(w=>w.field),groups:e.groups.added.map(g=>g.name)});

@@ -2,11 +2,12 @@ import {readCsv} from '../../move-in/csv.mjs';
 import {addressOf} from '../../move-in/parse.mjs';
 import {fail} from '../../core.mjs';
 export const MAX_BYTES=1024*1024;
-const FIELDS=['sourceId','email','name','kind','department','location','title','manager','start_date','end_date','state','effectiveAt'];
+const FIELDS=['sourceId','email','name','kind','department','location','title','manager','managerSourceId','start_date','end_date','state','effectiveAt'];
 export function feedMapping(value) {
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!FIELDS.includes(key))||
     !['sourceId','email','state','effectiveAt'].every(key=>typeof value[key]==='string')||
     Object.values(value).some(column=>typeof column!=='string'||!column.trim()||column.length>100)||new Set(Object.values(value)).size!==Object.keys(value).length)fail('invalid_hr_mapping');
+ if(value.manager&&value.managerSourceId)fail('ambiguous_manager_mapping');
  const mapped=Object.fromEntries(Object.entries(value).map(([key,column])=>[key,column.trim()]));
  if(new Set(Object.values(mapped)).size!==Object.keys(mapped).length)fail('invalid_hr_mapping');
  return mapped;
