@@ -113,9 +113,11 @@ export async function refreshLifecycle(t) {
  assert.equal((await check(finalTokens.access_token)).status,200,'the exact access token works immediately before erasure');
  await r.db.exec('DROP TRIGGER synthetic_refresh_failure');
  const erasurePreview=await command('erasure/preview',{kind:'person',target:'erasable'});
- await command('erasure/confirm',{previewId:erasurePreview.id,confirmation:'ERASE',destinations:[]});
+ const erasureResult=await command('erasure/confirm',{previewId:erasurePreview.id,confirmation:'ERASE',destinations:[]});
  assert.equal((await check(finalTokens.access_token)).status,401,'next resource request after erasure refuses the previously live token');
  assert.notEqual((await rawRefresh(finalTokens.refresh_token)).status,200,'next refresh after erasure refuses the previously live credential');
+ const refreshAudit=(await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json()).find(row=>row.event==='erasure_credentials_revoked'&&row.subject_id===erasureResult.reference);
+ assert.ok(refreshAudit);assert.ok(JSON.parse(refreshAudit.detail).counts.refreshTokens>0,'erasure counts the removed live refresh authority');
  const suspended=await connect({deviceName:'Suspended worker tablet'});await command('people/suspend',{personId:'ada'});assert.equal((await rawRefresh(suspended.tokens.refresh_token)).status,400);assert.equal((await check(suspended.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===suspended.tokens.grant_id));
  // A second active worker proves app removal independently of suspension.
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'bob',role:'reader'});

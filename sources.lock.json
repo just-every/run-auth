@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "4eb2295eb33b6ba34b3317f9a0c63f54607750c46790358819f299864a0c7223",
+      "sha256": "39a921762f66912207ba807b848c7473e28c0cc3d301965a92f9e715281eaec9",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "28901c94b9299a89f6d5d33823382c019c454e7a005a9f9f228a88f0c476e631",
+      "sha256": "5feba014df3a4b1258ebf791bf1e1fb47a2c3f1c9833680ec4242aa3e6b83357",
       "executable": false
     },
     "deploy-site.json": {
@@ -2867,7 +2867,7 @@
       "executable": false
     },
     "tests/auth/agents-proposals.test.mjs": {
-      "sha256": "ecafdd6833b312c05b092c4b99e9eb133e9016c43051ac8dca5009bf5eb8d1ef",
+      "sha256": "2c5c4c24d15e9e7b394922097ccab1daacedef9f2c4933e0906ab7ed438203c8",
       "executable": false
     },
     "tests/auth/authorization-policy.test.mjs": {
@@ -3011,7 +3011,7 @@
       "executable": false
     },
     "tests/auth/refresh-flow.mjs": {
-      "sha256": "2bca9b4fd5db7cd4236d5242755484bf77477cc9fcf93c26e141a850d84b1979",
+      "sha256": "2867c4c65977555de09a62c71512e15799a1c569ce4b3c3c6a4f0461db2fe9ad",
       "executable": false
     },
     "tests/auth/registration.test.mjs": {
