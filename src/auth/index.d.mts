@@ -8,6 +8,9 @@ export interface AuthRuntimeOptions {
  linkFetch?: typeof fetch;
  /** Outbound requests to provisioning connectors (SCIM); defaults to fetch. */
  connectorFetch?: typeof fetch;
+ notificationSlackWebhook?: string;
+ notificationFetch?: typeof fetch;
+ dnsFetch?: typeof fetch;
  agentModelKey?: string;
  agentModelWorkspace?: string;
  agentModelFetch?: typeof fetch;

@@ -1,3 +1,4 @@
+import {requireVerifiedDomain} from '../domains/ownership.mjs';
 import {requireOwnerPermission} from './scoped-authority.mjs';
 import {writeProvider} from './providers.mjs';
 import {json,fail,one,all} from '../core.mjs';
@@ -78,6 +79,7 @@ export async function writeAdmin(ctx,actor,path,method,data) {
   const domain=m[1].toLowerCase(),providerId=method==='DELETE'?'':String(data.providerId||'');
   if(!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)||domain.length>253)fail('invalid_domain');
   if(method==='PUT'&&(!providerId||!configuredProvider(ctx,providerId)))fail('unknown_provider');
+  if(providerId)await requireVerifiedDomain(ctx,domain);
   const guard=actor.guard;
   // Base's policy row keeps its accountable human custodian as created_by.
   // Authority still comes solely from the service guard; Activity records the

@@ -34,6 +34,7 @@ export interface Bindings {
  RER_OWNER_CLAIM_PUBLIC_KEYS?: string
  AUTH_AGENT_MODEL_WORKSPACE?: string
  AUTH_AGENT_MODEL_KEY?: string
+ AUTH_NOTIFICATION_SLACK_WEBHOOK?: string
  AUTH_ENCRYPTION_KEY: string
  SESSION_SECRET: string
  SETUP_TOKEN?: string
@@ -50,7 +51,7 @@ export function operatorAuth(env: Bindings) {
 }
 export function identityAuth(original: Bindings, allowDevSession?: AuthRuntimeOptions['allowDevSession'], waitUntil?: (work: Promise<unknown>) => void) {
  const env = runtimeBindings(original)
- return createAuthRuntime({ agentModelKey: env.AUTH_AGENT_MODEL_KEY, agentModelWorkspace: env.AUTH_AGENT_MODEL_WORKSPACE, organizationId: env.AUTH_ORGANIZATION_ID, db: env.DB, origin: env.AUTH_ORIGIN, secret: env.AUTH_ENCRYPTION_KEY, local: env.AUTH_LOCAL === 'true', allowDevSession, waitUntil, rerTrustKeys: env.RER_LINK_APPROVAL_KEYS, upstreamProviders: env.AUTH_UPSTREAM_PROVIDERS ? JSON.parse(env.AUTH_UPSTREAM_PROVIDERS) : undefined, mail: async (message, store) => {
+ return createAuthRuntime({ notificationSlackWebhook: env.AUTH_NOTIFICATION_SLACK_WEBHOOK, agentModelKey: env.AUTH_AGENT_MODEL_KEY, agentModelWorkspace: env.AUTH_AGENT_MODEL_WORKSPACE, organizationId: env.AUTH_ORGANIZATION_ID, db: env.DB, origin: env.AUTH_ORIGIN, secret: env.AUTH_ENCRYPTION_KEY, local: env.AUTH_LOCAL === 'true', allowDevSession, waitUntil, rerTrustKeys: env.RER_LINK_APPROVAL_KEYS, upstreamProviders: env.AUTH_UPSTREAM_PROVIDERS ? JSON.parse(env.AUTH_UPSTREAM_PROVIDERS) : undefined, mail: async (message, store) => {
   const sender = operatorMail({ ...env, DB: store?.db ?? env.DB })
   if (!sender || !env.MAIL_FROM) throw new Error('Auth mail is not configured')
   return sender.send({ ...message, deliveryId: crypto.randomUUID(), from: env.MAIL_FROM, to: [message.to], headers: {} })

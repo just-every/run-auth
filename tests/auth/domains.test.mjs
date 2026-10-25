@@ -1,0 +1,58 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {openRuntime,emailSession} from './runtime.mjs';
+import {register} from './webauthn.mjs';
+import {requestProof,finishProof,sessionCookie} from './policy-helpers.mjs';
+import {domainDns,verifyDomains} from './domain-helpers.mjs';
+const post=(data,cookie)=>({method:'POST',data,cookie});
+async function fixture(t,address='owner@example.invalid') {
+ const r=await openRuntime();t.after(()=>r.close());await r.person('owner',address,'owner');
+ const owner=await register(r,await emailSession(r,address));return {r,owner};
+}
+test('domain setup refuses unproved, incorrect, expired and competing ownership; exact aliases need proof and eligible enrollment still needs individual email proof',async t=>{
+ const {r,owner}=await fixture(t),domain='employer.example.invalid',dns=await domainDns(t,r);
+ const call=(suffix,data,cookie=owner.cookie)=>r.call('/api/auth/'+suffix,post(data,cookie));
+ assert.equal((await call('domains/challenge',{domain},undefined)).status,201);
+ assert.equal((await r.call('/api/auth/domains/challenge',post({domain}))).status,401);
+ assert.equal((await call('people/domain',{domain})).status,409);
+ const challenge=await (await call('domains/challenge',{domain})).json();
+ dns.set(challenge.label,'synthetic-auth-1');
+ assert.equal((await call('domains/verify',{domain,id:challenge.id})).status,409);
+ dns.set(challenge.label,challenge.value);r.now+=31*60000;
+ const fresh={cookie:sessionCookie(await finishProof(r,await requestProof(r,'owner@example.invalid',owner.cookie)))};
+ assert.equal((await call('domains/verify',{domain,id:challenge.id},fresh.cookie)).status,409);
+ await verifyDomains(t,r,fresh.cookie,[domain]);
+ assert.equal((await call('people/domain',{domain},fresh.cookie)).status,201);
+ const before=(await r.mails()).length;
+ assert.equal((await r.call('/auth/identity/email/request',post({email:'wrong@alias.'+domain}))).status,202);
+ assert.equal((await r.mails()).length,before);
+ const requested=await r.call('/auth/identity/email/request',post({email:'erin@'+domain}));
+ assert.equal(requested.status,202);assert.equal((await r.mails()).length,before+1);
+ const person=(await (await r.call('/api/auth/people',{cookie:fresh.cookie})).json()).find(p=>p.email==='erin@'+domain);assert.equal(person.status,'invited');
+ const worker=await register(r,await emailSession(r,'erin@'+domain));
+ assert.equal((await r.call('/api/auth/me',{cookie:worker.cookie})).status,200);
+ const org=await (await call('organizations/create',{name:'Other employer'},fresh.cookie)).json();
+ const scoped={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+org.id+path,options)};
+ const other=await register(scoped,await emailSession(scoped,'owner@example.invalid'));
+ assert.equal((await scoped.call('/api/auth/domains/challenge',post({domain},other.cookie))).status,409);
+ assert.equal((await scoped.call('/api/auth/domains/verify',post({domain,id:challenge.id},other.cookie))).status,409);
+ const preview=await (await r.call('/api/auth/domains',{cookie:fresh.cookie})).json();
+ assert.ok(preview.domains.find(d=>d.domain===domain).people.some(p=>p.email==='erin@'+domain));
+});
+test('revocation reevaluates existing sessions and enrollment while emergency owners retain audited access and can reverify',async t=>{
+ const domain='employer.example.invalid',{r,owner}=await fixture(t,'owner@'+domain);
+ await r.person('worker','erin@'+domain);const worker=await register(r,await emailSession(r,'erin@'+domain));
+ await verifyDomains(t,r,owner.cookie,[domain]);
+ assert.equal((await r.call('/api/auth/people/domain',post({domain},owner.cookie))).status,201);
+ assert.equal((await r.call('/api/auth/domains/revoke',post({domain},owner.cookie))).status,400);
+ const revoked=await r.call('/api/auth/domains/revoke',post({domain,confirm:true},owner.cookie));assert.equal(revoked.status,200,await revoked.clone().text());
+ assert.equal((await r.call('/api/auth/me',{cookie:worker.cookie})).status,401);
+ const before=(await r.mails()).length;
+ await r.call('/auth/identity/email/request',post({email:'new@'+domain}));assert.equal((await r.mails()).length,before);
+ assert.equal((await r.call('/api/auth/people',{cookie:owner.cookie})).status,200);
+ const activity=await (await r.call('/api/auth/activity',{cookie:owner.cookie})).json();
+ assert.ok(activity.some(a=>a.event==='domain_ownership_revoked'));
+ assert.ok(activity.some(a=>a.event==='domain_emergency_access'&&a.actor_id==='owner'));
+ await verifyDomains(t,r,owner.cookie,[domain]);
+ assert.equal((await r.call('/api/auth/me',{cookie:worker.cookie})).status,200);
+});

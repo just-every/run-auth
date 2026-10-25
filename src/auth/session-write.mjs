@@ -1,3 +1,4 @@
+import {notifyNewDevice} from './notifications/index.mjs';
 import {one,fail,random,hash,cookie,cookieName,SESSION_MAX_AGE,EMAIL_MAX_AGE} from './core.mjs';
 import {requirePolicy,upstreamProof} from './domain-policy.mjs';
 
@@ -30,5 +31,6 @@ export async function prepareSession(ctx,personId,amr,upstreamProofId=null,{loca
 export async function createSession(ctx,...args) {
  const prepared=await prepareSession(ctx,...args),inserted=await prepared.statement.run();
  if(!inserted.meta.changes)fail('session_authority_changed',403);
- return {id:prepared.id,header:prepared.header};
+ const deviceHeader=await notifyNewDevice(ctx,{personId:args[0],sessionId:prepared.id,request:args[3]?.request,app:args[3]?.app});
+ return {id:prepared.id,header:prepared.header,deviceHeader};
 }

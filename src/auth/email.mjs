@@ -1,3 +1,4 @@
+import {notificationApp} from './notifications/index.mjs';
 import {syncObligations} from './obligations/sources.mjs';
 import {invitationAdmitted} from './tenancy/routes.mjs';
 import {invokeHooks} from './hooks/index.mjs';
@@ -72,13 +73,14 @@ export async function confirmEmail(ctx,request,data) {
   ctx.db.prepare("UPDATE oa_operators SET status='active' WHERE id=? AND status='invited'").bind(proof.person_id),
   ctx.db.prepare('INSERT INTO auth_emails(person_id,verified_at) VALUES(?,?) ON CONFLICT(person_id) DO UPDATE SET verified_at=excluded.verified_at').bind(proof.person_id,ctx.now()),
  ]);
- const s=await createSession(ctx,proof.person_id,[...proof.payload.amr,...(hardware?['hwk']:[])],proof.payload.upstreamProofId,{localEmailVerifiedAt:ctx.now(),expiresAt:hardware?.expires_at,sourceSession:hardware,personVersion:person.status==='active'?person.version:null});
+ const s=await createSession(ctx,proof.person_id,[...proof.payload.amr,...(hardware?['hwk']:[])],proof.payload.upstreamProofId,{request,app:await notificationApp(ctx,proof.payload.returnTo,request),localEmailVerifiedAt:ctx.now(),expiresAt:hardware?.expires_at,sourceSession:hardware,personVersion:person.status==='active'?person.version:null});
  await syncObligations(ctx);
  await audit(ctx,proof.person_id,'email_confirmed');
  if(person.status==='invited'){await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'email'});await evaluatePerson(ctx,person.id);}
  const returnTo=returnPath(proof.payload.returnTo);
- if((request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded'))return new Response(null,{status:303,headers:{location:returnTo,'set-cookie':s.header,'cache-control':'no-store'}});
- return json({ok:true,returnTo},200,{'set-cookie':s.header});
+ const headers=new Headers({'set-cookie':s.header,'cache-control':'no-store'});if(s.deviceHeader)headers.append('set-cookie',s.deviceHeader);
+ if((request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded')){headers.set('location',returnTo);return new Response(null,{status:303,headers});}
+ const response=json({ok:true,returnTo});for(const value of headers.getSetCookie())response.headers.append('set-cookie',value);return response;
 }
 // Confirming continues a pending app sign-in by redirect: browsers hold a form's
 // whole redirect chain to its form-action, so that one app's origin is allowed too.

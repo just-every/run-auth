@@ -1,3 +1,5 @@
+import {NOTIFICATIONS_READ,NOTIFICATION_REPORT,isNotificationAction,notificationRead,notificationAction,notificationReport} from './notifications/index.mjs';
+import {DOMAIN_PATH,isDomainAction,domainRead,domainAction} from './domains/routes.mjs';
 import {HR_FEEDS,isHrFeedAction,hrFeedAction,hrFeedRead,hrFeedIngress} from './hris/files/routes.mjs';
 import {REPORTS,reportsRead} from './reporting/reports.mjs';
 import {BRIDGE,bridgeRegister,bridgeDisable,legacyLogin} from './migration/bridge.mjs';
@@ -61,6 +63,7 @@ function scopedRuntime(options) {
   if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path)&&!isSamlPath(path))return null;
   try {
    if(url.origin!==ctx.origin)fail('wrong_issuer',400);
+   if(path===NOTIFICATION_REPORT)return await notificationReport(ctx,request);
    if(path==='/oidc/userinfo')return await userinfo(ctx,request);
    // SAML messages arrive from apps' pages; each door checks its own signed or bound input.
    if(isSamlPath(path))return await samlRoute(ctx,request,path);
@@ -72,6 +75,8 @@ function scopedRuntime(options) {
    if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
+    if(path===NOTIFICATIONS_READ)return await notificationRead(ctx,request);
+    if(path===DOMAIN_PATH)return await domainRead(ctx,request);
     if(path==='/.well-known/openid-configuration'){await ensureSigningKey(ctx);await rememberIssuer(ctx);return json(discovery(ctx));}
     if(path==='/oidc/jwks'){await ensureSigningKey(ctx);return json(await jwks(ctx),200,{'cache-control':`public, max-age=${JWKS_CACHE_SECONDS}`});}
     if(path==='/oidc/authorize')return await authorize(ctx,request);
@@ -118,6 +123,7 @@ function scopedRuntime(options) {
     }
     if(['/receipt','/receipt-key','/receipt-revoke'].some(suffix=>path===PAIRS_PREFIX+suffix)&&url.search)fail('receipt_body_required',400);
     const data=await input(ctx,request);
+    if(isDomainAction(path.slice('/api/auth'.length)))return await domainAction(ctx,request,path.slice('/api/auth'.length),data);
     if(path===BRIDGE+'/register')return bridgeRegister(ctx,request,data);
     if(path===BRIDGE+'/disable')return bridgeDisable(ctx,request,data);
     if(path===BRIDGE+'/login')return legacyLogin(ctx,request,data);
@@ -139,6 +145,7 @@ function scopedRuntime(options) {
      if(isDecisionAction(action))return await decisionAction(ctx,request,action,data);
      if(isReviewAction(action))return await reviewAction(ctx,request,action,data);
      if(isRequestAction(action))return await requestAction(ctx,request,action,data);
+     if(isNotificationAction(action))return await notificationAction(ctx,request,action,data);
      if(isRetentionAction(action))return await retentionAction(ctx,request,action,data);
      if(isFollowupAction(action))return await followupAction(ctx,request,action,data);
      if(isErasureAction(action))return await erasureAction(ctx,request,action,data);

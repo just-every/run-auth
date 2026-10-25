@@ -1,3 +1,4 @@
+import {domainPermitted} from './domains/ownership.mjs';
 import {PRESETS} from '../modules/operator-auth/identity/oidc/index.mjs';
 import {one,hash,fail} from './core.mjs';
 
@@ -31,10 +32,12 @@ export async function upstreamProof(ctx,personId,id) {
  return binding?.operator_id===personId?proof:null;
 }
 export async function permitsProvider(ctx,person,providerId) {
+ if(!await domainPermitted(ctx,person))return false;
  const rule=await requiredProvider(ctx,person);
  return !rule||(rule.provider_id===providerId&&Boolean(configuredProvider(ctx,providerId)));
 }
 export async function permitsSession(ctx,person,proofId=person.upstream_proof_id) {
+ if(!await domainPermitted(ctx,person))return false;
  const rule=await requiredProvider(ctx,person);
  if(!rule)return true;
  const proof=await upstreamProof(ctx,person.person_id||person.id,proofId);

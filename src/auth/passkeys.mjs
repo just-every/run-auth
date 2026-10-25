@@ -1,3 +1,4 @@
+import {notifySecurity,notificationApp} from './notifications/index.mjs';
 import {syncObligations} from './obligations/sources.mjs';
 import {requirePolicy,upstreamProof} from './domain-policy.mjs';
 import {freshLocalEmail,requireLocalEmail,authority,requireAuthority} from './local-email.mjs';
@@ -44,6 +45,7 @@ export async function registrationVerify(ctx,request,data) {
   ctx.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT person_id,'passkey_registered',?,? FROM auth_sessions WHERE id=?").bind(c.id,established.now,established.id),
  ]);
  if(!inserted.meta.changes)fail('session_authority_changed',403);
+ await notifySecurity(ctx,{personId:s.person_id,event:'factor_enrolled',sourceId:c.id,request,factor:'Passkey'});
  await syncObligations(ctx);
  return response;
 }
@@ -66,5 +68,5 @@ export async function authenticationVerify(ctx,request,data) {
  if(!proof || ctx.now()-proof.verified_at>=EMAIL_MAX_AGE){await sendProof(ctx,person,bound,tx.payload.upstreamProofId?['oidc','hwk','email']:['hwk','email'],tx.payload.returnTo,tx.payload.upstreamProofId);return json({reproof:true},202);}
  const emailSession=await sessionById(ctx,request,tx.payload.localEmailSessionId);
  const localEmailVerifiedAt=emailSession?.person_id===person.id&&freshLocalEmail(ctx,emailSession)?emailSession.local_email_verified_at:null;
- const s=await createSession(ctx,person.id,tx.payload.upstreamProofId?['oidc','hwk']:['hwk'],tx.payload.upstreamProofId,{localEmailVerifiedAt,sourceSession:localEmailVerifiedAt?emailSession:null,personVersion:person.version});await audit(ctx,person.id,'passkey_authenticated');return json({ok:true,returnTo:returnPath(tx.payload.returnTo)},200,{'set-cookie':s.header});
+ const s=await createSession(ctx,person.id,tx.payload.upstreamProofId?['oidc','hwk']:['hwk'],tx.payload.upstreamProofId,{request,app:await notificationApp(ctx,tx.payload.returnTo,request),localEmailVerifiedAt,sourceSession:localEmailVerifiedAt?emailSession:null,personVersion:person.version});await audit(ctx,person.id,'passkey_authenticated');const response=json({ok:true,returnTo:returnPath(tx.payload.returnTo)},200,{'set-cookie':s.header});if(s.deviceHeader)response.headers.append('set-cookie',s.deviceHeader);return response;
 }

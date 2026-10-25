@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
@@ -22,6 +23,7 @@ test('every sensitive action refuses a stale local email proof without change an
  for(const [id,role] of [['owner','owner'],['admin','admin'],['helper','admin'],['member','member'],['target','member'],['newcomer','member'],['leaver','member'],['factor-worker','member'],['role-worker','member'],['erase-worker','member']])await r.person(id,`${id}@example.com`,role);
  await r.call('/.well-known/openid-configuration');
  const owner=await register(r,await emailSession(r,'owner@example.com')),admin=await register(r,await emailSession(r,'admin@example.com'));
+ await verifyDomains(t,r,owner.cookie,['allowed.example','alias.example','company.example']);
  await register(r,await emailSession(r,'member@example.com'));
  await register(r,await emailSession(r,'factor-worker@example.com'));
  const made=async(path,data)=>{const response=await r.call('/api/auth/'+path,post(data,owner.cookie));assert.equal(response.status,201,await response.clone().text());return response.json();};

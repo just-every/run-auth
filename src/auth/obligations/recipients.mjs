@@ -1,3 +1,4 @@
+import {notificationRecipient} from '../notifications/index.mjs';
 import {decisionKind,decisionSource,decisionHolder} from './decision-sources.mjs';
 import {releaseSource} from '../erasure/pair-erasure.mjs';
 import {withCase} from './records.mjs';
@@ -37,6 +38,7 @@ export async function recipientIds(ctx,ob,selectors) {
 }
 export async function recipient(ctx,ob,id,selectors,{escalation=false}={}) {
  ob=await withCase(ctx,ob);
+ const security=await notificationRecipient(ctx,ob,id,selectors);if(security!==undefined)return security;
  const feed=ob.id&&await one(ctx,'SELECT f.* FROM auth_hr_feed_obligations b JOIN auth_hr_feeds f ON f.id=b.feed_id WHERE b.obligation_id=?',ob.id);
  const person=await one(ctx,"SELECT id,email,role,status FROM oa_operators WHERE id=?",id);
  if(!person)return null;

@@ -1,3 +1,5 @@
+import {notificationsModel,notifySecurity} from './notifications/index.mjs';
+import {ownershipModel,requireVerifiedDomain} from './domains/ownership.mjs';
 import {maintainFamilies} from './tokens/lifecycle.mjs';
 import {refreshInventory} from './tokens/routes.mjs';
 import {requestsRead} from './requests/index.mjs';
@@ -52,6 +54,7 @@ export async function model(ctx,request,page='account') {
    all(ctx,'SELECT domain,provider_id FROM oa_domain_rules ORDER BY domain'),
   ]);
   Object.assign(result,apps);
+  result.domainOwnership=await ownershipModel(ctx);
   result.rerTrust=await rerTrustModel(ctx);
   result.policyProviders=(ctx.upstreamProviders||[]).map(p=>({id:p.id,label:p.label||p.preset}));
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
@@ -63,6 +66,7 @@ export async function model(ctx,request,page='account') {
  }
  if(page==='account'||page==='activity'){result.decisions=await decisionsModel(ctx,s);result.reviews=await reviewsModel(ctx,s);result.requests={...await (await requestsRead(ctx,request)).json(),canManage:isAdmin,meId:s.person_id,people:isAdmin?result.people:[],adminApps:isAdmin?await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL'):[]};}
  if(page==='activity'&&isAdmin)result.retention=await (await retentionRead(ctx,request,'/api/auth/retention')).json();
+ if(page==='account'||page==='activity')result.notifications=await notificationsModel(ctx,request);
  if(page==='account')result.followup=await (await followupRead(ctx,request)).json();
  if(page==='roles') {
   try { result.roles=await roleModel(ctx,s); }
@@ -122,7 +126,7 @@ export async function adminAction(ctx,request,path,data) {
   return json({ok:true},201);
  }
  if(path==='/people/domain'||path==='/domains/add') {
-  const domain=domainOf(data);
+  const domain=domainOf(data);await requireVerifiedDomain(ctx,domain);
   const added=await run(ctx,`INSERT OR IGNORE INTO auth_domains(domain,created_by,created_at) SELECT ?,?,? WHERE ${g}`,domain,s.person_id,ctx.now(),...ga);
   if(!added.meta.changes)await requireAuthority(ctx,s,guard);
   await audit(ctx,s.person_id,'domain_allowed',domain);if(added.meta.changes)await emit(ctx,'policy.domain_allowed',{type:'domain',id:domain},{});return json({ok:true},201);
@@ -130,6 +134,7 @@ export async function adminAction(ctx,request,path,data) {
  if(path==='/people/domain-rule') {
   const domain=domainOf(data),providerId=String(data.providerId||'');
   if(providerId&&!configuredProvider(ctx,providerId))fail('unknown_provider');
+  if(providerId)await requireVerifiedDomain(ctx,domain);
   const changed=providerId
    ?await run(ctx,`INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) SELECT ?,?,?,? WHERE ${g} ON CONFLICT(domain) DO UPDATE SET provider_id=excluded.provider_id,created_by=excluded.created_by,created_at=excluded.created_at`,domain,providerId,s.person_id,ctx.now(),...ga)
    :await run(ctx,`DELETE FROM oa_domain_rules WHERE domain=? AND ${g}`,domain,...ga);
@@ -141,6 +146,7 @@ export async function adminAction(ctx,request,path,data) {
   const account=await requireAccountRank(ctx,s,id,guard);
   const changed=await run(ctx,`UPDATE oa_operators SET role=? WHERE id=? AND role!='owner' AND status='active' AND ${account.clause}`,data.role,id,...account.args);
   if(!changed.meta.changes){await requireAuthority(ctx,s,guard);fail('person_unavailable',409);}
+  if(data.role==='admin')await notifySecurity(ctx,{personId:id,event:'administrator_role_granted',sourceId:'role:'+id+':'+ctx.now(),request});
   await audit(ctx,s.person_id,'person_role_changed',id);await emit(ctx,'person.role_changed',await personSubject(ctx,id),{role:data.role});return json({ok:true});
  }
  if(path==='/people/suspend') {

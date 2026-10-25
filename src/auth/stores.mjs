@@ -24,6 +24,8 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
+  'auth_notification_policy',
+  'auth_domain_claims',
   'auth_refresh_profiles',
   'auth_retention_runs',
   'auth_followup_settings', 'auth_admin_api_epoch', 'auth_admin_service_apps', 'auth_resource_services',
@@ -47,6 +49,8 @@ const groups = {
   'rer_dependency_keys',
  ],
  transient: [
+  'auth_notification_devices','auth_security_notifications','auth_suspicious_reports',
+  'auth_domain_challenges',
   'auth_hr_approved_rows','auth_hr_files','auth_hr_file_rows','auth_hr_feed_obligations',
   'auth_refresh_consents', 'auth_refresh_proofs',
   'auth_admin_api_commits', 'auth_admin_service_assertions', 'auth_agent_proposals',
@@ -74,7 +78,7 @@ const groups = {
   'rer_portability_import_leases', 'rer_portability_recovery_audit', 'rer_migrations',
  ],
 };
-const globalOnly = new Set(['auth_organizations', 'oc_owner_claims']);
+const globalOnly = new Set(['auth_organizations', 'auth_domain_claims', 'oc_owner_claims']);
 export const STORE_REGISTRY = Object.freeze(Object.fromEntries(Object.entries(groups).flatMap(([classification, names]) =>
  names.map(name => [name, Object.freeze({name, classification, portable: classification === 'portable', scoped: !globalOnly.has(name)})]))));
 

@@ -393,6 +393,11 @@
     // A repeated field, such as the selected move-in rows, is sent as a list.
     const payload = {}
     for (const [key, value] of new FormData(form).entries()) payload[key] = key in payload ? [payload[key], value].flat() : value
+    if (form.hasAttribute('data-notification-settings')) {
+      const values = new FormData(form)
+      for (const key of ['emailEnabled', 'newDevice', 'factorEnrolled', 'slackEnabled', 'endSessionsOnReport', 'confirm']) payload[key] = values.has(key)
+    }
+    if (form.hasAttribute('data-notification-resolve')) payload.confirm = payload.confirm === 'true'
     if (form.hasAttribute('data-hook-register')) {
       const target = payload.target || '', colon = target.indexOf(':')
       if (colon > 0) payload[target.slice(0, colon) === 'app' ? 'appId' : 'clientId'] = target.slice(colon + 1)

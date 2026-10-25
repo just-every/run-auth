@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {scopedUpstreamFlow} from './scoped-upstream-flow.mjs';
 import {identityPairsFlow} from './identity-pairs-flow.mjs';
 import {test} from 'node:test';
@@ -62,6 +63,7 @@ test('real passkey proof grants admin; later email session cannot administer or 
  const additional=await register(r,cookie);assert.equal((await authenticate(r,additional.key)).response.status,200);
  assert.equal((await r.call('/api/auth/people/invite',post({email:'new@example.com'},later))).status,403);
  assert.equal((await r.call('/api/auth/people/invite',post({email:'new@example.com'},cookie))).status,201);
+ await verifyDomains(t,r,cookie,['company.example']);
  assert.equal((await r.call('/api/auth/people/domain',post({domain:'company.example'},cookie))).status,201);
  const auth=await authenticate(r,key);assert.equal(auth.response.status,200);
  const memberCookie=await emailSession(r,'member@example.com'),memberOptions=await r.call('/auth/passkeys/register/options',post({},memberCookie));assert.equal(memberOptions.status,200);const memberTx=await memberOptions.json();

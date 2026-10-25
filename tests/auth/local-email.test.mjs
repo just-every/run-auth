@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {openRuntime,emailSession,cookieOf} from './runtime.mjs';
@@ -11,6 +12,7 @@ async function fixture(t) {
  await r.person('owner','owner@example.com','owner');
  r.upstreamProviders=[{id:'company',preset:'google',clientId:'test-client',tokenAuthMethod:'client_secret_basic',clientSecret:'test-edge-only'}];
  r.owner=await register(r,await emailSession(r,'owner@example.com'));
+ await verifyDomains(t,r,r.owner.cookie,['company.example','alias.example']);
  return r;
 }
 async function refused(r,cookie) {

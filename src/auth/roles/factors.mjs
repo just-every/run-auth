@@ -1,3 +1,4 @@
+import {notifySecurity} from '../notifications/index.mjs';
 import {json,fail} from '../core.mjs';
 import {requireRolePermission,permitted} from './policy.mjs';
 import {commit} from './commit.mjs';
@@ -27,6 +28,7 @@ export async function resetFactors(ctx,s,data) {
   q(`UPDATE auth_recoveries SET cancelled_at=? WHERE person_id=? AND cancelled_at IS NULL AND completed_at IS NULL AND ${g.clause}`,ctx.now(),personId,...g.args),
   ...(review?[q(`UPDATE auth_role_cases SET state='closed',updated_at=? WHERE id=? AND ${g.clause}`,ctx.now(),review.id,...g.args)]:[]),
  ]);
+ await notifySecurity(ctx,{personId,event:'factor_reset',sourceId:operationId,factor:'Passkeys reset by help desk'});
  await fencePerson(ctx,personId);
  await emit(ctx,'recovery.completed',await personSubject(ctx,personId),{method:'scoped_factor_reset',caseId:review?.id??null,operationId});
  if(ctx.mail)await ctx.mail({to:p.email,subject:'Auth passkeys reset',text:`An administrator reset your passkeys and ended all Auth sessions. Sign in at ${ctx.origin}/signin with your email to enroll a new passkey. Contact your administrator if you did not request this.`,html:'<p>An administrator reset your passkeys and ended all Auth sessions. Contact your administrator if you did not request this.</p>'});

@@ -1,3 +1,4 @@
+import {notifySecurity} from './notifications/index.mjs';
 import {syncObligations} from './obligations/sources.mjs';
 import {recoveryNotice,recoveryEmail,recoveryRequestedEmail} from './recovery-notices.mjs';
 import {DAY,random,hash,one,all,run,requireSession,audit,json,fail} from './core.mjs';
@@ -11,6 +12,7 @@ export async function startRecovery(ctx,request) {
  await run(ctx,"INSERT INTO auth_notices(id,session_id,recovery_id,message,created_at) SELECT lower(hex(randomblob(24))),id,?,'Passkey recovery requested. Cancel this request if it was not you.',? FROM auth_sessions WHERE person_id=? AND revoked_at IS NULL AND expires_at>?",id,now,s.person_id,now);
  // Delivery failure never undoes the pending recovery or bypasses its delay.
  await recoveryRequestedEmail(ctx,s.person_id,id);
+ await notifySecurity(ctx,{personId:s.person_id,event:'recovery_started',sourceId:id,request});
 
  await syncObligations(ctx);
  await audit(ctx,s.person_id,'recovery_requested',id);await emit(ctx,'recovery.requested',{type:'person',id:s.person_id,email:s.email},{recovery:id,readyAt:new Date(now+3*DAY).toISOString()});return json({id,readyAt:now+3*DAY},201);
@@ -52,6 +54,7 @@ export async function changeRecovery(ctx,request,data,action) {
  const owner=await one(ctx,'SELECT id,email FROM oa_operators WHERE id=?',r.person_id);
  await emit(ctx,{approve:'recovery.approved',cancel:'recovery.cancelled',complete:'recovery.completed'}[action],{type:'person',id:owner.id,email:owner.email},{recovery:id});
  await recoveryEmail(ctx,r.person_id,action);
+ if(action==='complete')await notifySecurity(ctx,{personId:r.person_id,event:'factor_reset',sourceId:id,request,factor:'Passkeys'});
  return json({ok:true});
 }
 // CLI adapter generates token locally, sends only this SHA-256 digest via wrangler D1 execute,
@@ -68,5 +71,5 @@ export async function redeemRecoveryToken(ctx,request,data) {
   ctx.db.prepare('UPDATE oa_operators SET version=version+1 WHERE id=? AND EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)').bind(s.person_id,tokenHash,marker),
   ctx.db.prepare("UPDATE auth_sessions SET person_version=(SELECT version FROM oa_operators WHERE id=?),amr=? WHERE id=? AND EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)").bind(s.person_id,JSON.stringify(ctx.local?['dev','email']:['email']),s.id,tokenHash,marker),
   ctx.db.prepare('UPDATE auth_sessions SET revoked_at=? WHERE person_id=? AND id!=? AND EXISTS(SELECT 1 FROM auth_recovery_tokens WHERE token_hash=? AND consumption_marker=?)').bind(now,s.person_id,s.id,tokenHash,marker),
- ]);if(!results[0].meta.changes){await requireAuthority(ctx,s,guard);fail('invalid_recovery_token');}await audit(ctx,s.person_id,'emergency_recovery');await recoveryEmail(ctx,s.person_id,'emergency');return json({ok:true});
+ ]);if(!results[0].meta.changes){await requireAuthority(ctx,s,guard);fail('invalid_recovery_token');}await audit(ctx,s.person_id,'emergency_recovery');await recoveryEmail(ctx,s.person_id,'emergency');await notifySecurity(ctx,{personId:s.person_id,event:'factor_reset',sourceId:marker,request,factor:'Passkeys'});return json({ok:true});
 }

@@ -5,7 +5,7 @@ import {one,all} from '../core.mjs';
 import {deliverEvents} from './delivery.mjs';
 
 export const VERSION=1;
-export const TYPES=['person.invited','person.activated','person.suspended','person.terminated','person.restored','person.updated','person.role_changed','group.member_added','group.member_removed','app.assigned','app.unassigned','app.removed','provisioning.verified','provisioning.failed','recovery.requested','recovery.approved','recovery.cancelled','recovery.completed','policy.domain_allowed','policy.domain_rule_changed'];
+export const TYPES=['policy.domain_ownership_revoked','security.suspicious_activity_reported','person.invited','person.activated','person.suspended','person.terminated','person.restored','person.updated','person.role_changed','group.member_added','group.member_removed','app.assigned','app.unassigned','app.removed','provisioning.verified','provisioning.failed','recovery.requested','recovery.approved','recovery.cancelled','recovery.completed','policy.domain_allowed','policy.domain_rule_changed'];
 export const matches=(types,type)=>types.includes('*')||types.includes(type);
 
 // subject: {type, id, email?}; data carries no secrets, links or tokens.

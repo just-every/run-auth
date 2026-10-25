@@ -1,3 +1,4 @@
+import {notificationCandidates,notificationSource} from '../notifications/index.mjs';
 import {decisionCandidates,decisionSource,syncReviewHistory} from './decision-sources.mjs';
 import {hrFeedSource,hrFeedCandidates} from '../hris/files/followup.mjs';
 import {releaseSource,releaseState,releaseCandidates} from '../erasure/pair-erasure.mjs';
@@ -11,6 +12,7 @@ import {businessDue} from './calendar.mjs';
 // cannot manufacture successful enrollment or verified downstream revocation.
 export async function sourceState(ctx,ob) {
  ob=await withCase(ctx,ob);
+ const security=await notificationSource(ctx,ob);if(security)return security;
  const decision=await decisionSource(ctx,ob);if(decision)return decision;
  const hrSource=await hrFeedSource(ctx,ob);if(hrSource)return hrSource;
  if(releaseSource(ob))return releaseState(ctx,ob);
@@ -55,7 +57,7 @@ export async function syncObligations(ctx) {
  const now=ctx.now(),p=await policy(ctx),owner=await one(ctx,"SELECT id FROM oa_operators WHERE status='active' AND role='owner' ORDER BY created_at,id LIMIT 1");
  const candidates=[...await all(ctx,`SELECT 'enrollment' AS kind,id AS source_id,id AS person_id,NULL AS app_id,created_at FROM oa_operators WHERE status='invited'
   UNION ALL SELECT 'recovery',id,person_id,NULL,created_at FROM auth_recoveries WHERE cancelled_at IS NULL AND completed_at IS NULL
-  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await decisionCandidates(ctx),...await hrFeedCandidates(ctx),...await releaseCandidates(ctx),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
+  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await notificationCandidates(ctx),...await decisionCandidates(ctx),...await hrFeedCandidates(ctx),...await releaseCandidates(ctx),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
  for(const c of candidates) {
   const existing=await one(ctx,'SELECT id,state FROM auth_obligations WHERE kind=? AND source_id=?',c.kind,c.source_id);
   if(existing) {

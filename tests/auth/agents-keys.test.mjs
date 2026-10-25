@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {sdkAdminFlow,pythonAdminFlow,honoPermissionFlow} from './sdk-admin-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -220,6 +221,7 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
 
 test('machine directory and company-app commands share native lifecycle planning, dynamic membership, safe paginated reads and optimistic updates',async t=>{
  const {generateKeyPair,exportJWK,SignJWT}=await import('jose'),{r,owner}=await ownerInstall(t);
+ await verifyDomains(t,r,owner.cookie,['example.com']);
  const keys=await generateKeyPair('ES256'),jwk={...await exportJWK(keys.publicKey),kid:'workforce',alg:'ES256',use:'sig'};
  const config=await r.call('/api/auth/admin-service-apps/create',post({name:'Workforce reconciler',purpose:'Maintain non-privileged workforce records and company access',ownerId:'owner',jwks:{keys:[jwk]},scopes:['people.manage','groups.manage','apps.manage','assignments.manage','policies.manage','logs.read','domains.read'],expiresAt:r.now+86400000},owner.cookie));assert.equal(config.status,201);const app=await config.json();
  const assertion=await new SignJWT({}).setProtectedHeader({alg:'ES256',kid:'workforce'}).setIssuer(app.clientId).setSubject(app.clientId).setAudience(r.origin+'/oidc/token').setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+60).setJti(crypto.randomUUID()).sign(keys.privateKey);

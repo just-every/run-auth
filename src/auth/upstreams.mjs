@@ -47,7 +47,7 @@ export function createUpstreams(ctx) {
    const browser=random();await sendProof(ctx,person,await hash(browser),['oidc','email'],returnTo,upstreamProofId);
    return {returnTo:login?`/signin?reproof=1&returnTo=${encodeURIComponent(returnPath(returnTo))}`:'/signin?reproof=1',cookie:cookie(ctx,bindingName(ctx),browser,900)};
   }
-  const session=await createSession(ctx,person.id,['oidc'],upstreamProofId);await audit(ctx,person.id,'upstream_authenticated',principal.provider);
+  const session=await createSession(ctx,person.id,['oidc'],upstreamProofId,{request});await audit(ctx,person.id,'upstream_authenticated',principal.provider);
   return {returnTo:returnPath(returnTo),cookie:session.header};
  }};
  // Auth's configured upstreams are its owner's own choice: configured means offered.

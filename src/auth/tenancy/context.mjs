@@ -14,7 +14,7 @@ export async function organizationContext(ctx,id='root') {
  if(!selected)fail('organization_unavailable',404);
  // Provider registrations and Managed trust are installation-owner custody;
  // a new employer starts with neither, and cannot borrow the root's authority.
- return {...ctx,db:selected.db,rootDb:ctx.db,organization:selected.organization,organizationId:id,basePath:organizationPath(id),issuer:ctx.origin+organizationPath(id),upstreamProviders:undefined,rerTrustKeys:undefined,mail:ctx.mail?(message=>ctx.mail(message,{db:selected.db,organizationId:id})):undefined};
+ return {...ctx,db:selected.db,rootDb:ctx.db,organization:selected.organization,organizationId:id,basePath:organizationPath(id),issuer:ctx.origin+organizationPath(id),upstreamProviders:undefined,rerTrustKeys:undefined,notificationSlackWebhook:undefined,mail:ctx.mail?(message=>ctx.mail(message,{db:selected.db,organizationId:id})):undefined};
 }
 export function publicPath(ctx,path) {
  if(!ctx.basePath||!path?.startsWith('/')||path.startsWith('//')||path.startsWith('/org/'))return path;

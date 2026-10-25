@@ -1,3 +1,4 @@
+import {requireVerifiedDomain} from '../domains/ownership.mjs';
 // Human-only adapter over the existing native command implementations. Each
 // action is named here with explicit permission and compound resource checks;
 // no generic path forwarding or machine credential is accepted.
@@ -118,6 +119,7 @@ export async function roleCommand(ctx,s,data) {
   const domain=String(params.domain??'').toLowerCase(),providerId=String(params.providerId??'');
   if(!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)||domain.length>253)fail('invalid_domain');
   if(providerId&&!configuredProvider(ctx,providerId))fail('unknown_provider');
+  if(providerId)await requireVerifiedDomain(ctx,domain);
   const g=actor.guard;
   await actor.commit([providerId?ctx.db.prepare(`INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) SELECT ?,?,?,? WHERE ${g.clause} ON CONFLICT(domain) DO UPDATE SET provider_id=excluded.provider_id,created_by=excluded.created_by,created_at=excluded.created_at`).bind(domain,providerId,s.person_id,ctx.now(),...g.args):ctx.db.prepare(`DELETE FROM oa_domain_rules WHERE domain=? AND ${g.clause}`).bind(domain,...g.args)]);
   return json({ok:true});

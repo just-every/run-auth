@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash,randomUUID} from 'node:crypto';
@@ -22,6 +23,7 @@ const PROVIDERS=[{id:'company',label:'Company Google',preset:'google',clientId:'
 // a suspended person, an allowed domain and a required-provider rule.
 async function install(t) {
  const {r,owner}=await ownerInstall(t);r.upstreamProviders=PROVIDERS;
+ await verifyDomains(t,r,owner.cookie,['northwind.example.com','contractors.example.com']);
  const app=await issueClient(r);
  const ada=await passkeyPerson(r,'ada',ADA,'member');
  assert.equal((await app.redeem(await app.authorize(ada.cookie))).status,200,'ada uses the app');

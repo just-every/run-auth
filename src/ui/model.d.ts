@@ -272,6 +272,8 @@ export interface AuthPageModel {
   localEmailConfirmed?: boolean
   people?: AuthPerson[]
   domains?: AuthDomain[]
+  notifications?: import('./pages/notifications.js').NotificationsModel
+  domainOwnership?: { id: string; domain: string; label: string; value: string; expiresAt: number; status: string; people: { id: string; email: string; role: string }[] }[]
   domainRules?: { domain: string; provider_id: string; available: boolean }[]
   policyProviders?: { id: string; label: string }[]
   apps?: AuthApp[]

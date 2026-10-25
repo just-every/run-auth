@@ -1,3 +1,4 @@
+import {maintainNotifications} from './notifications/index.mjs';
 import {executeHrRows} from './hris/files/apply.mjs';
 import {maintainFamilies} from './tokens/lifecycle.mjs';
 import {maintainReviews} from './reviews/routes.mjs';
@@ -44,6 +45,7 @@ export async function maintainAuth(ctx) {
  await maintainRequests(ctx);
  await maintainReviews(ctx);
  await maintainProvisioning(ctx);
+ await maintainNotifications(ctx);
  await maintainObligations(ctx);
  await maintainRetention(ctx);
  if(!ctx.organizationId||ctx.organizationId==='root') {

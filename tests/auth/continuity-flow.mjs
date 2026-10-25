@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import assert from 'node:assert/strict';
 import {X509Certificate} from 'node:crypto';
 import {openRuntime,emailSession} from './runtime.mjs';
@@ -68,6 +69,7 @@ export async function continuityFlow(t) {
  const replacement=await register(r,email);
  assert.equal((await authenticate(r,replacement.key)).response.status,200);
 
+ await verifyDomains(t,r,owner.cookie,['company.example.com']);
  await upstreamOutage(r,owner,worker,backupSpare,command);
  await expiredCertificate(r,owner,expired,command,t);
  t.diagnostic('MEASURED Auth certificate-date refusal before assertion release and independently validated replacement; lost-factor recovery, independent higher-rank approval, redundant owner factor, durable notices, cancellation, replay refusal, required-upstream refusal and owner recovery, expired-certificate replacement');

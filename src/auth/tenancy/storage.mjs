@@ -7,7 +7,7 @@ const statements = new WeakMap();
 const databaseScopes = new WeakMap();
 const BATCH_SIZE = 50;
 const tenantTable = name => /^(?:auth_|oa_|rer_)/i.test(name)
- && name.toLowerCase()!=='auth_organizations';
+ && !['auth_organizations','auth_domain_claims'].includes(name.toLowerCase());
 const quoted = name => '"' + name.replaceAll('"', '""') + '"';
 
 function namespaceFor(id) {

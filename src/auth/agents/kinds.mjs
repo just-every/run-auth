@@ -1,3 +1,4 @@
+import {verifiedDomain} from '../domains/ownership.mjs';
 // What a preparer key may propose. Each kind names its target, reads the
 // target's current state, refuses what cannot apply, describes who and which
 // apps the change affects, and gives the statements that run it. The approval's
@@ -87,7 +88,7 @@ export const KINDS={
   mail:true},
  add_domain_rule:{
   target:(ctx,data)=>domainTarget(ctx,data,true),state:domainState,same:sameRule,
-  check:(state,ctx,params)=>!configuredProvider(ctx,params.providerId)?'unknown_provider':state.provider_id===params.providerId?'rule_unchanged':null,
+  check:async(state,ctx,params)=>!configuredProvider(ctx,params.providerId)?'unknown_provider':!await verifiedDomain(ctx,state.domain)?'domain_not_verified':state.provider_id===params.providerId?'rule_unchanged':null,
   effect:(ctx,state,params)=>domainEffect(ctx,state,params.providerId),
   run:(ctx,state,claim,params,id,approverId)=>[ctx.db.prepare(`INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) SELECT ?,?,?,? WHERE ${claim.sql} ON CONFLICT(domain) DO UPDATE SET provider_id=excluded.provider_id,created_by=excluded.created_by,created_at=excluded.created_at`).bind(state.domain,params.providerId,approverId,ctx.now(),...claim.args)]},
  remove_domain_rule:{

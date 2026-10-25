@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
@@ -48,6 +49,7 @@ async function policyFixture(t,preset='google',subjects={}) {
  const r=await fixture(t,preset,subjects);
  const emailCookie=await emailSession(r,ownerGmail);r.owner=await register(r,emailCookie);r.ownerEmail=emailCookie;
  r.upstreamProviders.push({...r.upstreamProviders[0],id:'other'});
+ await verifyDomains(t,r,r.owner.cookie,['company.example','gmail.com']);
  return r;
 }
 
@@ -112,6 +114,7 @@ test('matching provider proof survives Auth email, passkey enrollment, authentic
  const confirmed=await finishProof(r,mailProof);assert.equal(confirmed.status,200);const emailCookie=sessionCookie(confirmed);
  assert.equal((await r.call('/api/auth/people',{cookie:emailCookie})).status,403);
  const member=await register(r,emailCookie);assert.equal((await r.call('/api/auth/people',{cookie:member.cookie})).status,200);
+ await verifyDomains(t,r,member.cookie,['another.example']);
  assert.equal((await policy(r,member.cookie,'company','another.example')).status,200);
  const authenticated=await finishPasskey(r,await beginPasskey(r,member.key,emailCookie));assert.equal(authenticated.status,200);
  assert.equal((await r.call('/api/auth/people',{cookie:sessionCookie(authenticated)})).status,200);
@@ -175,6 +178,7 @@ test('required provider enrollment respects exact allowed domains and never supp
  assert.equal((await r.login(googlePerson('new@company.example','new-subject'))).status,403);
  r.upstreamProviders[0].clientId='auth-upstream';
  // A rule on the parent does not restrict an independently allowed subdomain.
+ await verifyDomains(t,r,r.owner.cookie,['sub.company.example']);
  assert.equal((await r.call('/api/auth/people/domain',post({domain:'sub.company.example'},r.owner.cookie))).status,201);
  assert.equal((await r.call('/api/auth/me',{cookie:await emailSession(r,'new@sub.company.example')})).status,200);
  r.now+=86400001;assert.equal((await r.call('/api/auth/me',{cookie:enrolled.cookie})).status,401);
@@ -271,6 +275,7 @@ test('an agent proposal, imported metadata or a matching email never connects an
  // Erin signs in with Google, which her domain requires: her only way in is that provider.
  const upstream=sessionCookie(await r.login(googlePerson('erin@company.example','erin-google')));
  const confirmed=await finishProof(r,await requestProof(r,'erin@company.example',upstream)),erin=sessionCookie(confirmed);
+ await verifyDomains(t,r,owner.cookie,['company.example']);
  await r.db.prepare("INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) VALUES('company.example','company','owner',?)").bind(r.now).run();
  assert.equal((await r.call('/api/auth/me',{cookie:erin})).status,200);
  const last=await r.call('/api/auth/profile/links/unlink',post({providerId:'company',confirm:true},erin));assert.equal(last.status,409);assert.equal((await last.json()).error,'last_sign_in');
