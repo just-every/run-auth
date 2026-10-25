@@ -3271,7 +3271,7 @@
       "executable": false
     },
     "tests/integration/helpers/hr-file-journey.mjs": {
-      "sha256": "8fa70e3bc02d9240395654b7997274a91cf8e3f0a5f209cfeb292b62cf40cb34",
+      "sha256": "edf6ce44fe4c76b14f55decf78a220393235b2af74223912c39235c1bbaaee90",
       "executable": false
     },
     "tests/integration/helpers/identity-pairs-journey.mjs": {
@@ -3303,7 +3303,7 @@
       "executable": false
     },
     "tests/integration/runtime.mjs": {
-      "sha256": "352e0e6ee9acf0bfe137ea32b4ac5f9bb8c319a45a1cb199855b6863c2228cf9",
+      "sha256": "b90cd6c1fa725da1c8a77963e9b901f6cb483169a7fc8750531c4ce71d3a7581",
       "executable": false
     },
     "tests/runtime.mjs": {

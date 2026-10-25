@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {rm} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -17,7 +18,12 @@ export async function hrFileJourney({app,context,page,shoot}) {
  // Age the actual retained source timestamp; no fake page/session/source or
  // production clock override is installed. The ordinary source engine reads it.
  await app.pause();
- execFileSync(process.execPath,[join(root,'node_modules/wrangler/bin/wrangler.js'),'d1','execute','DB','--local','--persist-to',join(app.directory,'.wrangler/state'),'--config',join(root,'dist/server/wrangler.json'),'--command',`UPDATE auth_hr_feeds SET created_at=${Date.now()-3*3600000},last_success_at=${Date.now()-3*3600000} WHERE id='${feed}'`],{cwd:root,stdio:'ignore',env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',X_LOCAL_EXPLORER:'false'}});
+ try {
+  execFileSync(process.execPath,[join(root,'node_modules/wrangler/bin/wrangler.js'),'d1','execute','DB','--local','--persist-to',join(app.directory,'.wrangler/state'),'--config',join(root,'dist/server/wrangler.json'),'--command',`UPDATE auth_hr_feeds SET created_at=${Date.now()-3*3600000},last_success_at=${Date.now()-3*3600000} WHERE id='${feed}'`],{cwd:root,stdio:'ignore',env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',X_LOCAL_EXPLORER:'false'}});
+ } finally {
+  // Wrangler keeps scratch beside the emitted config, outside the temporary D1 state.
+  await rm(join(root,'dist/server/.wrangler'),{recursive:true,force:true});
+ }
  await app.resume();
  const followup=await context.request.get(app.origin+'/api/auth/followup');assert.equal(followup.status(),200);
  const item=(await followup.json()).obligations.find(row=>row.kind==='hr_file_feed');assert.ok(item);assert.equal(item.canSend,false);

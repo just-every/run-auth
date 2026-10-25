@@ -29,13 +29,21 @@ export async function openApp({upstreamProviders,outboundService}={}) {
  await symlink(join(root,'node_modules'),join(directory,'node_modules'),'dir');
  await symlink(join(root,'dist'),join(directory,'dist'),'dir');
  let runtime;
+ const cleanup=async()=>{
+  try {await runtime?.dispose();} finally {
+   try {await rm(directory,{recursive:true,force:true});} finally {
+    // Wrangler keeps scratch (.wrangler/tmp) beside the emitted config; the artifact producer refuses that folder, so leave the build output as rer build wrote it.
+    await rm(join(root,'dist/server/.wrangler'),{recursive:true,force:true});
+   }
+  }
+ };
  try {
   execFileSync(process.execPath,[join(root,'node_modules/wrangler/bin/wrangler.js'),'d1','migrations','apply','DB','--local','--persist-to',join(directory,'.wrangler/state'),'--config',join(root,'dist/server/wrangler.json')],{stdio:'ignore',env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',X_LOCAL_EXPLORER:'false'}});
   // Use the same emitted-Worker runtime as rer setup/preview. Wrangler dev's
   // own trigger endpoint is deliberately not a public application listener.
   runtime=await productionRuntime(directory,origin,port,'127.0.0.1',outboundService);await runtime.ready;
- }catch(error){await runtime?.dispose();await rm(directory,{recursive:true,force:true});throw error;}
- const app={origin,vars,directory,async pause(){await runtime?.dispose();runtime=null;},async resume(){runtime=await productionRuntime(directory,origin,port,'127.0.0.1',outboundService);await runtime.ready;},async close(){await runtime?.dispose();await rm(directory,{recursive:true,force:true});},
+ }catch(error){await cleanup();throw error;}
+ const app={origin,vars,directory,async pause(){await runtime?.dispose();runtime=null;},async resume(){runtime=await productionRuntime(directory,origin,port,'127.0.0.1',outboundService);await runtime.ready;},close:cleanup,
   get:(path,headers={})=>fetch(origin+path,{headers,redirect:'manual'}),
   post:(path,data={},cookie)=>fetch(origin+path,{method:'POST',redirect:'manual',headers:{origin,'content-type':'application/json',...(cookie?{cookie}:{})},body:JSON.stringify(data)}),
   async claim(){const response=await app.post('/auth/bootstrap',{token:vars.SETUP_TOKEN,displayName:'Owner'});assert.equal(response.status,303);return cookieOf(response);},
