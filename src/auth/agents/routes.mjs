@@ -1,6 +1,7 @@
 import {syncObligations} from '../obligations/sources.mjs';
 // Administration of agents: keys and the proposals their keys filed. Every
 // handler authorizes its own request with the administrator's session.
+import {diagnoseSignIn} from './diagnostics.mjs';
 import {one,all,fail} from '../core.mjs';
 import {mintKey,revokeKey,renewKey,listKeys,endedReason} from './keys.mjs';
 import {approvalOptions,approve,reject} from './approval.mjs';
@@ -8,6 +9,7 @@ import {KINDS,digest,changes} from './kinds.mjs';
 export {preparer} from './preparer.mjs';
 
 async function action(ctx,request,path,data) {
+ if(path==='/agents/diagnose')return diagnoseSignIn(ctx,request,data);
  if(path==='/agents/mint')return mintKey(ctx,request,data);
  if(path==='/agents/revoke')return revokeKey(ctx,request,data);
  if(path==='/agents/renew')return renewKey(ctx,request,data);
@@ -30,9 +32,10 @@ export async function agentsModel(ctx,request) {
  if(p) {
   const kind=KINDS[p.kind],params=JSON.parse(p.params),state=await kind.state(ctx,p.target,params);
   const unchanged=await digest(state)===p.state_digest;
-  proposal={...view(ctx,p),fresh:await kind.effect(ctx,state,params),unchanged,changed:unchanged?[]:changes(JSON.parse(p.target_state),state)};
+  proposal={...view(ctx,p),fresh:await kind.effect(ctx,state,params),unchanged,changed:unchanged?[]:(kind.changes??changes)(JSON.parse(p.target_state),state)};
  }
- return {agents:{now:ctx.now(),keys,proposals:proposals.map(row=>view(ctx,row)),proposal}};
+ const [apps,people]=await Promise.all([all(ctx,'SELECT id,name,protocol FROM auth_apps WHERE disabled_at IS NULL ORDER BY name'),all(ctx,"SELECT id,email FROM oa_operators WHERE status='active' ORDER BY email")]);
+ return {agents:{apps,people,now:ctx.now(),keys,proposals:proposals.map(row=>view(ctx,row)),proposal}};
 }
 
 export async function agentsAction(ctx,request,path,data) {const response=await action(ctx,request,path,data);await syncObligations(ctx);return response;}

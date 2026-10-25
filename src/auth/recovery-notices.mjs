@@ -1,4 +1,4 @@
-import {one} from './core.mjs';
+import {one,audit,fail} from './core.mjs';
 
 const messages={
  approve:'Passkey recovery was approved by another administrator. Review your account if you did not request it.',
@@ -24,4 +24,17 @@ export async function recoveryEmail(ctx,personId,action) {
  const person=await one(ctx,"SELECT p.email FROM oa_operators p JOIN auth_emails e ON e.person_id=p.id WHERE p.id=? AND p.status='active'",personId);
  if(!person)return;
  await ctx.mail({to:person.email,subject:action==='emergency'?'Auth emergency recovery used':'Auth passkey recovery update',text:`${messages[action]} Open ${(ctx.issuer??ctx.origin)}/app/account to inspect the outcome.`,html:`<p>${messages[action]}</p><p>Sign in to Auth to inspect the outcome.</p>`});
+}
+
+// A recovery notice carries no credential or completion authority. A failed
+// send is durable evidence; an approved repair can resend that exact notice.
+export async function recoveryRequestedEmail(ctx,personId,recoveryId) {
+ const pending=await one(ctx,'SELECT id FROM auth_recoveries WHERE id=? AND person_id=? AND cancelled_at IS NULL AND completed_at IS NULL',recoveryId,personId);
+ const person=await one(ctx,"SELECT p.email FROM oa_operators p JOIN auth_emails e ON e.person_id=p.id WHERE p.id=? AND p.status='active'",personId);
+ if(!pending||!person)fail('recovery_unavailable',409);
+ try {
+  if(!ctx.mail)throw new Error('mail_not_configured');
+  await ctx.mail({to:person.email,subject:'Auth passkey recovery requested',text:`A passkey recovery was requested. It becomes available after 72 hours unless another administrator approves it. Sign in to ${ctx.issuer??ctx.origin}/app/account to cancel it.`,html:'<p>A passkey recovery was requested. Sign in to Auth to review or cancel it.</p>'});
+ }catch{await audit(ctx,null,'recovery_mail_failed',recoveryId);fail('recovery_mail_failed',503);}
+ await audit(ctx,null,'recovery_mail_resent',recoveryId);
 }

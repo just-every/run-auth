@@ -6,7 +6,7 @@ import {recheckIssuance} from '../hooks/fences.mjs';
 // The general OIDC profile's authorization and token endpoints: the code flow
 // for every client (PKCE required for public clients and where an app asks),
 // and the implicit and hybrid flows only for an app that opted in.
-import {random,hash,one,run,session,json,fail,audit,b64,utf8,EMAIL_MAX_AGE,AuthError} from '../core.mjs';
+import {random,hash,one,run,session,json,fail,audit,auditDetail,b64,utf8,EMAIL_MAX_AGE,AuthError} from '../core.mjs';
 import {signToken,TOKEN_SECONDS} from '../keys.mjs';
 import {beginAuthorizationLogin} from '../authorization-login.mjs';
 import {assignment} from '../workforce/directory.mjs';
@@ -47,7 +47,7 @@ async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToke
 export async function genericAuthorize(ctx,request,login,client) {
  const q=new URL(request.url).searchParams,uri=q.get('redirect_uri');
  // Client and callback are checked before anything is sent back to the callback.
- if(!client.redirectUris.includes(uri))fail('invalid_redirect_uri');
+ if(!client.redirectUris.includes(uri)){const s=await session(ctx,request);if(s)await auditDetail(ctx,s.person_id,'oidc_callback_refused',client.app_id,{callbackDigest:await hash(uri??'')});fail('invalid_redirect_uri');}
  const type=(q.get('response_type')||'').split(' ').filter(Boolean).sort().join(' ');
  const front=type!=='code',state=q.get('state')??undefined;
  const mode=q.get('response_mode')||(front?'fragment':'query');

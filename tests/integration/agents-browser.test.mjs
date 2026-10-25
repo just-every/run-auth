@@ -10,6 +10,9 @@ import {followupJourney} from './helpers/followup-journey.mjs';
 import {followupRolesJourney} from './helpers/followup-roles-journey.mjs';
 import {delegatedAssignmentJourney} from './helpers/delegation-journey.mjs';
 
+import {diagnosticJourney} from './helpers/diagnostic-journey.mjs';
+test('sign-in repair journey: owner snapshot consent, cited exact diff, passkey approval, employee callback and uncertainty at 1440 and 390',diagnosticJourney);
+
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 const LEAVER='leaver@northwind.example.com';
 

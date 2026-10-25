@@ -8,6 +8,9 @@ export interface AuthRuntimeOptions {
  linkFetch?: typeof fetch;
  /** Outbound requests to provisioning connectors (SCIM); defaults to fetch. */
  connectorFetch?: typeof fetch;
+ agentModelKey?: string;
+ agentModelWorkspace?: string;
+ agentModelFetch?: typeof fetch;
  /** RER Managed: JSON object of trusted link-approval public keys (kid -> JWK). */
  rerTrustKeys?: string;
  allowDevSession?: (request: Request) => boolean | Promise<boolean>;

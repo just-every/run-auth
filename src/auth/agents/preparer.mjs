@@ -49,14 +49,19 @@ async function file(ctx,request,key) {
  if(Object.hasOwn(UNAVAILABLE,kindName))fail(UNAVAILABLE[kindName],409);
  const kind=Object.hasOwn(KINDS,kindName)?KINDS[kindName]:fail('unknown_kind');
  const reason=reasonOf(data.reason),{target,params}=await kind.target(ctx,data);
- const state=await kind.state(ctx,target,params),refusal=await kind.check(state,ctx,params);
+ return storeProposal(ctx,key,kindName,target,params,reason);
+}
+
+export async function storeProposal(ctx,key,kindName,target,params,reason,guard=null,originalState=null) {
+ const kind=KINDS[kindName],state=originalState??await kind.state(ctx,target,params),refusal=await kind.check(state,ctx,params);
  if(refusal)fail(refusal,409);
  const id=random().slice(0,22),now=ctx.now(),effect=await kind.effect(ctx,state,params);
- await ctx.db.prepare('INSERT INTO auth_agent_proposals(id,key_id,kind,target,params,reason,effect,target_state,state_digest,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
-  .bind(id,key.id,kindName,target,JSON.stringify(params),reason,JSON.stringify(effect),JSON.stringify(state),await digest(state),now,now+PROPOSAL_LIFETIME).run();
+ const stored=await ctx.db.prepare(`INSERT INTO auth_agent_proposals(id,key_id,kind,target,params,reason,effect,target_state,state_digest,created_at,expires_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE ${guard?.clause??'1'}`)
+  .bind(id,key.id,kindName,target,JSON.stringify(params),reason,JSON.stringify(effect),JSON.stringify(state),await digest(state),now,now+PROPOSAL_LIFETIME,...(guard?.args??[])).run();
+ if(!stored.meta.changes)fail('session_authority_changed',403);
  await auditDetail(ctx,null,'agent_proposal_filed',id,{key:key.label,proposal:kindName.replace(/_/g,' '),target:effect.person?.email??effect.domain,reason});
  if(['approve_app_link','remove_app_link'].includes(kindName))await syncObligations(ctx);
- return json(proposalView(ctx,await one(ctx,'SELECT * FROM auth_agent_proposals WHERE id=?',id)),201);
+ return json({...proposalView(ctx,await one(ctx,'SELECT * FROM auth_agent_proposals WHERE id=?',id)),...(kindName==='repair_signin'?{message:'Diagnosis prepared. Review the cited facts and exact diff on Agents before approving.',redirect:'/app/agents?proposal='+id}:{})},201);
 }
 
 export async function preparer(ctx,request) {

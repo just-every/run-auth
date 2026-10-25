@@ -54,7 +54,7 @@ export async function approve(ctx,request,data) {
  // A target that changed since filing closes the proposal as stale and says what changed.
  const stale=async state=>{
   if(await digest(state)===p.state_digest)return null;
-  const changed=changes(JSON.parse(p.target_state),state);
+  const changed=(kind.changes??changes)(JSON.parse(p.target_state),state);
   await close(ctx,s,guard,p,'rejected',{reason:'stale',changed});return json({error:'proposal_stale',changed},409);
  };
  const state=await kind.state(ctx,p.target,params),changed=await stale(state);
@@ -62,10 +62,11 @@ export async function approve(ctx,request,data) {
  const refusal=await kind.check(state,ctx,params);
  if(refusal){await close(ctx,s,guard,p,'failed',{reason:refusal});fail(refusal,409);}
  // This approver cannot run it, but another administrator still may.
- const own=kind.approver?.(state,s.person_id);
+ if(p.kind==='repair_signin'&&s.role!=='owner')fail('owner_required',403);
+ const own=kind.approver?.(state,s.person_id,params);
  if(own){await auditDetail(ctx,s.person_id,'agent_proposal_refused',p.id,{key:p.key_label,proposal:p.kind.replace(/_/g,' '),target:targetName(p),reason:own});fail(own,403);}
 
- const execution=random(),now=ctx.now(),same=kind.same(state),requires=kind.requires?.(state)??{sql:'1',args:[]};
+ const execution=random(),now=ctx.now(),same=kind.same(state,params),requires=kind.requires?.(state)??{sql:'1',args:[]};
  const claimed={sql:'EXISTS(SELECT 1 FROM auth_agent_proposals WHERE id=? AND execution_id=?)',args:[p.id,execution]};
  const outcome={reason:'approved'},detail={key:p.key_label,proposal:p.kind.replace(/_/g,' '),target:targetName(p),result:'done'};
  let results;
@@ -98,7 +99,14 @@ export async function approve(ctx,request,data) {
    await kind.after(ctx,state,params,s.person_id);
    if(p.kind==='approve_app_link')await run(ctx,'UPDATE auth_agent_proposals SET outcome=? WHERE id=? AND execution_id=?',JSON.stringify({...outcome,linkConfirmed:true}),p.id,execution);
   }
-  catch(error) {await auditDetail(ctx,s.person_id,'agent_proposal_followup_failed',p.id,{target:targetName(p),reason:String(error?.message||'failed').slice(0,120)});return json({id:p.id,status:'done',followUp:'failed'});}
+  catch(error) {
+   if(p.kind==='repair_signin') {
+    await run(ctx,"UPDATE auth_agent_proposals SET status='failed',outcome=? WHERE id=? AND execution_id=?",JSON.stringify({reason:'repair_delivery_failed',verification:'unverified'}),p.id,execution);
+    await auditDetail(ctx,s.person_id,'agent_proposal_followup_failed',p.id,{reason:'repair_delivery_failed'});
+    return json({id:p.id,status:'failed',followUp:'failed'});
+   }
+   await auditDetail(ctx,s.person_id,'agent_proposal_followup_failed',p.id,{target:targetName(p),reason:String(error?.message||'failed').slice(0,120)});return json({id:p.id,status:'done',followUp:'failed'});
+  }
  }
  if(kind.mail) {
   try {await sendInvitation(ctx,p.target);}

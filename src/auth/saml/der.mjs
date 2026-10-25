@@ -44,3 +44,19 @@ export function certificateKey(value) {
  if(spki.tag!==0x30)fail('invalid_certificate');
  return {der,base64:toBase64(der),spki:der.slice(spki.start,spki.end)};
 }
+
+// X.509 UTC and generalized validity times, without reading private material.
+export function certificateValidity(value) {
+ const der=certificateKey(value).der,cert=read(der,0),tbs=items(der,items(der,cert)[0]);
+ const fields=tbs[0]?.tag===0xa0?tbs.slice(1):tbs,validity=fields[3];
+ const times=items(der,validity??fail('invalid_certificate'));
+ if(times.length!==2)fail('invalid_certificate');
+ const parse=node=>{
+  let text=new TextDecoder().decode(der.slice(node.body,node.end));
+  if(node.tag===0x17){if(!/^\d{12}Z$/.test(text))fail('invalid_certificate');text=(Number(text.slice(0,2))>=50?'19':'20')+text;}
+  else if(node.tag!==0x18||!/^\d{14}Z$/.test(text))fail('invalid_certificate');
+  const time=Date.parse(`${text.slice(0,4)}-${text.slice(4,6)}-${text.slice(6,8)}T${text.slice(8,10)}:${text.slice(10,12)}:${text.slice(12,14)}Z`);
+  if(!Number.isFinite(time))fail('invalid_certificate');return time;
+ };
+ return {notBefore:parse(times[0]),notAfter:parse(times[1])};
+}

@@ -5,7 +5,7 @@ import {register,authenticate} from './webauthn.mjs';
 import {passkeyPerson,post} from './agents-helpers.mjs';
 import {securityReceiver} from './continuity-security.mjs';
 import {requestProof,finishProof,sessionCookie} from './policy-helpers.mjs';
-import {idpCertificates,serviceProvider,spCredentials,metadataOf,addApp,signIn,posted,xmlOf} from './saml-helpers.mjs';
+import {idpCertificates,serviceProvider,spCredentials,metadataOf,addApp,signIn,posted} from './saml-helpers.mjs';
 
 const identities={owner:['synthetic-auth-1','synthetic-auth-1@emergency.example.com'],admin:['synthetic-auth-2','synthetic-auth-2@company.example.com'],worker:['synthetic-auth-3','synthetic-auth-3@company.example.com'],emergency:['synthetic-auth-20','synthetic-auth-20@emergency.example.com']};
 
@@ -70,7 +70,7 @@ export async function continuityFlow(t) {
 
  await upstreamOutage(r,owner,worker,backupSpare,command);
  await expiredCertificate(r,owner,expired,command,t);
- t.diagnostic('MEASURED strict relying-party certificate-date refusal before replacement; lost-factor recovery, independent higher-rank approval, redundant owner factor, durable notices, cancellation, replay refusal, required-upstream refusal and owner recovery, expired-certificate replacement');
+ t.diagnostic('MEASURED Auth certificate-date refusal before assertion release and independently validated replacement; lost-factor recovery, independent higher-rank approval, redundant owner factor, durable notices, cancellation, replay refusal, required-upstream refusal and owner recovery, expired-certificate replacement');
  t.diagnostic('MEASURED separately held backup administrator and redundant hardware; local owner recovery retains the explicit AUTH-IDENTITY-001 emergency-token exception');
 }
 
@@ -109,8 +109,9 @@ async function expiredCertificate(r,owner,expired,command,t) {
  const old=serviceProvider(r,{entity,idpCerts:expired,sp,response:true,assertion:false});
  await addApp(r,{metadata:metadataOf(old,sp),sign:'response',attributes:'email=email',assign:[identities.worker[0]]});
  const workerEmail=await emailSession(r,identities.worker[1]);
- const before=await posted(await signIn(r,old,workerEmail));
- assert.ok(xmlOf(before.SAMLResponse).includes(new X509Certificate(expired[0]).raw.toString('base64')),'pre-repair response carries the aged certificate');
+ const before=await signIn(r,old,workerEmail);
+ assert.equal(before.status,503,'Auth refuses an expired signer before releasing an assertion');
+ const refusal=await before.text();assert.match(refusal,/saml_signing_certificate_expired/);assert.doesNotMatch(refusal,/name="SAMLResponse"/);
  // The independent relying-party edge validates the real XML signature and
  // enforces its configured X.509 validity policy. Node-SAML alone does not
  // enforce dates, so the edge makes that check explicit rather than pretending
@@ -121,7 +122,6 @@ async function expiredCertificate(r,owner,expired,command,t) {
   if(Date.parse(cert.validFrom)>now||Date.parse(cert.validTo)<=now)throw new Error('relying_party_certificate_expired');
   return identity;
  };
- await assert.rejects(accept(old,expired[0],before.SAMLResponse),/relying_party_certificate_expired/);
  await command('saml-keys/stage',{},workerEmail,403);
  const inventory=await (await r.call('/api/auth/company-apps',{cookie:owner.cookie})).json();
  const previous=inventory.samlKeys.find(key=>key.state==='active');assert.ok(previous);

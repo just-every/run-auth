@@ -16,6 +16,14 @@
     }
   }
   const friendlyErrors = {
+    diagnostic_consent_required: 'Approve sending this precise redacted snapshot before requesting a diagnosis.',
+    diagnostic_model_not_configured: 'The owner must configure the diagnosis model before preparing a repair.',
+    diagnostic_model_unavailable: 'The diagnosis model is unavailable. Configuration has not changed.',
+    diagnostic_model_invalid: 'The model returned an unsupported diagnosis. Inspect the approved facts and prepare again.',
+    assigned_test_identity_required: 'Choose an active employee assigned to this company app.',
+    callback_query_not_supported: 'Choose a callback without a query string for this scoped repair.',
+    replacement_certificate_unavailable: 'The published replacement certificate is no longer valid. Prepare a new diagnosis.',
+    untrusted_diagnostic_fields: 'Raw traces, credentials and additional instructions are not accepted by diagnostics.',
     invalid_followup_timezone: 'Choose a valid timezone, such as America/New_York or Australia/Brisbane.',
     invalid_followup_calendar: 'Choose business days, a local reminder time and valid holiday dates.',
     invalid_followup_policy: 'Choose reminder and deadline intervals from 1 to 90 business days.',
@@ -268,6 +276,16 @@
     if (approveButton) void approveProposal(approveButton)
   })
 
+  document.addEventListener('change', event => {
+    if (!event.target.matches('[data-diagnostic-issue]')) return
+    const form = event.target.closest('[data-diagnostic-form]')
+    for (const field of form.querySelectorAll('[data-diagnostic-field]')) {
+      const active = field.dataset.diagnosticField === event.target.value
+      field.hidden = !active
+      field.querySelector('input').required = active
+    }
+  })
+
   document.addEventListener('submit', async event => {
     const registration = event.target.closest('form[data-delegated-agent-register]')
     if (registration) {
@@ -415,6 +433,7 @@
         payload.deadlineBusinessDays = Number(payload.deadlineBusinessDays)
       }
       const result = await requestJSON(form.action, payload)
+      if (form.hasAttribute('data-diagnostic-form')) { window.location.assign(organizationPath(localPath(result.redirect))); return }
       if (form.hasAttribute('data-refresh-consent')) { window.location.assign(result.redirect); return }
       if (form.hasAttribute('data-organization-switch')) { window.location.assign(result.redirect); return }
       if (form.hasAttribute('data-organization-create')) {

@@ -1,10 +1,11 @@
 import type { AgentEffect, AgentKey, AgentProposal, AuthPageModel } from '../model.js'
 import { asArray, csrfField, emptyState, escape, noticeBox, replacementText, timeElement } from '../helpers.js'
+import { diagnosticPanel, diagnosticEffect } from './diagnostics.js'
 import { adminServicesPanel } from './admin-services.js'
 import { delegatedAgentsPanel } from './delegation.js'
 
 const kindNames: Record<string, string> = {
-  suspend_person: 'Suspend a person', restore_person: 'Restore a person', invite_person: 'Invite a person',
+  repair_signin: 'Repair sign-in', suspend_person: 'Suspend a person', restore_person: 'Restore a person', invite_person: 'Invite a person',
   remove_invitation: 'Remove an invitation', add_domain_rule: 'Require a provider for a domain', remove_domain_rule: 'Remove a domain’s required provider',
 }
 const outcomeReasons: Record<string, string> = {
@@ -12,7 +13,7 @@ const outcomeReasons: Record<string, string> = {
   second_administrator_required: 'it needs a second administrator', last_administrator: 'it would leave no administrator',
 }
 const kindName = (kind: string): string => kindNames[kind] ?? kind
-const target = (effect: AgentEffect): string => effect.person?.email ?? effect.domain ?? 'Unknown target'
+const target = (effect: AgentEffect): string => effect.diagnostic?.worker ?? effect.person?.email ?? effect.domain ?? effect.app?.name ?? 'Unknown target'
 
 const endedReasons: Record<NonNullable<AgentKey['ended_reason']>, string> = {
   owner_suspended: 'its owner was suspended', owner_demoted: 'its owner is no longer an administrator',
@@ -38,7 +39,7 @@ const proposalState = (proposal: AgentProposal): string => {
   const reason = proposal.outcome?.reason ? outcomeReasons[proposal.outcome.reason] ?? proposal.outcome.reason.replace(/_/g, ' ') : ''
   if (proposal.status === 'pending') return `<span class="status-pill invited" data-proposal-status="pending">Waiting for a person</span>`
   if (proposal.status === 'expired') return '<span class="status-pill suspended" data-proposal-status="expired">Expired</span>'
-  if (proposal.status === 'done') return `<span class="status-pill" data-proposal-status="done">Done</span>`
+  if (proposal.status === 'done') return `<span class="status-pill" data-proposal-status="done">${proposal.effect.diagnostic ? 'Repair applied' : 'Done'}</span>`
   return `<span class="status-pill suspended" data-proposal-status="${escape(proposal.status)}">${proposal.status === 'failed' ? 'Failed' : 'Rejected'}${reason ? `: ${escape(reason)}` : ''}</span>`
 }
 
@@ -48,6 +49,7 @@ const proposalRows = (proposals: AgentProposal[]): string => proposals.length
 
 // One effect as a short list: who, what changes, and which apps and sessions it reaches.
 const effectRows = (effect: AgentEffect): string => {
+  if (effect.diagnostic) return diagnosticEffect(effect)
   const rows: Array<[string, string]> = []
   if (effect.person) {
     rows.push(['Person', `${effect.person.name && effect.person.name !== effect.person.email ? `${effect.person.name}, ` : ''}${effect.person.email}`])
@@ -72,7 +74,7 @@ const effectRows = (effect: AgentEffect): string => {
 }
 
 const review = (model: AuthPageModel, proposal: AgentProposal): string => {
-  const open = proposal.status === 'pending'
+  const open = proposal.status === 'pending' && (!proposal.effect.diagnostic || Boolean(proposal.effect.diagnostic.repair))
   const changed = proposal.unchanged
     ? noticeBox('Nothing about the target has changed since the agent filed this.', 'success')
     : noticeBox(`Changed since filing: ${(proposal.changed ?? []).join('; ')}. Approving now is refused as stale.`, 'error')
@@ -92,5 +94,5 @@ export function renderAgentsPage(model: AuthPageModel): string {
   const mint = `<form class="inline-form" method="post" action="/api/auth/agents/mint" data-agent-mint>${csrfField(model.csrf)}<div class="field"><label for="agent-key-label">Key label</label><input id="agent-key-label" name="label" maxlength="80" placeholder="Directory review agent" required></div><button type="submit">Mint a key</button></form><div class="agent-secret" data-agent-secret hidden><label for="agent-secret-value">Copy this key now. Auth keeps only its digest and will not show it again.</label><input id="agent-secret-value" readonly data-agent-secret-value></div>`
   const keyPanel = `<section class="panel" aria-labelledby="keys-heading"><div class="panel-header"><div><h2 id="keys-heading">Preparer keys</h2><p>A key lets an agent read the people inventory and file proposals through the preparer API. It cannot sign in, open these pages, approve, or change anything itself, and it is not an app access token. Each key expires 30 days after minting or renewal and stops at once when revoked or when its accountable administrator loses that role. Minting, renewing and revoking need an email confirmation in this browser within ten minutes.</p></div></div>${mint}${keyRows(keys, model, now)}</section>`
   const proposalPanel = `<section class="panel" aria-labelledby="proposals-heading"><div class="panel-header"><div><h2 id="proposals-heading">Proposals</h2><p>What agents asked for, with the effect Auth computed when they filed. Nothing changes until a person approves; proposals expire after 24 hours.</p></div><span class="pill">${pending} waiting</span></div>${proposalRows(proposals)}</section>`
-  return `${agents.proposal ? `<div class="toolbar"><a class="action" href="/app/agents">All proposals and keys</a></div>${review(model, agents.proposal)}` : ''}${proposalPanel}${keyPanel}${adminServicesPanel(model)}${delegatedAgentsPanel(model)}`
+  return `${agents.proposal ? `<div class="toolbar"><a class="action" href="/app/agents">All proposals and keys</a></div>${review(model, agents.proposal)}` : ''}${diagnosticPanel(model)}${proposalPanel}${keyPanel}${adminServicesPanel(model)}${delegatedAgentsPanel(model)}`
 }

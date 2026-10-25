@@ -9,6 +9,7 @@ import {configuredProvider} from '../domain-policy.mjs';
 import {fencePerson} from '../links/logout.mjs';
 import {personChanged} from '../provisioning/obligations.mjs';
 import {emit,personSubject} from '../events/store.mjs';
+import {DIAGNOSTIC_KINDS} from './diagnostic-kind.mjs';
 import {APP_KINDS} from './app-kinds.mjs';
 
 const domainOf=value=>{const domain=String(value||'').trim().toLowerCase();if(!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(domain)||domain.length>253)fail('invalid_domain');return domain;};
@@ -95,7 +96,7 @@ export const KINDS={
   effect:(ctx,state)=>domainEffect(ctx,state,null),
   run:(ctx,state,claim)=>[ctx.db.prepare(`DELETE FROM oa_domain_rules WHERE domain=? AND ${claim.sql}`).bind(state.domain,...claim.args)]},
 };
-Object.assign(KINDS,APP_KINDS);
+Object.assign(KINDS,APP_KINDS,DIAGNOSTIC_KINDS);
 export const UNAVAILABLE={};
 
 export const digest=state=>hash(JSON.stringify(state));

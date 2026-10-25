@@ -4,7 +4,7 @@
 // until an owner retires it.
 import {random,one,all,run,fail,utf8,b64} from '../core.mjs';
 import {seal,unseal} from '../keys.mjs';
-import {selfSignedCertificate,certificateKey,toBase64,fromBase64} from './der.mjs';
+import {selfSignedCertificate,certificateKey,certificateValidity,toBase64,fromBase64} from './der.mjs';
 import {el,canonical,child,children,attr,textOf,NS} from './xml.mjs';
 
 const YEAR=365*86400000;
@@ -47,6 +47,12 @@ export async function retireSamlKey(ctx,kid,guard) {
  return (await run(ctx,`UPDATE auth_saml_keys SET state='retired',retired_at=? WHERE kid=? AND state IN ('next','previous') AND ${guard.clause}`,ctx.now(),kid,...guard.args)).meta.changes;
 }
 
+async function validSigningKey(ctx) {
+ const key=await ensureSamlKey(ctx),validity=certificateValidity(key.certificate);
+ if(validity.notBefore>ctx.now()||validity.notAfter<=ctx.now())fail('saml_signing_certificate_expired',503);
+ return key;
+}
+
 async function privateKey(ctx,row,algorithm) {
  const pkcs8=await unseal(ctx,'saml:'+row.kid,row.encrypted_private);
  return crypto.subtle.importKey('pkcs8',Uint8Array.from(atob(pkcs8.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)),{name:'RSASSA-PKCS1-v1_5',hash:DIGESTS[algorithm].hash},false,['sign']);
@@ -55,7 +61,7 @@ const digest=async(algorithm,text)=>toBase64(new Uint8Array(await crypto.subtle.
 
 // Enveloped signature over `element` (it must carry an ID), placed after its Issuer.
 export async function signElement(ctx,element,algorithm) {
- const key=await ensureSamlKey(ctx),id=attr(element,'ID'),d=DIGESTS[algorithm];
+ const key=await validSigningKey(ctx),id=attr(element,'ID'),d=DIGESTS[algorithm];
  const signedInfo=el('ds:SignedInfo',{},[el('ds:CanonicalizationMethod',{Algorithm:EXC}),el('ds:SignatureMethod',{Algorithm:d.signature}),el('ds:Reference',{URI:'#'+id},[el('ds:Transforms',{},[el('ds:Transform',{Algorithm:ENVELOPED}),el('ds:Transform',{Algorithm:EXC})]),el('ds:DigestMethod',{Algorithm:d.digest}),el('ds:DigestValue',{},[await digest(algorithm,canonical(element))])])]);
  const value=new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',await privateKey(ctx,key,algorithm),utf8.encode(canonical(signedInfo))));
  const signature=el('ds:Signature',{},[signedInfo,el('ds:SignatureValue',{},[toBase64(value)]),el('ds:KeyInfo',{},[el('ds:X509Data',{},[el('ds:X509Certificate',{},[key.certificate])])])]);
@@ -66,7 +72,7 @@ export async function signElement(ctx,element,algorithm) {
 
 // HTTP-Redirect binding: the signature covers the exact query octets.
 export async function signQuery(ctx,query,algorithm) {
- const key=await ensureSamlKey(ctx),signed=`${query}&SigAlg=${encodeURIComponent(DIGESTS[algorithm].signature)}`;
+ const key=await validSigningKey(ctx),signed=`${query}&SigAlg=${encodeURIComponent(DIGESTS[algorithm].signature)}`;
  return `${signed}&Signature=${encodeURIComponent(toBase64(new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',await privateKey(ctx,key,algorithm),utf8.encode(signed)))))}`;
 }
 

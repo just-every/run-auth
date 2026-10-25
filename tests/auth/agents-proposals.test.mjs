@@ -7,6 +7,10 @@ import {authenticator,register} from './webauthn.mjs';
 import {issueClient} from './policy-helpers.mjs';
 import {ownerInstall,passkeyPerson,mint,preparer,file,approve,approvalProof,reject,post,table,proposal,person,activity,signInAgain} from './agents-helpers.mjs';
 
+import {diagnosticRepairFlow,diagnosticDenialFlow} from './diagnostic-flow.mjs';
+test('sign-in diagnosis cites approved facts and exact repairs restore callback, expired certificate and recovery mail journeys through sign-in and logout',diagnosticRepairFlow);
+test('diagnostic consent, denied approval, untrusted instructions, unknown citations, uncertainty and stale targets cannot change configuration or authority',diagnosticDenialFlow);
+
 import {externalDelegationFlow} from './external-delegation-flow.mjs';
 
 test('registered MCP and external API resources execute one person-consented task; operation, person, scope, audience, replay, expiry and live revocation are enforced at each resource',externalDelegationFlow);
