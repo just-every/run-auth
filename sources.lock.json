@@ -2895,7 +2895,7 @@
       "executable": false
     },
     "src/ui/pages/domain-policy.ts": {
-      "sha256": "e3f0cff3a43ac21a7a459ae74a1dd70fde3d7ae37d8b5209c82f6e04ccc5398a",
+      "sha256": "dfbac8bad5f77923c384c57e1d964d46662cd92f1fc48dd4c5d2319688af0a90",
       "executable": false
     },
     "src/ui/pages/erasure-retained.ts": {
@@ -3443,7 +3443,7 @@
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {
-      "sha256": "c3b3055923f5ab3e6d659fa9b49f28f130c8606b6db5c19409ea3a6e0440dd86",
+      "sha256": "d07552df7e7477598a57990cf1aa909fe558c1fc935e496ae599aa2972b45414",
       "executable": false
     },
     "tests/runtime.mjs": {

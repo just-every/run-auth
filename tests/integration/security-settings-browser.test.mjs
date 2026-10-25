@@ -108,6 +108,8 @@ test('security settings: prove and revoke employer ownership, preview affected w
  await ownership().getByLabel('Employer domain',{exact:true}).fill(domain);
  const challenge=await successfulAction(page,'/api/auth/domains/challenge',ownership().getByRole('button',{name:'Start ownership challenge'}),201);
  const model=await challenge.json();
+ await page.screenshot({path:join(directory,'security-challenge-created.png'),fullPage:true});
+ assert.equal(await card().count(),1,await ownership().innerText());
  const label=await card().getByLabel('TXT name',{exact:true}).inputValue(),value=await card().getByLabel('TXT value',{exact:true}).inputValue();
  assert.equal(label,model.label);assert.equal(value,model.value);
  await expect(card().getByLabel('TXT name',{exact:true})).toHaveAttribute('readonly','');
