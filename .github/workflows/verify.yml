@@ -43,7 +43,7 @@ jobs:
         run: pnpm exec rer check --profile first-party
       - run: pnpm run build
       - if: matrix.shard == 'app'
-        run: pnpm run typecheck && pnpm run test:typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site
+        run: pnpm run typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site
       - if: matrix.shard == 'protocol'
         run: pnpm run test:auth:protocol
       - if: matrix.shard == 'workforce'

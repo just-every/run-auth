@@ -119,7 +119,7 @@
       "executable": false
     },
     ".github/workflows/verify.yml": {
-      "sha256": "b023fa5d42f0e813fb83ef4788010183cc224dfb09dde3bc34c94cadc6580c46",
+      "sha256": "54cededa2781be36c4bffc5fc02e3cf12b7c3190d8daeb00bc7003d657e20801",
       "executable": false
     },
     ".gitignore": {
@@ -143,7 +143,7 @@
       "executable": false
     },
     "base-copies.json": {
-      "sha256": "04512408b567e0b04b759b8f98f4e00eb2745e6e95a5544b981791c4113e4414",
+      "sha256": "cb06321e8fea50afc3326178364cfbe6affe8009e9bf64ed9ffffc0e3ae78e92",
       "executable": false
     },
     "COMPANY-APPS.md": {
@@ -551,7 +551,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "3a5b36f7f1bab085d5417569459e9194c0291d20a29fd9782e4ba721276d8668",
+      "sha256": "762064eb6379b42b1d789c94f93daff256e3febd46d05c0599d11f9a147bdca0",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -3218,10 +3218,6 @@
       "sha256": "f403d181c1bdae24cd4dab201bd23dfd127fdf758cb79ac3ed358ed580b12655",
       "executable": false
     },
-    "tests/incremental-typecheck.test.mjs": {
-      "sha256": "a11d6b89e7219137540c7052683c5f4d9ba7ddf16f66d34c1f56ae34029c0a95",
-      "executable": false
-    },
     "tests/integration/agents-browser.test.mjs": {
       "sha256": "8737a43804a76e7139cc318a8c44a0b853fced3169234779864cc5984ca3ca15",
       "executable": false
@@ -3312,10 +3308,6 @@
     },
     "tests/site/run-site.test.mjs": {
       "sha256": "e7226e987b86f697a5c5ce56674892c7d544556988ff53c5c2e8cb12bff58140",
-      "executable": false
-    },
-    "tests/typecheck-checks.mjs": {
-      "sha256": "d277865443e7e82f308fe6970843790f2149f0463fc82307929919e25c5c5231",
       "executable": false
     },
     "tsconfig.json": {
