@@ -1,0 +1,15 @@
+# Employee security notifications
+
+The employer's owner or administrator configures Security notification preferences in My account, using a hardware passkey and an Auth email confirmation from the last ten minutes. Saving explicitly records consent to the recipients and the report response. This initial consent requirement is a conservative adoption awaiting ct approval; AUTH-NOTIFY-001 remains partial.
+
+New-browser notices describe the requesting app, time, approximate location where available, IP and browser. A browser recognition cookie is only a signal, never authentication. Recognition uses the last twenty successful sign-ins. Bound app sign-in requests supply their actual registered app name. Administrators can turn off new-browser and factor-enrollment notices. Once security email is authorized, recovery started, factor reset or removal, and administrator role notices cannot be disabled, including through the email channel switch.
+
+Hardware factor enrollment, scoped help-desk factor reset, approved or emergency recovery, recovery start and direct administrator-role grants call the notice engine only after their source writes succeed. Mail goes to the affected person's current verified address. Every new notice carries a signed report action valid for seven days; it contains no sign-in credential. Recovery-started notices also name the existing signed-in cancellation path. The earlier recovery mail and session notices remain in place.
+
+Opening Report suspicious activity works while signed out and consumes the signed action once. Forgery, expiry, reuse and a different employer all refuse. The report records its originating notice and event, appears in Activity and the lifecycle event stream, and opens a security-owner follow-up. An administrator can mark that investigation reviewed; sending a message never closes it.
+
+The optional end-sessions response revokes Auth sessions and refresh grants in the report transaction, then sends the existing linked-app identity fence and native app back-channel logout. The optional Slack escalation posts once to the configured incoming webhook, recording accepted, failed or unknown outcomes without silently retrying an uncertain post. The installation's webhook is not inherited by another employer.
+
+Operators configure `AUTH_NOTIFICATION_SLACK_WEBHOOK` as a server-only secret. Existing mail settings remain `MAIL_PROVIDER`, `MAIL_FROM` and `MAIL_API_KEY`; SendGrid is supported by the existing mail module. Do not put the webhook or mail credentials in client settings, a repository or logs.
+
+Remaining obligations stay with AUTH-NOTIFY-001: push through AUTH-AUTHENTICATOR-001; password changes and lockout through AUTH-PASSWORD-001; temporary access pass notices through AUTH-TAP-001; all role-grant and factor-removal doors; connected SaaS session revocation through AUTH-LOGOUT-002; additional response policies and configured SIEM qualification. The initial consent policy also needs ct approval. This slice does not claim those outcomes.

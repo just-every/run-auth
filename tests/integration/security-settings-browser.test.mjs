@@ -56,7 +56,7 @@ async function tooltipAudit(page,directory,name,width) {
  await page.locator('h1').click();await page.mouse.move(0,0);
 }
 
-test('security settings: prove and revoke employer ownership, preview affected workers, and authorize persistent notification preferences at desktop/mobile',async t=>{
+test('security settings: prove and revoke employer ownership, preview affected workers, and authorize persistent notification preferences at desktop and mobile',async t=>{
  // Only the external DNS transport is substituted. The emitted Worker owns
  // challenges, authorization, policy, sessions, persistence and rendering.
  const records=new Map(),queries=[];
