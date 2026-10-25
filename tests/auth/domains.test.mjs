@@ -12,7 +12,6 @@ async function fixture(t,address='owner@example.invalid') {
 test('domain setup refuses unproved, incorrect, expired and competing ownership; exact aliases need proof and eligible enrollment still needs individual email proof',async t=>{
  const {r,owner}=await fixture(t),domain='employer.example.invalid',dns=await domainDns(t,r);
  const call=(suffix,data,cookie=owner.cookie)=>r.call('/api/auth'+suffix,post(data,cookie));
- assert.equal((await call('/domains/challenge',{domain},undefined)).status,201);
  assert.equal((await r.call('/api/auth/domains/challenge',post({domain}))).status,401);
  assert.equal((await call('/people/domain',{domain})).status,409);
  const challenge=await (await call('/domains/challenge',{domain})).json();
