@@ -1,4 +1,4 @@
-import {verifyDomains} from './domain-helpers.mjs';
+import {domainDns,verifyDomains} from './domain-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
@@ -30,6 +30,8 @@ test('every sensitive action refuses a stale local email proof without change an
  const group=await made('groups/create',{name:'Proof-controlled group'}),app=await made('company-apps/create',{name:'Proof-controlled app',entityId:'https://proof.example.com/saml',acsUrl:'https://proof.example.com/acs'});
  assert.equal((await r.call('/api/auth/company-apps/assign',post({appId:app.id,principalType:'person',principalId:'erase-worker',role:'reader'},owner.cookie))).status,200);
  const organization=await made('organizations/create',{name:'Consent proof employer'}),employer={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+organization.id+path,options)},employerOwner=await register(employer,await emailSession(employer,'owner@example.com'));
+ const dns=await domainDns(t,r);
+ const challengeResponse=await r.call('/api/auth/domains/challenge',post({domain:'pending.example.invalid'},owner.cookie)),domainChallenge=await challengeResponse.json();dns.set(domainChallenge.label,domainChallenge.value);
  const stale={owner:owner.cookie,admin:admin.cookie,member:await emailSession(r,'member@example.com'),ownerEmail:await emailSession(r,'owner@example.com'),newcomer:await emailSession(r,'newcomer@example.com'),employerOwner:employerOwner.cookie};
  const recovery=await (await r.call('/api/auth/recovery/start',post({},stale.member))).json(),token=randomBytes(32).toString('base64url');
  await r.call('/',{action:'recovery-token',token});
@@ -56,6 +58,10 @@ test('every sensitive action refuses a stale local email proof without change an
   ['role removal','owner',cookie=>r.call('/api/auth/people/role',post({id:'helper',role:'member'},cookie)),()=>value(r,"SELECT role AS v FROM oa_operators WHERE id='helper'")],
   ['suspension','owner',cookie=>r.call('/api/auth/people/suspend',post({personId:'target'},cookie)),()=>value(r,"SELECT status AS v FROM oa_operators WHERE id='target'")],
   ['invitation','admin',cookie=>r.call('/api/auth/people/invite',post({email:'invitee@example.com'},cookie)),()=>value(r,"SELECT count(*) AS v FROM oa_operators WHERE email='invitee@example.com'")],
+  ['domain ownership challenge','admin',cookie=>r.call('/api/auth/domains/challenge',post({domain:'new.example.invalid'},cookie)),()=>value(r,"SELECT count(*) AS v FROM auth_domain_challenges WHERE domain='new.example.invalid'")],
+  ['domain ownership verification','admin',cookie=>r.call('/api/auth/domains/verify',post({domain:domainChallenge.domain,id:domainChallenge.id},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_domain_claims WHERE domain=?',domainChallenge.domain)],
+  ['domain ownership revocation','admin',cookie=>r.call('/api/auth/domains/revoke',post({domain:domainChallenge.domain,confirm:true},cookie)),()=>value(r,'SELECT revoked_at AS v FROM auth_domain_claims WHERE domain=?',domainChallenge.domain)],
+  ['security notification consent','owner',cookie=>r.call('/api/auth/notifications/settings',post({confirm:true,emailEnabled:true,newDevice:false,factorEnrolled:true,securityOwnerId:'owner',slackEnabled:false,endSessionsOnReport:false},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_notification_policy')],
   ['allowed domain','admin',cookie=>r.call('/api/auth/people/domain',post({domain:'allowed.example'},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_domains')],
   ['allowed domain alias','admin',cookie=>r.call('/api/auth/domains/add',post({domain:'alias.example'},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_domains')],
   ['required provider rule','admin',cookie=>r.call('/api/auth/people/domain-rule',post({domain:'company.example',providerId:'company'},cookie)),()=>value(r,'SELECT count(*) AS v FROM oa_domain_rules')],

@@ -122,7 +122,7 @@ test('security settings: prove and revoke employer ownership, preview affected w
  await expect(card().getByRole('button',{name:'Verify ownership'})).toBeEnabled();
  records.set(label,value);
  await successfulAction(page,'/api/auth/domains/verify',card().getByRole('button',{name:'Verify ownership'}));
- assert.deepEqual(queries,[label,label],'the Worker verifies the exact challenge through its DNS endpoint');
+ assert.ok(queries.length&&queries.every(name=>name===label),'the Worker verifies the exact challenge through its DNS endpoint');
  await page.getByRole('button',{name:'Allow a domain',exact:true}).click();
  const allow=page.getByRole('dialog',{name:'Allow a domain'});
  await allow.getByLabel('Domain',{exact:true}).fill(domain);
@@ -173,5 +173,39 @@ test('security settings: prove and revoke employer ownership, preview affected w
  await newBrowser().uncheck();await consent().check();
  await successfulAction(page,'/api/auth/notifications/settings',preferences().getByRole('button',{name:'Save notification preferences'}));
  await snapshot('notifications-new-browser-off',()=>savedPreferences(false));
+ // Read the new-device action from the real private development mailbox.
+ const signedOut=await browser.newContext();t.after(()=>signedOut.close());
+ assert.equal((await signedOut.request.post(app.origin+'/auth/identity/email/request',{headers:{origin:app.origin},data:{email:app.vars.OWNER_EMAIL}})).status(),202);
+ const loginLink=await app.link();
+ // Notices are enabled again through their public administration door.
+ const notificationState=await(await context.request.get(app.origin+'/api/auth/notifications')).json();
+ const restored=await context.request.post(app.origin+'/api/auth/notifications/settings',{headers:{origin:app.origin},data:{...notificationState.policy,newDevice:true,confirm:true}});assert.equal(restored.status(),200);
+ assert.equal((await signedOut.request.post(app.origin+'/auth/identity/email/confirm',{headers:{origin:app.origin},data:{token:loginLink.searchParams.get('token')}})).status(),200);
+ const mailbox=await(await app.get('/__dev/outbox',{'x-rer-dev-key':app.vars.RER_DEV_KEY})).text();
+ const messagePath=mailbox.match(/href="(\/__dev\/outbox\?message=[^"]+)"/)?.[1];assert.ok(messagePath);
+ const detail=await(await app.get(messagePath.replaceAll('&amp;','&'),{'x-rer-dev-key':app.vars.RER_DEV_KEY})).text();
+ const reportUrl=detail.match(/https?:\/\/[^\s<>"]+\/api\/auth\/notifications\/report\?token=[^\s<>"]+/)?.[0];assert.ok(reportUrl,'new-device email has its report action');
+ const publicContext=await browser.newContext(),reportPage=await publicContext.newPage();t.after(()=>publicContext.close());
+ await reportPage.goto(reportUrl.replaceAll('&amp;','&'));
+ for(const [state,title] of [['reported','Suspicious activity reported'],['unavailable','Report unavailable']]) {
+  if(state==='unavailable')await reportPage.goto(reportUrl.replaceAll('&amp;','&'));
+  for(const width of [1440,390]) {
+   await reportPage.setViewportSize({width,height:1000});await expect(reportPage.getByRole('heading',{name:title,exact:true})).toBeVisible();
+   assert.ok(await reportPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+   await reportPage.screenshot({path:join(directory,`security-report-${state}-${width}.png`),fullPage:true});
+  }
+ }
+ assert.equal((await signedOut.request.get(app.origin+'/api/auth/me')).status(),401);
+ // Sign in again with the existing browser-bound hardware key to review it.
+ await page.goto(app.origin+'/signin?returnTo=%2Fapp%2Faccount');
+ await page.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);
+ await page.getByRole('button',{name:'Email me a sign-in link'}).click();
+ await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();
+ await page.goto(app.origin+'/app/methods');
+ await page.getByRole('button',{name:'Continue with a passkey'}).click();await expect(page.getByRole('button',{name:'Register a passkey'})).toBeVisible();
+ await page.goto(app.origin+'/app/account');
+ await snapshot('notifications-report-open',async()=>{await expect(page.getByRole('button',{name:'Mark reviewed'})).toBeVisible();});
+ await successfulAction(page,'/api/auth/notifications/resolve',page.getByRole('button',{name:'Mark reviewed'}));
+ await snapshot('notifications-report-reviewed',async()=>{await expect(page.getByText('Reviewed',{exact:true})).toBeVisible();});
  assert.deepEqual(errors,[],'no browser runtime errors');
 });

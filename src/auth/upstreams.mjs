@@ -1,3 +1,4 @@
+import {notificationApp} from './notifications/index.mjs';
 import {permitsProvider,configuredProvider,configurationHash,matchesConfiguredPin} from './domain-policy.mjs';
 import {emit} from './events/store.mjs';
 import {createOidcProviders,createOidcHandler} from '../modules/operator-auth/identity/oidc/index.mjs';
@@ -8,7 +9,7 @@ import {pendingAuthorizationLogin} from './authorization-login.mjs';
 import {openIntent,completeLink} from './profiles/links.mjs';
 import {evaluatePerson} from './workforce/people/evaluate.mjs';
 export function createUpstreams(ctx) {
- const configured=ctx.upstreamProviders||[];
+ const configured=ctx.upstreamProviders||[],deviceCookies=new WeakMap();
  if(configured.some(p=>!['google','microsoft','okta'].includes(p.preset)))fail('unsupported_upstream',503);
  const admission={async admit(request,principal,{returnTo}={}) {
   // Only the maintained Base verifier invokes this closed-over admission adapter.
@@ -47,14 +48,18 @@ export function createUpstreams(ctx) {
    const browser=random();await sendProof(ctx,person,await hash(browser),['oidc','email'],returnTo,upstreamProofId);
    return {returnTo:login?`/signin?reproof=1&returnTo=${encodeURIComponent(returnPath(returnTo))}`:'/signin?reproof=1',cookie:cookie(ctx,bindingName(ctx),browser,900)};
   }
-  const session=await createSession(ctx,person.id,['oidc'],upstreamProofId,{request});await audit(ctx,person.id,'upstream_authenticated',principal.provider);
+  const session=await createSession(ctx,person.id,['oidc'],upstreamProofId,{request,app:await notificationApp(ctx,returnTo,request)});await audit(ctx,person.id,'upstream_authenticated',principal.provider);
+  if(session.deviceHeader)deviceCookies.set(request,session.deviceHeader);
   return {returnTo:returnPath(returnTo),cookie:session.header};
  }};
  // Auth's configured upstreams are its owner's own choice: configured means offered.
  const providers=createOidcProviders({admission,enabled:async()=>true,db:ctx.db,config:{origin:ctx.origin,local:ctx.local,transactionSecret:ctx.secret,providers:configured},clock:ctx.now,clientIp:r=>r.headers.get('cf-connecting-ip')||'',...(ctx.upstreamFetch?{fetch:ctx.upstreamFetch}: {})});
  const handler=createOidcHandler(providers);
- return {providers,fetch:request=>{
+ return {providers,fetch:async request=>{
   if(ctx.basePath&&/^\/auth\/oidc\/[a-z][a-z0-9-]{0,31}\/callback$/.test(new URL(request.url).pathname)){const url=new URL(request.url);url.pathname=ctx.basePath+url.pathname;request=new Request(url,request);}
-  return handler(request);
+  const response=await handler(request),deviceCookie=deviceCookies.get(request);
+  if(!deviceCookie)return response;
+  const headers=new Headers(response.headers);headers.append('set-cookie',deviceCookie);
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
  }};
 }

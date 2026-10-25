@@ -24,7 +24,8 @@ export async function notifySecurity(ctx,{personId,event,sourceId,request,app,fa
   const current=await notificationPolicy(ctx),live=await one(ctx,"SELECT email FROM oa_operators WHERE id=? AND email=? AND status='active'",personId,person.email);
   if(JSON.stringify(current)!==JSON.stringify(p)||!live) {await run(ctx,"UPDATE auth_security_notifications SET delivery_state='refused' WHERE id=?",id);return id;}
   if(!ctx.mail)throw new Error('mail_not_configured');
-  await ctx.mail({to:person.email,...notificationMessage(ctx,row,link)});
+  const delivered=await ctx.mail({to:person.email,...notificationMessage(ctx,row,link)});
+  if(delivered?.status&&delivered.status!=='accepted')throw new Error('security_mail_not_accepted');
   await run(ctx,"UPDATE auth_security_notifications SET delivery_state='accepted' WHERE id=?",id);
  }catch {await run(ctx,"UPDATE auth_security_notifications SET delivery_state='failed' WHERE id=?",id);await auditDetail(ctx,null,'security_notification_delivery_failed',id,{event});}
  return id;

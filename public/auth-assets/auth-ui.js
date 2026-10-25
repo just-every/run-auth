@@ -16,6 +16,17 @@
     }
   }
   const friendlyErrors = {
+    domain_not_verified: 'Prove ownership of this exact domain on Sign-in methods first.',
+    domain_already_claimed: 'Another employer holds this domain. Contact your installation owner.',
+    domain_challenge_incorrect: 'The TXT record does not match yet. Check its exact name and value, then try again.',
+    domain_challenge_expired_or_used: 'This ownership challenge expired or was already used. Start a new challenge.',
+    domain_dns_unavailable: 'DNS could not be read. Retry when your DNS service is available.',
+    domain_claim_changed: 'Ownership changed during verification. Reload and review the current claim.',
+    mandatory_notification_required: 'Recovery, factor reset or removal, and administrator role notices cannot be turned off.',
+    notification_explicit_consent_required: 'Confirm the notification recipients and report response before saving.',
+    notification_security_owner_required: 'Choose an active security owner.',
+    notification_slack_not_configured: 'Configure a security Slack destination before enabling escalation.',
+
     diagnostic_consent_required: 'Approve sending this precise redacted snapshot before requesting a diagnosis.',
     diagnostic_model_not_configured: 'The owner must configure the diagnosis model before preparing a repair.',
     diagnostic_model_unavailable: 'The diagnosis model is unavailable. Configuration has not changed.',

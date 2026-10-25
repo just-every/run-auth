@@ -643,7 +643,7 @@
       "executable": false
     },
     "public/auth-assets/auth-ui.js": {
-      "sha256": "76bd321468792e8de8a3dcea86c2f2589cf735cef252a08ad82619309f86158e",
+      "sha256": "1336fc94549e6de7bc72f869484aa970c11d06f23dc358c836d87281cacc4d42",
       "executable": false
     },
     "public/auth-assets/auth.css": {
@@ -1519,7 +1519,7 @@
       "executable": false
     },
     "src/auth/notifications/service.mjs": {
-      "sha256": "801f38cfb93bfee63db51979ebb2da88271869b3c2bb3730abcc3274f4f9f831",
+      "sha256": "ff2f1f40be9d5e59beb46ab4b6ed896211da1371095ee875adc71666fb034d35",
       "executable": false
     },
     "src/auth/notifications/tokens.mjs": {
@@ -1879,7 +1879,7 @@
       "executable": false
     },
     "src/auth/upstreams.mjs": {
-      "sha256": "d84057f3910d1f2eb36f79ff0970a6a228e7393841da236e6e63fc97919241f7",
+      "sha256": "f5636b6d7d983b50f2f0565066601238942ae7c71635e0b32c97ad1725e510ed",
       "executable": false
     },
     "src/auth/userinfo.mjs": {
@@ -3035,7 +3035,7 @@
       "executable": false
     },
     "tests/auth/fresh-proof.test.mjs": {
-      "sha256": "fcb69432a95c02ffcd5436c438ee5e08365cd36883e896d8ba4e28cdadb8f4d3",
+      "sha256": "d73bedb2e2405c846e2b397e3d0bad8f219efecae770d2c100f2dc20b60b9037",
       "executable": false
     },
     "tests/auth/hooks-server.mjs": {
@@ -3435,7 +3435,7 @@
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {
-      "sha256": "64553f3f89be9693352ad71b7d831ab6f1c56b97bd9440217622afb4f6780576",
+      "sha256": "92007bbdad1081f167aa8cb02400286e920f41c5a9a7e6a994ac770e4d16f0ea",
       "executable": false
     },
     "tests/runtime.mjs": {
