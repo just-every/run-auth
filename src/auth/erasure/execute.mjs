@@ -12,6 +12,7 @@ import {remoteWork,executeRemote} from './remote.mjs';
 import {signedJournal} from './export.mjs';
 import {sanitizeJournal} from './integrity.mjs';
 import {auditCommitments} from './audit.mjs';
+import {revocationAudit} from './revocations.mjs';
 
 export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  if(plan.holds.length)fail('erasure_legal_hold',409);
@@ -88,6 +89,9 @@ export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
  }
  statements.push(statement('DELETE FROM auth_erasure_previews WHERE id=?',[previewId]));
  statements.push(ctx.db.prepare(`INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT ?,'erasure_completed',?,? WHERE ${held}`).bind(plan.reset||plan.identifiers.has(s.person_id)?plan.reference:s.person_id,plan.reference,now,latch));
+ const revocations=revocationAudit(plan);
+ statements.push(ctx.db.prepare(`INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT ?,'erasure_credentials_revoked',?,? WHERE ${held}`).bind(plan.reference,plan.reference,now,latch));
+ statements.push(ctx.db.prepare(`INSERT INTO auth_activity_details(activity_id,detail) SELECT last_insert_rowid(),? WHERE ${held}`).bind(JSON.stringify(revocations),latch));
  for(const item of pairWork.after)statements.push(statement(item.sql,item.args));
  const global=[...await installationFence(ctx,latch),...pairWork.global.map(item=>item.statement.bind(...item.args,latch))];
  const marker=(ctx.organization?.namespace??'')+'auth_erasure_commits';

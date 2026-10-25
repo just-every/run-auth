@@ -48,7 +48,7 @@ export async function delegationToken(ctx,request) {
   if(request.headers.has('authorization')||form.has('client_secret')||form.get('client_assertion_type')!==TYPE||form.get('client_id')!==clientId)fail('invalid_client',401);
   if(form.get('grant_type')!=='client_credentials')fail('unsupported_grant_type');
   const selected=agent?await taskRow(ctx,claimedGrantId):null;
-  const selectedEffect=selected?.agent_id===agent?.id?JSON.parse(selected.effect):null;
+  const selectedEffect=selected&&agent&&selected.agent_id===agent.id?JSON.parse(selected.effect):null;
   const scope=selectedEffect?.scopes.join(' ')??SCOPE,audience=selectedEffect?.audience??target(ctx);
   if(form.get('scope')!==scope)fail('invalid_scope');
   if(form.get('resource')!==audience)fail('invalid_target');

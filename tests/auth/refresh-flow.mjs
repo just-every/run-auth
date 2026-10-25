@@ -97,6 +97,25 @@ export async function refreshLifecycle(t) {
  await plan({kind:'grant',personId:'field-support',roleId:supportRole.role.id,resources:{view:{apps:[app.id],people:['ada']},edit:{apps:[app.id],people:['ada']}}});
  await command('refresh/revoke',{id:scoped.tokens.grant_id},200,support.cookie);assert.equal((await check(scoped.tokens.access_token)).status,401);await command('refresh/revoke',{id:hidden.tokens.grant_id},403,support.cookie);
  await plan({kind:'grant',personId:'ada',roleId:supportRole.role.id,resources:{view:{apps:[app.id],people:['ada']},edit:{apps:[app.id],people:['ada']}}});const peer=await connect({deviceName:'Equal-rank administrator tablet'});assert.ok((await inventory(support.cookie,'?refreshAdmin=1')).some(g=>g.id===peer.tokens.grant_id),'view scope does not use rank');await command('refresh/revoke',{id:peer.tokens.grant_id},403,support.cookie);assert.equal((await check(peer.tokens.access_token)).status,200);await command('refresh/revoke',{id:peer.tokens.grant_id});assert.equal((await check(peer.tokens.access_token)).status,401);
+ // Erasure is independent of suspension and app removal: both credentials
+ // work beside their refusal, and a failed storage step preserves both.
+ await r.person('erasable','erasable@example.com');const erasable=await (await import('./runtime.mjs')).emailSession(r,'erasable@example.com');
+ await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'erasable',role:'reader'});
+ const erasureGrant=await connect({who:erasable,deviceName:'Erasure tablet'});
+ assert.equal((await check(erasureGrant.tokens.access_token)).status,200);
+ const liveRefresh=await rawRefresh(erasureGrant.tokens.refresh_token);assert.equal(liveRefresh.status,200);const erasureTokens=await liveRefresh.json();
+ await command('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ await r.db.exec("CREATE TRIGGER synthetic_refresh_failure BEFORE DELETE ON auth_refresh_credentials BEGIN SELECT RAISE(ABORT,'synthetic-auth-revocation-failure'); END;");
+ const failedPreview=await command('erasure/preview',{kind:'person',target:'erasable'});
+ assert.equal((await r.call('/api/auth/erasure/confirm',{method:'POST',cookie:r.owner.cookie,data:{previewId:failedPreview.id,confirmation:'ERASE',destinations:[]}})).status,500);
+ assert.equal((await check(erasureTokens.access_token)).status,200,'failed erasure preserves access authority');
+ const stillLive=await rawRefresh(erasureTokens.refresh_token);assert.equal(stillLive.status,200);const finalTokens=await stillLive.json();
+ assert.equal((await check(finalTokens.access_token)).status,200,'the exact access token works immediately before erasure');
+ await r.db.exec('DROP TRIGGER synthetic_refresh_failure');
+ const erasurePreview=await command('erasure/preview',{kind:'person',target:'erasable'});
+ await command('erasure/confirm',{previewId:erasurePreview.id,confirmation:'ERASE',destinations:[]});
+ assert.equal((await check(finalTokens.access_token)).status,401,'next resource request after erasure refuses the previously live token');
+ assert.notEqual((await rawRefresh(finalTokens.refresh_token)).status,200,'next refresh after erasure refuses the previously live credential');
  const suspended=await connect({deviceName:'Suspended worker tablet'});await command('people/suspend',{personId:'ada'});assert.equal((await rawRefresh(suspended.tokens.refresh_token)).status,400);assert.equal((await check(suspended.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===suspended.tokens.grant_id));
  // A second active worker proves app removal independently of suspension.
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'bob',role:'reader'});

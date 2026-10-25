@@ -102,7 +102,7 @@ test('a provider answering 429 and 503, or losing a response, is retried until i
 
 test('owner erasure previews every store, honors legal holds, anonymizes decisions and keeps refused remote deletion visible',async t=>{
  const {r,scim,app,connect}=await provisioned(t,{pushGroups:false});await connect('synthetic-auth-1');scim.token='synthetic-auth-1';
- const {register}=await import('./webauthn.mjs'),{signInAgain,preparer}=await import('./agents-helpers.mjs');const first=await register(r,r.ada);let second=await register(r,first.cookie);
+ const {register,authenticate}=await import('./webauthn.mjs'),{signInAgain,preparer}=await import('./agents-helpers.mjs');const first=await register(r,r.ada);let second=await register(r,first.cookie);
  const command=async(path,data,status=200)=>{const response=await r.admin(path,data);assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
  await command('people/role',{id:'ada',role:'admin'});second=await signInAgain(r,second,'ada@example.com');assert.equal((await r.db.prepare('SELECT count(*) AS n FROM auth_passkeys WHERE person_id=?').bind('ada').first()).n,2);
  const minted=await r.call('/api/auth/agents/mint',{method:'POST',cookie:second.cookie,data:{label:'Employee support agent'}});assert.equal(minted.status,201);const agent=await minted.json();
@@ -137,10 +137,23 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
   const refused=await command('erasure/confirm',{previewId:recognized.id,confirmation:'ERASE',destinations:[]},503);assert.equal(refused.error,'erasure_unknown_store');
   assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,200,'an unclassified managed store refuses the whole operation');
  }finally{await r.db.exec('DROP TABLE auth_unclassified_personal_copy');}
+ // A real storage failure during revocation rolls back every earlier write.
+ assert.equal((await authenticate(r,second.key)).response.status,200,'the passkey works immediately before erasure');
+ await r.db.exec("CREATE TRIGGER synthetic_revocation_failure BEFORE DELETE ON auth_passkeys BEGIN SELECT RAISE(ABORT,'synthetic-auth-revocation-failure'); END;");
+ const failedPlan=await command('erasure/preview',{kind:'person',target:'ada'});
+ const failed=await r.admin('erasure/confirm',{previewId:failedPlan.id,confirmation:'ERASE',destinations:[]});assert.equal(failed.status,500);
+ assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,200,'failed erasure preserves the session');
+ assert.equal((await preparer(r,agent.key)).status,200,'failed erasure preserves the key');
+ assert.equal((await serviceCheck()).status,200,'failed erasure preserves the issued OAuth token');
+ assert.equal((await oauth()).status,200,'failed erasure preserves OAuth issuance');
+ assert.equal((await authenticate(r,second.key)).response.status,200,'failed erasure preserves the passkey');
+ assert.equal((await r.db.prepare("SELECT count(*) AS n FROM auth_activity WHERE event='erasure_credentials_revoked'").first()).n,0,'failed erasure writes no revocation audit');
+ await r.db.exec('DROP TRIGGER synthetic_revocation_failure');
  const plan=await command('erasure/preview',{kind:'person',target:'ada'});assert.ok(plan.stores.find(s=>s.store==='auth_passkeys').deleted>=2);assert.ok(plan.stores.find(s=>s.store==='auth_import_rows').deleted);
  await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:true,destinations:['https://unapproved.example.com']},400);
  const erased=await command('erasure/confirm',{previewId:plan.id,confirmation:'ERASE',confirmRemoteDeletion:false,destinations:[]});assert.equal(erased.local,'complete');assert.equal((await r.call('/api/auth/me',{cookie:second.cookie})).status,401);
  assert.equal((await preparer(r,agent.key)).status,401,'erasing the accountable person ends their preparer key immediately');
+ assert.notEqual((await authenticate(r,second.key)).response.status,200,'the same passkey is refused at the next authentication request');
  assert.equal((await serviceCheck()).status,401,'erasure cuts off the already issued resource service token');assert.equal((await oauth()).status,401,'erasure refuses a fresh assertion from the removed resource service');
  assert.equal(await r.db.prepare('SELECT id FROM auth_agent_keys WHERE id=?').bind(agent.id).first(),null);assert.equal(await r.db.prepare('SELECT id FROM auth_agent_proposals WHERE id=?').bind(proposal.id).first(),null);
  assert.equal((await r.db.prepare('SELECT status FROM oa_operators WHERE id=?').bind('bob').first()).status,'active','erasure never executes the pending proposal');
@@ -156,6 +169,11 @@ test('owner erasure previews every store, honors legal holds, anonymizes decisio
   assert.ok(!text.includes('synthetic-auth-2'),name+' retains no source identity');
  }
  const activity=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(activity.some(row=>row.subject_id===erased.reference));assert.ok(activity.some(row=>row.event==='erasure_completed'));
+ const revocation=activity.find(row=>row.event==='erasure_credentials_revoked'&&row.subject_id===erased.reference),audit=JSON.parse(revocation.detail);
+ assert.deepEqual(Object.keys(audit).sort(),['counts','id']);assert.equal(audit.id,erased.reference);
+ assert.equal(audit.counts.passkeys,2);assert.equal(audit.counts.apiKeys,1);assert.equal(audit.counts.oauthClientTokens,1);assert.ok(audit.counts.sessions>=2);
+ for(const personal of ['ada@example.com','Ada Employee','owner@example.com'])assert.ok(!JSON.stringify(revocation).includes(personal),'revocation audit contains no personal data');
+
  assert.equal((await r.call('/api/auth/move-in/subjects.csv?batch='+staged.batchId,{cookie:r.owner.cookie})).status,200);
  const later=await r.db.prepare('SELECT epoch FROM rer_portability_state').first();assert.ok(later.epoch>0);assert.ok((await r.db.prepare('SELECT COUNT(*) AS n FROM rer_portability_journal').first()).n>0);
  for(const [pattern,limit] of [[/mailbox.*delivered/i,'delivered messages'],[/installation.*archive.*backup/i,'exported archives and backups'],[/audit receiver/i,'external audit sinks']])assert.ok(receipt.limitations.some(text=>pattern.test(text)),limit+' retains a named outside custodian and deletion limit');

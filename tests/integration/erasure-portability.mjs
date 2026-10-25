@@ -42,6 +42,8 @@ export async function erasurePortability(t) {
  }
  await app.pause();await cli(['export','--output','exports/before-erasure.rer']);await app.resume();
  const preview=await command('erasure/preview',{kind:'person',target:worker.id});await command('erasure/confirm',{previewId:preview.id,confirmation:'ERASE',confirmRemoteDeletion:true});
+ const revocations=(await (await app.get('/api/auth/activity',{cookie:commandCookie})).json()).find(row=>row.event==='erasure_credentials_revoked');
+ assert.ok(revocations);const revocationAudit=JSON.parse(revocations.detail);assert.equal(revocationAudit.counts.passkeys,2);assert.ok(!JSON.stringify(revocations).includes('worker@northwind.example.com'));assert.ok(!JSON.stringify(revocations).includes('Morgan Ellis'));
  await app.pause();await cli(['export','--output','exports/after-erasure.rer']);
  const {fileRecords}=await import('@runeditrun/rer/modules/portability/files');
  let before,after;
@@ -63,6 +65,8 @@ export async function erasurePortability(t) {
  const proof=await app.post('/auth/identity/email/request',{email:app.vars.OWNER_EMAIL},cookieOf(authenticated.response)),link=await app.link();
  const confirmed=await app.post('/auth/identity/email/confirm',{token:link.searchParams.get('token')},cookieOf(proof));assert.equal(confirmed.status,200);
  const people=await (await app.get('/api/auth/people',{cookie:cookieOf(confirmed)})).json();assert.ok(people.some(p=>p.email==='owner@example.com'));assert.ok(!people.some(p=>p.email==='worker@northwind.example.com'));
+ const restoredAudit=(await (await app.get('/api/auth/activity',{cookie:cookieOf(confirmed)})).json()).find(row=>row.event==='erasure_credentials_revoked'&&row.subject_id===revocationAudit.id);assert.deepEqual(JSON.parse(restoredAudit.detail),revocationAudit,'the product archive restore preserves the same opaque id and kind counts');
+ assert.notEqual((await authenticate(runtime,factor.key)).response.status,200,'the erased passkey stays refused after the product archive restore');
  // Hosting an isolated employer grants no authority to export its directory or
  // to restore over it. Keep the original identity/journal restore proof above.
  commandCookie=cookieOf(confirmed);

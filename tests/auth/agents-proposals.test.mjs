@@ -259,9 +259,9 @@ test('a person-consented agent changes exactly one employer assignment after ind
  };
  const consent=async(grant,who=employee,data={})=>{const prepared=await consentProof(grant,who,data);return prepared.refused??r.call('/api/auth/delegations/consent',prepared.request);};
  const approvalOptions=(grant,who=independent)=>command('delegations/approval/options',{grantId:grant.grantId,effectDigest:grant.effectDigest},who.cookie);
- const approval=async(grant)=>{
-  const response=await approvalOptions(grant),options=await json(response);
-  return command('delegations/approve',{grantId:grant.grantId,effectDigest:grant.effectDigest,transaction:options.transaction,response:independent.key.authenticate(options.options)},independent.cookie+'; '+response.headers.get('set-cookie').split(';')[0]);
+ const approval=async(grant,who=independent)=>{
+  const response=await approvalOptions(grant,who),options=await json(response);
+  return command('delegations/approve',{grantId:grant.grantId,effectDigest:grant.effectDigest,transaction:options.transaction,response:who.key.authenticate(options.options)},who.cookie+'; '+response.headers.get('set-cookie').split(';')[0]);
  };
  const approved=async(effect,client=agent)=>{const grant=await json(await requestTask(effect,client),201);await json(await consent(grant));await json(await approval(grant));return grant;};
  const initialRoles=await assignmentRoles(),effect=task();
@@ -471,4 +471,33 @@ test('a person-consented agent changes exactly one employer assignment after ind
  assert.equal((await json(await command('erasure/confirm',{organizationId:employer.id,previewId:reset.id,confirmation:'RESET '+orgIssuer}))).local,'complete');
  assert.equal((await orgOauth()).status,404,'ended employer cannot issue another delegated token');
  assert.equal((await selected.call('/api/auth/admin/v1/delegated-assignments/execute',{method:'POST',headers:{authorization:'DPoP '+orgToken,DPoP:orgProof},data:{grantId:orgGrant.grantId,effectDigest:orgGrant.effectDigest,task:orgEffect}})).status,404,'ended employer rejects its previously issued token');
+ // Erasing an issuer ends a live grant held by someone else; erasing the
+ // holder independently removes a grant issued by a different administrator.
+ await json(await command('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true}));
+ const otherEffect=task({accountablePersonId:'other-worker',personId:'other-worker',resource:`assignment:${app.id}:person:other-worker`,role:'editor'});
+ const incoming=async(who)=>{const g=await json(await requestTask(otherEffect,secondAgent),201);await json(await consent(g,other));await json(await approval(g,who));return g;};
+ const issuedGrant=await incoming(independent),issuedToken=(await json(await oauth(issuedGrant,secondAgent))).access_token;
+ const issuerPreview=await json(await command('erasure/preview',{kind:'person',target:'independent-admin'}));
+ await json(await command('erasure/confirm',{previewId:issuerPreview.id,confirmation:'ERASE',destinations:[]}));
+ await denied(await oauth(issuedGrant,secondAgent),'erased issuer ends next token for its holder');
+ await denied(await execution(issuedGrant,otherEffect,issuedToken),'erased issuer ends next resource call for its holder');
+ assert.equal(await r.db.prepare('SELECT id FROM auth_delegated_tasks WHERE id=?').bind(issuedGrant.grantId).first(),null);
+ assert.equal((await r.call('/api/auth/me',{cookie:other.cookie})).status,200,'issuer erasure preserves its holder');
+ const replacementMember=await passkeyPerson(r,'erasure-reviewer','erasure-reviewer@example.com','member');
+ await json(await command('people/role',{personId:'erasure-reviewer',role:'admin'}));
+ const replacement=await signInAgain(r,replacementMember,'erasure-reviewer@example.com');
+ const heldGrant=await incoming(replacement),heldToken=(await json(await oauth(heldGrant,secondAgent))).access_token;
+ await r.db.exec("CREATE TRIGGER synthetic_delegation_failure BEFORE DELETE ON auth_delegated_tasks BEGIN SELECT RAISE(ABORT,'synthetic-auth-revocation-failure'); END;");
+ const failedPreview=await json(await command('erasure/preview',{kind:'person',target:'other-worker'}));
+ assert.equal((await command('erasure/confirm',{previewId:failedPreview.id,confirmation:'ERASE',destinations:[]})).status,500);
+ await json(await oauth(heldGrant,secondAgent));
+ assert.equal((await r.call('/api/auth/me',{cookie:other.cookie})).status,200,'failed revocation preserves the holder');
+ await r.db.exec('DROP TRIGGER synthetic_delegation_failure');
+ const holderPreview=await json(await command('erasure/preview',{kind:'person',target:'other-worker'}));
+ await json(await command('erasure/confirm',{previewId:holderPreview.id,confirmation:'ERASE',destinations:[]}));
+ await denied(await oauth(heldGrant,secondAgent),'erased holder ends next token');
+ await denied(await execution(heldGrant,otherEffect,heldToken),'erased holder ends next resource call');
+ assert.equal(await r.db.prepare('SELECT id FROM auth_delegated_tasks WHERE id=?').bind(heldGrant.grantId).first(),null);
+ assert.equal((await r.call('/api/auth/me',{cookie:replacement.cookie})).status,200,'holder erasure preserves the issuer');
+
 });

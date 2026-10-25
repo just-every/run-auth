@@ -182,3 +182,12 @@ Only the employer owner can GET `/api/auth/identity-release-notices`. Each notic
 The owner resolves a notice through the ordinary erasure preview: POST `/api/auth/erasure/preview` with `{kind:"person",releaseNoticeId}` in that employer. Confirm using the existing AUTH-ERASURE-001 owner, fresh-email, hold and exact-preview gates. To record an actual hold, first create the ordinary legal hold, then POST `/api/auth/identity-release-notices/hold` with `{noticeId,holdId}`. Only a matching active person/employer/installation hold qualifies. A recorded hold is shown as held, never erased. Releasing it reopens follow-up; actual membership erasure updates the notice to erased. Organization destruction removes its handles and notices; the personal receipt then reports employer-erased. No notice grants cross-identity authority or licenses automatic destructive work.
 
 Every sign-in screen explains that the employer's Auth owner handles membership erasure.
+
+
+## Credential revocation audit
+
+The owner-confirmed erasure transaction removes credential authority and appends an `erasure_credentials_revoked` activity event in the same atomic database batch. Its actor and subject are the opaque erasure reference. Its detail contains only `id` and `counts`: sessions, API keys, passkeys, OAuth client token authorities, refresh credentials and delegations. No account name, email or approver identity enters that event. A failed local removal rolls back the event and all local removals. Remote provider work keeps its separate unresolved outcomes.
+
+Counts enumerate removed durable credential records, including consumed or ended records that are deleted. An OAuth client authority can have signed several stateless access tokens; its count is one authority, not a claim to enumerate those token strings. Resource doors recheck live authority, so removing it ends every derivative token at the next request. This counting limit keeps AUTH-ERASURE-003 partial.
+
+The event travels in a post-erasure product archive and survives its restore with the same opaque reference and counts. An older export or backup supplied with a later journal is currently refused as a whole. Applying that journal inside a staged restore, dropping erased records and replaying their audit needs the Base hook tracked by AUTH-TRANSFER-002. Independently held platform-operator backups are outside the product. Personal receipt contents under AUTH-ERASURE-002 are unchanged.
