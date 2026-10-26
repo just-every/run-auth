@@ -19,7 +19,8 @@ export async function openIntent(ctx,request) {
 }
 
 export async function linksOf(ctx,personId) {
- return all(ctx,"SELECT p.provider_id AS providerId,i.issuer FROM oa_external_identities i LEFT JOIN oa_identity_providers p ON p.issuer=i.issuer AND p.status='linked' WHERE i.operator_id=? ORDER BY i.issuer",personId);
+ const rows=await all(ctx,"SELECT p.provider_id AS providerId,i.issuer FROM oa_external_identities i LEFT JOIN oa_identity_providers p ON p.issuer=i.issuer AND p.status='linked' WHERE i.operator_id=? ORDER BY i.issuer",personId);
+ return rows.map(row=>({...row,providerId:row.providerId??(ctx.upstreamProviders??[]).find(provider=>provider.issuer===row.issuer)?.id??null}));
 }
 
 // Begin: store the intent for this session and return the cookie that carries it through the provider.

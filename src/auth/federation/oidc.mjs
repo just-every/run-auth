@@ -44,6 +44,9 @@ export function createFederationOidc(ctx,{providers=ctx.upstreamProviders??[],ad
   if(ctx.basePath&&/^\/auth\/oidc\/[a-z][a-z0-9-]{0,31}\/callback$/.test(new URL(request.url).pathname)){
    const url=new URL(request.url);url.pathname=ctx.basePath+url.pathname;request=new Request(url,request);
   }
-  return (await ready()).fetch(request);
+  const response=await (await ready()).fetch(request),deviceCookie=ctx.upstreamDeviceCookies?.get(request);
+  if(!deviceCookie)return response;
+  const headers=new Headers(response.headers);headers.append('set-cookie',deviceCookie);
+  return new Response(response.body,{status:response.status,headers});
  }};
 }

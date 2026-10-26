@@ -68,6 +68,11 @@ export async function federationFlow(t) {
  const admitted=await callback({url:new URL(allowed.headers.get('location')),cookie:parked(allowed)},'synthetic-auth-federation-7',parked(allowed));assert.equal(admitted.status,303,await admitted.clone().text());
  const employee=admitted.headers.getSetCookie().find(value=>value.startsWith('__Host-auth_session='))?.split(';')[0];assert.ok(employee);
  assert.equal((await read(await r.call('/api/auth/me',{cookie:employee}))).user.id,'synthetic-auth-federation-1');
+ const rotated=await generateKeyPair('RS256'),nextJwk={...await exportJWK(rotated.publicKey),kid:'synthetic-auth-federation-rotated',alg:'RS256',use:'sig'};
+ keys.privateKey=rotated.privateKey;Object.assign(jwk,nextJwk);r.upstream.jwks={keys:[nextJwk]};
+ const rotation=await r.call('/auth/oidc/'+provider.id+'/start',{method:'POST',data:{returnTo:'/app/account'}});assert.equal(rotation.status,303);
+ assert.equal((await callback({url:new URL(rotation.headers.get('location')),cookie:parked(rotation)},'synthetic-auth-federation-7',parked(rotation))).status,303,'an unknown upstream signing key is refreshed and verified without rebinding the employee');
+ assert.equal((await post('create',{domain:'company.example',provider:{id:'synthetic-hostile-metadata',preset:'saml',metadataUrl:'https://127.0.0.1/metadata',subjectEmails:{'synthetic-auth-other':'second@company.example'}},confirm:true})).status,400,'metadata cannot read a private network destination');
  assert.equal((await post('disable',{id,revision:preview.revision,confirm:true})).status,409);
  assert.equal((await post('disable',{id,revision:activated.revision,confirm:true})).status,200);
  assert.equal((await r.call('/auth/oidc/'+provider.id+'/start',{method:'POST',data:{}})).status,404);

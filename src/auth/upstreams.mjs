@@ -58,19 +58,22 @@ export function createUpstreams(ctx) {
   if(session.deviceHeader)deviceCookies.set(request,session.deviceHeader);
   return {returnTo:returnPath(returnTo),cookie:session.header};
  }};
- const oidc=configured.some(provider=>provider.preset==='oidc'||provider.federationSetupId)?createFederationOidc(ctx,{providers:configured,admission}):(()=>{
+ const oidc=configured.some(provider=>provider.preset==='oidc'||provider.federationSetupId)?createFederationOidc({...ctx,upstreamDeviceCookies:deviceCookies},{providers:configured,admission}):(()=>{
   const providers=createOidcProviders({admission,enabled:async()=>true,db:ctx.db,config:{origin:ctx.origin,local:ctx.local,transactionSecret:ctx.secret,providers:configured.filter(provider=>provider.preset!=='saml')},clock:ctx.now,clientIp:r=>r.headers.get('cf-connecting-ip')||'',...(ctx.upstreamFetch?{fetch:ctx.upstreamFetch}: {})});
   const handler=createOidcHandler(providers);
   return {providers,fetch:async request=>{
    if(ctx.basePath&&/^\/auth\/oidc\/[a-z][a-z0-9-]{0,31}\/callback$/.test(new URL(request.url).pathname)){const url=new URL(request.url);url.pathname=ctx.basePath+url.pathname;request=new Request(url,request);}
-   return handler(request);
+   const response=await handler(request),deviceCookie=deviceCookies.get(request);
+   if(!deviceCookie)return response;
+   const headers=new Headers(response.headers);headers.append('set-cookie',deviceCookie);
+   return new Response(response.body,{status:response.status,headers});
   }};
  })();
  const saml=createFederationSaml(ctx,{providers:configured,admission});
  const providers={...oidc.providers,list:async()=>[...await oidc.providers.list(),...await saml.list()]};
  return {providers,fetch:async request=>{
   const response=new URL(request.url).pathname.includes('/auth/saml/')?await saml.fetch(request):await oidc.fetch(request);
-  const deviceCookie=deviceCookies.get(request);
+  const deviceCookie=new URL(request.url).pathname.includes('/auth/saml/')?deviceCookies.get(request):null;
   if(!deviceCookie||!response)return response;
   const headers=new Headers(response.headers);headers.append('set-cookie',deviceCookie);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});

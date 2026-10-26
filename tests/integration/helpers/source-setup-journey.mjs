@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {expect} from '@playwright/test';
+
+export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
+ const json=async(response,status=200)=>{assert.equal(response.status(),status,await response.text());return response.json();};
+ const post=(path,data)=>owner.request.post(app.origin+path,{data,headers:{origin:app.origin},maxRedirects:0});
+ const challenge=await json(await post('/api/auth/domains/challenge',{domain:'example.com'}),201);
+ providerEdge.dnsRecords.set(challenge.label,challenge.value);
+ await json(await post('/api/auth/domains/verify',{domain:'example.com',id:challenge.id}));
+ const provider={...providerEdge.provider,id:'delegated-company',preset:'oidc',label:'Delegated company',endpointPins:{authorization:providerEdge.provider.issuer+'/authorize',token:providerEdge.provider.issuer+'/token',jwks:providerEdge.provider.issuer+'/keys'},subjectEmails:{'synthetic-auth-campaign-0':'campaign.worker0@example.com'}};
+ await page.goto(app.origin+'/app/move-in');
+ await page.getByText('Configure an upstream',{exact:true}).click();
+ await page.getByLabel('Verified employer domain',{exact:true}).fill('example.com');
+ await page.getByLabel('Private provider configuration',{exact:true}).fill(JSON.stringify(provider));
+ await shoot('federation-setup',undefined,true);
+ const prepared=page.waitForResponse(response=>response.url().endsWith('/federation/create'));
+ await page.getByRole('button',{name:'Prepare upstream',exact:true}).click();const setup=await json(await prepared,201);
+ await expect(page.getByRole('region',{name:'Federation mapping preview'})).toBeVisible();await shoot('federation-draft');
+ await page.route(providerEdge.provider.issuer+'/authorize?**',async route=>{
+  const url=new URL(route.request().url());await providerEdge.claims('synthetic-auth-campaign-0',url.searchParams.get('nonce'));
+  const callback=new URL(url.searchParams.get('redirect_uri'));
+  for(const [name,value] of Object.entries({code:'synthetic-auth-setup-browser',state:url.searchParams.get('state'),iss:providerEdge.provider.issuer}))callback.searchParams.set(name,value);
+  await route.fulfill({contentType:'text/html',body:`<!doctype html><title>Test identity provider</title><a href="${callback.href.replaceAll('&','&amp;')}">Prove test employee</a>`});
+ });
+ await page.locator(`[data-federation-setup="${setup.id}"]`).getByLabel('Representative immutable subject').fill('synthetic-auth-campaign-0');
+ await page.getByRole('button',{name:'Test representative sign-in',exact:true}).click();await page.getByRole('link',{name:'Prove test employee',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Activate upstream',exact:true})).toBeVisible();
+ const who=await json(await owner.request.get(app.origin+'/api/auth/me'));assert.equal(who.user.email,'owner@example.com','representative callback preserves only the initiating owner session');
+ await shoot('federation-tested');
+ await page.getByLabel('I approve this tested upstream and these exact subject mappings',{exact:true}).check();
+ await page.getByRole('button',{name:'Activate upstream',exact:true}).click();await expect(page.locator(`[data-federation-setup="${setup.id}"]`)).toContainText('active');await shoot('federation-active');
+ await page.goto(app.origin+'/app/methods');await expect(page.getByText('Delegated company',{exact:true})).toBeVisible();await shoot('federation-methods');
+ await page.goto(app.origin+'/signin');await expect(page.getByRole('button',{name:'Continue with Delegated company',exact:true})).toBeVisible();await shoot('federation-signin');
+ await page.goto(app.origin+'/app/move-in');await page.getByText('Connect a directory source',{exact:true}).click();
+ await page.getByLabel('Source name',{exact:true}).fill('Engineering directory');
+ await page.getByLabel('Directory provider',{exact:true}).selectOption('scim');
+ await page.getByLabel('Connection direction',{exact:true}).selectOption('push');
+ await page.getByLabel('Organization binding',{exact:true}).fill(app.origin);
+ await page.getByLabel('I authorize this bound source and its selected fields',{exact:true}).check();await shoot('directory-source-setup',undefined,true);
+ const connected=page.waitForResponse(response=>response.url().endsWith('/directory-sources/create'));
+ await page.getByRole('button',{name:'Connect source',exact:true}).click();const source=await json(await connected,201);
+ await expect(page.getByLabel('One-time SCIM credential',{exact:true})).toBeVisible();assert.equal(await page.getByLabel('One-time SCIM credential',{exact:true}).inputValue(),source.ingressToken);
+ await page.getByRole('link',{name:'Open source dashboard',exact:true}).click();
+ const headers={authorization:'Bearer '+source.ingressToken,'content-type':'application/scim+json'};
+ await json(await owner.request.post(source.scimBase+'/Users',{headers,data:{schemas:['urn:ietf:params:scim:schemas:core:2.0:User'],externalId:'synthetic-auth-ui-worker',userName:'directory.worker@example.com',displayName:'Sofia Patel',active:true}}),201);
+ const group=await owner.request.post(source.scimBase+'/Groups',{headers,data:{schemas:['urn:ietf:params:scim:schemas:core:2.0:Group'],externalId:'synthetic-auth-ui-team',displayName:'Customer operations',members:[{value:'synthetic-auth-ui-worker',type:'User'}]}});await json(group,201);
+ await page.goto(app.origin+'/app/move-in?sourceSnapshot='+group.headers()['x-auth-directory-snapshot']);
+ await expect(page.getByRole('region',{name:'Directory change preview'})).toContainText('Sofia Patel');await shoot('directory-source-held');
+ await page.getByLabel('I approve these exact directory changes',{exact:true}).check();await page.getByLabel('I separately confirm the held changes',{exact:true}).check();
+ await page.getByRole('button',{name:'Apply reviewed changes',exact:true}).click();await expect(page.getByText('These observations have been applied. No approval remains pending.',{exact:true})).toBeVisible();await shoot('directory-source-applied');
+ await page.locator(`[data-directory-source="${source.sourceId}"]`).getByText('Source settings',{exact:true}).click();
+ await page.getByRole('button',{name:'Disable source',exact:true}).click();await expect(page.locator(`[data-directory-source="${source.sourceId}"]`)).toContainText('Disabled');await shoot('directory-source-disabled');
+ const stopped=await owner.request.get(source.scimBase+'/Users',{headers});assert.equal(stopped.status(),401);
+}

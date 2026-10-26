@@ -1,3 +1,4 @@
+import {sourceSetupJourney} from './helpers/source-setup-journey.mjs';
 import {campaignProviderEdge,campaignJourney} from './helpers/campaign-journey.mjs';
 import {hookServer} from '../auth/hooks-server.mjs';
 import {migrationJourney} from './helpers/migration-journey.mjs';
@@ -29,8 +30,8 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
   await page.getByRole('button',{name:'Confirm my email',exact:true}).click();assert.equal((await requested).status(),202);
   await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();
  };
- const shoot=async(name,check)=>{for(const [width,theme] of views){
-  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();
+ const shoot=async(name,check,preserve=false)=>{for(const [width,theme] of views){
+  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});if(!preserve)await page.reload();
   await expect(page.locator('h1')).toBeVisible();await accessible(`${width} ${theme} ${name}`);if(check)await check(width);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
   for(const control of await page.locator('[data-tooltip]:visible').all()){await page.mouse.move(0,0);await control.blur();await expect(page.getByRole('tooltip')).toBeHidden();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
@@ -92,6 +93,7 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
  await page.goto(app.origin+'/app/activity');await expect(page.locator('[data-activity-detail]').first()).toBeVisible();await shoot('activity');
  await confirmEmail();await migrationJourney({app,edge,browser,owner:context,page,shoot});
  await confirmEmail();await campaignJourney({app,providerEdge,browser,owner:context,page,shoot});
+ await confirmEmail();await sourceSetupJourney({app,providerEdge,owner:context,page,shoot});
  assert.deepEqual(errors,[],'no browser runtime errors');
  const measured={owner_actions:actions,owner_action_count:actions.length,screens:[...screens],people_admitted:22,invitations_sent:22};
  await writeFile(join(directory,'move-in-measurement.json'),JSON.stringify(measured,null,1)+'\n');

@@ -7,10 +7,11 @@ export async function campaignProviderEdge(next) {
  const issuer='https://campaign.okta.example',keys=await generateKeyPair('RS256');
  const jwk={...await exportJWK(keys.publicKey),kid:'synthetic-auth-campaign-key',alg:'RS256',use:'sig'};
  const subjectEmails=Object.fromEntries(Array.from({length:20},(_,i)=>['synthetic-auth-campaign-'+i,`campaign.worker${i}@example.com`]));
- let token;
+ let token;const dnsRecords=new Map();
  const provider={id:'campaign',label:'Campaign Okta',preset:'okta',issuer,clientId:'synthetic-auth-campaign-client',tokenAuthMethod:'client_secret_basic',clientSecret:'synthetic-auth-campaign-secret',subjectEmails};
- return {provider,async claims(subject,nonce){token=await new SignJWT({sub:subject,nonce,amr:['pwd','mfa']}).setProtectedHeader({alg:'RS256',kid:jwk.kid}).setIssuer(issuer).setAudience(provider.clientId).setIssuedAt().setExpirationTime('2m').sign(keys.privateKey);},async fetch(request) {
+ return {provider,dnsRecords,async claims(subject,nonce){token=await new SignJWT({sub:subject,nonce,amr:['pwd','mfa']}).setProtectedHeader({alg:'RS256',kid:jwk.kid}).setIssuer(issuer).setAudience(provider.clientId).setIssuedAt().setExpirationTime('2m').sign(keys.privateKey);},async fetch(request) {
   const url=new URL(request.url);
+  if(url.hostname==='cloudflare-dns.com'&&url.searchParams.get('type')==='TXT'){const name=url.searchParams.get('name'),value=dnsRecords.get(name);return Response.json({Status:0,Answer:value?[{name,type:16,data:JSON.stringify(value)}]:[]});}
   if(url.origin!==issuer)return next(request);
   const value=url.pathname.endsWith('openid-configuration')?{issuer,authorization_endpoint:issuer+'/authorize',token_endpoint:issuer+'/token',jwks_uri:issuer+'/keys',response_types_supported:['code'],id_token_signing_alg_values_supported:['RS256'],token_endpoint_auth_methods_supported:['client_secret_basic'],authorization_response_iss_parameter_supported:true}:url.pathname==='/keys'?{keys:[jwk]}:{id_token:token};
   return Response.json(value);
@@ -37,7 +38,7 @@ export async function campaignJourney({app,providerEdge,browser,owner,page,shoot
  await page.getByLabel('Notify the selected manager three days before the deadline',{exact:true}).check();
  await page.getByLabel('Notify me at the deadline',{exact:true}).check();
  await page.getByLabel('I approve this cohort, window and selected reminders',{exact:true}).check();
- await shoot('campaign-setup');
+ await shoot('campaign-setup',undefined,true);
  const created=page.waitForResponse(response=>response.url().endsWith('/move-in/campaigns/create'));
  await page.getByRole('button',{name:'Start campaign',exact:true}).click();await json(await created,201);
  await expect(page.getByRole('heading',{name:'Engineering — November cutover',exact:true})).toBeVisible();

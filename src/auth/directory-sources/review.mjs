@@ -65,9 +65,9 @@ export async function reviewSnapshot(ctx,actorId,snapshotId) {
    const binding=await nativeSourceId(source.id,externalId),personId=dir.sources.get('directory:'+binding),incoming=nativeUsers.get(externalId);
    if((!personId&&!incoming)||incoming&&(!incoming.row.active||incoming.row.deleted)){refusals.push(row.sourceId+':unresolved_member:'+externalId);continue;}
    wanted.add(binding);
-   if(!personId||!members.has(personId))changes.push({kind:'member_add',externalId:row.sourceId,userExternalId:externalId});
+   if(!personId||!members.has(personId))changes.push({kind:'member_add',externalId:row.sourceId,userExternalId:externalId,groupName:name,personName:incoming?.row.name??dir.people.get(personId)?.name??externalId});
   }
-  for(const personId of members.keys())if(row.deleted||!wanted.has(sourcePeople.get(personId)))changes.push({kind:'member_remove',externalId:row.sourceId,personId});
+  for(const personId of members.keys())if(row.deleted||!wanted.has(sourcePeople.get(personId)))changes.push({kind:'member_remove',externalId:row.sourceId,personId,groupName:name,personName:dir.people.get(personId)?.name??personId});
   if(existing&&row.deleted)changes.push({kind:'group_delete',externalId:row.sourceId,groupId:existing.group_id,name:existing.name});
  }
  const reasons=JSON.parse(snapshot.reasons);
@@ -76,4 +76,4 @@ export async function reviewSnapshot(ctx,actorId,snapshotId) {
  const digest=await hash(JSON.stringify({sourceId:source.id,snapshotId:snapshot.id,snapshotDigest:snapshot.digest,sourceRevision:source.revision,epoch,actorId,changes,refusals,reasons}));
  return {source,snapshot,epoch,sourceId:source.id,snapshotId:snapshot.id,digest,held:reasons.length>0,reasons,changes,refusals,ok:!refusals.length};
 }
-export const publicReview=({source,snapshot,epoch,...review})=>review;
+export const publicReview=({source,snapshot,epoch,...review})=>({...review,state:snapshot.state});

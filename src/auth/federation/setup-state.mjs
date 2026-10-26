@@ -33,12 +33,8 @@ export async function mappingPreview(ctx,domain,provider) {
 export function mappingGuard(ctx,domain,provider,people) {
  const clauses=[`EXISTS(SELECT 1 FROM auth_domain_claims o JOIN auth_domain_challenges c ON c.id=o.challenge_id WHERE o.domain=? AND o.organization_id=? AND o.revoked_at IS NULL AND c.verified_at IS NOT NULL)`];
  const args=[domain,employerId(ctx)];
- for(const person of people) {
-  clauses.push(`EXISTS(SELECT 1 FROM oa_operators p WHERE p.id=? AND p.email=? AND p.version=? AND p.status=? AND p.role='member' AND NOT EXISTS(SELECT 1 FROM auth_role_grants g WHERE g.person_id=p.id AND g.revoked_at IS NULL))`);
-  args.push(person.personId,person.email,person.version,person.state);
-  clauses.push('NOT EXISTS(SELECT 1 FROM oa_external_identities WHERE issuer=? AND subject=? AND operator_id<>?)');
-  args.push(provider.issuer,person.subject,person.personId);
- }
+ clauses.push(`(SELECT COUNT(*) FROM json_each(?) j JOIN oa_operators p ON p.id=json_extract(j.value,'$.personId') WHERE p.email=json_extract(j.value,'$.email') AND p.version=json_extract(j.value,'$.version') AND p.status=json_extract(j.value,'$.state') AND p.role='member' AND NOT EXISTS(SELECT 1 FROM auth_role_grants g WHERE g.person_id=p.id AND g.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM oa_external_identities i WHERE i.issuer=? AND i.subject=json_extract(j.value,'$.subject') AND i.operator_id<>p.id))=?`);
+ args.push(JSON.stringify(people),provider.issuer,people.length);
  return {clause:clauses.join(' AND '),args};
 }
 export async function setupPreview(ctx,row) {
