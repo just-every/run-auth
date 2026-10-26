@@ -3091,7 +3091,7 @@
       "executable": false
     },
     "src/ui/pages/move-in-sources.ts": {
-      "sha256": "74d87da975439a9abaa76d84daf9655b074b44047db8080d309de1ee536804a1",
+      "sha256": "699b4c5eeb67df2295886362b7eb7ad3851ce2128584e3ef07ef7f47074952ff",
       "executable": false
     },
     "src/ui/pages/move-in.ts": {
