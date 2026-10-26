@@ -9,7 +9,15 @@ import {openApp} from './runtime.mjs';
 import {readTheme} from '@runeditrun/rer/internal/onboarding/theme.mjs';
 
 test('real Auth pages: browser email, first setup, hardware passkey, people and account at desktop/mobile in both themes',async t=>{
- const app=await openApp({upstreamProviders:[{id:'company',label:'Company',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'},{id:'backup',label:'Backup',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'}]});t.after(()=>app.close());await app.claim();
+ const dnsRecords=new Map();
+ const app=await openApp({outboundService:async request=>{
+  const url=new URL(request.url);
+  if(url.origin==='https://cloudflare-dns.com'&&url.pathname==='/dns-query'){
+   const name=url.searchParams.get('name');
+   return Response.json({Status:0,Answer:dnsRecords.has(name)?[{name:name+'.',type:16,data:JSON.stringify(dnsRecords.get(name))}]:[]});
+  }
+  return fetch(request);
+ },upstreamProviders:[{id:'company',label:'Company',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'},{id:'backup',label:'Backup',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'}]});t.after(()=>app.close());await app.claim();
  const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
@@ -75,6 +83,11 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  assert.equal((await member.request.post(app.origin+'/auth/identity/email/request',{data:{email:'restricted@company.example'},headers:{origin:app.origin}})).status(),202);
  const memberLink=await app.link();assert.equal((await member.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:memberLink.searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
  assert.equal((await member.request.get(app.origin+'/app/account',{maxRedirects:0})).status(),200);
+ const ownershipChallenge=await context.request.post(app.origin+'/api/auth/domains/challenge',{data:{domain:'company.example'},headers:{origin:app.origin}});
+ assert.equal(ownershipChallenge.status(),201);
+ const ownership=await ownershipChallenge.json();dnsRecords.set(ownership.label,ownership.value);
+ const ownershipVerified=await context.request.post(app.origin+'/api/auth/domains/verify',{data:{domain:ownership.domain,id:ownership.id},headers:{origin:app.origin}});
+ assert.equal(ownershipVerified.status(),200);
  await page.goto(app.origin+'/app/people');
  await rules.getByLabel('Email domain',{exact:true}).fill('company.example');await rules.locator('#required-provider').selectOption('company');
  await rules.getByRole('button',{name:'Require provider',exact:true}).click();await expect(rules.locator('.domain-rule')).toHaveCount(1);

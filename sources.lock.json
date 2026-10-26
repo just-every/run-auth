@@ -119,7 +119,7 @@
       "executable": false
     },
     ".github/workflows/verify.yml": {
-      "sha256": "54cededa2781be36c4bffc5fc02e3cf12b7c3190d8daeb00bc7003d657e20801",
+      "sha256": "85708b45139f8110aafbe9e1aa94099a4e0100857b32c17dc5eef82a7d62ea86",
       "executable": false
     },
     ".gitignore": {
@@ -575,7 +575,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "e0c0bc16d816d355cb47fe7b69d43fadc2a4da196cc5ea11c0b0102b7dfcf806",
+      "sha256": "d3697d8bde8ec3e23d6c2c9d97e7345ae4a544ed88350f66b2fae8874e537626",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -2987,7 +2987,7 @@
       "executable": false
     },
     "tests/auth/browser.test.mjs": {
-      "sha256": "7206219f6c190a833a297f8031f079fd5aaefdb4227bbefbbd14727e9cf01f17",
+      "sha256": "8a72d5213fdb55c7f03edc1eb297694a684d44611e3dffefd0866681cfbd7355",
       "executable": false
     },
     "tests/auth/catalog.test.mjs": {
@@ -3359,7 +3359,7 @@
       "executable": false
     },
     "tests/integration/browser.test.mjs": {
-      "sha256": "114ad72e6d5bf599963d83aec99999ef69b371663c7464384f88125e616affa1",
+      "sha256": "4192610518736cba844f8d165eb58071c6913e58282826aeac5e9921d0cbab9c",
       "executable": false
     },
     "tests/integration/company-apps-browser.test.mjs": {

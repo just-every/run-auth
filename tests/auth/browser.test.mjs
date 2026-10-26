@@ -12,7 +12,9 @@ test('Chromium creates and uses a host-bound passkey through the Auth HTTP API',
    if(req.url==='/'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><title>Auth WebAuthn proof</title><body>Auth WebAuthn proof</body></html>');return;}
    const chunks=[];for await(const part of req)chunks.push(part);const body=Buffer.concat(chunks).toString();
    const response=await r.call(req.url,{method:req.method,headers:req.headers,cookie:req.headers.cookie,...(body?(req.headers['content-type']?.startsWith('application/x-www-form-urlencoded')?{form:Object.fromEntries(new URLSearchParams(body))}:{data:JSON.parse(body)}):{})});
-   res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
+   const headers=Object.fromEntries(response.headers),cookies=response.headers.getSetCookie();
+   if(cookies.length)headers['set-cookie']=cookies;
+   res.writeHead(response.status,headers);res.end(Buffer.from(await response.arrayBuffer()));
   }catch(error){res.writeHead(500);res.end(String(error));}
  });
  server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
