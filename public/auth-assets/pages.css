@@ -24,6 +24,7 @@
 .method-panel .button-row { margin-top: 20px; }
 
 /* Move people in */
+.move-in-connection { overflow-wrap: anywhere; }
 .move-in-review .notice-panel { font-size: 14px; }
 .move-in-summary { margin-top: 16px; }
 .move-in-check { width: 64px; }

@@ -703,7 +703,7 @@
       "executable": false
     },
     "public/auth-assets/pages.css": {
-      "sha256": "127e2c0cbc701d52f5504fd55a5baeccdbc3cabac9575d80e596fa4d1f8e3c4c",
+      "sha256": "6ad2b7215d930e4c92453739a7f26adea19ddffb51c9c35a398bd47b62c44838",
       "executable": false
     },
     "public/auth-assets/permissions-ui.js": {
@@ -3087,11 +3087,11 @@
       "executable": false
     },
     "src/ui/pages/move-in-federation.ts": {
-      "sha256": "9a8d56074d22fdf54393d2c7f7291bdda184fb84e3d8465e4089ec0bf9727c38",
+      "sha256": "de53c6d2c7734d7762241344a04e2c910d4a245bf72fea0bb60b1d913d078ac6",
       "executable": false
     },
     "src/ui/pages/move-in-sources.ts": {
-      "sha256": "b89704c1a54131e6ac0588616fbb453174976fca2d8f4eb9590d7230c9c981b8",
+      "sha256": "e8883bb9de8a9985f09a96b703a3d6ee32ccada0ab2aa9dc66d4ab5a8f6f3260",
       "executable": false
     },
     "src/ui/pages/move-in.ts": {
