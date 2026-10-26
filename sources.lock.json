@@ -3627,7 +3627,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "8baa1dae4e53a79a2658b31afa5a94c95fa45623a40a3fe7fd31f9897fac1a9a",
+      "sha256": "51d8eb1a9362b8595d2ccc777057796f070c4b1a0d426783e92bf8ae344c4786",
       "executable": false
     },
     "tests/integration/http.test.mjs": {

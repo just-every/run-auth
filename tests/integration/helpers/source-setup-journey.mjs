@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {expect} from '@playwright/test';
 
 export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
- const json=async(response,status=200)=>{assert.equal(response.status(),status,await response.text());return response.json();};
+ const json=async(response,status=200)=>{if(response.status()!==status)assert.fail(await response.text());return response.json();};
  const post=(path,data)=>owner.request.post(app.origin+path,{data,headers:{origin:app.origin},maxRedirects:0});
  const challenge=await json(await post('/api/auth/domains/challenge',{domain:'example.com'}),201);
  providerEdge.dnsRecords.set(challenge.label,challenge.value);
@@ -15,7 +15,8 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
  await page.getByLabel('I approve preparing this exact upstream and subject map',{exact:true}).check();
  await shoot('federation-setup',undefined,'federation');
  const prepared=page.waitForResponse(response=>response.url().endsWith('/federation/create'));
- await page.getByRole('button',{name:'Prepare upstream',exact:true}).click();const setup=await json(await prepared,201);
+ await page.getByRole('button',{name:'Prepare upstream',exact:true}).click();assert.equal((await prepared).status(),201);
+ await expect(page).toHaveURL(/\?federation=/);const setup={id:new URL(page.url()).searchParams.get('federation')};
  await expect(page.getByRole('region',{name:'Federation mapping preview'})).toBeVisible();await shoot('federation-draft');
  await page.route(providerEdge.provider.issuer+'/authorize?**',async route=>{
   const url=new URL(route.request().url());await providerEdge.claims('synthetic-auth-campaign-0',url.searchParams.get('nonce'));
