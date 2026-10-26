@@ -80,7 +80,8 @@ jobs:
       - run: pnpm run test:browser:${{ matrix.suite }}
   cli:
     name: verify (cli)
-    runs-on: ubuntu-latest
+    # The pinned Playwright installer supports this Ubuntu release.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
