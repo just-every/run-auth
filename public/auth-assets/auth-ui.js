@@ -538,6 +538,16 @@
 
   document.querySelectorAll('[data-mapping-form]').forEach(form => form.addEventListener('input', () => { form.querySelector('[data-mapping-save]').disabled = true }))
 
+  const countdowns = Array.from(document.querySelectorAll('[data-campaign-cutover]'))
+  if (countdowns.length) {
+    const update = () => { for (const item of countdowns) {
+      const minutes = Math.max(0, Math.ceil((Number(item.dataset.campaignCutover) - Date.now()) / 60000))
+      item.textContent = minutes ? `${Math.floor(minutes / 1440)} days, ${Math.floor(minutes % 1440 / 60)} hours, ${minutes % 60} minutes until cutover` : 'Campaign window closed'
+    } }
+    update()
+    window.setInterval(update, 60000)
+  }
+
   const search = document.querySelector('[data-people-search]')
   if (search) {
     const rows = Array.from(document.querySelectorAll('[data-person-row]'))

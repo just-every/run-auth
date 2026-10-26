@@ -43,6 +43,7 @@ export async function campaignJourney({app,providerEdge,browser,owner,page,shoot
  await page.getByRole('button',{name:'Start campaign',exact:true}).click();await json(await created,201);
  await expect(page.getByRole('heading',{name:'Engineering — November cutover',exact:true})).toBeVisible();
  await shoot('campaign-pending');
+ const countdown=await page.locator('[data-campaign-cutover]').textContent();await page.clock.fastForward(60000);assert.notEqual(await page.locator('[data-campaign-cutover]').textContent(),countdown,'the open dashboard counts down without reloading');
  for(let i=0;i<17;i++) {
   const person=await browser.newContext();
   try {
@@ -64,5 +65,5 @@ export async function campaignJourney({app,providerEdge,browser,owner,page,shoot
  for(const i of [17,18,19])assert.ok(csv.includes(`campaign.worker${i}@example.com`));assert.ok(!csv.includes('campaign.worker0@example.com'));
  await page.getByRole('button',{name:'Close campaign',exact:true}).click();
  await expect(page.getByText(/Campaign closed/)).toBeVisible();await shoot('campaign-closed');
- const outsider=await browser.newContext();try{const started=await post(outsider,'/auth/oidc/campaign/start',{returnTo:'/app/methods'});const location=new URL(started.headers().location);await providerEdge.claims(entries[17][0],location.searchParams.get('nonce'));const refused=await outsider.request.get(app.origin+'/auth/oidc/campaign/callback?'+new URLSearchParams({code:'synthetic-auth-campaign-closed',state:location.searchParams.get('state'),iss:providerEdge.provider.issuer}),{maxRedirects:0});assert.equal(refused.status(),403);}finally{await outsider.close();}
+ const outsider=await browser.newContext();try{assert.equal((await post(outsider,'/auth/oidc/campaign/start',{returnTo:'/app/methods'})).status(),404,'a closed campaign removes its upstream sign-in door');}finally{await outsider.close();}
 }

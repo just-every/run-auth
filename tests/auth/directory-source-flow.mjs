@@ -66,7 +66,7 @@ export async function directorySourceFlow(t) {
  const collision=await create({name:'Synthetic isolated directory'}),collisionPreview=await preview(collision);assert.equal(collisionPreview.ok,false);assert.ok(collisionPreview.refusals.some(reason=>reason.includes('identity_collision')));
  // A member has actually enrolled before the observed leaver is approved.
  const enrolled=await register(r,await emailSession(r,users[0].profile.email));
- users=users.map(row=>row.id==='external-a'?{...row,status:'DEPROVISIONED',profile:{...row.profile,department:'Operations'}}:row);members=['external-b'];
+ users=users.map(row=>row.id==='external-a'?{...row,status:'DEPROVISIONED',profile:{...row.profile,department:'Operations'}}:row);members=['external-a','external-b'];
  const moved={...source,...await write('pull',{sourceId:source.sourceId},202)};assert.equal(moved.state,'held');assert.equal((await person(users[0].profile.email)).status,'active');
  p=await preview(moved);await write('approve',{sourceId:source.sourceId,snapshotId:moved.snapshotId,digest:p.digest,confirm:true},403);
  await approve(moved,{confirmHeld:true});assert.equal((await person(users[0].profile.email)).status,'inactive');assert.equal((await r.call('/api/auth/me',{cookie:enrolled.cookie})).status,401);

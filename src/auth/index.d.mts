@@ -1,9 +1,14 @@
+export interface FederationProviderConfig {
+ id:string; label?:string; preset:'oidc'|'saml'; issuer:string; subjectEmails:Record<string,string>;
+ clientId?:string; clientSecret?:string; privateKey?:JsonWebKey; tokenAuthMethod?:'private_key_jwt'|'client_secret_basic'|'client_secret_post';
+ endpointPins?:{authorization:string;token:string;jwks:string}; certificates?:string[]; ssoUrl?:string; entityId?:string; nameIdFormat?:string; signAuthnRequests?:boolean;
+}
 export interface AuthRuntimeOptions {
  db: D1Database; origin: string; organizationId?: string; secret: string; local?: boolean; now?: () => number;
  mailEventInstallationId?: string; mailProvider?: string; sendgridWebhookKey?: string;
  mail?: (message: {to: string; subject: string; text: string; html: string; deliveryId: string; customArgs?: Record<string,string>}, store?: {db:D1Database;organizationId:string}) => Promise<unknown>;
  waitUntil?: (work: Promise<unknown>) => void;
- upstreamProviders?: import('../modules/operator-auth/index.mjs').IdentityProviderConfig[];
+ upstreamProviders?: Array<import('../modules/operator-auth/index.mjs').IdentityProviderConfig|FederationProviderConfig>;
  upstreamFetch?: typeof fetch;
  /** Outbound requests to linked apps (pull, callback, logout); defaults to fetch. */
  linkFetch?: typeof fetch;

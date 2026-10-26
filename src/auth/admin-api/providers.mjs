@@ -9,7 +9,8 @@ export async function resolveProviders(ctx) {
  const legacy=ctx.organizationId&&ctx.organizationId!=='root'?await employerProviders(ctx):ctx.configuredUpstreamProviders??ctx.upstreamProviders??[];
  const delegated=await federationProviders(ctx),configured=[...legacy,...delegated.filter(provider=>!legacy.some(existing=>existing.id===provider.id))];
  const disabled=new Set((await all(ctx,'SELECT provider_id FROM auth_provider_states WHERE enabled=0')).map(row=>row.provider_id));
- return {...ctx,configuredUpstreamProviders:configured,upstreamProviders:configured.filter(provider=>!disabled.has(provider.id))};
+ const endedCampaigns=new Set((await all(ctx,'SELECT provider_id FROM auth_campaigns WHERE cancelled_at IS NOT NULL OR cutover_at<=?',ctx.now())).map(row=>row.provider_id));
+ return {...ctx,configuredUpstreamProviders:configured,upstreamProviders:configured.filter(provider=>!disabled.has(provider.id)&&!endedCampaigns.has(provider.id))};
 }
 
 export async function writeProvider(ctx,actor,id,data) {

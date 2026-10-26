@@ -3,33 +3,130 @@
     {
       "title": "Start here",
       "pages": [
-        { "slug": "getting-started", "title": "Get started", "file": "getting-started.md", "summary": "Run Auth on your computer, finish setup and register your passkey." },
-        { "slug": "sign-in", "title": "Passkeys and email links", "file": "sign-in.md", "summary": "How people sign in, what administrators need, and what to do about a lost passkey." }
+        {
+          "slug": "getting-started",
+          "title": "Get started",
+          "file": "getting-started.md",
+          "summary": "Run Auth on your computer, finish setup and register your passkey."
+        },
+        {
+          "slug": "sign-in",
+          "title": "Passkeys and email links",
+          "file": "sign-in.md",
+          "summary": "How people sign in, what administrators need, and what to do about a lost passkey."
+        }
       ]
     },
     {
       "title": "Everyday",
       "pages": [
-        { "slug": "people", "title": "People, domains and roles", "file": "people.md", "summary": "Invite and onboard people, edit the directory, group by rule, change roles and suspend access." },
-        { "slug": "apps", "title": "Link your apps", "file": "apps.md", "summary": "Add an app, link one from its setup, and sign out everywhere." },
-        { "slug": "move-in", "title": "Move people in", "file": "../MOVE-IN.md", "summary": "Bring your team across from Google Workspace, Microsoft Entra, Auth0, Okta or JumpCloud." },
-        { "slug": "backup-and-restore", "title": "Backup and restore", "file": "backup-and-restore.md", "summary": "Export everything, restore into a fresh copy, and get back in if you are locked out." }
+        {
+          "slug": "people",
+          "title": "People, domains and roles",
+          "file": "people.md",
+          "summary": "Invite and onboard people, edit the directory, group by rule, change roles and suspend access."
+        },
+        {
+          "slug": "apps",
+          "title": "Link your apps",
+          "file": "apps.md",
+          "summary": "Add an app, link one from its setup, and sign out everywhere."
+        },
+        {
+          "slug": "move-in",
+          "title": "Move people in",
+          "file": "../MOVE-IN.md",
+          "summary": "Bring your team across from Google Workspace, Microsoft Entra, Auth0, Okta or JumpCloud."
+        },
+        {
+          "slug": "backup-and-restore",
+          "title": "Backup and restore",
+          "file": "backup-and-restore.md",
+          "summary": "Export everything, restore into a fresh copy, and get back in if you are locked out."
+        }
       ]
     },
     {
       "title": "Reference",
       "pages": [
-        { "slug": "admin-api", "title": "Machine administration API", "file": "admin-api.md", "summary": "Register scoped service apps and use the versioned REST API with private-key authentication, pagination and ETags." },
-        {"slug": "hr-file-feeds", "title": "Reviewed HR file feeds", "file": "hr-file-feeds.md", "summary": "Deliver key-authenticated CSV files, review exact native effects and track held or stale sources."},
-        {"slug": "identity-reports", "title": "Native identity reports", "file": "identity-reports.md", "summary": "Read scoped identity facts and audited exports with missing evidence kept explicit."},
-        {"slug": "progressive-migration", "title": "Reviewed first-login migration", "file": "progressive-migration.md", "summary": "Preserve reviewed subjects and history while enrolling legacy workers through Auth proof."},
-        {"slug": "delegated-agents", "title": "Delegated task identities", "file": "delegated-agents.md", "summary": "Register bounded native, API and MCP task profiles with independent approval and live revocation."},
-        {"slug": "employer-providers", "title": "Isolated employer providers", "file": "employer-providers.md", "summary": "Configure employer-local providers without transferring identity proof or custody."},
-        {"slug": "erasure", "title": "Erasure and separate identities", "file": "erasure.md", "summary": "Review owner erasure and privately requested release of independently proved memberships."},
-        { "slug": "inline-hooks", "title": "Inline sign-in hooks", "file": "inline-hooks.md", "summary": "Configure signed, bounded extension points with protected identity and fail policies." },
-        { "slug": "attribute-mapping", "title": "Attribute mapping", "file": "attribute-mapping.md", "summary": "Preview and version computed usernames, claims and provisioning fields." },
-        { "slug": "commands", "title": "Auth commands", "file": "../AUTH-COMMANDS.md", "summary": "Setup, dev, recovery, private settings and export, in detail." },
-        { "slug": "linking", "title": "How app linking works", "file": "../LINKING.md", "summary": "The documents, handshake, continuity and sign-out behind a linked app." }
+        {
+          "slug": "admin-api",
+          "title": "Machine administration API",
+          "file": "admin-api.md",
+          "summary": "Register scoped service apps and use the versioned REST API with private-key authentication, pagination and ETags."
+        },
+        {
+          "slug": "upstream-campaigns",
+          "title": "Upstreams and cutover campaigns",
+          "file": "upstream-campaigns.md",
+          "summary": "Review upstream trust, test an employee and track a subject-bound passkey campaign."
+        },
+        {
+          "slug": "directory-sources",
+          "title": "Reviewed inbound directories",
+          "file": "directory-sources.md",
+          "summary": "Connect bound source directories and approve exact native changes without email-based identity merging."
+        },
+        {
+          "slug": "hr-file-feeds",
+          "title": "Reviewed HR file feeds",
+          "file": "hr-file-feeds.md",
+          "summary": "Deliver key-authenticated CSV files, review exact native effects and track held or stale sources."
+        },
+        {
+          "slug": "identity-reports",
+          "title": "Native identity reports",
+          "file": "identity-reports.md",
+          "summary": "Read scoped identity facts and audited exports with missing evidence kept explicit."
+        },
+        {
+          "slug": "progressive-migration",
+          "title": "Reviewed first-login migration",
+          "file": "progressive-migration.md",
+          "summary": "Preserve reviewed subjects and history while enrolling legacy workers through Auth proof."
+        },
+        {
+          "slug": "delegated-agents",
+          "title": "Delegated task identities",
+          "file": "delegated-agents.md",
+          "summary": "Register bounded native, API and MCP task profiles with independent approval and live revocation."
+        },
+        {
+          "slug": "employer-providers",
+          "title": "Isolated employer providers",
+          "file": "employer-providers.md",
+          "summary": "Configure employer-local providers without transferring identity proof or custody."
+        },
+        {
+          "slug": "erasure",
+          "title": "Erasure and separate identities",
+          "file": "erasure.md",
+          "summary": "Review owner erasure and privately requested release of independently proved memberships."
+        },
+        {
+          "slug": "inline-hooks",
+          "title": "Inline sign-in hooks",
+          "file": "inline-hooks.md",
+          "summary": "Configure signed, bounded extension points with protected identity and fail policies."
+        },
+        {
+          "slug": "attribute-mapping",
+          "title": "Attribute mapping",
+          "file": "attribute-mapping.md",
+          "summary": "Preview and version computed usernames, claims and provisioning fields."
+        },
+        {
+          "slug": "commands",
+          "title": "Auth commands",
+          "file": "../AUTH-COMMANDS.md",
+          "summary": "Setup, dev, recovery, private settings and export, in detail."
+        },
+        {
+          "slug": "linking",
+          "title": "How app linking works",
+          "file": "../LINKING.md",
+          "summary": "The documents, handshake, continuity and sign-out behind a linked app."
+        }
       ]
     }
   ]

@@ -63,7 +63,8 @@ export async function reviewSnapshot(ctx,actorId,snapshotId) {
   const wanted=new Set(),members=dir.members.get(existing?.group_id)??new Map();
   for(const externalId of row.deleted?[]:row.memberIds){
    const binding=await nativeSourceId(source.id,externalId),personId=dir.sources.get('directory:'+binding),incoming=nativeUsers.get(externalId);
-   if((!personId&&!incoming)||incoming&&(!incoming.row.active||incoming.row.deleted)){refusals.push(row.sourceId+':unresolved_member:'+externalId);continue;}
+   if(incoming&&(!incoming.row.active||incoming.row.deleted))continue;
+   if(!personId&&!incoming){refusals.push(row.sourceId+':unresolved_member:'+externalId);continue;}
    wanted.add(binding);
    if(!personId||!members.has(personId))changes.push({kind:'member_add',externalId:row.sourceId,userExternalId:externalId,groupName:name,personName:incoming?.row.name??dir.people.get(personId)?.name??externalId});
   }

@@ -59,7 +59,7 @@ export async function campaignFlow(t) {
  await r.call('/api/auth/people/role',post({id:person.id,role:'admin'},atDeadline));
  assert.equal((await r.login({sub:'synthetic-auth-19',amr:['mfa']})).status,403,'an administrator cannot reuse campaign proof');
  r.now=data.cutoverAt;
- assert.equal((await r.login({sub:'synthetic-auth-0',amr:['mfa']})).status,403,'campaign proof stops exactly at cutover');
+ assert.equal((await r.call('/auth/oidc/company/start',post({returnTo:'/app/account'}))).status,404,'the campaign provider is removed exactly at cutover');
  assert.equal((await r.call('/api/auth/move-in/campaigns',{cookie:await emailSession(r,owner.email)})).status,403,'dashboard requires local hardware administration');
 }
 

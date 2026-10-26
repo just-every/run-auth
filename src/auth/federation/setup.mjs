@@ -74,7 +74,8 @@ export async function federationAction(ctx,request,action,data) {
  if(request.headers.get('origin')!==ctx.origin||request.headers.get('sec-fetch-site')==='cross-site')fail('origin_required',403);
  const owner=await setupOwner(ctx,request);
  if(action==='/federation/create')return create(ctx,owner,data);
- const row=await setupById(ctx,data?.id),provider=await setupConfiguration(ctx,row);
+ const row=await setupById(ctx,data?.id);if(row.state==='disabled')fail('federation_setup_changed',409);
+ const provider=await setupConfiguration(ctx,row);
  if(action==='/federation/test')return test(ctx,request,owner,row,provider,data);
  if(action==='/federation/preview') {only(data,['id']);return json(publicPreview(await setupPreview(ctx,row)));}
  if(action==='/federation/activate')return activate(ctx,owner,row,provider,data);
@@ -82,7 +83,7 @@ export async function federationAction(ctx,request,action,data) {
  if(data.confirm!==true)fail('federation_explicit_consent_required',403);
  if(!Number.isSafeInteger(data.revision)||data.revision!==row.revision||row.state==='disabled')fail('federation_setup_changed',409);
  const guard=authority(ctx,owner,['owner']);
- await committed(ctx,owner,guard,[ctx.db.prepare(`UPDATE auth_federation_setups SET state='disabled',revision=revision+1,test_session_id=NULL,test_binding_hash=NULL,test_until=NULL,test_subject=NULL WHERE id=? AND revision=? AND state<>'disabled' AND ${guard.clause}`).bind(row.id,row.revision,...guard.args),
+ await committed(ctx,owner,guard,[ctx.db.prepare(`UPDATE auth_federation_setups SET state='disabled',sealed_config='',revision=revision+1,test_session_id=NULL,test_binding_hash=NULL,test_until=NULL,test_subject=NULL WHERE id=? AND revision=? AND state<>'disabled' AND ${guard.clause}`).bind(row.id,row.revision,...guard.args),
   ...auditStatements(ctx,owner,'federation_disabled',row.id,{providerId:row.provider_id,configurationHash:row.config_hash,revision:row.revision+1,consent:true})]);
  return json({ok:true,id:row.id,state:'disabled',revision:row.revision+1});
 }

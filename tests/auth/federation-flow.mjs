@@ -1,3 +1,4 @@
+import {randomBytes,createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {generateKeyPair,exportJWK,exportPKCS8,SignJWT} from 'jose';
 import {createRequire} from 'node:module';
@@ -68,6 +69,15 @@ export async function federationFlow(t) {
  const admitted=await callback({url:new URL(allowed.headers.get('location')),cookie:parked(allowed)},'synthetic-auth-federation-7',parked(allowed));assert.equal(admitted.status,303,await admitted.clone().text());
  const employee=admitted.headers.getSetCookie().find(value=>value.startsWith('__Host-auth_session='))?.split(';')[0];assert.ok(employee);
  assert.equal((await read(await r.call('/api/auth/me',{cookie:employee}))).user.id,'synthetic-auth-federation-1');
+ const app=await read(await r.call('/api/auth/oidc-apps/create',{method:'POST',cookie:owner.cookie,data:{name:'Assigned expenses',authMethod:'client_secret_basic',redirectUris:'https://rp.example.com/callback',requirePkce:true}}),201);
+ assert.equal((await r.call('/api/auth/company-apps/assign',{method:'POST',cookie:owner.cookie,data:{appId:app.id,principalType:'person',principalId:'synthetic-auth-federation-1',role:'employee'}})).status,200);
+ await r.call('/.well-known/openid-configuration');r.now=Math.max(r.now,(await r.db.prepare('SELECT MAX(use_after) AS at FROM auth_signing_keys').first()).at+1);
+ const verifier=randomBytes(32).toString('base64url'),query=new URLSearchParams({client_id:app.clientId,redirect_uri:'https://rp.example.com/callback',response_type:'code',scope:'openid email',state:'synthetic-auth-app-state',nonce:'synthetic-auth-app-nonce',code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256',prompt:'none'});
+ const authorized=await r.call('/oidc/authorize?'+query,{cookie:employee});assert.equal(authorized.status,302);
+ const code=new URL(authorized.headers.get('location')).searchParams.get('code');assert.ok(code,'the upstream-authenticated worker reaches the assigned downstream app');
+ const tokens=await read(await r.call('/oidc/token',{method:'POST',headers:{authorization:'Basic '+Buffer.from(app.clientId+':'+app.clientSecret).toString('base64')},form:{grant_type:'authorization_code',code,code_verifier:verifier,redirect_uri:'https://rp.example.com/callback'}}));
+ const info=await read(await r.call('/oidc/userinfo',{headers:{authorization:'Bearer '+tokens.access_token}}));assert.equal(info.email,'employee@company.example');
+
  const rotated=await generateKeyPair('RS256'),nextJwk={...await exportJWK(rotated.publicKey),kid:'synthetic-auth-federation-rotated',alg:'RS256',use:'sig'};
  keys.privateKey=rotated.privateKey;Object.assign(jwk,nextJwk);r.upstream.jwks={keys:[nextJwk]};
  const rotation=await r.call('/auth/oidc/'+provider.id+'/start',{method:'POST',data:{returnTo:'/app/account'}});assert.equal(rotation.status,303);

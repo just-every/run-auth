@@ -5,6 +5,8 @@ import {cookieOf} from './runtime.mjs';
 export async function scopedUpstreamFlow({r,a,b,adminA,adminB,owner,personA,personB}) {
  const json=async(response,status=200)=>{assert.equal(response.status,status,await response.clone().text());return response.json();};
  const post=(data,cookie)=>({method:'POST',data,cookie});
+ assert.equal((await a.call('/api/auth/federation/create',post({domain:'example.com',provider:{id:'foreign',preset:'google',clientId:'synthetic-auth-79',clientSecret:'synthetic-auth-80',subjectEmails:{foreign:'contractor@example.com'}},confirm:true},adminB.cookie))).status,401,'a different employer cannot prepare provider trust');
+ assert.equal((await a.call('/api/auth/federation',{cookie:owner.cookie})).status,401,'installation ownership supplies no employer setup session');
  const secret='synthetic-auth-72',provider={id:'company',label:'Employer Google',preset:'google',clientId:'synthetic-auth-71',tokenAuthMethod:'client_secret_basic',clientSecret:secret};
  r.upstreamProviders=[{...provider,id:'installation',clientId:'synthetic-auth-73'}];
  assert.equal((await a.call('/auth/oidc/installation/start',post({returnTo:'/app/account'}))).status,404,'root provider trust is never inherited');
