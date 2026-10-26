@@ -58,6 +58,7 @@ export async function directorySourceFlow(t) {
  assert.equal(await person(users[0].profile.email),null);
  const applied=await approve(source);assert.equal(applied.state,'completed');
  const first=await person(users[0].profile.email),second=await person(users[1].profile.email);assert.ok(first&&second);assert.equal(first.status,'invited');
+ assert.equal((await r.db.prepare("SELECT value FROM auth_person_fields WHERE person_id=? AND field='name' AND source='directory'").bind(first.id).first()).value,users[0].profile.displayName);
  const binding=await r.db.prepare("SELECT source_id FROM auth_person_sources WHERE source='directory' AND person_id=?").bind(first.id).first();assert.ok(binding.source_id.startsWith(source.sourceId+':'));
  const owned=await r.db.prepare('SELECT group_id FROM auth_directory_source_groups WHERE source_id=?').bind(source.sourceId).first();
  assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_group_members WHERE group_id=? AND person_id=?').bind(owned.group_id,first.id).first()).n,1);

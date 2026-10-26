@@ -1,6 +1,7 @@
 import {one,all,run,random,fail,AuthError,json,auditDetail} from '../core.mjs';
 import {authority,requireAuthority} from '../local-email.mjs';
 import {applyAuthorizedPlan,onboardAuthorizedPerson} from '../workforce/people/apply.mjs';
+import {setStatement} from '../workforce/people/fields.mjs';
 import {loadDirectory} from '../workforce/people/load.mjs';
 import {workforceCommand} from '../workforce/routes.mjs';
 import {fencePerson} from '../links/logout.mjs';
@@ -67,6 +68,7 @@ export async function executeDirectorySnapshot(ctx,snapshotId,{sessionGuard}={})
     else personId=effect.personId??null;
    }
    const receipt=(g,target)=>[
+    ...(effect.kind==='person'&&!effect.personId&&effect.row.fields.name?[setStatement(ctx,g,target,'name','directory',effect.row.fields.name,snapshot.approved_by)]:[]),
     ctx.db.prepare(`UPDATE auth_directory_source_steps SET state='effects_pending',target_id=?,applied_at=? WHERE id=? AND state='pending' AND ${g.clause}`).bind(target,ctx.now(),step.id,...g.args),
    ];
    const actor={kind:'human',actorId:snapshot.approved_by,guard,assertAuthority:assertLive,receiptStatements:receipt,commit:async statements=>{

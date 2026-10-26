@@ -25,7 +25,7 @@ export async function profileAction(ctx,request,path,data,{upstreams}) {
  // The browser continues at the provider: Auth's own start for it, carried with the intent cookie.
  const intent=await beginLink(ctx,request,data,upstreams);
  const started=await upstreams.fetch(new Request(new URL(`/auth/${intent.provider.preset==='saml'?'saml':'oidc'}/${intent.provider.id}/start`,ctx.origin),{method:'POST',headers:{'content-type':'application/json',origin:ctx.origin,'cf-connecting-ip':request.headers.get('cf-connecting-ip')||''},body:JSON.stringify({returnTo:'/app/account'})}));
- if(!started||started.status!==303)fail('upstream_unavailable',502);
+ if(!started||![302,303].includes(started.status))fail('upstream_unavailable',502);
  const headers=new Headers({'content-type':'application/json','cache-control':'no-store','referrer-policy':'no-referrer'});
  for(const value of started.headers.getSetCookie())headers.append('set-cookie',value);
  headers.append('set-cookie',intent.header);
