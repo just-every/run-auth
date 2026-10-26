@@ -1,6 +1,6 @@
 import {hash,random,one,run,limitState,AuthError} from '../core.mjs';
 
-export const recipientHash=(ctx,address)=>hash(JSON.stringify([ctx.secret,String(address).trim().toLowerCase()]));
+export const recipientHash=(ctx,address)=>hash(JSON.stringify([ctx.secret,String(address)]));
 const unavailable=()=>new AuthError('mail_delivery_unavailable',503);
 
 // Only identifiers and outcomes are durable. Message bodies, usable links,
