@@ -1,5 +1,7 @@
 import {one,fail,auditDetail} from '../core.mjs';
 import {calendar} from './calendar.mjs';
+import {campaignPolicy} from '../migration/campaign-followup.mjs';
+export const obligationPolicy=async(ctx,ob)=>await campaignPolicy(ctx,ob)??await policy(ctx);
 export const DEFAULT_POLICY=Object.freeze({enabled:false,calendar:calendar(),reminderBusinessDays:1,deadlineBusinessDays:5,recipients:[],escalationRecipients:[],escalation:'repeat_until_resolved'});
 export async function policy(ctx) {
  const row=await one(ctx,'SELECT policy FROM auth_followup_settings WHERE id=1');

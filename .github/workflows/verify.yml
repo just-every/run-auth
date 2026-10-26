@@ -7,7 +7,7 @@ jobs:
     # Native checks and the browser job together run every rer verify check.
     # The browser image already contains the pinned browser and OS dependencies.
     name: verify (${{ matrix.shard }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -50,7 +50,7 @@ jobs:
         run: pnpm run test:auth:workforce
   browser:
     name: verify (browser-${{ matrix.suite }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     container:
       image: mcr.microsoft.com/playwright:v1.55.1-noble

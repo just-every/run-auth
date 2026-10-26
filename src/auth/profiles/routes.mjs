@@ -12,7 +12,7 @@ export const isProfileAction=path=>['/profile/update','/profile/links/start','/p
 export async function profileModel(ctx,s) {
  const links=await linksOf(ctx,s.person_id);
  return {...await profileView(ctx,s),links:links.map(l=>({providerId:l.providerId,label:l.providerId?(configuredProvider(ctx,l.providerId)?.label||l.providerId):l.issuer})),
-  providers:(ctx.upstreamProviders||[]).filter(p=>['google','microsoft','okta'].includes(p.preset)).map(p=>({id:p.id,label:p.label||p.preset,linked:links.some(l=>l.providerId===p.id)}))};
+  providers:(ctx.upstreamProviders||[]).filter(p=>['google','microsoft','okta','oidc','saml'].includes(p.preset)).map(p=>({id:p.id,label:p.label||p.preset,linked:links.some(l=>l.providerId===p.id)}))};
 }
 export async function profileRead(ctx,request) {
  const s=await session(ctx,request);if(!s)fail('sign_in_required',401);
@@ -24,7 +24,7 @@ export async function profileAction(ctx,request,path,data,{upstreams}) {
  if(path==='/profile/links/unlink'){await unlink(ctx,request,data);return json({ok:true});}
  // The browser continues at the provider: Auth's own start for it, carried with the intent cookie.
  const intent=await beginLink(ctx,request,data,upstreams);
- const started=await upstreams.fetch(new Request(new URL(`/auth/oidc/${intent.provider.id}/start`,ctx.origin),{method:'POST',headers:{'content-type':'application/json',origin:ctx.origin,'cf-connecting-ip':request.headers.get('cf-connecting-ip')||''},body:JSON.stringify({returnTo:'/app/account'})}));
+ const started=await upstreams.fetch(new Request(new URL(`/auth/${intent.provider.preset==='saml'?'saml':'oidc'}/${intent.provider.id}/start`,ctx.origin),{method:'POST',headers:{'content-type':'application/json',origin:ctx.origin,'cf-connecting-ip':request.headers.get('cf-connecting-ip')||''},body:JSON.stringify({returnTo:'/app/account'})}));
  if(!started||started.status!==303)fail('upstream_unavailable',502);
  const headers=new Headers({'content-type':'application/json','cache-control':'no-store','referrer-policy':'no-referrer'});
  for(const value of started.headers.getSetCookie())headers.append('set-cookie',value);

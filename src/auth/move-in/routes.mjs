@@ -9,6 +9,7 @@ import {sendInvitation} from '../admin.mjs';
 import {requireAccountRank} from '../ranks.mjs';
 import {parseExport,MoveInError,MAX_FILE_BYTES} from './parse.mjs';
 import {classify,stagedShape} from './review.mjs';
+import {campaignModel} from '../migration/campaign-routes.mjs';
 
 const ADMIN=['owner','admin'];
 async function administrator(ctx,request) {
@@ -160,13 +161,14 @@ export async function formerSubjects(ctx,request) {
 }
 
 export async function moveInModel(ctx,request) {
+ const campaigns=await campaignModel(ctx);
  const batches=await all(ctx,"SELECT b.id,b.source_system,b.format,b.file_name,b.export_date,b.row_count,b.created_at,b.undone_at,p.email AS created_by_email,(SELECT count(*) FROM auth_import_rows r WHERE r.batch_id=b.id AND r.status='admitted') AS admitted FROM auth_import_batches b LEFT JOIN oa_operators p ON p.id=b.created_by ORDER BY b.created_at DESC");
  const id=new URL(request.url).searchParams.get('batch');
  const batch=id?await one(ctx,'SELECT * FROM auth_import_batches WHERE id=?',id):null;
- if(!batch)return {moveIn:{batches,batch:null,rows:[]}};
+ if(!batch)return {moveIn:{batches,batch:null,rows:[],...campaigns}};
  const rows=classify(ctx,(await all(ctx,'SELECT * FROM auth_import_rows WHERE batch_id=? ORDER BY idx',batch.id)).map(stagedShape),await people(ctx));
  const histories=await all(ctx,'SELECT idx,history FROM auth_import_history WHERE batch_id=?',batch.id);
  for(const row of rows){const history=histories.find(item=>item.idx===row.idx);if(history)row.profileHistory=JSON.parse(history.history);}
  const subjects=await one(ctx,'SELECT count(*) AS n FROM auth_former_subjects WHERE batch_id=?',batch.id);
- return {moveIn:{batches,batch:{id:batch.id,source_system:batch.source_system,format:batch.format,file_name:batch.file_name,export_date:batch.export_date,created_at:batch.created_at,undone_at:batch.undone_at,undo_report:batch.undo_report?JSON.parse(batch.undo_report):null,former_subjects:subjects.n},rows}};
+ return {moveIn:{batches,batch:{id:batch.id,source_system:batch.source_system,format:batch.format,file_name:batch.file_name,export_date:batch.export_date,created_at:batch.created_at,undone_at:batch.undone_at,undo_report:batch.undo_report?JSON.parse(batch.undo_report):null,former_subjects:subjects.n},rows,...campaigns}};
 }

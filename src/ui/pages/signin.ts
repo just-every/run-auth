@@ -3,9 +3,9 @@ import { csrfField, escape, hostLabel, localReturnTo, noticeBox } from '../helpe
 import { brandLockup, documentHead } from '../shell.js'
 
 const providerAction = (provider: AuthProvider): string | null => {
-  if (!['google', 'microsoft', 'okta'].includes(provider.preset)) return null
+  if (!['google', 'microsoft', 'okta', 'oidc', 'saml'].includes(provider.preset)) return null
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(provider.id)) return null
-  const expected = `/auth/oidc/${provider.id}/start`
+  const expected = `/auth/${provider.preset === 'saml' ? 'saml' : 'oidc'}/${provider.id}/start`
   return provider.startPath === expected ? expected : null
 }
 

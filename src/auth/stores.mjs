@@ -39,6 +39,8 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
+  'auth_directory_sources','auth_directory_resources','auth_directory_source_groups','auth_federation_setups',
+  'auth_campaigns','auth_campaign_people',
   'auth_hr_feeds',
   'auth_migration_bridges', 'auth_migration_subjects',
   'auth_employer_providers',
@@ -50,6 +52,8 @@ const groups = {
   'rer_dependency_keys',
  ],
  transient: [
+  'auth_directory_snapshots','auth_directory_source_steps','auth_federation_transactions','auth_federation_replays','auth_federation_test_providers','auth_federation_test_health',
+  'auth_campaign_obligations',
   'auth_mail_deliveries','auth_mail_events',
   'auth_notification_devices','auth_security_notifications','auth_suspicious_reports',
   'auth_domain_challenges',

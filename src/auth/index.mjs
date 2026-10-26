@@ -40,6 +40,8 @@ import {jwks,JWKS_CACHE_SECONDS,ensureSigningKey} from './keys.mjs';
 import {adminAction,model,sendInvitation} from './admin.mjs';
 import {createUpstreams} from './upstreams.mjs';
 import {stage,moveInAction,formerSubjects} from './move-in/routes.mjs';
+import {CAMPAIGNS} from './migration/campaign-state.mjs';
+import {campaignRead,campaignAction} from './migration/campaign-routes.mjs';
 import {preparer,agentsAction} from './agents/routes.mjs';
 import {linkRoute,LINK_PATHS,isAppAction,appAction} from './links/routes.mjs';
 import {signOutEverywhere} from './links/logout.mjs';
@@ -79,6 +81,7 @@ function scopedRuntime(options) {
    if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
+    if(path===CAMPAIGNS||path===CAMPAIGNS+'/export.csv')return await campaignRead(ctx,request);
     if(path==='/api/auth/delivery')return await deliveryRead(ctx,request);
     if(path===NOTIFICATIONS_READ)return await notificationRead(ctx,request);
     if(path===DOMAIN_PATH)return await domainRead(ctx,request);
@@ -128,6 +131,7 @@ function scopedRuntime(options) {
     }
     if(['/receipt','/receipt-key','/receipt-revoke'].some(suffix=>path===PAIRS_PREFIX+suffix)&&url.search)fail('receipt_body_required',400);
     const data=await input(ctx,request);
+    if(path.startsWith(CAMPAIGNS+'/'))return await campaignAction(ctx,request,path,data);
     if(isDomainAction(path.slice('/api/auth'.length)))return await domainAction(ctx,request,path.slice('/api/auth'.length),data);
     if(path===BRIDGE+'/register')return bridgeRegister(ctx,request,data);
     if(path===BRIDGE+'/disable')return bridgeDisable(ctx,request,data);

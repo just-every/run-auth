@@ -409,6 +409,13 @@
       for (const key of ['emailEnabled', 'newDevice', 'factorEnrolled', 'slackEnabled', 'endSessionsOnReport', 'confirm']) payload[key] = values.has(key)
     }
     if (form.hasAttribute('data-notification-resolve')) payload.confirm = payload.confirm === 'true'
+    if (form.hasAttribute('data-campaign-create')) {
+      const values = new FormData(form)
+      for (const key of ['confirm', 'employeeConsent', 'managerConsent', 'administratorConsent']) payload[key] = values.has(key)
+      for (const key of ['startsAt', 'deadlineAt', 'cutoverAt']) payload[key] = new Date(payload[key]).getTime()
+      payload.rows = values.getAll('rows').map(Number)
+    }
+    if (form.hasAttribute('data-campaign-exempt')) payload.confirm = new FormData(form).has('confirm')
     if (form.hasAttribute('data-hook-register')) {
       const target = payload.target || '', colon = target.indexOf(':')
       if (colon > 0) payload[target.slice(0, colon) === 'app' ? 'appId' : 'clientId'] = target.slice(colon + 1)

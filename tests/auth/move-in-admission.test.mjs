@@ -1,3 +1,4 @@
+import {campaignFlow} from './campaign-flow.mjs';
 import {legacyBridgeFlow} from './legacy-bridge-flow.mjs';
 import {hookServer,verifiedHook} from './hooks-server.mjs';
 import {test} from 'node:test';
@@ -118,3 +119,5 @@ test('a former Auth0 subject is data for app owners only: never accepted by a pr
 });
 
 test('reviewed custom-directory workers migrate at first legacy login with protected history, exact subject mapping, inherited hooks and permanent bridge shutdown',legacyBridgeFlow);
+
+test('an immutable-subject campaign enrolls twenty staged workers, counts down, reminds managers once and refuses MFA, window and administrator bypasses',campaignFlow);

@@ -1,17 +1,18 @@
 import {releaseSource} from '../erasure/pair-erasure.mjs';
 import {one,run,random,hash} from '../core.mjs';
-import {policy} from './policy.mjs';
+import {obligationPolicy} from './policy.mjs';
+import {campaignMessage} from '../migration/campaign-followup.mjs';
 import {recipientIds,recipient} from './recipients.mjs';
 import {sourceState} from './sources.mjs';
 import {timingCurrent} from './timing.mjs';
 
 export async function dispatchOccurrence(ctx,ob,claim,{deadline=false,timing=false,earlyCurrent=null}={}) {
- const p=await policy(ctx);
+ const p=await obligationPolicy(ctx,ob);
   let lastError=null,failedRecheck=false;
   const deliver=async(recipientId,escalation)=>{
    // Consent, source and the live claim are checked again before every call,
    // including fallback escalation. A failed recipient never receives mail.
-   const current=await policy(ctx),ids=escalation?current.escalationRecipients:current.recipients;
+   const current=await obligationPolicy(ctx,ob),ids=escalation?current.escalationRecipients:current.recipients;
    if((earlyCurrent&&!await earlyCurrent())||!current.enabled||(timing&&!await timingCurrent(ctx,ob,claim))||(await sourceState(ctx,ob)).state!=='open'||!await one(ctx,"SELECT 1 FROM auth_obligations WHERE id=? AND state='open' AND claim_id=? AND claimed_until>?",ob.id,claim,ctx.now()))return 'stopped';
    const epoch=await one(ctx,'SELECT epoch FROM auth_role_epoch WHERE id=1');
    const target=await recipient(ctx,ob,recipientId,ids,{escalation});
@@ -33,14 +34,15 @@ export async function dispatchOccurrence(ctx,ob,claim,{deadline=false,timing=fal
    }
    // Recheck after persisting the attempt: a changed source or recipient
    // cannot use the interval between the first read and transport.
-   const latestPolicy=await policy(ctx),latestSource=await sourceState(ctx,ob),latestTarget=await recipient(ctx,ob,recipientId,escalation?latestPolicy.escalationRecipients:latestPolicy.recipients,{escalation});
+   const latestPolicy=await obligationPolicy(ctx,ob),latestSource=await sourceState(ctx,ob),latestTarget=await recipient(ctx,ob,recipientId,escalation?latestPolicy.escalationRecipients:latestPolicy.recipients,{escalation});
    if(JSON.stringify(latestPolicy)!==JSON.stringify(current)||latestSource.state!=='open'||JSON.stringify(latestTarget)!==JSON.stringify(target)||(earlyCurrent&&!await earlyCurrent())) {
     await run(ctx,"UPDATE auth_obligation_history SET event='dispatch_skipped',error='authority_or_source_changed' WHERE id=?",event);
     return latestSource.state==='open'?'unavailable':'stopped';
    }
    try {
     if(!ctx.mail)throw new Error('mail_not_configured');
-    await ctx.mail({to:target.email,subject:timing?'Auth downstream access unverified after 15 minutes':escalation?(deadline?'Auth follow-up deadline reached':'Auth follow-up recipient unavailable'):'Auth follow-up is due',text:`An Auth ${releaseSource(ob)?'identity release':ob.kind} action is unresolved. The next action is to ${ob.next_action.replaceAll('_',' ')}. Review it in Auth: ${ctx.origin}${ctx.basePath??''}${['owner','admin'].includes(target.role)?'/app/activity':'/app/account'}\nReference: ${ob.id}\nA reminder does not confirm enrollment or removal of access.`,html:'<p>An Auth action remains unresolved. Sign in to Auth and review Activity. A reminder does not confirm enrollment or removal of access.</p>'});
+    const message=await campaignMessage(ctx,ob)??{subject:timing?'Auth downstream access unverified after 15 minutes':escalation?(deadline?'Auth follow-up deadline reached':'Auth follow-up recipient unavailable'):'Auth follow-up is due',text:`An Auth ${releaseSource(ob)?'identity release':ob.kind} action is unresolved. The next action is to ${ob.next_action.replaceAll('_',' ')}. Review it in Auth: ${ctx.origin}${ctx.basePath??''}${['owner','admin'].includes(target.role)?'/app/activity':'/app/account'}\nReference: ${ob.id}\nA reminder does not confirm enrollment or removal of access.`,html:'<p>An Auth action remains unresolved. Sign in to Auth and review Activity. A reminder does not confirm enrollment or removal of access.</p>'};
+    await ctx.mail({to:target.email,...message});
     await run(ctx,'UPDATE auth_obligation_history SET event=? WHERE id=?',escalation?'escalation_accepted':'reminder_accepted',event);
    } catch {
     lastError='mail_delivery_failed_check_transport';
@@ -54,7 +56,7 @@ export async function dispatchOccurrence(ctx,ob,claim,{deadline=false,timing=fal
    if(result==='unavailable'){failedRecheck=true;break;}
   }
   if(deadline||failedRecheck||timing) {
-   const ids=(await policy(ctx)).escalationRecipients;
+   const ids=(await obligationPolicy(ctx,ob)).escalationRecipients;
    if(!ids.length)lastError='approved_escalation_recipient_unavailable';
    for(const id of ids)if(await deliver(id,true)==='stopped')break;
   }

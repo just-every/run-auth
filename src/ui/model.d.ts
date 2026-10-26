@@ -107,6 +107,13 @@ export interface MoveInRow {
   selected: boolean
 }
 
+export interface EnrollmentCampaign {
+ id: string; name: string; provider_id: string; current: boolean; cancelled_at: number | null
+ starts_at: number; deadline_at: number; cutover_at: number; secondsToCutover: number; remaining: number
+ counts: Record<string, number>
+ people: Array<{person_id: string; display_name: string; email: string; manager_email: string | null; state: string; factors: string[]; exempt_at: number | null}>
+}
+
 export interface AgentKey {
   id: string
   label: string
@@ -289,7 +296,7 @@ export interface AuthPageModel {
   csrf?: string
   unavailableActions?: string[]
   providers?: AuthProvider[]
-  moveIn?: { batches: MoveInBatch[]; batch: MoveInBatch | null; rows: MoveInRow[] }
+  moveIn?: { batches: MoveInBatch[]; batch: MoveInBatch | null; rows: MoveInRow[]; campaigns?: EnrollmentCampaign[]; campaignProviders?: Array<{id: string; label: string; preset: string}>; campaignManagers?: Array<{id: string; email: string; display_name: string}> }
   agents?: { apps?:Array<{id:string;name:string;protocol:string}>;people?:Array<{id:string;email:string}>;now?: number; keys: AgentKey[]; proposals: AgentProposal[]; proposal: AgentProposal | null }
   inlineHooks?: { points: string[]; hooks: { id: string; point: string; url: string; appId: string | null; clientId: string | null; allowedFields: string[]; timeoutMs: number; failClosed: boolean; status: string }[] }
   workforce?: WorkforceModel

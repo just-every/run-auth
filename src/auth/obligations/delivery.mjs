@@ -1,14 +1,15 @@
 import {caseProjection} from './records.mjs';
 import {all,run,random} from '../core.mjs';
-import {policy} from './policy.mjs';
+import {policy,obligationPolicy} from './policy.mjs';
 import {businessDue,deliveryWindow} from './calendar.mjs';
 import {syncObligations} from './sources.mjs';
 import {dispatchOccurrence} from './dispatch.mjs';
 import {dueTiming,claimTiming,finishTiming} from './timing.mjs';
+import {campaignBinding} from '../migration/campaign-followup.mjs';
 const LEASE=120000;
 export async function maintainObligations(ctx) {
  await syncObligations(ctx);
- const p=await policy(ctx);if(!p.enabled)return;
+ const p=await policy(ctx);
  for(const ob of await dueTiming(ctx)) {
   const claim=await claimTiming(ctx,ob);if(!claim)continue;
   const {lastError}=await dispatchOccurrence(ctx,ob,claim,{timing:true});
@@ -17,11 +18,13 @@ export async function maintainObligations(ctx) {
  // Exclude work owned by the review scheduler, and duties without consent,
  // before limiting the batch so they cannot starve other due obligations.
  for(const ob of await all(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=?
+  AND (?=1 OR EXISTS(SELECT 1 FROM auth_campaign_obligations c WHERE c.obligation_id=auth_obligations.id))
   AND NOT(kind='app_setup' AND source_id LIKE 'review-item:%')
   AND (?=1 OR NOT EXISTS(SELECT 1 FROM auth_hr_feed_obligations WHERE obligation_id=auth_obligations.id))
   AND (?=1 OR deadline_at<=? OR kind!='app_setup' OR source_id NOT LIKE 'access-request:%')
-  ORDER BY next_due_at,id LIMIT 50`,ctx.now(),ctx.now(),Number(p.recipients.includes('source_owner')),Number(p.recipients.includes('decider')),ctx.now())) {
-  const c=JSON.parse(ob.calendar);if(!deliveryWindow(ctx.now(),c))continue;
+  ORDER BY next_due_at,id LIMIT 50`,ctx.now(),ctx.now(),Number(p.enabled),Number(p.recipients.includes('source_owner')),Number(p.recipients.includes('decider')),ctx.now())) {
+  const effective=await obligationPolicy(ctx,ob);if(!effective.enabled)continue;
+  const c=effective.calendar;if(!await campaignBinding(ctx,ob)&&!deliveryWindow(ctx.now(),c))continue;
   const claim=random(),claimed=await run(ctx,"UPDATE auth_obligations SET claim_id=?,claimed_until=? WHERE id=? AND state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=?",claim,ctx.now()+LEASE,ob.id,ctx.now(),ctx.now());
   if(!claimed.meta.changes)continue;
   const deadline=ctx.now()>=ob.deadline_at;
