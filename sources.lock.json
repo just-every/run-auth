@@ -3579,7 +3579,7 @@
       "executable": false
     },
     "tests/integration/helpers/campaign-journey.mjs": {
-      "sha256": "5ff0c2e40d748817c595c7da20f7d4ddcb8aa0abe36031b9c049214e7b69a031",
+      "sha256": "331614051151fe7ed4128bfd574e4cbaa728bbcd2db2a8d9c4d0bb36dffb3487",
       "executable": false
     },
     "tests/integration/helpers/delegation-journey.mjs": {
@@ -3627,7 +3627,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "4d1c565bc6bdffdbe80b54b64ec2b2b0c3f34a3785ad2b1e76b5021011424468",
+      "sha256": "34c62038d78f480c7882664bd2e03c216ad43f5405755c9de422e9b6c42bcb4c",
       "executable": false
     },
     "tests/integration/http.test.mjs": {
@@ -3635,7 +3635,7 @@
       "executable": false
     },
     "tests/integration/move-in-browser.test.mjs": {
-      "sha256": "bf00137bcd0e6ce0a3ab89eefb31fc661da68c022c552ae0d369c6c08b99ce76",
+      "sha256": "aa4c97d42efbff2d97c3d9eb860722e807a6914b4c8de13952cef9872c5b715e",
       "executable": false
     },
     "tests/integration/refresh-browser.test.mjs": {

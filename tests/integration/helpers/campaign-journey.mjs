@@ -38,7 +38,7 @@ export async function campaignJourney({app,providerEdge,browser,owner,page,shoot
  await page.getByLabel('Notify the selected manager three days before the deadline',{exact:true}).check();
  await page.getByLabel('Notify me at the deadline',{exact:true}).check();
  await page.getByLabel('I approve this cohort, window and selected reminders',{exact:true}).check();
- await shoot('campaign-setup',undefined,true);
+ await shoot('campaign-setup',undefined,'campaign');
  const created=page.waitForResponse(response=>response.url().endsWith('/move-in/campaigns/create'));
  await page.getByRole('button',{name:'Start campaign',exact:true}).click();await json(await created,201);
  await expect(page.getByRole('heading',{name:'Engineering — November cutover',exact:true})).toBeVisible();

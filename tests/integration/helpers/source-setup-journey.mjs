@@ -12,7 +12,7 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
  await page.getByText('Configure an upstream',{exact:true}).click();
  await page.getByLabel('Verified employer domain',{exact:true}).fill('example.com');
  await page.getByLabel('Private provider configuration',{exact:true}).fill(JSON.stringify(provider));
- await shoot('federation-setup',undefined,true);
+ await shoot('federation-setup',undefined,'federation');
  const prepared=page.waitForResponse(response=>response.url().endsWith('/federation/create'));
  await page.getByRole('button',{name:'Prepare upstream',exact:true}).click();const setup=await json(await prepared,201);
  await expect(page.getByRole('region',{name:'Federation mapping preview'})).toBeVisible();await shoot('federation-draft');
@@ -36,7 +36,7 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
  await page.getByLabel('Directory provider',{exact:true}).selectOption('scim');
  await page.getByLabel('Connection direction',{exact:true}).selectOption('push');
  await page.getByLabel('Organization binding',{exact:true}).fill(app.origin);
- await page.getByLabel('I authorize this bound source and its selected fields',{exact:true}).check();await shoot('directory-source-setup',undefined,true);
+ await page.getByLabel('I authorize this bound source and its selected fields',{exact:true}).check();await shoot('directory-source-setup',undefined,'source');
  const connected=page.waitForResponse(response=>response.url().endsWith('/directory-sources/create'));
  await page.getByRole('button',{name:'Connect source',exact:true}).click();const source=await json(await connected,201);
  await expect(page.getByLabel('One-time SCIM credential',{exact:true})).toBeVisible();assert.equal(await page.getByLabel('One-time SCIM credential',{exact:true}).inputValue(),source.ingressToken);
