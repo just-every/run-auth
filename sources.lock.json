@@ -3119,7 +3119,7 @@
       "executable": false
     },
     "tests/auth/oidc-apps.test.mjs": {
-      "sha256": "ede96b913d1416b95a4492fb8ff12252c589e0b327a615f5ebdb6708a2102070",
+      "sha256": "d52a48a5a0d77efdf6cd4e84f9714d39eb99af57b2d1dfb7ec37f755914ac75a",
       "executable": false
     },
     "tests/auth/policy-helpers.mjs": {
@@ -3219,7 +3219,7 @@
       "executable": false
     },
     "tests/auth/userinfo.test.mjs": {
-      "sha256": "d19630b9a80c245d6bf2c6f79fbbd01b60b0eab97b8fecc699bb1e0625b5391d",
+      "sha256": "140e3a23962879b372091e4bf1d20a23912ac4cdcd668e6bc53330daaaeb6198",
       "executable": false
     },
     "tests/auth/webauthn.mjs": {

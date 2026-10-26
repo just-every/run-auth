@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {hookServer,verifiedHook} from './hooks-server.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -191,6 +192,7 @@ test('inline hooks add only approved token and SAML fields, deny registration an
  const before=edge.received.length;await assert.rejects((await signIn(r,config,{redirect:`${RP}/hooks`})).grant());assert.equal(edge.received.length,before);
  edge.privateHosts.delete('hooks.example.com');await disable(rebinding.id);
  // Self-registration may deny an otherwise allowed outside domain, with the same non-enumerating email response.
+ await verifyDomains(t,r,r.owner.cookie,['outside.example.com','example.com']);
  await r.admin('people/domain',{domain:'outside.example.com'});
  edge.responses.set('/registration',request=>({body:{allow:request.data.email.endsWith('@example.com'),...(request.data.email.endsWith('@example.com')?{profile:{name:'Hooked employee'}}:{})}}));
  const registration=await create({point:'registration',url:'https://hooks.example.com/registration',allowedFields:['name']});

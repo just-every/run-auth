@@ -1,3 +1,4 @@
+import {verifyDomains} from './domain-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {jwtVerify,createLocalJWKSet} from 'jose';
@@ -85,6 +86,7 @@ test('client, subject, account version, proof and required-provider changes remo
   await r.db.prepare(sql).bind(...args(r)).run();await refused(await get(r,tokens.access_token));await r.close();
  }
  const r=await fixture(t),{tokens}=await issued(r);
+ const hardware=await register(r,r.cookie);await verifyDomains(t,r,hardware.cookie,['example.com']);
  await r.person('spare-owner','spare@example.com','owner');
  await r.db.prepare("UPDATE oa_operators SET role='member' WHERE id='owner'").run();
  await r.db.prepare("INSERT INTO oa_domain_rules(domain,provider_id,created_by,created_at) VALUES('example.com','required','spare-owner',?)").bind(r.now).run();
