@@ -40,7 +40,7 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
   const fits=await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth);if(!fits){await page.screenshot({path:join(directory,`move-in-${name}-${width}-${theme}-overflow.png`),fullPage:true});console.log('Overflow bounds',await page.evaluate(()=>[...document.querySelectorAll('body *')].map(element=>({tag:element.tagName,classes:String(element.className),right:element.getBoundingClientRect().right})).filter(item=>item.right>innerWidth).slice(-16)));}assert.ok(fits,`${name} fits ${width}px`);
   for(const control of await page.locator('[data-tooltip]:visible').all()){await page.mouse.move(0,0);await control.blur();await expect(page.getByRole('tooltip')).toBeHidden();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
   await page.screenshot({path:join(directory,`move-in-${name}-${width}-${theme}.png`),fullPage:true});
- }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});await page.evaluate(()=>Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>undefined))));};
+ }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});await page.waitForTimeout(250);};
 
  // First owner: browser email link, setup, hardware passkey (as the main journey).
  await page.goto(app.origin+'/signin?returnTo=%2Fsetup');

@@ -3627,7 +3627,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "58188b270d797904446a8dc05a61cedf476ddadfe3f4eb0282085bf22ed11fb9",
+      "sha256": "813711d3123a37660e6498a5d770b9e161ed757dcaada1ad5bcd2c543ca296d6",
       "executable": false
     },
     "tests/integration/http.test.mjs": {
@@ -3635,7 +3635,7 @@
       "executable": false
     },
     "tests/integration/move-in-browser.test.mjs": {
-      "sha256": "3c7e5c2af15bfd7f1b497803ffbd4366c86eed33050a038181f482e5699491a5",
+      "sha256": "bf83dd23cb124bf9e22d12301da1fcf2d7401bbd3f45ad4f5a96eff54b59c277",
       "executable": false
     },
     "tests/integration/refresh-browser.test.mjs": {

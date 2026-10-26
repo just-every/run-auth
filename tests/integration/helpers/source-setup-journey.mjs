@@ -45,7 +45,7 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot,dire
  await page.getByRole('button',{name:'Connect source',exact:true}).click();const source=await json(await connected,201);
  await expect(page.getByLabel('One-time SCIM credential',{exact:true})).toBeVisible();assert.equal(await page.getByLabel('One-time SCIM credential',{exact:true}).inputValue(),source.ingressToken);
  for(const width of [1440,390]){
-  await page.setViewportSize({width,height:1000});await page.evaluate(()=>Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>undefined))));await accessible('one-time source credential '+width);
+  await page.setViewportSize({width,height:1000});await page.waitForTimeout(250);await accessible('one-time source credential '+width);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.getByRole('region',{name:'Directory sources',exact:true}).screenshot({path:join(directory,`move-in-directory-source-connected-${width}.png`),mask:[page.getByLabel('One-time SCIM credential',{exact:true})]});
  }await page.setViewportSize({width:1440,height:1000});
