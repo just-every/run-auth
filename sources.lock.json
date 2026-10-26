@@ -703,7 +703,7 @@
       "executable": false
     },
     "public/auth-assets/pages.css": {
-      "sha256": "6ad2b7215d930e4c92453739a7f26adea19ddffb51c9c35a398bd47b62c44838",
+      "sha256": "d311ece8c67d4d413172e8c5a49292e09294839ecebb060f0416b16f358c4afc",
       "executable": false
     },
     "public/auth-assets/permissions-ui.js": {
@@ -3087,7 +3087,7 @@
       "executable": false
     },
     "src/ui/pages/move-in-federation.ts": {
-      "sha256": "de53c6d2c7734d7762241344a04e2c910d4a245bf72fea0bb60b1d913d078ac6",
+      "sha256": "643094ae82967b7f326320995a66c90e4bc75051018063dbb60cc4b4fbe9920f",
       "executable": false
     },
     "src/ui/pages/move-in-sources.ts": {
@@ -3635,7 +3635,7 @@
       "executable": false
     },
     "tests/integration/move-in-browser.test.mjs": {
-      "sha256": "351481fa64d045f999f04185bfee503ae78a4b511070e988393d5c88968123ac",
+      "sha256": "1ecaca0d6b4481ce0aef9228dc8806d58fb8d7688a55c11e577cab47b63acaad",
       "executable": false
     },
     "tests/integration/refresh-browser.test.mjs": {
