@@ -96,6 +96,9 @@ export async function directorySourceFlow(t) {
  const patchBody={schemas:['urn:ietf:params:scim:api:messages:2.0:PatchOp'],Operations:[{op:'replace',path:'displayName',value:'Synthetic renamed'}]};
  const patched=await ingress('PATCH','Users/pushed-user',patchBody);assert.equal(patched.status,200,await patched.clone().text());
  const duplicate=await ingress('PATCH','Users/pushed-user',patchBody);assert.equal(duplicate.headers.get('x-auth-directory-snapshot'),patched.headers.get('x-auth-directory-snapshot'),'duplicate observations have one immutable snapshot');
+ const replacement=await ingress('PUT','Users/pushed-user',{schemas:['urn:ietf:params:scim:schemas:core:2.0:User'],id:'pushed-user',userName:'synthetic-auth-193@example.com',displayName:'Synthetic replaced',active:true});assert.equal(replacement.status,200,await replacement.clone().text());
+ await approve({sourceId:push.sourceId,snapshotId:replacement.headers.get('x-auth-directory-snapshot')},{confirmHeld:true});
+ assert.equal((await person('synthetic-auth-193@example.com')).display_name,'Synthetic replaced','replacement keeps the existing person and applies only reviewed source fields');
  const custodial=await create({kind:'scim',mode:'push',name:'Synthetic custody',baseUrl:undefined,organizationBinding:r.origin,credential:undefined});
  await write('disable',{sourceId:custodial.sourceId,confirm:true});
  assert.equal((await r.call(new URL(custodial.scimBase).pathname+'/Users',{headers:{authorization:'Bearer '+custodial.ingressToken}})).status,401);

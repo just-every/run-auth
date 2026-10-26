@@ -63,7 +63,7 @@ export async function directorySourceScim(ctx,request,path=new URL(request.url).
   const total=(await one(ctx,'SELECT COUNT(*) AS n FROM auth_directory_resources WHERE source_id=? AND resource_type=? AND deleted=0',source.id,type)).n;
   return json({schemas:['urn:ietf:params:scim:api:messages:2.0:ListResponse'],totalResults:total,startIndex:start,itemsPerPage:rows.length,Resources:rows.map(row=>scimDocument(type,JSON.parse(row.document)))});
  }
- if(!['POST','PATCH','DELETE'].includes(request.method)||request.method==='POST'&&id||request.method!=='POST'&&!id)fail('directory_scim_method_refused',405);
+ if(!['POST','PUT','PATCH','DELETE'].includes(request.method)||request.method==='POST'&&id||request.method!=='POST'&&!id)fail('directory_scim_method_refused',405);
  let data;
  if(request.method!=='DELETE'){
   if(!/^application\/(?:scim\+)?json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))fail('unsupported_content_type',415);
