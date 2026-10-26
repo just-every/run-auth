@@ -24,8 +24,8 @@ export async function deliveryBrowser(t,browser,directory) {
  await page.getByRole('button',{name:'Continue to Auth'}).click();await expect(page).toHaveURL(app.origin+'/setup');
  await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Finish setup'}).click();await expect(page).toHaveURL(app.origin+'/app');
  await page.goto(app.origin+'/app/methods');
- const registered=page.waitForResponse(answer=>answer.url().endsWith('/auth/identity/passkeys/register/verify'));
- await page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await registered).status(),200);
+ const registered=page.waitForResponse(answer=>answer.url().endsWith('/auth/identity/passkeys/register/verify')),navigation=page.waitForNavigation({waitUntil:'domcontentloaded'});
+ await page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await registered).status(),200);await navigation;
  await expect(page.getByRole('button',{name:'Register a passkey'})).toBeVisible();
  const panel=()=>page.getByRole('region',{name:'Mail delivery'});
  const snapshot=async(name,state)=>{
@@ -34,18 +34,23 @@ export async function deliveryBrowser(t,browser,directory) {
    await panel().getByText('Recent delivery attempts',{exact:true}).click();await expect(panel()).toContainText(state);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits '+width);
    await page.screenshot({path:join(directory,`security-mail-${name}-${width}.png`),fullPage:true});
+   await panel().screenshot({path:join(directory,`security-mail-${name}-${width}-panel.png`)});
   }
  };
  await snapshot('accepted','accepted');
  // Exercise the actual production adapter's 429 and 503 classifications.
- for(const [status,name] of [[429,'rate limited'],[503,'uncertain']]) {
+ for(const [status,name] of [[429,'rate limited'],[503,'uncertain'],[400,'rejected']]) {
   providerStatus=status;
-  const response=await context.request.post(app.origin+'/api/auth/organizations/invite',{headers:{origin:app.origin},data:{email:`delivery-${status}@example.com`,name:status===429?'Avery Collins':'Jordan Rivera'}});
-  assert.equal(response.status(),503);await snapshot(status===429?'throttled':'unavailable',name);
+  const response=await context.request.post(app.origin+'/api/auth/organizations/invite',{headers:{origin:app.origin},data:{email:`delivery-${status}@example.com`,name:status===429?'Avery Collins':status===503?'Jordan Rivera':'Morgan Chen'}});
+  assert.equal(response.status(),503);await snapshot(status===429?'throttled':status===503?'unavailable':'rejected',name);
  }
- const message=sent[0],timestamp=String(Math.floor(Date.now()/1000)),body=JSON.stringify([{event:'bounce',email:app.vars.OWNER_EMAIL,sg_event_id:'synthetic-auth-browser-1',timestamp:Number(timestamp),...message.custom_args}]);
- const signature=sign('sha256',Buffer.from(timestamp+body),keys.privateKey).toString('base64');
- const reconciled=await context.request.post(app.origin+'/api/auth/delivery/sendgrid',{headers:{'content-type':'application/json','x-twilio-email-event-webhook-timestamp':timestamp,'x-twilio-email-event-webhook-signature':signature},data:body});assert.equal(reconciled.status(),200);
+ const message=sent[0];
+ for(const type of ['deferred','delivered','bounce']) {
+  const timestamp=String(Math.floor(Date.now()/1000)),body=JSON.stringify([{event:type,email:app.vars.OWNER_EMAIL,sg_event_id:'synthetic-auth-browser-'+type,timestamp:Number(timestamp),...message.custom_args}]);
+  const signature=sign('sha256',Buffer.from(timestamp+body),keys.privateKey).toString('base64');
+  const reconciled=await context.request.post(app.origin+'/api/auth/delivery/sendgrid',{headers:{'content-type':'application/json','x-twilio-email-event-webhook-timestamp':timestamp,'x-twilio-email-event-webhook-signature':signature},data:body});assert.equal(reconciled.status(),200);
+  if(type!=='bounce')await snapshot(type,type);
+ }
  await snapshot('bounced','bounced');await expect(panel()).toContainText('1 suppressed recipient');
  const before=sent.length;
  const refused=await context.request.post(app.origin+'/auth/identity/email/request',{headers:{origin:app.origin},data:{email:app.vars.OWNER_EMAIL}});assert.equal(refused.status(),503);

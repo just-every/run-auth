@@ -21,7 +21,7 @@ export async function sendgridEvents(ctx,request) {
  // belonging to another product or an unknown local claim have no effect.
  for(const event of batch) {
   if(!event||typeof event!=='object'||!bounded(event.sg_event_id)||!Number.isSafeInteger(event.timestamp)||event.timestamp<0||event.timestamp*1000>ctx.now()+300000)fail('invalid_delivery_event');
-  if(!Object.hasOwn(states,event.event)||event.rer_product!=='auth'||!bounded(event.rer_delivery_id)||typeof event.email!=='string')continue;
+  if(!Object.hasOwn(states,event.event)||event.rer_product!=='auth'||(ctx.mailEventInstallationId&&event.rer_test_installation!==ctx.mailEventInstallationId)||!bounded(event.rer_delivery_id)||typeof event.email!=='string')continue;
   const recipient=await recipientHash(ctx,event.email),claim=await one(ctx,"SELECT id,created_at FROM auth_mail_deliveries WHERE id=? AND recipient_hash=? AND provider='sendgrid' AND state NOT IN ('queued','suppressed')",event.rer_delivery_id,recipient);
   if(!claim||event.timestamp*1000<claim.created_at-300000)continue;
   const state=states[event.event],at=event.timestamp*1000,id=await hash(event.sg_event_id);

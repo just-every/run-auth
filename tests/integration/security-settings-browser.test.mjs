@@ -104,10 +104,7 @@ test('security settings: prove and revoke employer ownership, preview affected w
  };
 
  await ownerSetup(app,page);
- await snapshot('mail-delivery-local',async()=>{
-  const panel=page.getByRole('region',{name:'Mail delivery'});await expect(panel).toContainText('Private local outbox');
-  await panel.getByText('Recent delivery attempts',{exact:true}).click();await expect(panel).toContainText('local outbox');
- },true);
+
  const invited=await context.request.post(app.origin+'/api/auth/people/invite',{headers:{origin:app.origin},data:{name:'Erin Park',email:employee}});
  assert.equal(invited.status(),201,await invited.text());
  await ownership().getByLabel('Employer domain',{exact:true}).fill(domain);
@@ -215,5 +212,24 @@ test('security settings: prove and revoke employer ownership, preview affected w
  await successfulAction(page,'/api/auth/notifications/resolve',page.getByRole('button',{name:'Mark reviewed'}));
  await snapshot('notifications-report-reviewed',async()=>{await expect(page.getByText('Reviewed',{exact:true})).toBeVisible();});
  assert.deepEqual(errors,[],'no browser runtime errors');
+
+});
+
+
+test('mail delivery diagnostics distinguish private outbox and signed provider outcomes at desktop and mobile',async t=>{
+ const app=await openApp();t.after(()=>app.close());await app.claim();
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),cdp=await context.newCDPSession(page);
+ await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+ const directory=process.env.AUTH_SCREENSHOTS||join(tmpdir(),'auth-delivery-journey');await mkdir(directory,{recursive:true});
+ await ownerSetup(app,page);
+ for(const width of [1440,390]) {
+  await page.setViewportSize({width,height:1000});await page.goto(app.origin+'/app/methods');
+  const panel=page.getByRole('region',{name:'Mail delivery'});await expect(panel).toContainText('Private local outbox');
+  await panel.getByText('Recent delivery attempts',{exact:true}).click();await expect(panel).toContainText('local outbox');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'private outbox fits '+width);
+  await page.screenshot({path:join(directory,`security-mail-local-${width}.png`),fullPage:true});await panel.screenshot({path:join(directory,`security-mail-local-${width}-panel.png`)});
+  await tooltipAudit(page,directory,'mail-delivery',width);
+ }
  await app.pause();await deliveryBrowser(t,browser,directory);
 });

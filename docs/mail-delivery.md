@@ -26,7 +26,11 @@ account operator must configure its event destination as
 `POST /api/auth/delivery/sendgrid` on the Auth issuer. For an isolated employer,
 use that employer's issuer prefix. A shared account's existing webhook must
 remain under its account operator's control; configure an authorized relay
-rather than replacing another product's destination.
+rather than replacing another product's destination. Auth attaches the seed
+name and, when RER_INSTALLATION_ID is configured, that installation identifier
+as custom arguments. The account operator registers this exact pair with its
+relay and supplies the public verification key. No public registration door
+is implied.
 
 Auth verifies the signature over the original bytes and timestamp before
 parsing. It accepts only events matching a locally journaled SendGrid attempt,

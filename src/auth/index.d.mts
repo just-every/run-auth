@@ -1,6 +1,6 @@
 export interface AuthRuntimeOptions {
  db: D1Database; origin: string; organizationId?: string; secret: string; local?: boolean; now?: () => number;
- mailProvider?: string; sendgridWebhookKey?: string;
+ mailEventInstallationId?: string; mailProvider?: string; sendgridWebhookKey?: string;
  mail?: (message: {to: string; subject: string; text: string; html: string; deliveryId: string; customArgs?: Record<string,string>}, store?: {db:D1Database;organizationId:string}) => Promise<unknown>;
  waitUntil?: (work: Promise<unknown>) => void;
  upstreamProviders?: import('../modules/operator-auth/index.mjs').IdentityProviderConfig[];

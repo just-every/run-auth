@@ -19,9 +19,9 @@ export async function sendDelivery(ctx,message,transport) {
  const claimed=await run(ctx,"UPDATE auth_mail_deliveries SET state='dispatching',updated_at=? WHERE id=? AND state='queued' AND NOT EXISTS(SELECT 1 FROM auth_mail_suppressions WHERE recipient_hash=?)",ctx.now(),id,recipient);
  if(!claimed.meta.changes){await finish('suppressed','recipient_suppressed');throw unavailable();}
  try {
-  const result=await transport({...message,deliveryId:id,customArgs:{rer_product:'auth'}});
+  const result=await transport({...message,deliveryId:id,...(provider==='sendgrid'?{customArgs:{rer_product:'auth',rer_seed:'auth',...(ctx.mailEventInstallationId?{rer_test_installation:ctx.mailEventInstallationId}:{})}}:{})});
   // A void result is the pre-existing custom transport's acceptance contract.
-  const state=provider==='development'?'local_outbox':result?.status??'accepted';
+  const state=provider==='development'||result?.provider==='development'?'local_outbox':result?.status??'accepted';
   if(!['accepted','local_outbox','rejected','rate_limited','uncertain'].includes(state)) {
    await finish('uncertain','transport_outcome_unknown');throw unavailable();
   }
