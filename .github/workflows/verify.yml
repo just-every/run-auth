@@ -82,12 +82,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Free space from unused hosted runner SDKs
+        if: matrix.shard == 'app'
         shell: bash
         run: |
           echo 'Checkout and temporary disk space before SDK removal (bytes):'
           df -B1 "$GITHUB_WORKSPACE" "${TMPDIR:-/tmp}"
           # Auth uses Node, pnpm, Chromium and workerd, not Android, .NET or Haskell.
-          sudo rm -rf -- /usr/local/lib/android /usr/share/dotnet /usr/local/.ghcup
+          for sdk in /usr/local/lib/android /usr/share/dotnet /usr/local/.ghcup; do
+            available=$(df -B1 --output=avail "$GITHUB_WORKSPACE" | tail -n 1)
+            if [ "$available" -ge $((20 * 1024 * 1024 * 1024)) ]; then break; fi
+            sudo rm -rf -- "$sdk"
+          done
           echo 'Checkout and temporary disk space after SDK removal (bytes):'
           df -B1 "$GITHUB_WORKSPACE" "${TMPDIR:-/tmp}"
       - uses: pnpm/action-setup@v4
@@ -100,7 +105,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - if: matrix.shard == 'app'
         run: pnpm exec rer check --profile first-party
-      - run: pnpm run build
+      - if: matrix.shard != 'protocol'
+        run: pnpm run build
       - if: matrix.shard == 'app'
         run: pnpm run typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site
       - if: matrix.shard == 'protocol'
