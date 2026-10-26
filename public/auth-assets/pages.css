@@ -27,6 +27,7 @@
 .move-in-connection { overflow-wrap: anywhere; }
 .move-in-connection form, .move-in-connection input { min-width: 0; }
 .move-in-connection button { max-width: 100%; white-space: normal; }
+.move-in-connection .heading-tools { flex-wrap: wrap; }
 .move-in-review .notice-panel { font-size: 14px; }
 .move-in-summary { margin-top: 16px; }
 .move-in-check { width: 64px; }
