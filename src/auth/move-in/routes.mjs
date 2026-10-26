@@ -1,3 +1,5 @@
+import {directorySourceRead,DIRECTORY_SOURCES} from '../directory-sources/routes.mjs';
+import {federationRead,FEDERATION_READ} from '../federation/setup.mjs';
 import {invokeHooks} from '../hooks/index.mjs';
 // Move-in administration: stage a directory export, admit reviewed rows as
 // ordinary invitations, send those invitations, and undo what is still untouched.
@@ -162,6 +164,11 @@ export async function formerSubjects(ctx,request) {
 
 export async function moveInModel(ctx,request) {
  const campaigns=await campaignModel(ctx);
+ const sourceUrl=new URL(DIRECTORY_SOURCES,ctx.origin);const snapshot=new URL(request.url).searchParams.get('sourceSnapshot');if(snapshot)sourceUrl.searchParams.set('snapshotId',snapshot);
+ const directorySources=await(await directorySourceRead(ctx,new Request(sourceUrl,{headers:request.headers}))).json();
+ const owner=await requireSession(ctx,request,true);
+ const federation=owner.role==='owner'?await(await federationRead(ctx,new Request(new URL(FEDERATION_READ+new URL(request.url).search,ctx.origin),{headers:request.headers}))).json():null;
+ Object.assign(campaigns,{directorySources,federation});
  const batches=await all(ctx,"SELECT b.id,b.source_system,b.format,b.file_name,b.export_date,b.row_count,b.created_at,b.undone_at,p.email AS created_by_email,(SELECT count(*) FROM auth_import_rows r WHERE r.batch_id=b.id AND r.status='admitted') AS admitted FROM auth_import_batches b LEFT JOIN oa_operators p ON p.id=b.created_by ORDER BY b.created_at DESC");
  const id=new URL(request.url).searchParams.get('batch');
  const batch=id?await one(ctx,'SELECT * FROM auth_import_batches WHERE id=?',id):null;

@@ -25,7 +25,7 @@ function binding(request,id) {
  if(values.length!==1||!RANDOM.test(values[0].slice(name(id).length+1)))fail('saml_browser_binding_required',403);
  return values[0].slice(name(id).length+1);
 }
-async function boundedInput(request,maximum) {
+export async function readSamlInput(request,maximum) {
  const reader=request.body?.getReader();if(!reader)return '';
  const chunks=[];let size=0;
  try {for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>maximum)fail('request_too_large',413);chunks.push(value);}}
@@ -56,7 +56,7 @@ export function createFederationSaml(ctx,{providers=ctx.upstreamProviders??[],ad
   if(new URL(request.url).search)fail('invalid_saml_route');
   const type=(request.headers.get('content-type')??'').split(';')[0];
   if(!['application/json','application/x-www-form-urlencoded'].includes(type))fail('unsupported_content_type',415);
-  const input=await boundedInput(request,4096);let data;
+  const input=await readSamlInput(request,4096);let data;
   try{if(type==='application/json')data=JSON.parse(input);else {const form=new URLSearchParams(input);if(form.getAll('returnTo').length>1)fail('invalid_saml_message');data={returnTo:form.get('returnTo')};}}catch{fail('invalid_saml_message');}
   if(!data||typeof data!=='object'||Array.isArray(data))fail('invalid_saml_message');
   const ip=request.headers.get('cf-connecting-ip');if(!ip||!await limit(ctx,'saml-start:'+provider.id+':'+await hash(ip),30,900000))fail('rate_limited',429);
@@ -71,11 +71,11 @@ export function createFederationSaml(ctx,{providers=ctx.upstreamProviders??[],ad
  async function callback(request,provider) {
   if(request.method!=='POST'||!(request.headers.get('content-type')??'').startsWith('application/x-www-form-urlencoded'))fail('invalid_saml_message');
   if(new URL(request.url).search)fail('invalid_saml_route');
-  const form=new URLSearchParams(await boundedInput(request,360000));
+  const form=new URLSearchParams(await readSamlInput(request,360000));
   if(form.getAll('RelayState').length!==1||form.getAll('SAMLResponse').length!==1||[...form.keys()].some(key=>!['RelayState','SAMLResponse'].includes(key)))fail('invalid_saml_message');
   const relay=form.get('RelayState');if(!RANDOM.test(relay))fail('saml_correlation_refused',403);
   const id=await hash(relay),browser=await hash(binding(request,relay)),configuration=await fingerprint(provider.id);
-  const transaction=await one(ctx,'UPDATE auth_federation_transactions SET consumed_at=? WHERE id=? AND provider_id=? AND configuration_hash=? AND binding_hash=? AND consumed_at IS NULL AND expires_at>? RETURNING *',ctx.now(),id,provider.id,configuration,browser,ctx.now());
+  const transaction=await one(ctx,'UPDATE auth_federation_transactions SET consumed_at=? WHERE id=? AND provider_id=? AND setup_id IS ? AND configuration_hash=? AND binding_hash=? AND consumed_at IS NULL AND expires_at>? RETURNING *',ctx.now(),id,provider.id,ctx.federationSetupId??null,configuration,browser,ctx.now());
   if(!transaction)fail('saml_correlation_refused',403);
   const bytes=fromBase64(form.get('SAMLResponse'));if(bytes.length>262144)fail('invalid_saml_message');
   let xml;try{xml=new TextDecoder('utf-8',{fatal:true}).decode(bytes);}catch{fail('invalid_saml_message');}
@@ -97,7 +97,7 @@ export function createFederationSaml(ctx,{providers=ctx.upstreamProviders??[],ad
   if(request.method!=='GET')fail('method_not_allowed',405);
   const url=new URL(request.url),relay=url.searchParams.get('state');
   if(!RANDOM.test(relay)||url.searchParams.getAll('state').length!==1||[...url.searchParams.keys()].some(key=>key!=='state'))fail('saml_correlation_refused',403);
-  const id=await hash(relay),transaction=await one(ctx,'UPDATE auth_federation_transactions SET completed_at=? WHERE id=? AND provider_id=? AND binding_hash=? AND configuration_hash=? AND consumed_at IS NOT NULL AND verified_principal IS NOT NULL AND completed_at IS NULL AND expires_at>? RETURNING *',ctx.now(),id,provider.id,await hash(binding(request,relay)),await fingerprint(provider.id),ctx.now());
+  const id=await hash(relay),transaction=await one(ctx,'UPDATE auth_federation_transactions SET completed_at=? WHERE id=? AND provider_id=? AND setup_id IS ? AND binding_hash=? AND configuration_hash=? AND consumed_at IS NOT NULL AND verified_principal IS NOT NULL AND completed_at IS NULL AND expires_at>? RETURNING *',ctx.now(),id,provider.id,ctx.federationSetupId??null,await hash(binding(request,relay)),await fingerprint(provider.id),ctx.now());
   if(!transaction)fail('saml_correlation_refused',403);
   const verified=await unseal(ctx,'federation-principal:'+id,transaction.verified_principal);
   await run(ctx,'UPDATE auth_federation_transactions SET verified_principal=NULL WHERE id=?',id);

@@ -1,3 +1,5 @@
+import { directorySourcePanels } from './move-in-sources.js'
+import { federationPanels } from './move-in-federation.js'
 import type { AuthPageModel, MoveInBatch, MoveInRow } from '../model.js'
 import { asArray, csrfField, emptyState, escape, timeElement } from '../helpers.js'
 import { campaignPanels } from './move-in-campaigns.js'
@@ -73,6 +75,6 @@ export function renderMoveInPage(model: AuthPageModel): string {
   const list = `<section class="table-panel move-in-batches" aria-label="Staged exports"><div class="table-scroll" tabindex="0" role="region" aria-label="Staged exports table"><table><thead><tr><th scope="col">File</th><th scope="col">Source</th><th scope="col">Exported</th><th scope="col">Rows</th><th scope="col">Admitted</th><th scope="col">State</th></tr></thead><tbody>${batchRows(batches, moveIn.batch?.id)}</tbody></table></div></section>`
   const body = moveIn.batch ? review(model, moveIn.batch, asArray<MoveInRow>(moveIn.rows)) : batches.length ? '' : emptyState('Stage an export to review it here.')
   const toolbar = '<div class="toolbar"><a class="action" href="/app/people">Back to People</a></div>'
-  const campaigns=campaignPanels(model)
+  const campaigns=campaignPanels(model)+federationPanels(model)+directorySourcePanels(model)
   return moveIn.batch ? `${toolbar}${body}${campaigns}${list}${stage}` : `${toolbar}${campaigns}${stage}${list}${body}`
 }

@@ -298,6 +298,43 @@
   })
 
   document.addEventListener('submit', async event => {
+    const setup = event.target.closest('form[data-source-create],form[data-federation-create]')
+    if (setup) {
+      event.preventDefault()
+      const button = setup.querySelector('button[type=submit],button:not([type])')
+      const fields = new FormData(setup), source = setup.hasAttribute('data-source-create')
+      const output = setup.querySelector(source ? '[data-source-result]' : '[data-federation-result]')
+      if (button) button.disabled = true
+      try {
+        let payload
+        if (source) {
+          payload = Object.fromEntries(fields)
+          payload.fields = fields.getAll('fields')
+          payload.confirm = fields.has('confirm')
+          if (!payload.baseUrl) delete payload.baseUrl
+          if (!payload.credential) delete payload.credential
+        } else payload = {domain: fields.get('domain'), provider: JSON.parse(fields.get('provider')), confirm: fields.has('confirm')}
+        const result = await requestJSON(setup.action, payload)
+        if (source && result.ingressToken) {
+          output.replaceChildren()
+          const explanation = document.createElement('p')
+          explanation.textContent = 'Copy this scoped SCIM credential now. It is shown once. Endpoint: ' + result.scimBase
+          const label = document.createElement('label')
+          label.textContent = 'One-time SCIM credential'
+          const credential = document.createElement('textarea')
+          credential.readOnly = true
+          credential.value = result.ingressToken
+          label.append(credential)
+          const link = document.createElement('a')
+          link.href = organizationPath('/app/move-in')
+          link.textContent = 'Open source dashboard'
+          output.append(explanation, label, link)
+          setup.reset()
+        } else window.location.assign(organizationPath('/app/move-in' + (source && result.snapshotId ? '?sourceSnapshot=' + encodeURIComponent(result.snapshotId) : !source ? '?federation=' + encodeURIComponent(result.id) : '')))
+      } catch (error) { output.textContent = error.message; if (button) button.disabled = false }
+      return
+    }
+
     const registration = event.target.closest('form[data-delegated-agent-register]')
     if (registration) {
       event.preventDefault()
@@ -409,6 +446,16 @@
       for (const key of ['emailEnabled', 'newDevice', 'factorEnrolled', 'slackEnabled', 'endSessionsOnReport', 'confirm']) payload[key] = values.has(key)
     }
     if (form.hasAttribute('data-notification-resolve')) payload.confirm = payload.confirm === 'true'
+    if (form.hasAttribute('data-source-approve')) {
+      const values = new FormData(form)
+      payload.confirm = values.has('confirm')
+      payload.confirmHeld = values.has('confirmHeld')
+    }
+    if (form.hasAttribute('data-source-disable')) payload.confirm = payload.confirm === 'true'
+    if (form.hasAttribute('data-federation-confirm')) {
+      payload.confirm = payload.confirm === 'true' || payload.confirm === 'on'
+      payload.revision = Number(payload.revision)
+    }
     if (form.hasAttribute('data-campaign-create')) {
       const values = new FormData(form)
       for (const key of ['confirm', 'employeeConsent', 'managerConsent', 'administratorConsent']) payload[key] = values.has(key)

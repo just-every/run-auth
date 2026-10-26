@@ -1,3 +1,4 @@
+import {directorySourceFlow} from './directory-source-flow.mjs';
 import {hrFilePreviewFlow,sftpIngressFlow,hrFileApplyFlow} from './hr-file-flow.mjs';
 import {mfaReportFlow,administratorsReportFlow,dormantReportFlow,terminatedReportFlow} from './reporting-flow.mjs';
 import {test} from 'node:test';
@@ -293,3 +294,5 @@ test('saved HR file mappings hold destructive, empty and malformed deliveries, p
 test('a real SFTP listener verifies the employer key, applies reviewed hires, moves and leavers, refuses traversal and shells, and ends ingress after disabling',sftpIngressFlow);
 
 test('an explicitly approved HR file applies current and dated hires, moves and leavers once, resolves managers and resumes interruptions while preserving enrollment and authority refusals',hrFileApplyFlow);
+
+test('inbound directories and scoped SCIM stage immutable users and groups, require exact approval, retain incomplete feeds and fence reviewed leavers',directorySourceFlow);

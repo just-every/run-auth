@@ -114,6 +114,17 @@ export interface EnrollmentCampaign {
  people: Array<{person_id: string; display_name: string; email: string; manager_email: string | null; state: string; factors: string[]; exempt_at: number | null}>
 }
 
+export interface DirectorySourceModel {
+ sources: Array<{id:string;name:string;kind:string;mode:string;organizationBinding:string;fields:string[];disabled:boolean;lastError:string|null;lastReadAt:number|null}>
+ snapshots: Array<{id:string;sourceId:string;state:string;reasons:string[];createdAt:number}>
+ preview?: {sourceId:string;snapshotId:string;digest:string;held:boolean;reasons:string[];refusals:string[];changes:Array<{kind:string;name?:string;row?:{name?:string;email?:string;active?:boolean}}>}
+}
+export interface FederationModel {
+ setups: Array<{id:string;providerId:string;domain:string;state:string;revision:number}>
+ previewError?:string
+ preview?: {id:string;providerId:string;issuer:string;callback?:string;state:string;revision:number;digest:string;people:Array<{subject:string;email:string;state:string}>}
+}
+
 export interface AgentKey {
   id: string
   label: string
@@ -296,7 +307,7 @@ export interface AuthPageModel {
   csrf?: string
   unavailableActions?: string[]
   providers?: AuthProvider[]
-  moveIn?: { batches: MoveInBatch[]; batch: MoveInBatch | null; rows: MoveInRow[]; campaigns?: EnrollmentCampaign[]; campaignProviders?: Array<{id: string; label: string; preset: string}>; campaignManagers?: Array<{id: string; email: string; display_name: string}> }
+  moveIn?: { batches: MoveInBatch[]; batch: MoveInBatch | null; rows: MoveInRow[]; directorySources?: DirectorySourceModel; federation?: FederationModel | null; campaigns?: EnrollmentCampaign[]; campaignProviders?: Array<{id: string; label: string; preset: string}>; campaignManagers?: Array<{id: string; email: string; display_name: string}> }
   agents?: { apps?:Array<{id:string;name:string;protocol:string}>;people?:Array<{id:string;email:string}>;now?: number; keys: AgentKey[]; proposals: AgentProposal[]; proposal: AgentProposal | null }
   inlineHooks?: { points: string[]; hooks: { id: string; point: string; url: string; appId: string | null; clientId: string | null; allowedFields: string[]; timeoutMs: number; failClosed: boolean; status: string }[] }
   workforce?: WorkforceModel

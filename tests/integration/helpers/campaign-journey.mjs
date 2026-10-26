@@ -18,7 +18,7 @@ export async function campaignProviderEdge(next) {
 }
 export async function campaignJourney({app,providerEdge,browser,owner,page,shoot}) {
  const json=async(response,status=200)=>{assert.equal(response.status(),status,await response.text());return response.json();};
- const post=(context,path,data)=>context.request.post(app.origin+path,{data,headers:{origin:app.origin}});
+ const post=(context,path,data)=>context.request.post(app.origin+path,{data,headers:{origin:app.origin},maxRedirects:0});
  const entries=Object.entries(providerEdge.provider.subjectEmails);
  const users=entries.map(([id,email],i)=>({id,status:'ACTIVE',profile:{email,login:email,firstName:['Amara','Jordan','Morgan','Sofia'][i%4],lastName:'Campaign worker '+(i+1)}}));
  const staged=await json(await post(owner,'/api/auth/move-in/stage',{fileName:'engineering-okta-campaign.json',exportDate:new Date().toISOString().slice(0,10),text:JSON.stringify(users)}),201);

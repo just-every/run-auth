@@ -1,3 +1,5 @@
+import {DIRECTORY_SOURCES,isDirectorySourceAction,directorySourceRead,directorySourceAction,directorySourceScim} from './directory-sources/routes.mjs';
+import {FEDERATION_READ,isFederationAction,federationRead,federationAction,federationSetupRoute} from './federation/setup.mjs';
 import {sendDelivery} from './delivery/send.mjs';
 import {sendgridEvents} from './delivery/events.mjs';
 import {deliveryRead} from './delivery/routes.mjs';
@@ -64,7 +66,9 @@ function scopedRuntime(options) {
   const ctx=await resolved(),upstreams=ctx.upstreamProviders?.length?createUpstreams(ctx):null;
   const url=new URL(request.url),path=url.pathname;
   if(request.method==='OPTIONS'){const cors=await refreshCors(ctx,request);if(cors)return cors;}
-  if(path.startsWith('/auth/oidc/')&&upstreams)return upstreams.fetch(request);
+  if(path.startsWith(DIRECTORY_SOURCES+'/scim/'))return await directorySourceScim(ctx,request,path);
+  const setupResponse=await federationSetupRoute(ctx,request);if(setupResponse)return setupResponse;
+  if((path.startsWith('/auth/oidc/')||path.startsWith('/auth/saml/'))&&upstreams)return upstreams.fetch(request);
   if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path)&&!isSamlPath(path))return null;
   try {
    if(url.origin!==ctx.origin)fail('wrong_issuer',400);
@@ -81,6 +85,8 @@ function scopedRuntime(options) {
    if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
+    if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);
+    if(path===FEDERATION_READ)return await federationRead(ctx,request);
     if(path===CAMPAIGNS||path===CAMPAIGNS+'/export.csv')return await campaignRead(ctx,request);
     if(path==='/api/auth/delivery')return await deliveryRead(ctx,request);
     if(path===NOTIFICATIONS_READ)return await notificationRead(ctx,request);
@@ -131,6 +137,8 @@ function scopedRuntime(options) {
     }
     if(['/receipt','/receipt-key','/receipt-revoke'].some(suffix=>path===PAIRS_PREFIX+suffix)&&url.search)fail('receipt_body_required',400);
     const data=await input(ctx,request);
+    if(isDirectorySourceAction(path.slice('/api/auth'.length)))return await directorySourceAction(ctx,request,path.slice('/api/auth'.length),data);
+    if(isFederationAction(path.slice('/api/auth'.length)))return await federationAction(ctx,request,path.slice('/api/auth'.length),data);
     if(path.startsWith(CAMPAIGNS+'/'))return await campaignAction(ctx,request,path,data);
     if(isDomainAction(path.slice('/api/auth'.length)))return await domainAction(ctx,request,path.slice('/api/auth'.length),data);
     if(path===BRIDGE+'/register')return bridgeRegister(ctx,request,data);

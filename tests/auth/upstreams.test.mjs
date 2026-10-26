@@ -1,3 +1,4 @@
+import {federationFlow} from './federation-flow.mjs';
 import {verifyDomains} from './domain-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -271,3 +272,5 @@ test('an agent proposal, imported metadata or a matching email never connects an
  assert.equal((await r.call('/api/auth/profile/links/unlink',post({providerId:'company',confirm:true},erin))).status,200);
  assert.deepEqual(await bindings(r,'erin'),[]);
 });
+
+test('delegated federation tests a representative without granting a session, previews exact immutable mappings, activates with owner consent and refuses drift and collisions',federationFlow);
