@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "81b5ffa92d5d19d12ba014e75256d6c59ee2c4bf7e3ac4e0590c2ba6b1edea07",
+      "sha256": "743e8840240448df979a7041778c9113ba5df90dc18ca9186e7b288d4b3c8412",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "821f73dd01b25735b9401c7324314b903831054b220783f072d9b97f6207d293",
+      "sha256": "4373c41d98910f469b29a723f8a8af3e78967b7b211169d94d72957c6a563462",
       "executable": false
     },
     "deploy-site.json": {
@@ -1463,7 +1463,7 @@
       "executable": false
     },
     "src/auth/federation/setup.mjs": {
-      "sha256": "f26ec154c65a5288f577d9f0d17d5166274b7f1fdcf7fe22606e35b2eb5ae122",
+      "sha256": "d24e97d330dc2b103443735ef09ac12a7dcab9fda08bc041b4d1d78e3d4ebb68",
       "executable": false
     },
     "src/auth/grants/authority.mjs": {
@@ -3627,7 +3627,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "19f67844ce59bb63cadf73c6518bbe0a3fe530719262dd6c780af6c852f6768f",
+      "sha256": "4d1c565bc6bdffdbe80b54b64ec2b2b0c3f34a3785ad2b1e76b5021011424468",
       "executable": false
     },
     "tests/integration/http.test.mjs": {
@@ -3635,7 +3635,7 @@
       "executable": false
     },
     "tests/integration/move-in-browser.test.mjs": {
-      "sha256": "b4b51d1523543f81904aaa3f4b3462cebd971180c4617236ae78d8b3032d1d81",
+      "sha256": "619b3ff1da743b740f6252fea6bb48dd23d303cf032d0578da80e274873c731a",
       "executable": false
     },
     "tests/integration/refresh-browser.test.mjs": {

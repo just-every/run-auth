@@ -27,7 +27,7 @@ async function committed(ctx,owner,guard,statements) {
 export async function federationRead(ctx,request) {
  await setupOwner(ctx,request,{write:false});
  const selected=new URL(request.url).searchParams.get('federation');let preview=null,previewError=null;
- if(selected)try{preview=publicPreview(await setupPreview(ctx,await setupById(ctx,selected)));}catch(error){if(!error.status)throw error;previewError=error.message;}
+ if(selected)try{const row=await setupById(ctx,selected);if(row.state==='disabled')previewError='upstream_disabled_private_configuration_destroyed';else preview=publicPreview(await setupPreview(ctx,row));}catch(error){if(!error.status)throw error;previewError=error.message;}
  const rows=await all(ctx,'SELECT id,provider_id,domain,state,config_hash,revision,tested_subject,tested_at,created_at,activated_at FROM auth_federation_setups ORDER BY created_at DESC,id');
  return json({preview,previewError,setups:rows.map(row=>({id:row.id,providerId:row.provider_id,domain:row.domain,state:row.state,configurationHash:row.config_hash,revision:row.revision,testedSubject:row.tested_subject,testedAt:row.tested_at,createdAt:row.created_at,activatedAt:row.activated_at})),policy:{ownerOnly:true,exactDomain:true,reviewedSubjectsOnly:true,representativeTestCreatesSession:false}});
 }

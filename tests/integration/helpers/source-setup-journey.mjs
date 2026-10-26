@@ -51,4 +51,5 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
  await page.locator(`[data-directory-source="${source.sourceId}"]`).getByText('Source settings',{exact:true}).click();
  await page.getByRole('button',{name:'Disable source',exact:true}).click();await expect(page.locator(`[data-directory-source="${source.sourceId}"]`)).toContainText('Disabled');await shoot('directory-source-disabled');
  const stopped=await owner.request.get(source.scimBase+'/Users',{headers});assert.equal(stopped.status(),401);
+ await page.goto(app.origin+'/app/move-in?federation='+setup.id);await page.getByRole('button',{name:'Disable upstream',exact:true}).click();await expect(page.locator(`[data-federation-setup="${setup.id}"]`)).toContainText('disabled');await shoot('federation-disabled');
 }
