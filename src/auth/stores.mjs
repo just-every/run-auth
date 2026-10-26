@@ -24,6 +24,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
+  'auth_mail_suppressions',
   'auth_notification_policy',
   'auth_domain_claims',
   'auth_refresh_profiles',
@@ -49,6 +50,7 @@ const groups = {
   'rer_dependency_keys',
  ],
  transient: [
+  'auth_mail_deliveries','auth_mail_events',
   'auth_notification_devices','auth_security_notifications','auth_suspicious_reports',
   'auth_domain_challenges',
   'auth_hr_approved_rows','auth_hr_files','auth_hr_file_rows','auth_hr_feed_obligations',

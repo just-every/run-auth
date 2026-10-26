@@ -209,6 +209,18 @@
         "equals": "cloudflare"
       },
       "group": "mail"
+    },
+    {
+      "name": "MAIL_SENDGRID_WEBHOOK_KEY",
+      "label": "SendGrid event verification key",
+      "help": "Optional public verification key for signed delivery events. Configure the event destination with the account operator before enabling reconciliation.",
+      "kind": "text",
+      "required": false,
+      "when": {
+        "field": "MAIL_PROVIDER",
+        "equals": "sendgrid"
+      },
+      "group": "mail"
     }
   ],
   "steps": [

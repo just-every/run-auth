@@ -1,3 +1,4 @@
+import {deliveryBrowser} from './helpers/delivery-journey.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
@@ -103,6 +104,10 @@ test('security settings: prove and revoke employer ownership, preview affected w
  };
 
  await ownerSetup(app,page);
+ await snapshot('mail-delivery-local',async()=>{
+  const panel=page.getByRole('region',{name:'Mail delivery'});await expect(panel).toContainText('Private local outbox');
+  await panel.getByText('Recent delivery attempts',{exact:true}).click();await expect(panel).toContainText('local outbox');
+ },true);
  const invited=await context.request.post(app.origin+'/api/auth/people/invite',{headers:{origin:app.origin},data:{name:'Erin Park',email:employee}});
  assert.equal(invited.status(),201,await invited.text());
  await ownership().getByLabel('Employer domain',{exact:true}).fill(domain);
@@ -210,4 +215,5 @@ test('security settings: prove and revoke employer ownership, preview affected w
  await successfulAction(page,'/api/auth/notifications/resolve',page.getByRole('button',{name:'Mark reviewed'}));
  await snapshot('notifications-report-reviewed',async()=>{await expect(page.getByText('Reviewed',{exact:true})).toBeVisible();});
  assert.deepEqual(errors,[],'no browser runtime errors');
+ await app.pause();await deliveryBrowser(t,browser,directory);
 });

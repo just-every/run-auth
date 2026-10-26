@@ -39,6 +39,7 @@ export interface Bindings {
  SESSION_SECRET: string
  SETUP_TOKEN?: string
  MAIL_PROVIDER?: 'development' | 'rer' | 'resend' | 'sendgrid' | 'cloudflare'
+ MAIL_SENDGRID_WEBHOOK_KEY?: string
  MAIL_FROM?: string
  MAIL_RELAY_URL?: string
  MAIL_API_KEY?: string
@@ -51,10 +52,10 @@ export function operatorAuth(env: Bindings) {
 }
 export function identityAuth(original: Bindings, allowDevSession?: AuthRuntimeOptions['allowDevSession'], waitUntil?: (work: Promise<unknown>) => void) {
  const env = runtimeBindings(original)
- return createAuthRuntime({ notificationSlackWebhook: env.AUTH_NOTIFICATION_SLACK_WEBHOOK, agentModelKey: env.AUTH_AGENT_MODEL_KEY, agentModelWorkspace: env.AUTH_AGENT_MODEL_WORKSPACE, organizationId: env.AUTH_ORGANIZATION_ID, db: env.DB, origin: env.AUTH_ORIGIN, secret: env.AUTH_ENCRYPTION_KEY, local: env.AUTH_LOCAL === 'true', allowDevSession, waitUntil, rerTrustKeys: env.RER_LINK_APPROVAL_KEYS, upstreamProviders: env.AUTH_UPSTREAM_PROVIDERS ? JSON.parse(env.AUTH_UPSTREAM_PROVIDERS) : undefined, mail: async (message, store) => {
+ return createAuthRuntime({ mailProvider: env.MAIL_PROVIDER, sendgridWebhookKey: env.MAIL_SENDGRID_WEBHOOK_KEY, notificationSlackWebhook: env.AUTH_NOTIFICATION_SLACK_WEBHOOK, agentModelKey: env.AUTH_AGENT_MODEL_KEY, agentModelWorkspace: env.AUTH_AGENT_MODEL_WORKSPACE, organizationId: env.AUTH_ORGANIZATION_ID, db: env.DB, origin: env.AUTH_ORIGIN, secret: env.AUTH_ENCRYPTION_KEY, local: env.AUTH_LOCAL === 'true', allowDevSession, waitUntil, rerTrustKeys: env.RER_LINK_APPROVAL_KEYS, upstreamProviders: env.AUTH_UPSTREAM_PROVIDERS ? JSON.parse(env.AUTH_UPSTREAM_PROVIDERS) : undefined, mail: async (message, store) => {
   const sender = operatorMail({ ...env, DB: store?.db ?? env.DB })
   if (!sender || !env.MAIL_FROM) throw new Error('Auth mail is not configured')
-  return sender.send({ ...message, deliveryId: crypto.randomUUID(), from: env.MAIL_FROM, to: [message.to], headers: {} })
+  return sender.send({ ...message, deliveryId: message.deliveryId, from: env.MAIL_FROM, to: [message.to], headers: {} })
  } })
 }
 const privateHeaders = { 'cache-control': 'no-store', 'referrer-policy': 'strict-origin', 'x-content-type-options': 'nosniff', 'x-robots-tag': 'noindex, nofollow' }

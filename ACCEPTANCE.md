@@ -270,6 +270,8 @@ Browser journey: `tests/integration/directory-browser.test.mjs` ("access decisio
 
 **AUTH-CHAT-001 — Approve, deny and certify from Slack and Microsoft Teams (missing).** In authorized Slack and Teams test workspaces, bind a manager, approve one request and deny another from each, certify a review item, and see the outcomes provisioned and audited. Refuse an action from an unbound chat account, one bound to a different person, a stale or already-decided request and a removed binding; a privileged-role request offers only the web link.
 
+Blocked dependency for this round: main must choose and configure the shared Slack app Interactivity Request URL or router; Teams requires Entra administrator consent. No native chat completion is claimed.
+
 Existing evidence and limits: No implementing product path or acceptance test yet.
 
 **AUTH-AUDIT-001 — Identity investigation and reporting (partial).** Investigate an employee’s failed sign-in through its policy decision and provisioning history, export a review period to each named sink/Evidence, and reconcile the AUTH-REPORTS-001 MFA-enrollment export for one employer row by row with its directory, with every person who has no factor present and marked non-compliant. Query an event 12 months old through the log API on a default installation. Reconcile event counts across pages, detect tampering/gaps, deny an auditor’s write attempt and prove erased subjects no longer disclose personal identifiers.
@@ -337,6 +339,8 @@ Implemented semantics: Current source doors are native pending access requests, 
 Existing evidence and limits: Email only; no chat or Oncall adapters (depends on CHAT-001).
 
 **AUTH-DELIVERY-001 — Email and SMS delivery operations (partial).** Configure SES and Twilio in authorized test accounts, enroll/recover a worker and observe accepted, bounced, throttled and unavailable outcomes. Prove tokens/credentials absent from logs/exports and a notification failure leaves the original access obligation unresolved.
+
+SendGrid slice evidence: the two mail delivery tests in `tests/auth/notifications.test.mjs` prove signed recipient-bound reconciliation, durable suppression, provider and local throttling, unresolved enrollment on failure and no automatic uncertain-send replay. The existing security settings journey in `tests/integration/security-settings-browser.test.mjs` loads `tests/integration/helpers/delivery-journey.mjs` for private delivery diagnostics at 1440 and 390. SES and Twilio live enrollment and recovery, shared-relay live delivery and bounce and full live archive qualification remain unproved. Conservative default adopted pending ct: suppression is private, excluded from archives and has no automatic expiry or self-service bypass.
 
 Existing evidence and limits: src/auth/email.mjs; src/mail.server.mjs; tests/integration/http.test.mjs; tests/email-link.mjs — Base mail/outbox wiring and send-failure activity exist; SES/Twilio-specific setup and delivery reconciliation are missing.
 

@@ -18,12 +18,13 @@ async function productionRuntime(directory,origin,port,host,outboundService) {
 }
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
-export async function openApp({upstreamProviders,outboundService,agentModelKey}={}) {
+export async function openApp({upstreamProviders,outboundService,agentModelKey,mail}={}) {
  const socket=createServer();await new Promise(resolve=>socket.listen(0,'127.0.0.1',resolve));
  const port=socket.address().port;await new Promise(resolve=>socket.close(resolve));
  const origin=`http://localhost:${port}`,directory=await mkdtemp(join(tmpdir(),'auth-integration-'));
  const secret=()=>randomBytes(32).toString('base64url');
  const vars={AUTH_LOCAL:'true',AUTH_ORIGIN:origin,OWNER_EMAIL:'owner@example.com',AUTH_ENCRYPTION_KEY:secret(),SESSION_SECRET:secret(),SETUP_TOKEN:secret(),MAIL_PROVIDER:'development',MAIL_FROM:'auth@localhost.test',RER_DEV_KEY:secret()};
+ if(mail)Object.assign(vars,{MAIL_PROVIDER:mail.provider,MAIL_API_KEY:mail.key,MAIL_FROM:'auth@example.com',MAIL_SENDGRID_WEBHOOK_KEY:mail.verificationKey});
  if(agentModelKey)vars.AUTH_AGENT_MODEL_KEY=agentModelKey;
  if(upstreamProviders)vars.AUTH_UPSTREAM_PROVIDERS=JSON.stringify(upstreamProviders);
  await writeFile(join(directory,'.dev.vars'),Object.entries(vars).map(([k,v])=>`${k}=${v}`).join('\n')+'\n',{mode:0o600});

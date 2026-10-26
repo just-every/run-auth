@@ -1,3 +1,6 @@
+import {sendDelivery} from './delivery/send.mjs';
+import {sendgridEvents} from './delivery/events.mjs';
+import {deliveryRead} from './delivery/routes.mjs';
 import {NOTIFICATIONS_READ,NOTIFICATION_REPORT,isNotificationAction,notificationRead,notificationAction,notificationReport} from './notifications/index.mjs';
 import {DOMAIN_PATH,isDomainAction,domainRead,domainAction} from './domains/routes.mjs';
 import {HR_FEEDS,isHrFeedAction,hrFeedAction,hrFeedRead,hrFeedIngress} from './hris/files/routes.mjs';
@@ -63,6 +66,7 @@ function scopedRuntime(options) {
   if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path)&&!isSamlPath(path))return null;
   try {
    if(url.origin!==ctx.origin)fail('wrong_issuer',400);
+   if(path==='/api/auth/delivery/sendgrid')return await sendgridEvents(ctx,request);
    if(path===NOTIFICATION_REPORT)return await notificationReport(ctx,request);
    if(path==='/oidc/userinfo')return await userinfo(ctx,request);
    // SAML messages arrive from apps' pages; each door checks its own signed or bound input.
@@ -75,6 +79,7 @@ function scopedRuntime(options) {
    if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
+    if(path==='/api/auth/delivery')return await deliveryRead(ctx,request);
     if(path===NOTIFICATIONS_READ)return await notificationRead(ctx,request);
     if(path===DOMAIN_PATH)return await domainRead(ctx,request);
     if(path==='/.well-known/openid-configuration'){await ensureSigningKey(ctx);await rememberIssuer(ctx);return json(discovery(ctx));}
@@ -188,6 +193,7 @@ function scopedRuntime(options) {
 // storage. Credentials and identifiers from a different namespace never match.
 export function createAuthRuntime(options) {
  const root={...options,origin:new URL(options.origin).origin,now:options.now||Date.now,local:options.local===true};
+ if(options.mail)root.mail=(message,store)=>sendDelivery({...root,db:store?.db??root.db},message,prepared=>options.mail(prepared,store));
  const select=async request=>{
   const selected=organizationRequest(request),id=options.organizationId??selected.id;
   return {request:selected.request,ctx:await organizationContext(root,id)};
