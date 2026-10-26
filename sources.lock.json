@@ -3083,15 +3083,15 @@
       "executable": false
     },
     "src/ui/pages/move-in-campaigns.ts": {
-      "sha256": "9ccf558ae9d9c57da2b1185f12f294f39a2ddd086c1369792518ecbf72e842bf",
+      "sha256": "de298c2f56caee20d3621f692945b801f99a921eade14cb28ad079e6e3cd5fe9",
       "executable": false
     },
     "src/ui/pages/move-in-federation.ts": {
-      "sha256": "646083e1fc6c63e4d51697d87dc2eb9f3354fb2c92d16d9841fe3ba119955f7c",
+      "sha256": "9a8d56074d22fdf54393d2c7f7291bdda184fb84e3d8465e4089ec0bf9727c38",
       "executable": false
     },
     "src/ui/pages/move-in-sources.ts": {
-      "sha256": "2769d545e5dc12dd4c6a928df69b1754942ef4968f31eaae05a9fcb0ce39aa02",
+      "sha256": "b89704c1a54131e6ac0588616fbb453174976fca2d8f4eb9590d7230c9c981b8",
       "executable": false
     },
     "src/ui/pages/move-in.ts": {
