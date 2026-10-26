@@ -59,6 +59,16 @@ export async function deliveryReconciliation(t) {
   const response=await r.call(path,{cookie:owner.cookie});assert.equal(response.status,200);
   const text=await response.text();assert.ok(!text.includes(token));assert.ok(!text.includes(message.text));assert.ok(!text.includes(r.sendgridWebhookKey));
  }
+ // Delivery records participate in the existing authorized person erasure,
+ // including the keyed suppression digest and all provider event evidence.
+ const erase=async(path,data)=>{const response=await r.call('/api/auth/erasure/'+path,{method:'POST',cookie:owner.cookie,data});assert.equal(response.status,200,await response.clone().text());return response.json();};
+ await erase('policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ const preview=await erase('preview',{kind:'person',target:'synthetic-auth-2'});
+ for(const store of ['auth_mail_deliveries','auth_mail_events','auth_mail_suppressions'])assert.ok(preview.stores.some(item=>item.store===store&&item.deleted>0),'person erasure includes '+store);
+ const erased=await erase('confirm',{previewId:preview.id,confirmation:'ERASE',destinations:[]});assert.equal(erased.local,'complete');
+ const afterErasure=await read();assert.equal(afterErasure.suppressed,0);assert.ok(afterErasure.attempts.every(item=>item.id!==message.deliveryId));
+ assert.equal((await webhook([bounce])).status,200);assert.equal((await read()).suppressed,0,'late evidence cannot recreate erased person data');
+
 }
 
 export async function deliveryFailures(t) {

@@ -7,7 +7,7 @@ const unavailable=()=>new AuthError('mail_delivery_unavailable',503);
 // provider responses and addresses never enter the delivery journal.
 export async function sendDelivery(ctx,message,transport) {
  const id=random(),recipient=await recipientHash(ctx,message.to),provider=ctx.mailProvider??'configured';
- await run(ctx,"INSERT INTO auth_mail_deliveries(id,recipient_hash,provider,state,created_at,updated_at) VALUES(?,?,?,'queued',?,?)",id,recipient,provider,ctx.now(),ctx.now());
+ await run(ctx,"INSERT INTO auth_mail_deliveries(id,person_id,recipient_hash,provider,state,created_at,updated_at) VALUES(?,(SELECT id FROM oa_operators WHERE email=?),?,?,'queued',?,?)",id,String(message.to).trim().toLowerCase(),recipient,provider,ctx.now(),ctx.now());
  const finish=async(state,error=null)=>run(ctx,"UPDATE auth_mail_deliveries SET state=?,error=?,updated_at=? WHERE id=? AND state IN ('queued','dispatching')",state,error,ctx.now(),id);
  if(await one(ctx,'SELECT 1 FROM auth_mail_suppressions WHERE recipient_hash=?',recipient)) {
   await finish('suppressed','recipient_suppressed');throw unavailable();

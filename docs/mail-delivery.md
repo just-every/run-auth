@@ -5,7 +5,8 @@ in private installation configuration. The local development outbox is private
 and sends no external mail.
 
 Auth journals each email attempt before submission. The journal contains an
-opaque reference, a keyed recipient digest, transport, timestamps and fixed
+opaque reference, an internal person reference for authorized erasure, a keyed
+recipient digest, transport, timestamps and fixed
 outcome codes. It never records the message body, subject, usable sign-in link,
 provider error body or credential. Mail journals, event records and suppression
 digests are excluded from installation archives. Restores establish mail
@@ -43,7 +44,8 @@ events without a provider message ID. See the
 Delivered evidence does not complete an enrollment, recovery or access
 obligation. A bounce, dropped message or complaint suppresses further mail to
 the same recipient in that employer. Suppression has no automatic expiry or
-self-service bypass. The common transport also limits submissions per recipient
+self-service bypass. Existing authorized person erasure removes these local
+records along with that person. The common transport also limits submissions per recipient
 and installation; provider throttling is separately recorded. Authentication
 proof still requires the original browser-bound, one-use confirmation door.
 

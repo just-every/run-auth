@@ -22,13 +22,13 @@ export async function sendgridEvents(ctx,request) {
  for(const event of batch) {
   if(!event||typeof event!=='object'||!bounded(event.sg_event_id)||!Number.isSafeInteger(event.timestamp)||event.timestamp<0||event.timestamp*1000>ctx.now()+300000)fail('invalid_delivery_event');
   if(!Object.hasOwn(states,event.event)||event.rer_product!=='auth'||(ctx.mailEventInstallationId&&event.rer_test_installation!==ctx.mailEventInstallationId)||!bounded(event.rer_delivery_id)||typeof event.email!=='string')continue;
-  const recipient=await recipientHash(ctx,event.email),claim=await one(ctx,"SELECT id,created_at FROM auth_mail_deliveries WHERE id=? AND recipient_hash=? AND provider='sendgrid' AND state NOT IN ('queued','suppressed')",event.rer_delivery_id,recipient);
+  const recipient=await recipientHash(ctx,event.email),claim=await one(ctx,"SELECT id,person_id,created_at FROM auth_mail_deliveries WHERE id=? AND recipient_hash=? AND provider='sendgrid' AND state NOT IN ('queued','suppressed')",event.rer_delivery_id,recipient);
   if(!claim||event.timestamp*1000<claim.created_at-300000)continue;
   const state=states[event.event],at=event.timestamp*1000,id=await hash(event.sg_event_id);
   // An event ID reused with different normalized evidence refuses the batch.
   const existing=await one(ctx,'SELECT delivery_id,state,occurred_at FROM auth_mail_events WHERE id=?',id);
   if(existing&&(existing.delivery_id!==claim.id||existing.state!==state||existing.occurred_at!==at))fail('delivery_event_conflict',409);
-  pending.push({id,deliveryId:claim.id,recipient,state,at});
+  pending.push({id,deliveryId:claim.id,personId:claim.person_id,recipient,state,at});
  }
  const statements=[];
  for(const event of pending) {
@@ -39,7 +39,7 @@ export async function sendgridEvents(ctx,request) {
    ((?=1 AND state NOT IN ('bounced','rejected','complained')) OR
     (COALESCE(event_at,0)<=? AND state NOT IN ('delivered','bounced','rejected','complained')))`)
    .bind(event.state,event.at,ctx.now(),event.deliveryId,suppress.has(event.state)?1:0,event.at));
-  if(suppress.has(event.state))statements.push(ctx.db.prepare('INSERT OR IGNORE INTO auth_mail_suppressions(recipient_hash,reason,created_at) VALUES(?,?,?)').bind(event.recipient,event.state,ctx.now()));
+  if(suppress.has(event.state))statements.push(ctx.db.prepare('INSERT OR IGNORE INTO auth_mail_suppressions(recipient_hash,person_id,reason,created_at) VALUES(?,?,?,?)').bind(event.recipient,event.personId,event.state,ctx.now()));
  }
  if(statements.length)try{await ctx.db.batch(statements);}catch{fail('delivery_event_conflict',409);}
  return json({ok:true});

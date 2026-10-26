@@ -1,5 +1,6 @@
 CREATE TABLE auth_mail_deliveries (
  id TEXT PRIMARY KEY,
+ person_id TEXT REFERENCES oa_operators(id) ON DELETE CASCADE,
  recipient_hash TEXT NOT NULL,
  provider TEXT NOT NULL,
  state TEXT NOT NULL,
@@ -17,6 +18,7 @@ CREATE TABLE auth_mail_events (
 );
 CREATE TABLE auth_mail_suppressions (
  recipient_hash TEXT PRIMARY KEY,
+ person_id TEXT REFERENCES oa_operators(id) ON DELETE CASCADE,
  reason TEXT NOT NULL,
  created_at INTEGER NOT NULL
 );
