@@ -117,7 +117,7 @@ export interface EnrollmentCampaign {
 export interface DirectorySourceModel {
  sources: Array<{id:string;name:string;kind:string;mode:string;organizationBinding:string;fields:string[];disabled:boolean;lastError:string|null;lastReadAt:number|null}>
  snapshots: Array<{id:string;sourceId:string;state:string;reasons:string[];createdAt:number}>
- preview?: {sourceId:string;snapshotId:string;state:string;digest:string;held:boolean;reasons:string[];refusals:string[];changes:Array<{kind:string;name?:string;groupName?:string;personName?:string;row?:{name?:string;email?:string;active?:boolean}}>}
+ preview?: {sourceId:string;snapshotId:string;state:string;digest:string;held:boolean;reasons:string[];refusals:string[];changes:Array<{kind:string;name?:string;groupName?:string;personName?:string;row?:{name?:string;email?:string;active?:boolean;fields?:Record<string,string|null>}}>}
 }
 export interface FederationModel {
  setups: Array<{id:string;providerId:string;domain:string;state:string;revision:number}>

@@ -51,10 +51,10 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot,dire
  }await page.setViewportSize({width:1440,height:1000});
  await page.getByRole('link',{name:'Open source dashboard',exact:true}).click();
  const headers={authorization:'Bearer '+source.ingressToken,'content-type':'application/scim+json'};
- await json(await owner.request.post(source.scimBase+'/Users',{headers,data:{schemas:['urn:ietf:params:scim:schemas:core:2.0:User'],externalId:'synthetic-auth-ui-worker',userName:'directory.worker@example.com',displayName:'Sofia Patel',active:true}}),201);
+ await json(await owner.request.post(source.scimBase+'/Users',{headers,data:{schemas:['urn:ietf:params:scim:schemas:core:2.0:User'],externalId:'synthetic-auth-ui-worker',userName:'directory.worker@example.com',displayName:'Sofia Patel',active:true,['urn:ietf:params:scim:schemas:extension:enterprise:2.0:User']:{department:'Customer success'}}}),201);
  const group=await owner.request.post(source.scimBase+'/Groups',{headers,data:{schemas:['urn:ietf:params:scim:schemas:core:2.0:Group'],externalId:'synthetic-auth-ui-team',displayName:'Customer operations',members:[{value:'synthetic-auth-ui-worker',type:'User'}]}});await json(group,201);
  await page.goto(app.origin+'/app/move-in?sourceSnapshot='+group.headers()['x-auth-directory-snapshot']);
- await expect(page.getByRole('region',{name:'Directory change preview'})).toContainText('Sofia Patel');await shoot('directory-source-held');
+ await expect(page.getByRole('region',{name:'Directory change preview'})).toContainText('Sofia Patel');await page.getByText('Source field values',{exact:true}).click();await expect(page.getByText('Customer success',{exact:true})).toBeVisible();await shoot('directory-source-held');
  await page.getByLabel('I approve these exact directory changes',{exact:true}).check();await page.getByLabel('I separately confirm the held changes',{exact:true}).check();
  await page.getByRole('button',{name:'Apply reviewed changes',exact:true}).click();await expect(page.getByText('These observations have been applied. No approval remains pending.',{exact:true})).toBeVisible();await shoot('directory-source-applied');
  await page.locator(`[data-directory-source="${source.sourceId}"]`).getByText('Source settings',{exact:true}).click();

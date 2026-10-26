@@ -2999,7 +2999,7 @@
       "executable": false
     },
     "src/ui/model.d.ts": {
-      "sha256": "3ab531f9b5f812732cb85f7b8b7face76bed1e687358ecd28b9a0910101095ed",
+      "sha256": "dd4f9398535de3b404cd53b26ca1da95d698e7dba5b09da5cf0092ec20e85ba6",
       "executable": false
     },
     "src/ui/pages/access-decisions.ts": {
@@ -3091,7 +3091,7 @@
       "executable": false
     },
     "src/ui/pages/move-in-sources.ts": {
-      "sha256": "e8883bb9de8a9985f09a96b703a3d6ee32ccada0ab2aa9dc66d4ab5a8f6f3260",
+      "sha256": "74d87da975439a9abaa76d84daf9655b074b44047db8080d309de1ee536804a1",
       "executable": false
     },
     "src/ui/pages/move-in.ts": {
@@ -3627,7 +3627,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "2df4321fc6f35161beb42fe4138a52b381b1a7a536b9e9bce92eb06ef33c6e53",
+      "sha256": "4bd8ecf1b01ac70616cf97c61d2b94071cb43e689f021c117bd1613e3ceb45f4",
       "executable": false
     },
     "tests/integration/http.test.mjs": {
