@@ -3215,7 +3215,7 @@
       "executable": false
     },
     "tests/auth/federation-flow.mjs": {
-      "sha256": "851f3a04e205f23d66a5c897c9197cb7ea00add1f04c7f0b3515be6384ea74d1",
+      "sha256": "5b3b2df65b29f90f93bd89a4c995152fe52f9c10d16e6f636ca7bbd6d56084af",
       "executable": false
     },
     "tests/auth/followup-decisions-flow.mjs": {

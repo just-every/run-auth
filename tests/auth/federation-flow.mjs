@@ -37,7 +37,7 @@ export async function federationFlow(t) {
  assert.equal((await post('activate',{id,digest:created.digest,revision:created.revision,confirm:true})).status,409);
  const before=async()=>Promise.all(['oa_operators','oa_external_identities','auth_sessions','auth_upstream_proofs','auth_emails','oa_identity_providers'].map(async table=>(await r.db.prepare('SELECT * FROM '+table+' ORDER BY 1').all()).results));
  const snapshot=await before();
- const start=async()=>{const response=await post('test',{id,subject:'synthetic-auth-federation-7'});assert.equal(response.status,303,await response.clone().text());return {response,url:new URL(response.headers.get('location')),cookie:parked(response)};};
+ const start=async()=>{const response=await r.call('/api/auth/federation/test',{method:'POST',cookie:owner.cookie,headers:{accept:'application/json'},data:{id,subject:'synthetic-auth-federation-7'}});const started=await read(response);return {response,url:new URL(started.redirect),cookie:parked(response)};};
  const callback=async(started,subject='synthetic-auth-federation-7',cookie=owner.cookie+'; '+started.cookie)=>{
   r.upstream.tokens={id_token:await new SignJWT({sub:subject,nonce:started.url.searchParams.get('nonce'),email:'admin@company.example',email_verified:true}).setProtectedHeader({alg:'RS256',kid:jwk.kid}).setIssuer(issuer).setAudience(provider.clientId).setIssuedAt(Math.floor(r.now/1000)).setExpirationTime(Math.floor(r.now/1000)+120).sign(keys.privateKey)};
   return r.call('/auth/oidc/'+provider.id+'/callback?'+new URLSearchParams({state:started.url.searchParams.get('state'),code:'synthetic-auth-federation-9',iss:issuer}),{cookie});
