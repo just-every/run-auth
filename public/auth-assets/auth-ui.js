@@ -327,6 +327,7 @@
         } else payload = {domain: fields.get('domain'), provider: JSON.parse(fields.get('provider')), confirm: fields.has('confirm')}
         const result = await requestJSON(setup.action, payload)
         if (source && result.ingressToken) {
+          setup.reset()
           output.replaceChildren()
           const explanation = document.createElement('p')
           explanation.textContent = 'Copy this scoped SCIM credential now. It is shown once. Endpoint: ' + result.scimBase
@@ -340,7 +341,6 @@
           link.href = organizationPath('/app/move-in')
           link.textContent = 'Open source dashboard'
           output.append(explanation, label, link)
-          setup.reset()
         } else window.location.assign(organizationPath('/app/move-in' + (source && result.snapshotId ? '?sourceSnapshot=' + encodeURIComponent(result.snapshotId) : !source ? '?federation=' + encodeURIComponent(result.id) : '')))
       } catch (error) { output.textContent = error.message; if (button) button.disabled = false }
       return

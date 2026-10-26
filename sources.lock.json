@@ -683,7 +683,7 @@
       "executable": false
     },
     "public/auth-assets/auth-ui.js": {
-      "sha256": "c29126e020db84bb789a105bace81dbcd3900926e58b51af5caf893c396f0b21",
+      "sha256": "b305b564c605543861656e47ce89358a57d062de825c6be6a87a53ea72dd07e2",
       "executable": false
     },
     "public/auth-assets/auth.css": {
@@ -3627,7 +3627,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "c2ff13ac3720c289f8b32f65b5ddeda28e5fc8aa09e77f835d065c93feff7bf2",
+      "sha256": "2df4321fc6f35161beb42fe4138a52b381b1a7a536b9e9bce92eb06ef33c6e53",
       "executable": false
     },
     "tests/integration/http.test.mjs": {
@@ -3635,7 +3635,7 @@
       "executable": false
     },
     "tests/integration/move-in-browser.test.mjs": {
-      "sha256": "1ecaca0d6b4481ce0aef9228dc8806d58fb8d7688a55c11e577cab47b63acaad",
+      "sha256": "d5d3dc3dfa865770c104b8ef569b59d31660169d9d80b61f5f55527056232f92",
       "executable": false
     },
     "tests/integration/refresh-browser.test.mjs": {

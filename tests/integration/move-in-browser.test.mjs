@@ -97,7 +97,7 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
  await page.goto(app.origin+'/app/activity');await expect(page.locator('[data-activity-detail]').first()).toBeVisible();await shoot('activity');
  await confirmEmail();await migrationJourney({app,edge,browser,owner:context,page,shoot});
  await confirmEmail();await campaignJourney({app,providerEdge,browser,owner:context,page,shoot});
- await confirmEmail();await sourceSetupJourney({app,providerEdge,owner:context,page,shoot});
+ await confirmEmail();await sourceSetupJourney({app,providerEdge,owner:context,page,shoot,directory,accessible});
  assert.deepEqual(errors,[],'no browser runtime errors');
  const measured={owner_actions:actions,owner_action_count:actions.length,screens:[...screens],people_admitted:22,invitations_sent:22};
  await writeFile(join(directory,'move-in-measurement.json'),JSON.stringify(measured,null,1)+'\n');
