@@ -1291,7 +1291,7 @@
       "executable": false
     },
     "src/auth/directory-sources/routes.mjs": {
-      "sha256": "b10f798beab4f28105450b55271d621394a6d79e37a94f5c2d8e9702dca24276",
+      "sha256": "35c239035f3d124ebc4b18570c33a91b5e426a3a0fa20702a0b63e4be3f2a4c7",
       "executable": false
     },
     "src/auth/directory-sources/scim.mjs": {
@@ -3635,7 +3635,7 @@
       "executable": false
     },
     "tests/integration/move-in-browser.test.mjs": {
-      "sha256": "619b3ff1da743b740f6252fea6bb48dd23d303cf032d0578da80e274873c731a",
+      "sha256": "bf00137bcd0e6ce0a3ab89eefb31fc661da68c022c552ae0d369c6c08b99ce76",
       "executable": false
     },
     "tests/integration/refresh-browser.test.mjs": {
