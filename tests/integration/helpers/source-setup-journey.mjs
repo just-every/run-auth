@@ -32,7 +32,7 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
  await shoot('federation-tested');
  await page.getByLabel('I approve this tested upstream and these exact subject mappings',{exact:true}).check();
  await page.getByRole('button',{name:'Activate upstream',exact:true}).click();await expect(page.locator(`[data-federation-setup="${setup.id}"]`)).toContainText('active');await shoot('federation-active');
- await page.goto(app.origin+'/app/methods');await expect(page.getByText('Delegated company',{exact:true})).toBeVisible();await shoot('federation-methods');
+ await page.goto(app.origin+'/app/methods');await expect(page.locator('.data-row strong').filter({hasText:/^Delegated company$/})).toBeVisible();await shoot('federation-methods');
  await page.goto(app.origin+'/signin');await expect(page.getByRole('button',{name:'Continue with Delegated company',exact:true})).toBeVisible();await shoot('federation-signin');
  await page.goto(app.origin+'/app/move-in');await page.getByText('Connect a directory source',{exact:true}).click();
  await page.getByLabel('Source name',{exact:true}).fill('Engineering directory');
