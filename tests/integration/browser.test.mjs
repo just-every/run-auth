@@ -83,11 +83,14 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  assert.equal((await member.request.post(app.origin+'/auth/identity/email/request',{data:{email:'restricted@company.example'},headers:{origin:app.origin}})).status(),202);
  const memberLink=await app.link();assert.equal((await member.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:memberLink.searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
  assert.equal((await member.request.get(app.origin+'/app/account',{maxRedirects:0})).status(),200);
- const ownershipChallenge=await context.request.post(app.origin+'/api/auth/domains/challenge',{data:{domain:'company.example'},headers:{origin:app.origin}});
- assert.equal(ownershipChallenge.status(),201);
- const ownership=await ownershipChallenge.json();dnsRecords.set(ownership.label,ownership.value);
- const ownershipVerified=await context.request.post(app.origin+'/api/auth/domains/verify',{data:{domain:ownership.domain,id:ownership.id},headers:{origin:app.origin}});
- assert.equal(ownershipVerified.status(),200);
+ const proveDomain=async domain=>{
+  const ownershipChallenge=await context.request.post(app.origin+'/api/auth/domains/challenge',{data:{domain},headers:{origin:app.origin}});
+  assert.equal(ownershipChallenge.status(),201);
+  const ownership=await ownershipChallenge.json();dnsRecords.set(ownership.label,ownership.value);
+  const ownershipVerified=await context.request.post(app.origin+'/api/auth/domains/verify',{data:{domain,id:ownership.id},headers:{origin:app.origin}});
+  assert.equal(ownershipVerified.status(),200);
+ };
+ await proveDomain('company.example');
  await page.goto(app.origin+'/app/people');
  await rules.getByLabel('Email domain',{exact:true}).fill('company.example');await rules.locator('#required-provider').selectOption('company');
  await rules.getByRole('button',{name:'Require provider',exact:true}).click();await expect(rules.locator('.domain-rule')).toHaveCount(1);
@@ -164,9 +167,10 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
    }
    await page.setViewportSize({width,height:1000});
   }
+  await proveDomain(`team-${width}-${theme}.example.com`);
   await page.getByRole('button',{name:'Allow a domain',exact:true}).click();
   const domain=page.getByRole('dialog',{name:'Allow a domain'});await domain.getByLabel('Domain',{exact:true}).fill(`team-${width}-${theme}.example.com`);
-  await domain.getByRole('button',{name:'Allow a domain',exact:true}).click();await expect(page.getByText(`team-${width}-${theme}.example.com`,{exact:true})).toBeVisible();
+  await domain.getByRole('button',{name:'Allow a domain',exact:true}).click();await expect(page.getByRole('region',{name:'Allowed domains',exact:true}).getByText(`team-${width}-${theme}.example.com`,{exact:true})).toBeVisible();
  }
  await page.goto(app.origin+'/app/methods');
  const rule=page.locator('.domain-rule');await rule.locator('select').selectOption('backup');await rule.getByRole('button',{name:'Save rule'}).click();await expect(rule.locator('select')).toHaveValue('backup');

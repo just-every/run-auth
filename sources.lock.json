@@ -3359,7 +3359,7 @@
       "executable": false
     },
     "tests/integration/browser.test.mjs": {
-      "sha256": "4192610518736cba844f8d165eb58071c6913e58282826aeac5e9921d0cbab9c",
+      "sha256": "d664b2a5a4363ffee082bb903ad22f98f796ae96232c6fa99a14c8d1eedcf7fa",
       "executable": false
     },
     "tests/integration/company-apps-browser.test.mjs": {
