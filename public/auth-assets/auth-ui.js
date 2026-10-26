@@ -91,12 +91,12 @@
     admin_service_conflict: 'This service app or your authority changed. Refresh the page before trying again.',
     admin_service_not_found: 'This service app is no longer available. Refresh the page.',
   }
-  const requestJSON = async (path, payload) => {
+  const requestJSON = async (path, payload, accept) => {
     const response = await fetch(organizationPath(path), {
       method: 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(accept ? {accept} : {}) },
       body: JSON.stringify(payload),
     })
     let body = null
@@ -298,6 +298,17 @@
   })
 
   document.addEventListener('submit', async event => {
+    const federationTest = event.target.closest('form[data-federation-test]')
+    if (federationTest) {
+      event.preventDefault()
+      const fields = new FormData(federationTest), button = event.submitter
+      if (button) button.disabled = true
+      try {
+        const result = await requestJSON(federationTest.action, {id: fields.get('id'), subject: fields.get('subject')}, 'application/json')
+        window.location.assign(result.redirect)
+      } catch (error) { showStatus(error.message, 'error'); if (button) button.disabled = false }
+      return
+    }
     const setup = event.target.closest('form[data-source-create],form[data-federation-create]')
     if (setup) {
       event.preventDefault()

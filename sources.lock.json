@@ -683,7 +683,7 @@
       "executable": false
     },
     "public/auth-assets/auth-ui.js": {
-      "sha256": "9b8f48554ff54c2f3d99ed1c23c0ed0d165afdba29e4121058241bf88843ef60",
+      "sha256": "c29126e020db84bb789a105bace81dbcd3900926e58b51af5caf893c396f0b21",
       "executable": false
     },
     "public/auth-assets/auth.css": {
@@ -1447,7 +1447,7 @@
       "executable": false
     },
     "src/auth/federation/setup-callback.mjs": {
-      "sha256": "6e035e86bed91abc26af5564c0dc2e581b7993ef8c98f9c888185526ffb00a94",
+      "sha256": "00f5577f2ffc9b7fb498019f710280d1a73626ae2a8f6a6a147386b86af7aefc",
       "executable": false
     },
     "src/auth/federation/setup-config.mjs": {
@@ -3087,7 +3087,7 @@
       "executable": false
     },
     "src/ui/pages/move-in-federation.ts": {
-      "sha256": "8005dd55d6bad61960230dc644f038d6ae06f49881a27e7b5c3b24ae3edf3a92",
+      "sha256": "26db41fa1035315457f5c4a85c3d161687a0817c9a7939b32b1beb2b96ac7663",
       "executable": false
     },
     "src/ui/pages/move-in-sources.ts": {
@@ -3627,7 +3627,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "625585b085123d85bfeb115943bb8148b32adcfb4fb9f8faa3de52f5dc150a00",
+      "sha256": "114cdb7701cefc60f2342e3a024990d817ed0583054730695ff2f95e0a26465d",
       "executable": false
     },
     "tests/integration/http.test.mjs": {

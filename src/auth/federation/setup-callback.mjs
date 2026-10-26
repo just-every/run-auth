@@ -44,11 +44,17 @@ async function recordTest(ctx,request,row,provider,principal) {
 }
 export async function beginSetupTest(ctx,request,row,provider,browser) {
  const path=provider.preset==='saml'?`/auth/saml/${provider.id}/start`:`/auth/oidc/${provider.id}/start`;
- const started=new Request(ctx.origin+path,{method:'POST',headers:{origin:ctx.origin,'content-type':'application/json','cf-connecting-ip':request.headers.get('cf-connecting-ip')??'',cookie:request.headers.get('cookie')??''},body:JSON.stringify({returnTo:'/app/move-in'})});
+ const started=new Request(ctx.origin+path,{method:'POST',headers:{origin:ctx.origin,host:new URL(ctx.origin).host,'content-type':'application/json','cf-connecting-ip':request.headers.get('cf-connecting-ip')??'',cookie:request.headers.get('cookie')??''},body:JSON.stringify({returnTo:'/app/move-in'})});
  const response=await protocol(ctx,row,provider,{admit:()=>fail('federation_test_start_only',403)}).fetch(started);
  if(!response)fail('federation_test_unavailable',503);
  const headers=new Headers(response.headers);
- if([302,303].includes(response.status))headers.append('set-cookie',setupCookie(ctx,row.provider_id,row.id+'.'+browser));
+ if([302,303].includes(response.status)){
+  headers.append('set-cookie',setupCookie(ctx,row.provider_id,row.id+'.'+browser));
+  if(request.headers.get('accept')?.includes('application/json')){
+   const redirect=headers.get('location');headers.delete('location');headers.set('content-type','application/json');
+   return new Response(JSON.stringify({redirect}),{status:200,headers});
+  }
+ }
  return new Response(response.body,{status:response.status,headers});
 }
 export async function federationSetupRoute(ctx,request) {
