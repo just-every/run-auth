@@ -453,6 +453,7 @@
     }
     if (form.hasAttribute('data-source-disable')) payload.confirm = payload.confirm === 'true'
     if (form.hasAttribute('data-federation-confirm')) {
+      delete payload.csrf
       payload.confirm = payload.confirm === 'true' || payload.confirm === 'on'
       payload.revision = Number(payload.revision)
     }

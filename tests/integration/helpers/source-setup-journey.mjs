@@ -25,7 +25,8 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
   await route.fulfill({contentType:'text/html',body:`<!doctype html><title>Test identity provider</title><a href="${callback.href.replaceAll('&','&amp;')}">Prove test employee</a>`});
  });
  await page.locator(`[data-federation-setup="${setup.id}"]`).getByLabel('Representative immutable subject').fill('synthetic-auth-campaign-0');
- await page.getByRole('button',{name:'Test representative sign-in',exact:true}).click();await page.getByRole('link',{name:'Prove test employee',exact:true}).click();
+ const testing=page.waitForResponse(response=>response.url().endsWith('/federation/test'));
+ await page.getByRole('button',{name:'Test representative sign-in',exact:true}).click();assert.equal((await testing).status(),303);await page.getByRole('link',{name:'Prove test employee',exact:true}).click();
  await expect(page.getByRole('button',{name:'Activate upstream',exact:true})).toBeVisible();
  const who=await json(await owner.request.get(app.origin+'/api/auth/me'));assert.equal(who.user.email,'owner@example.com','representative callback preserves only the initiating owner session');
  await shoot('federation-tested');
