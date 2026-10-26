@@ -1267,7 +1267,7 @@
       "executable": false
     },
     "src/auth/directory-sources/ingress.mjs": {
-      "sha256": "a5e6bf343d7118d25933344a5a549288a84d10ffa998bc4d8bd819b9ed25033e",
+      "sha256": "1aac9f1fe9f279aca2a98340f95ba4d0e5dabd64bb9d46972f75374b07719e9e",
       "executable": false
     },
     "src/auth/directory-sources/maintenance.mjs": {
@@ -3191,7 +3191,7 @@
       "executable": false
     },
     "tests/auth/directory-source-flow.mjs": {
-      "sha256": "af62bffbf205017b2cb5acef4476446b470212065f0e3c423694f32239a99386",
+      "sha256": "34e772ecd6bec74d85a13be8d3c60d0d6fc80aa83501a680008709f24d4b6223",
       "executable": false
     },
     "tests/auth/directory.test.mjs": {

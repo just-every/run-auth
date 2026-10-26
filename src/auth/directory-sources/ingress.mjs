@@ -75,7 +75,11 @@ export async function directorySourceScim(ctx,request,path=new URL(request.url).
  }else if(!stored||stored.deleted)fail('directory_scim_not_found',404);
  let row=request.method==='DELETE'?{...JSON.parse(stored.document),deleted:true,...(type==='Users'?{active:false}:{memberIds:[]})}:request.method==='PATCH'?patch(type,JSON.parse(stored.document),data):normalize(type,data,id);
  if(type==='Groups')for(const member of row.memberIds)if(!await one(ctx,"SELECT 1 FROM auth_directory_resources WHERE source_id=? AND resource_type='Users' AND external_id=? AND deleted=0",source.id,member))fail('directory_source_unknown_member',409);
- const observed=await stageSnapshot(ctx,source,{complete:false,users:type==='Users'?[row]:[],groups:type==='Groups'?[row]:[]},guard,{resource:{type,id,document:row}});
+ const received=await all(ctx,'SELECT resource_type,external_id,document FROM auth_directory_resources WHERE source_id=?',source.id);
+ const current=new Map(received.map(resource=>[resource.resource_type+':'+resource.external_id,{type:resource.resource_type,row:JSON.parse(resource.document)}]));
+ current.set(type+':'+id,{type,row});
+ const observations=[...current.values()],payload={complete:false,users:observations.filter(resource=>resource.type==='Users').map(resource=>resource.row),groups:observations.filter(resource=>resource.type==='Groups').map(resource=>resource.row)};
+ const observed=await stageSnapshot(ctx,source,payload,guard,{resource:{type,id,document:row}});
  if(request.method==='DELETE')return new Response(null,{status:204,headers:{'cache-control':'no-store','x-auth-directory-snapshot':observed.snapshotId}});
  return json(scimDocument(type,row),request.method==='POST'?201:200,{location:(ctx.issuer??ctx.origin)+DIRECTORY_SOURCES+'/scim/'+source.id+'/'+type+'/'+encodeURIComponent(id),'x-auth-directory-snapshot':observed.snapshotId});
 }

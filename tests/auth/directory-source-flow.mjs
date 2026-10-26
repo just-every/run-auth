@@ -91,8 +91,11 @@ export async function directorySourceFlow(t) {
  assert.equal((await r.call('/api/auth/directory-sources',{headers:{authorization:'Bearer '+push.ingressToken}})).status,401);
  const inbound=await ingress('POST','Users',{schemas:['urn:ietf:params:scim:schemas:core:2.0:User'],externalId:'pushed-user',userName:'synthetic-auth-193@example.com',displayName:'Synthetic pushed',active:true});
  assert.equal(inbound.status,201,await inbound.clone().text());assert.equal(await person('synthetic-auth-193@example.com'),null);
- const inboundSnapshot={sourceId:push.sourceId,snapshotId:inbound.headers.get('x-auth-directory-snapshot')};assert.equal((await preview(inboundSnapshot)).held,true);await approve(inboundSnapshot,{confirmHeld:true});
+ const inboundGroup=await ingress('POST','Groups',{schemas:['urn:ietf:params:scim:schemas:core:2.0:Group'],externalId:'synthetic-auth-pushed-team',displayName:'Synthetic pushed team',members:[{value:'pushed-user',type:'User'}]});assert.equal(inboundGroup.status,201,await inboundGroup.clone().text());
+ const inboundSnapshot={sourceId:push.sourceId,snapshotId:inboundGroup.headers.get('x-auth-directory-snapshot')};assert.equal((await preview(inboundSnapshot)).held,true);await approve(inboundSnapshot,{confirmHeld:true});
  assert.ok(await person('synthetic-auth-193@example.com'));
+ const pushedTeam=await r.db.prepare('SELECT group_id FROM auth_directory_source_groups WHERE source_id=? AND external_id=?').bind(push.sourceId,'synthetic-auth-pushed-team').first();assert.ok(pushedTeam);
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_group_members WHERE group_id=? AND person_id=?').bind(pushedTeam.group_id,(await person('synthetic-auth-193@example.com')).id).first()).n,1);
  const patchBody={schemas:['urn:ietf:params:scim:api:messages:2.0:PatchOp'],Operations:[{op:'replace',path:'displayName',value:'Synthetic renamed'}]};
  const patched=await ingress('PATCH','Users/pushed-user',patchBody);assert.equal(patched.status,200,await patched.clone().text());
  const duplicate=await ingress('PATCH','Users/pushed-user',patchBody);assert.equal(duplicate.headers.get('x-auth-directory-snapshot'),patched.headers.get('x-auth-directory-snapshot'),'duplicate observations have one immutable snapshot');
