@@ -12,6 +12,7 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot}) {
  await page.getByText('Configure an upstream',{exact:true}).click();
  await page.getByLabel('Verified employer domain',{exact:true}).fill('example.com');
  await page.getByLabel('Private provider configuration',{exact:true}).fill(JSON.stringify(provider));
+ await page.getByLabel('I approve preparing this exact upstream and subject map',{exact:true}).check();
  await shoot('federation-setup',undefined,'federation');
  const prepared=page.waitForResponse(response=>response.url().endsWith('/federation/create'));
  await page.getByRole('button',{name:'Prepare upstream',exact:true}).click();const setup=await json(await prepared,201);
