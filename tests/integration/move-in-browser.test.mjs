@@ -30,8 +30,12 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
   await page.getByRole('button',{name:'Confirm my email',exact:true}).click();assert.equal((await requested).status(),202);
   await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();
  };
- const shoot=async(name,check,preserve=false)=>{for(const [width,theme] of views){
-  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});if(!preserve)await page.reload();
+ const shoot=async(name,check,preserve=false)=>{
+ const saved=preserve?await page.evaluate(()=>({open:[...document.querySelectorAll('details')].map((item,index)=>item.open?index:null).filter(index=>index!==null),forms:[...document.querySelectorAll('form[data-campaign-create],form[data-federation-create],form[data-source-create]')].map(form=>({selector:form.hasAttribute('data-campaign-create')?'form[data-campaign-create]':form.hasAttribute('data-federation-create')?'form[data-federation-create]':'form[data-source-create]',fields:[...form.querySelectorAll('input:not([type=hidden]),select,textarea')].map(input=>({value:input.value,type:input.type,checked:input.checked}))}))})):null;
+ for(const [width,theme] of views){
+  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();
+  if(saved){for(const index of saved.open)await page.locator('details').nth(index).evaluate(item=>{item.open=true;});for(const form of saved.forms)for(const [index,item] of form.fields.entries()){const input=page.locator(form.selector).locator('input:not([type=hidden]),select,textarea').nth(index);if(item.type==='checkbox')await input.setChecked(item.checked);else if(item.type==='select-one')await input.selectOption(item.value);else await input.fill(item.value);}}
+
   await expect(page.locator('h1')).toBeVisible();await accessible(`${width} ${theme} ${name}`);if(check)await check(width);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
   for(const control of await page.locator('[data-tooltip]:visible').all()){await page.mouse.move(0,0);await control.blur();await expect(page.getByRole('tooltip')).toBeHidden();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
