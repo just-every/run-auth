@@ -32,6 +32,7 @@ for(const cli of ['terraform','tofu'])test(`${cli} installs the Auth provider an
  const server=createServer(async(req,res)=>{
   try{
    const chunks=[];for await(const b of req)chunks.push(b);const body=Buffer.concat(chunks).toString();
+   r.now=Date.now(); // Match the real CLI's assertion clock for every HTTP exchange.
    const response=await r.call(req.url,{method:req.method,headers:req.headers,...(body?req.headers['content-type']?.startsWith('application/json')?{data:JSON.parse(body)}:{form:Object.fromEntries(new URLSearchParams(body))}:{})});
    requests.push({method:req.method,path:req.url,status:response.status,etag:req.headers['if-match']});
    const text=await response.text();if(req.url==='/oidc/token'&&response.ok)tokens.push(JSON.parse(text).access_token);

@@ -3435,7 +3435,7 @@
       "executable": false
     },
     "tests/auth/terraform-provider.test.mjs": {
-      "sha256": "c4c43a84fe599800863648fee9f5707140a7cea54f9161665ce2bcea04c4d32d",
+      "sha256": "6d9f8782804211339826f291b6aa80d75e605c898ff5faddb7c7ebea3442adb5",
       "executable": false
     },
     "tests/auth/upstream-helpers.mjs": {
