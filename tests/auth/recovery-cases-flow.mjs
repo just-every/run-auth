@@ -61,6 +61,9 @@ export async function helpdeskRecoveryFlow(t) {
  await call('/recovery/enroll',link,email,403);
  assert.equal((await r.call('/auth/passkeys/register/options',{method:'POST',data:{},cookie:email})).status,200,'later administrator reset voids an active incomplete enrollment requirement');
  const afterReset=await register(r,email);assert.equal((await authenticate(r,afterReset.key)).response.status,200);
+ // These are separate recovery attempts; let the existing email cooldown end.
+ r.now+=3600000;
+ for(const [actor,address] of [[owner,'owner'],[manager,'manager'],[helper,'helper']])actor.cookie=cookieOf(await finishProof(r,await requestProof(r,address+'@example.com',actor.cookie)));
  link=await issue();email=await emailSession(r,'employee@example.com');
  await call('/roles/recovery-case',{action:'close',caseId:link.caseId},helper.cookie);
  await call('/recovery/enroll',link,email,403);

@@ -3259,7 +3259,7 @@
       "executable": false
     },
     "tests/auth/directory.test.mjs": {
-      "sha256": "290df01f916a77f5f65cab3920d3e079710eaf46e20ade25bbb5dccb997a7aef",
+      "sha256": "b0eae2b53cbe887971af0de3581608f64c9b773b8e7f5404f9e4b07c4169d2be",
       "executable": false
     },
     "tests/auth/domain-helpers.mjs": {
@@ -3399,7 +3399,7 @@
       "executable": false
     },
     "tests/auth/recovery-cases-flow.mjs": {
-      "sha256": "940e851f38d435ad44442c5f5c0d366ea4e711b2dc01cd7b200c1ea8bc3b03d9",
+      "sha256": "950611a71260de8565ca415413911faf13a33a2f88bf14b2a197af857f78fd7b",
       "executable": false
     },
     "tests/auth/recovery-cli.test.mjs": {
