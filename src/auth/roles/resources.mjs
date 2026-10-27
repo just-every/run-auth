@@ -37,6 +37,7 @@ export async function editGroup(ctx,s,data) {
  return json({ok:true,operationId});
 }
 export async function recoveryCase(ctx,s,data) {
+ data={...data,action:data.caseAction??data.action};
  if(data.action==='open') {
   const personId=String(data.personId??''),guard=await requireRolePermission(ctx,s,'cases.open',{personId,write:true}),reason=String(data.reason??'').trim();
   if(guard.state.rankOf(personId)>0||guard.state.dir.people.get(personId).role!=='member')fail('administrator_recovery_required',403);
@@ -53,9 +54,8 @@ export async function recoveryCase(ctx,s,data) {
  if(review.person_id===s.person_id)fail('distinct_administrator_required',403);
  if(!['verify','close'].includes(data.action))fail('invalid_case_action');
  if(data.action==='verify')assertPermission(guard.state,'recovery.approve',{caseId,write:true});
- const v=data.verification;
- if(data.action==='verify'&&(!v||typeof v.method!=='string'||!v.method.trim()||v.method.length>100||typeof v.reference!=='string'||!v.reference.trim()||v.reference.length>500))fail('case_verification_required');
- const verification=data.action==='verify'?{method:v.method.trim(),reference:v.reference.trim()}:review.verification?JSON.parse(review.verification):null;
+ if(data.action==='verify')fail('manager_attestation_required',403);
+ const verification=review.verification?JSON.parse(review.verification):null;
  const {operationId}=await commit(ctx,s,guard,'roles.case.'+data.action,caseId,{personId:review.person_id,verification},(g,q)=>[
   q(`UPDATE auth_role_cases SET state=?,verification=?,verified_by=?,verified_session_id=?,updated_at=? WHERE id=? AND ${g.clause}`,data.action==='verify'?'verified':'closed',verification?JSON.stringify(verification):null,data.action==='verify'?s.person_id:review.verified_by,data.action==='verify'?s.id:review.verified_session_id,ctx.now(),caseId,...g.args),
  ]);

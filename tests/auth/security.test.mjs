@@ -1,3 +1,4 @@
+import {helpdeskRecoveryFlow} from './recovery-cases-flow.mjs';
 import {verifyDomains} from './domain-helpers.mjs';
 import {scopedUpstreamFlow} from './scoped-upstream-flow.mjs';
 import {identityPairsFlow} from './identity-pairs-flow.mjs';
@@ -84,6 +85,7 @@ test('passkey verifies host, challenge and signature; stale email proof asks onl
  const finished=await r.call('/auth/identity/email/confirm',post({token},attempt.binding));assert.equal(finished.status,200);assert.equal((await r.call('/api/auth/people',{cookie:cookieOf(finished)})).status,200);
 });
 test('recovery waits 72 hours, notifies every session, supports cancellation and distinct admin approval',async t=>{
+ await helpdeskRecoveryFlow(t);
  const r=await fixture(t),owner=await register(r,await emailSession(r,'owner@example.com')),emailCookie=await emailSession(r,'owner@example.com');
  let result=await r.call('/api/auth/recovery/start',post({},emailCookie)),rec=await result.json();assert.equal(result.status,201);
  assert.equal((await (await r.call('/api/auth/notices',{cookie:owner.cookie})).json()).length,1);
@@ -327,7 +329,8 @@ test('organizations isolate every existing HTTP family, admit expiring membershi
  assert.equal(workerView.people[0].canResetFactors,true,'manager/group/app ownership does not confer administrator custody');
  const recovery=await command(a,adminA.cookie,'roles/recovery-case',{action:'open',personId:workerId,reason:'Employee reported a lost device'},201);
  await delegate('help-desk',{view:{people:[workerId],cases:[recovery.caseId]},edit:{people:[workerId],cases:[recovery.caseId]}});
- await command(a,contractor.cookie,'roles/recovery-case',{action:'verify',caseId:recovery.caseId,verification:{method:'employee-in-person',reference:'Recorded support appointment synthetic-auth-6'}});
+ assert.equal((await a.call('/api/auth/directory/edit',post({personId:workerId,set:{manager:(await (await a.call('/api/auth/me',{cookie:adminA.cookie})).json()).user.id}},adminA.cookie))).status,200);
+ assert.equal((await a.call('/api/auth/recovery/case-attest',post({caseId:recovery.caseId},adminA.cookie))).status,200);
  await command(a,contractor.cookie,'roles/reset-factors',{personId:workerId,caseId:recovery.caseId,reason:'Verified replacement enrollment'});
  assert.equal((await a.call('/api/auth/me',{cookie:worker.cookie})).status,401);
  await command(a,adminA.cookie,'organizations/invite',{email:'helpdesk@example.com',name:'Help desk verifier'},201);
