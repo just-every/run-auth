@@ -122,7 +122,7 @@ export async function notificationsSafety(t) {
  employee=await register(r,await emailSession(r,'employee@example.com'));
  await post('/notifications/settings',{...policy,newDevice:true});const old=await signIn(r,employee.key);
  await post('/notifications/settings',{...policy,newDevice:false});
- for(let i=0;i<20;i++){r.now++;await signIn(r,employee.key);}
+ for(let i=0;i<20;i++){r.now+=3001;await signIn(r,employee.key);}
  await post('/notifications/settings',policy);const recent=(await r.mails()).filter(mail=>mail.subject==='Auth sign-in from a new browser').length;
  await signIn(r,employee.key,old.device);assert.equal((await r.mails()).filter(mail=>mail.subject==='Auth sign-in from a new browser').length,recent+1);
  owner=await signInAgain(r,owner,'security-owner@example.com');

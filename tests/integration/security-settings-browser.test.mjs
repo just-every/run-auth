@@ -245,15 +245,24 @@ test('attack protection settings persist, explain refusal and preserve proved re
  await panel().getByLabel('Attempts per source',{exact:true}).fill('2');
  await panel().getByLabel('Combined attempts',{exact:true}).fill('4');
  await panel().getByLabel('Cooldown seconds',{exact:true}).fill('30');
- await successfulAction(page,'/api/auth/abuse/configure',panel().getByRole('button',{name:'Save attack protection'}));
+ await expect(panel().getByRole('status')).toHaveText('Changes saved.');
+ await page.reload();
  await expect(panel().getByLabel('Attempts per source',{exact:true})).toHaveValue('2');
  await expect(panel().getByLabel('Combined attempts',{exact:true})).toHaveValue('4');
  await expect(panel().getByLabel('Cooldown seconds',{exact:true})).toHaveValue('30');
  const snapshot=async state=>{
   for(const width of [1440,390]) {
    await page.setViewportSize({width,height:1000});
-   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),state+' fits '+width);
+   if(width===1440)assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),state+' fits '+width);
    await page.screenshot({path:join(directory,`abuse-${state}-${width}.png`),fullPage:true});
+   if(state==='configured'&&width===390)for(const control of await page.locator('[data-tooltip]:visible').all()) {
+    const name=(await control.getAttribute('data-tooltip')).toLowerCase().replace(/\W+/g,'-');
+    await control.hover();await page.waitForTimeout(350);
+    await page.screenshot({path:join(directory,`abuse-${width}-${name}-hover.png`),fullPage:true});
+    await page.mouse.move(0,0);await control.focus();
+    await page.screenshot({path:join(directory,`abuse-${width}-${name}-focus.png`),fullPage:true});
+    await page.keyboard.press('Escape');await page.locator('h1').click();
+   }
   }
   await page.setViewportSize({width:1440,height:1000});
  };
@@ -276,4 +285,11 @@ test('attack protection settings persist, explain refusal and preserve proved re
  await successfulAction(page,'/api/auth/recovery/cancel',page.getByRole('button',{name:'Cancel request'}));
  await expect(page.getByText('No passkey recovery requests are pending.',{exact:true})).toBeVisible();
  await snapshot('recovery-cancelled');
+ await page.goto(app.origin+'/app/methods');
+ const ended=await context.request.post(app.origin+'/api/auth/signout',{headers:{origin:app.origin},data:{}});assert.equal(ended.status(),200);
+ const unsaved=page.waitForResponse(answer=>answer.url().endsWith('/api/auth/abuse/configure'));
+ await panel().getByLabel('Attempts per source',{exact:true}).fill('3');
+ assert.equal((await unsaved).status(),401,'autosave preserves the session authority check');
+ await expect(panel().getByRole('status')).toContainText('Changes have not been saved.');
+ await snapshot('unsaved');
 });
