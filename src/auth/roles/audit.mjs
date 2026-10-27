@@ -1,10 +1,12 @@
+import {auditPage} from '../audit/query.mjs';
 import {all,one,json,fail} from '../core.mjs';
 import {requireLocalEmail} from '../local-email.mjs';
 import {roleState} from './state.mjs';
 import {assertPermission,permitted,roleGuard} from './policy.mjs';
 import {commit} from './commit.mjs';
 
-export async function auditRead(ctx,s,path) {
+export async function auditRead(ctx,s,path,request) {
+ if(!path.endsWith('/export'))return json(await auditPage(ctx,s,request));
  const state=await roleState(ctx,s),exporting=path.endsWith('/export'),permission=exporting?'audit.export':'audit.view';
  assertPermission(state,permission,{write:false});
  // Scoped readers get the event summary only. Exact plans can include grants

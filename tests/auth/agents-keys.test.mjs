@@ -172,6 +172,25 @@ test('admin service apps use private-key OAuth for scoped group and assignment w
  assert.equal((await call('/groups',{headers:{authorization:'Preparer synthetic-auth-2'}})).status,401);
  assert.equal((await r.call('/oidc/userinfo',{headers:{authorization:'Bearer '+access.access_token}})).status,401,'machine tokens carry no interactive sign-in proof');
 
+ // A business event about an allowed app or group must not disclose a
+ // related person or group outside the machine credential's resource set.
+ await r.person('log-inside','synthetic-auth-21@example.com');await r.person('log-outside','synthetic-auth-22@example.com');
+ for(const id of ['log-inside','log-outside']) {
+  assert.equal((await r.call('/api/auth/groups/add',post({groupId:group.id,personId:id},owner.cookie))).status,200);
+  assert.equal((await r.call('/api/auth/company-apps/assign',post({appId:app.id,principalType:'person',principalId:id},owner.cookie))).status,200);
+ }
+ const logService=await(await create({name:'Scoped event reader',scopes:['logs.read'],resources:{people:['log-inside'],groups:[group.id],apps:[app.id]}})).json();
+ const logToken=(await(await grant(logService)).json()).access_token;
+ const business=(await(await call('/logs?limit=100',{token:logToken})).json()).items;
+ const membership=(await r.db.prepare("SELECT a.id,d.detail FROM auth_activity a JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event IN ('app_assigned','group_member_added') ORDER BY a.id").all()).results;
+ const insideIds=membership.filter(row=>JSON.parse(row.detail).person==='synthetic-auth-21@example.com').map(row=>row.id);
+ const outsideIds=membership.filter(row=>JSON.parse(row.detail).person==='synthetic-auth-22@example.com').map(row=>row.id);
+ assert.equal(insideIds.length,2);assert.equal(outsideIds.length,2);
+ for(const id of insideIds)assert.ok(business.some(row=>row.id===id),'supported related person event remains visible');
+ for(const id of outsideIds)assert.ok(!business.some(row=>row.id===id),'restricted related person event is excluded');
+ assert.ok(!business.some(row=>/role|factor|recovery|key|credential|service_app/.test(row.event)),'identity and credential events remain excluded');
+ assert.equal((await r.call('/api/auth/audit',{headers:{authorization:'Bearer '+logToken}})).status,401,'machine logs never confer interactive audit custody');
+
  const narrowed=(await (await create({name:'Narrow reconciler',resources:{groups:[group.id],apps:[],people:[]}})).json()),narrowToken=(await(await grant(narrowed)).json()).access_token;
  assert.equal((await call('/groups',{token:narrowToken,method:'POST',data:{name:'Outside its grant'}})).status,403);
  assert.equal((await call(`/assignments/${app.id}/group/${group.id}`,{token:narrowToken,method:'DELETE',headers:{'if-match':(await call('/groups',{token:narrowToken})).headers.get('etag')}})).status,403);

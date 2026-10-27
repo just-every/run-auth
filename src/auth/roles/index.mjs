@@ -54,7 +54,7 @@ export async function roleRead(ctx,request,path) {
  const s=await requireSession(ctx,request);requireHardware(s);
  if(path==='/api/auth/roles')return json(await roleModel(ctx,s));
  if(!ROLE_READS.includes(path))fail('not_found',404);
- if(path.startsWith('/api/auth/roles/audit'))return auditRead(ctx,s,path);
+ if(path.startsWith('/api/auth/roles/audit'))return auditRead(ctx,s,path,request);
  const state=await roleState(ctx,s),exporting=path==='/api/auth/roles/export',permission=exporting?'people.export':'people.view';
  assertPermission(state,permission,{write:false});
  const query=new URL(request.url).searchParams,personId=query.get('personId'),groupId=query.get('groupId'),q=(query.get('q')??'').trim().toLowerCase();

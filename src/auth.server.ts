@@ -112,6 +112,6 @@ export async function authResponse(request: Request, original: Bindings, executi
  const setup = env.AUTH_ORGANIZATION_ID ? null : await firstRunResponse(request, env, accounts, { theme })
  if (setup) return setup
  if (path === '/') return redirect('/app/account')
- if (['people', 'move-in', 'agents', 'apps', 'activity', 'permissions', 'erasure'].includes(page) && !model.isAdmin) return new Response(renderAuthPage({ ...model, page: 'account', notice: 'Sign in with your passkey to administer Auth.' }), { status: 403, headers: html('', 'GET').headers })
+ if (['people', 'move-in', 'agents', 'apps', 'activity', 'permissions', 'erasure'].includes(page) && !model.isAdmin && !(page === 'activity' && model.canReadAudit)) return new Response(renderAuthPage({ ...model, page: 'account', notice: 'Sign in with your passkey to administer Auth.' }), { status: 403, headers: html('', 'GET').headers })
  return html(renderAuthPage(model), request.method)
 }

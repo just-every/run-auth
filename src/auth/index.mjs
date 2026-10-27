@@ -1,5 +1,6 @@
 import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
+import {auditPage} from './audit/query.mjs';
 import {DIRECTORY_SOURCES,isDirectorySourceAction,directorySourceRead,directorySourceAction,directorySourceScim} from './directory-sources/routes.mjs';
 import {FEDERATION_READ,isFederationAction,federationRead,federationAction,federationSetupRoute} from './federation/setup.mjs';
 import {sendDelivery} from './delivery/send.mjs';
@@ -89,6 +90,7 @@ function scopedRuntime(options) {
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
     if(path==='/api/auth/abuse')return await abuseRead(ctx,request);
+    if(path==='/api/auth/audit')return json(await auditPage(ctx,await requireSession(ctx,request),request));
     if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);
     if(path===FEDERATION_READ)return await federationRead(ctx,request);
     if(path===CAMPAIGNS||path===CAMPAIGNS+'/export.csv')return await campaignRead(ctx,request);
