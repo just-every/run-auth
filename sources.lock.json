@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "9d522d027e209726c0aee9a793fc188598658add1cf61d3dbe2fda8118973972",
+      "sha256": "2c3f5a3f37d0f47431e4bc21a272a1ea8e9a8ab20c41ba270b80684b9ec751f1",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "f3d235454fde29aa39a40c5c4b7399b3ef02b7260fcb7c2053dcbed2cf184a1a",
+      "sha256": "16dd877248301763c5582e30bb4e1e9e110b852dcd5929a6677bbec4a6038b0a",
       "executable": false
     },
     "deploy-site.json": {
@@ -1863,7 +1863,7 @@
       "executable": false
     },
     "src/auth/recovery-cases/index.mjs": {
-      "sha256": "e3745e835f4531665743e48bc397071fb4dfd87ed712b01b299a0f54cb1d62fb",
+      "sha256": "973e0ce9dd01fd5814cc72454dc280c16773c35b4be7ec8af86f47453872dce2",
       "executable": false
     },
     "src/auth/recovery-notices.mjs": {
@@ -1963,7 +1963,7 @@
       "executable": false
     },
     "src/auth/roles/factors.mjs": {
-      "sha256": "77aab8359873bb5d73fd8831fa5df145d6493efab5acb8c4c1b772fe9696bc91",
+      "sha256": "29e46bae84a92e5645f05446f7d7798c8fb015a98894991a10efd52efcb3354d",
       "executable": false
     },
     "src/auth/roles/index.mjs": {
@@ -1991,7 +1991,7 @@
       "executable": false
     },
     "src/auth/roles/resources.mjs": {
-      "sha256": "cbcc240897bc5984596ed98c3e5b29049f5bb0d34188dfdfd385dcb7e33d1b45",
+      "sha256": "b7ed206c930b9f01f113eb89b87805427d8d7ed65cd27f91145ffd83108b09b8",
       "executable": false
     },
     "src/auth/roles/state.mjs": {
@@ -3399,7 +3399,7 @@
       "executable": false
     },
     "tests/auth/recovery-cases-flow.mjs": {
-      "sha256": "bbfcc20757979caea6036cfb06e7f6e918d4a3f6285a4f9717b1a49e4797b163",
+      "sha256": "940e851f38d435ad44442c5f5c0d366ea4e711b2dc01cd7b200c1ea8bc3b03d9",
       "executable": false
     },
     "tests/auth/recovery-cli.test.mjs": {

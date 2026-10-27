@@ -41,6 +41,7 @@ export async function cancelCase(ctx,request,data) {
  const guard=roleGuard(ctx,s,state);
  await commit(ctx,s,guard,'recovery.case.cancelled',review.id,{personId:s.person_id},(g,q)=>[
   q(`UPDATE auth_role_cases SET state='closed',updated_at=? WHERE id=? AND ${g.clause}`,ctx.now(),review.id,...g.args),
+  q(`UPDATE auth_recovery_enrollments SET cancelled_at=COALESCE(cancelled_at,?) WHERE case_id=? AND completed_at IS NULL AND ${g.clause}`,ctx.now(),review.id,...g.args),
  ]);
  return json({ok:true});
 }
@@ -70,7 +71,9 @@ export async function redeemEnrollment(ctx,request,data) {
  return json({ok:true,redirect:'/app/methods'});
 }
 export async function enrollmentGuard(ctx,s) {
- const link=await one(ctx,'SELECT * FROM auth_recovery_enrollments WHERE person_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1',s.person_id);
+ // A closed case or a superseding person version ends this requirement. An
+ // expired link on a current open recovery still fails closed at authority.
+ const link=await one(ctx,`SELECT e.* FROM auth_recovery_enrollments e JOIN auth_role_cases c ON c.id=e.case_id WHERE e.person_id=? AND e.person_version=? AND e.cancelled_at IS NULL AND c.state='verified' ORDER BY e.created_at DESC,e.rowid DESC LIMIT 1`,s.person_id,s.person_version);
  if(!link||link.completed_at)return null;
  if(!link.consumed_at||link.enrollment_session_id!==s.id)fail('recovery_link_required',403);
  return enrollmentAuthority(ctx,s,link);

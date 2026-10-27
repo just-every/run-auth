@@ -58,6 +58,7 @@ export async function recoveryCase(ctx,s,data) {
  const verification=review.verification?JSON.parse(review.verification):null;
  const {operationId}=await commit(ctx,s,guard,'roles.case.'+data.action,caseId,{personId:review.person_id,verification},(g,q)=>[
   q(`UPDATE auth_role_cases SET state=?,verification=?,verified_by=?,verified_session_id=?,updated_at=? WHERE id=? AND ${g.clause}`,data.action==='verify'?'verified':'closed',verification?JSON.stringify(verification):null,data.action==='verify'?s.person_id:review.verified_by,data.action==='verify'?s.id:review.verified_session_id,ctx.now(),caseId,...g.args),
+  q(`UPDATE auth_recovery_enrollments SET cancelled_at=COALESCE(cancelled_at,?) WHERE case_id=? AND completed_at IS NULL AND ${g.clause}`,ctx.now(),caseId,...g.args),
  ]);
  return json({ok:true,operationId});
 }

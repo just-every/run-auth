@@ -31,8 +31,8 @@ export async function resetFactors(ctx,s,data) {
   q(`UPDATE oa_operators SET version=version+1 WHERE id=? AND ${g.clause}`,personId,...g.args),
   q(`UPDATE auth_sessions SET revoked_at=COALESCE(revoked_at,?) WHERE person_id=? AND ${g.clause}`,ctx.now(),personId,...g.args),
   q(`UPDATE auth_recoveries SET cancelled_at=? WHERE person_id=? AND cancelled_at IS NULL AND completed_at IS NULL AND ${g.clause}`,ctx.now(),personId,...g.args),
+  q(`UPDATE auth_recovery_enrollments SET cancelled_at=COALESCE(cancelled_at,?) WHERE person_id=? AND completed_at IS NULL AND ${g.clause}`,ctx.now(),personId,...g.args),
   ...(review?[
-   q(`UPDATE auth_recovery_enrollments SET cancelled_at=? WHERE person_id=? AND completed_at IS NULL AND ${g.clause}`,ctx.now(),personId,...g.args),
    q(`INSERT INTO auth_recovery_enrollments(case_id,person_id,person_version,issuer_id,issuer_session_id,token_hash,created_at,expires_at) SELECT ?,?,version,?,?,?,?,? FROM oa_operators WHERE id=? AND ${g.clause}`,review.id,personId,s.person_id,s.id,tokenHash,ctx.now(),ctx.now()+HOUR,personId,...g.args),
   ]:[]),
  ]);
