@@ -39,7 +39,9 @@ export async function nativeSessionControl(t) {
  const receipt=(await operations(r,desk.cookie,'employee')).find(op=>op.id===result.operationId);
  assert.equal(receipt.actorId,'desk');assert.equal(receipt.reason,'Employee reported a misplaced shared laptop');
  assert.equal(receipt.nativeSessionsEnded,result.nativeSessionsEnded);assert.ok(receipt.createdAt);
- assert.ok(receipt.logout.delivered>0,'the operation reports the native logout acknowledgment');
+ assert.equal(receipt.logout.delivered,1,'the operation reports the native logout acknowledgment');
+ await r.db.prepare('DELETE FROM auth_logout_deliveries WHERE id LIKE ? AND finished_at IS NOT NULL').bind(result.operationId+':%').run();
+ assert.deepEqual((await operations(r,desk.cookie,'employee')).find(op=>op.id===result.operationId).logout,receipt.logout,'the linked-app receipt retains terminal counts independently of its transient queue');
  const audit=await (await r.call('/api/auth/roles/audit',{cookie:owner.cookie})).json();
  assert.ok(audit.events.some(event=>event.actor_id==='desk'&&event.subject_id==='employee'&&JSON.parse(event.detail??'{}').reason===receipt.reason),'the public audit records the accountable actor and their reason');
  const resumed=await authenticate(r,employee.key);assert.equal(resumed.response.status,200,await resumed.response.clone().text());

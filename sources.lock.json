@@ -2050,6 +2050,10 @@
       "sha256": "2f79669f9a6c443eabf94c8e26786a104acba88770647721cf4414e9d420abda",
       "executable": false
     },
+    "src/auth/session-control/outcomes.mjs": {
+      "sha256": "850192da58bbd8692370011b02f9ee823d36c7581543201d4fc5fe983aa8395b",
+      "executable": false
+    },
     "src/auth/session-control/statements.mjs": {
       "sha256": "a8c61dddb01947b02792b85d1d3b9a6abd82060b9f038321c2b1d89eb723aacb",
       "executable": false
@@ -3519,7 +3523,7 @@
       "executable": false
     },
     "tests/auth/session-control-native.mjs": {
-      "sha256": "8f577cfe2a3807750ad408ec85269d219ad04c77486d8d263e27d25ae1e16a6b",
+      "sha256": "80fbc7fdaa64dbf96c91056bae38518b95f011f4f2338eca6a73300c2cb5cb91",
       "executable": false
     },
     "tests/auth/session-control.test.mjs": {
