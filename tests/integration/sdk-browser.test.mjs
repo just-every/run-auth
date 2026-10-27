@@ -108,7 +108,11 @@ test('installed Hono browser quickstart enrolls independent employer memberships
       await tab.goto(login.headers().location);
       await tab.getByRole('button',{name:'Allow offline access',exact:true}).click();
       await expect(tab.getByRole('heading',{name:'Callback held for delivery'})).toBeVisible();
-      assert.ok(new URL(callback).searchParams.get('code'),'Auth issued a real consent code');
+      const delivered = new URL(callback), requested = new URL(login.headers().location);
+      assert.ok(delivered.searchParams.get('code'),'Auth issued a real consent code');
+      assert.equal(delivered.searchParams.get('state'),requested.searchParams.get('state'),'the held callback belongs to this live login transaction');
+      assert.equal(delivered.searchParams.get('iss'),configurations.find(org=>org.id===id).issuer);
+      assert.equal(delivered.searchParams.has('error'),false);
       return callback;
     } finally { await tab.close(); }
   };
@@ -172,6 +176,7 @@ test('installed Hono browser quickstart enrolls independent employer memberships
   assert.equal((await appPost('/switch',{organization:'a'})).status(),303);
   assert.equal((await json(await api())).subject,first.subject,'B revocation preserves independent A authority');
   const refusedSwitch = await appPost('/switch',{organization:'b'}); assert.notEqual(refusedSwitch.status(),303);
+  assert.equal((await json(await api())).subject,first.subject,'a refused switch preserves the previously authorized employer');
   await begin('b'); await finish();
   const endedCallback = await consentCallback('a');
   const endedCookie = (await employee.cookies(origin)).find(cookie => cookie.name === 'auth_quickstart');
