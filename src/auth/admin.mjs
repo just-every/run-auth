@@ -1,4 +1,5 @@
 import {abuseModel} from './abuse/index.mjs';
+import {recoveryCasesModel} from './recovery-cases/index.mjs';
 import {deliveryModel} from './delivery/routes.mjs';
 import {notificationsModel,notifySecurity} from './notifications/index.mjs';
 import {ownershipModel,requireVerifiedDomain} from './domains/ownership.mjs';
@@ -71,6 +72,7 @@ export async function model(ctx,request,page='account') {
  if(page==='methods'&&result.isAdmin){result.delivery=await deliveryModel(ctx);result.abuse=await abuseModel(ctx);}
  if(page==='account'||page==='activity')result.notifications=await notificationsModel(ctx,request);
  if(page==='account')result.followup=await (await followupRead(ctx,request)).json();
+ if(['account','people','roles'].includes(page))result.recoveryCases=await recoveryCasesModel(ctx,s);
  if(page==='roles') {
   try { result.roles=await roleModel(ctx,s); }
   catch(error) {if(!(error instanceof AuthError)||error.status!==403)throw error;result.roleError=error.message;}

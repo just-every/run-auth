@@ -12,7 +12,7 @@ const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 
 test('directory journey: an administrator onboards a worker, edits and bulk-moves people with a preview, sets a group rule, terminates and rehires, at desktop/mobile in both themes',{timeout:180000},async t=>{
  const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
- browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
+ browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic','--no-sandbox'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),primary=page;
  page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
@@ -110,9 +110,9 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  assert.deepEqual(errors,[]);
 });
 
-test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',{timeout:180000},async t=>{
+test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',{timeout:300000},async t=>{
  const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
- browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
+ browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic','--no-sandbox'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
@@ -166,20 +166,51 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const appConfig=await post('/api/auth/company-apps/create',{name:'Engineering documents',entityId:'https://documents.example.com',acsUrl:'https://documents.example.com/acs'},201);
  await page.goto(app.origin+'/app/roles');
  const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');await definition.getByText('Choose permissions',{exact:true}).click();
- for(const id of ['roles.view','people.view','people.factors.reset','groups.view','apps.view','apps.assign','admin-api.manage'])await definition.locator(`input[value="${id}"]`).check();
+ for(const id of ['roles.view','people.view','people.factors.reset','cases.open','groups.view','apps.view','apps.assign','admin-api.manage'])await definition.locator(`input[value="${id}"]`).check();
  await definition.getByRole('button',{name:'Preview role'}).click();await expect(definition.locator('[data-role-apply]')).toBeVisible();await shoot('role-preview');await saved(()=>definition.locator('[data-role-apply]').click());
  const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.locator('[name=roleId]').selectOption({label:'Engineering support'});
  await grant.locator('[name="view.groups"]').selectOption(group.id);await grant.locator('[name="edit.groups"]').selectOption(group.id);
  await grant.locator('[name="view.apps"]').selectOption(appConfig.id);await grant.locator('[name="edit.apps"]').selectOption(appConfig.id);
  await grant.getByRole('button',{name:'Preview delegation'}).click();await expect(grant.locator('[data-role-preview]')).toContainText('sam@northwind.example.com');await expect(grant.locator('[data-role-preview]')).toContainText('people.factors.reset');await expect(grant.locator('[data-role-preview]')).toContainText(group.id);await shoot('delegation-preview');await saved(()=>grant.locator('[data-role-apply]').click());
- await helperPage.goto(app.origin+'/app/roles');await expect(helperPage.getByRole('heading',{name:'Scoped factor resets'})).toBeVisible();await shoot('scoped-help-desk',helperPage);
+ await helperPage.goto(app.origin+'/app/roles');await expect(helperPage.getByRole('heading',{name:'Open an employee recovery case'})).toBeVisible();await shoot('scoped-help-desk',helperPage);
  const {generateKeyPair,exportJWK,SignJWT}=await import('jose'),pair=await generateKeyPair('ES256'),jwk={...await exportJWK(pair.publicKey),kid:'synthetic-auth-5',alg:'ES256',use:'sig'};
  const credential=helperPage.locator('[data-admin-service-create]');await credential.getByLabel('App name',{exact:true}).fill('Engineering assignment service');await credential.getByLabel('Purpose',{exact:true}).fill('Manage assignments only for the approved engineering app and workforce group');await expect(credential.getByLabel('Accountable owner',{exact:true})).toHaveValue(helper.id);
  await credential.getByLabel('Public signing keys (JWKS JSON)',{exact:true}).fill(JSON.stringify({keys:[jwk]}));await credential.locator('input[value="assignments.manage"]').check();await credential.getByLabel('Resource limits (JSON)',{exact:true}).fill(JSON.stringify({people:[worker.id],groups:[group.id],apps:[appConfig.id]}));
  const localExpiry=await helperPage.evaluate(()=>{const expiry=new Date(Date.now()+86400000);return new Date(expiry.getTime()-expiry.getTimezoneOffset()*60000).toISOString().slice(0,16);});await credential.getByLabel('Expires (your local time)',{exact:true}).fill(localExpiry);
  const createdCredential=helperPage.waitForResponse(response=>response.url().endsWith('/api/auth/admin-service-apps/create'));await saved(()=>credential.getByRole('button',{name:'Create service app',exact:true}).click(),helperPage);assert.equal((await createdCredential).status(),201);await expect(helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true})).toBeVisible();await shoot('scoped-credential',helperPage);
  const revokedCredential=helperPage.waitForResponse(response=>response.url().endsWith('/api/auth/admin-service-apps/revoke'));await saved(()=>helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true}).click(),helperPage);assert.equal((await revokedCredential).status(),200);await expect(helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true})).toHaveCount(0);await shoot('scoped-credential-revoked',helperPage);
- await helperPage.getByLabel('Verification and reason',{exact:true}).fill('Employee confirmed the request with the support desk');await saved(()=>helperPage.getByRole('button',{name:'Reset factors'}).click(),helperPage);assert.equal((await workerContext.request.get(app.origin+'/api/auth/me')).status(),401);
+ // Recover this same employee through an exact case, the manager's real
+ // session, fresh employee email proof and native WebAuthn enrollment.
+ const openedAt=Date.now(),ownerId=(await (await context.request.get(app.origin+'/api/auth/me')).json()).user.id;
+ await post('/api/auth/directory/edit',{personId:worker.id,set:{manager:ownerId}});
+ await helperPage.getByLabel('Case reason',{exact:true}).fill('Employee lost every factor');
+ const opening=helperPage.waitForResponse(r=>r.url().endsWith('/roles/recovery-case')).then(async response=>{assert.equal(response.status(),201);return response.json();});
+ await saved(()=>helperPage.getByRole('button',{name:'Open recovery case',exact:true}).click(),helperPage);
+ const recovery=await opening;assert.ok(recovery.caseId);
+ const scope={view:{groups:[group.id],cases:[recovery.caseId]},edit:{groups:[group.id],cases:[recovery.caseId]}};
+ const helpdeskGrant=await post('/api/auth/roles/preview',{kind:'grant',personId:helper.id,roleId:'help-desk',resources:scope});await post('/api/auth/roles/apply',{previewId:helpdeskGrant.previewId});
+ await page.goto(app.origin+'/app/account');
+ await saved(()=>page.getByRole('button',{name:'Attest employee identity',exact:true}).click());
+ const proof=async(name,target)=>{await target.setViewportSize({width:1440,height:1000});await expect(target.locator('h1')).toBeVisible();assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits desktop');for(const control of await target.locator('[data-tooltip]:visible').all()){await target.mouse.move(0,0);await control.blur();await target.keyboard.press('Escape');await expect(target.getByRole('tooltip')).toBeHidden();await control.evaluate(el=>{const tip=document.querySelector('[role=tooltip]');el.addEventListener('mouseenter',()=>{el.dataset.hoverStarted=String(performance.now());},{once:true});const observer=new MutationObserver(()=>{if(!tip.hidden){el.dataset.hoverDelay=String(performance.now()-Number(el.dataset.hoverStarted));observer.disconnect();}});observer.observe(tip,{attributes:true,attributeFilter:['hidden']});});await control.hover();await expect(target.getByRole('tooltip')).toBeVisible();assert.ok(Number(await control.getAttribute('data-hover-delay'))>=250,'tooltip waits about 300 ms after pointer entry');await target.mouse.move(0,0);await control.focus();assert.equal(await target.getByRole('tooltip').isVisible(),true);await target.keyboard.press('Escape');await control.blur();}for(const theme of ['light','dark']){await target.emulateMedia({colorScheme:theme});for(const width of [1440,390]){await target.setViewportSize({width,height:1000});await target.screenshot({path:join(directory,`recovery-${name}-${width}-${theme}.png`),fullPage:true});}}await target.setViewportSize({width:1440,height:1000});await target.emulateMedia({colorScheme:'light'});};
+ await proof('manager-attested',page);
+ await helperPage.reload();await helperPage.getByLabel('Reset reason',{exact:true}).fill('Current manager attested employee identity');
+ await saved(()=>helperPage.getByRole('button',{name:'Reset verified factors',exact:true}).click(),helperPage);
+ assert.equal((await workerContext.request.get(app.origin+'/api/auth/me')).status(),401);
+ await proof('helpdesk-reset',helperPage);
+ const headers={'x-rer-dev-key':app.vars.RER_DEV_KEY},listing=await(await app.get('/__dev/outbox',headers)).text();
+ assert.equal((await app.get('/__dev/outbox')).status,404,'outbox refuses ungated access');
+ const bodies=[];for(const match of listing.matchAll(/href="(\/__dev\/outbox\?message=[^"]+)"/g))bodies.push(await(await app.get(match[1].replaceAll('&amp;','&'),headers)).text());
+ const notice=bodies.find(body=>body.includes('Auth recovery enrollment link')&&body.includes('erin@northwind.example.com'));assert.ok(notice,'employee enrollment notice reaches gated native outbox');
+ assert.ok(bodies.some(body=>body.includes('Auth employee recovery reset')&&body.includes(app.vars.OWNER_EMAIL)&&body.includes(recovery.caseId)),'current manager receives reset notice');
+ const href=notice.replaceAll('&amp;','&').match(/http:\/\/[^\s<"]+\/app\/account#caseId=[^\s<"]+/)?.[0];assert.ok(href,'notice has case-bound enrollment link');
+ await post('/auth/identity/email/request',{email:'erin@northwind.example.com'},202,workerContext);
+ await post('/auth/identity/email/confirm',{token:(await app.link()).searchParams.get('token')},200,workerContext);
+ await workerPage.goto(href);await expect(workerPage.getByLabel('Recovery case',{exact:true})).toHaveValue(recovery.caseId);
+ await proof('employee-link',workerPage);
+ await workerPage.getByRole('button',{name:'Use enrollment link',exact:true}).click();await expect(workerPage).toHaveURL(app.origin+'/app/methods');
+ const enrolled=workerPage.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await saved(()=>workerPage.getByRole('button',{name:'Register a passkey',exact:true}).click(),workerPage);assert.equal((await enrolled).status(),200);
+ assert.ok(Date.now()-openedAt<3600000,'opening through new passkey finishes within one hour');
+ await proof('passkey-enrolled',workerPage);
  await page.goto(app.origin+'/app/permissions');
  const apiForm=page.locator('[data-resource-form=register]');await apiForm.getByLabel('Company app').selectOption(appConfig.id);await apiForm.getByLabel('API name').fill('Documents API');await apiForm.getByLabel('Audience').fill('https://documents.example.com/api');await apiForm.getByLabel('Resource ID',{exact:true}).fill('document:budget');await saved(()=>apiForm.getByRole('button',{name:'Register API'}).click());
  const assignment=page.locator('[data-resource-form=assign]');await assignment.getByLabel('Group').selectOption(group.id);await saved(()=>assignment.getByRole('button',{name:'Assign role to group'}).click());
