@@ -11,9 +11,10 @@ export async function createRun(ctx,a,c,personId,{eventId=null,dry=false,guard=n
  return id;
 }
 // A native membership event only prepares work. It never grants consent to run.
-export async function automationEvent(ctx,type,subject,data,eventId) {
+export async function automationEvent(ctx,type,subject,data,eventId,occurredAt=ctx.now()) {
  if(type!=='group.member_added'||subject.type!=='person')return;
- for(const row of await all(ctx,'SELECT a.id FROM auth_automations a JOIN auth_automation_connections c ON c.id=a.id WHERE c.group_id=? AND c.revoked_at IS NULL',data.group??'')) {
+ if(!await one(ctx,"SELECT 1 FROM oa_operators WHERE id=? AND status IN ('active','invited')",subject.id))return;
+ for(const row of await all(ctx,'SELECT a.id FROM auth_automations a JOIN auth_automation_connections c ON c.id=a.id WHERE c.group_id=? AND c.revoked_at IS NULL AND a.updated_at<=?',data.group??'',occurredAt)) {
   const {a,c}=await loadAutomation(ctx,row.id);
   await createRun(ctx,a,c,subject.id,{eventId});
  }
@@ -67,6 +68,8 @@ export async function executeRun(ctx,id,request=null) {
  return one(ctx,'SELECT id,state,error FROM auth_automation_runs WHERE id=?',id);
 }
 export async function maintainAutomations(ctx) {
+ const missed=await all(ctx,`SELECT e.id,e.subject,e.data,e.occurred_at FROM auth_events e WHERE e.type='group.member_added' AND EXISTS(SELECT 1 FROM oa_operators p WHERE p.id=json_extract(e.subject,'$.id') AND p.status IN ('active','invited')) AND EXISTS(SELECT 1 FROM auth_automations a JOIN auth_automation_connections c ON c.id=a.id WHERE c.revoked_at IS NULL AND c.group_id=json_extract(e.data,'$.group') AND a.updated_at<=e.occurred_at AND NOT EXISTS(SELECT 1 FROM auth_automation_runs r WHERE r.automation_id=a.id AND r.event_id=e.id)) ORDER BY e.seq LIMIT 100`);
+ for(const e of missed)await automationEvent(ctx,'group.member_added',JSON.parse(e.subject),JSON.parse(e.data),e.id,e.occurred_at);
  for(const r of await all(ctx,"SELECT * FROM auth_automation_runs WHERE state='running' AND lease_until<=?",ctx.now()))await finish(ctx,r,'uncertain','interrupted_remote_effect_unverified');
  for(const r of await all(ctx,"SELECT id FROM auth_automation_runs WHERE state='approved' ORDER BY created_at LIMIT 10")) {
   try{await executeRun(ctx,r.id);}catch{/* Authority loss is retained as an invalidated run. */}

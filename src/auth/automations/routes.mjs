@@ -1,3 +1,4 @@
+import {syncObligations} from '../obligations/sources.mjs';
 import {one,all,run,json,fail,requireSession,random,auditDetail} from '../core.mjs';
 import {seal} from '../keys.mjs';
 import {requireRolePermission,assertGuard,permitted} from '../roles/policy.mjs';
@@ -68,7 +69,7 @@ export async function automationAction(ctx,request,path,data) {
  }
  const r=await one(ctx,'SELECT * FROM auth_automation_runs WHERE id=? AND automation_id=?',text(data.runId,100),id)||fail('automation_run_not_found',404);
  const scoped=await connectionAuthority(ctx,s,c,r.person_id);
- if(path==='/automations/execute')return json(await executeRun(ctx,r.id,request));
+ if(path==='/automations/execute'){const outcome=await executeRun(ctx,r.id,request);await syncObligations(ctx);return json(outcome);}
  if(path!=='/automations/approve')fail('not_found',404);
  if(data.confirm!==r.id)fail('automation_exact_approval_required',403);
  if(r.automation_version!==a.version||r.connection_version!==c.version)fail('automation_approval_changed',409);

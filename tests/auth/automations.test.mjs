@@ -56,6 +56,12 @@ test('automation refuses lost permission, foreign scope and stale configuration,
  assert.equal((await execute(membership.id)).status,403);assert.equal(remote.calls.length,0);
  await ok(await r.admin('groups/add',{groupId:group.id,personId:'ada'}));
  const triggers=await ok(await r.call('/api/auth/automations',{cookie:r.owner.cookie}));assert.ok(triggers.runs.some(run=>run.state==='awaiting_approval'),'native membership prepares a run without executing');
+ // Recover a crash between durable event recording and queue creation.
+ const eventRun=await r.db.prepare('SELECT * FROM auth_automation_runs WHERE event_id IS NOT NULL').first();assert.ok(eventRun);
+ await r.db.prepare('DELETE FROM auth_automation_steps WHERE run_id=?').bind(eventRun.id).run();
+ await r.db.prepare('DELETE FROM auth_automation_runs WHERE id=?').bind(eventRun.id).run();
+ await r.restart();await r.call('/',{action:'maintain'});await r.call('/',{action:'maintain'});
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_automation_runs WHERE event_id=?').bind(eventRun.event_id).first()).n,1);assert.equal(remote.calls.length,0);
  const failed=await prepare();await approve(failed.id);remote.script.push({}, {},{status:503,body:credentials.clientSecret});
  assert.equal((await ok(await execute(failed.id))).state,'uncertain');
  await r.call('/',{action:'maintain'});
@@ -88,6 +94,10 @@ test('automation refuses lost permission, foreign scope and stale configuration,
  remote.script.push({beforeReply:async()=>r.db.prepare('UPDATE auth_automation_connections SET version=version+1 WHERE id=?').bind(connection.id).run()});
  assert.equal((await ok(await execute(tokenRace.id))).state,'failed');assert.equal(remote.calls.length,count+1);assert.equal(remote.state.length,2);
  const afterRace=remote.calls.length;
+ const staleEmail=await prepare();await approve(staleEmail.id);
+ await r.db.prepare("UPDATE auth_sessions SET local_email_verified_at=0 WHERE person_id='owner'").run();
+ assert.equal((await execute(staleEmail.id)).status,403);assert.equal(remote.calls.length,afterRace);
+ await r.db.prepare("UPDATE auth_sessions SET local_email_verified_at=? WHERE person_id='owner'").bind(r.now).run();
  const lost=await prepare();await approve(lost.id);
  await r.db.prepare("UPDATE auth_sessions SET amr='[\"email\"]' WHERE person_id='owner'").run();
  assert.equal((await execute(lost.id)).status,403);assert.equal(remote.calls.length,afterRace);
@@ -105,4 +115,7 @@ test('automation hosted destinations refuse private addresses and DNS, redirects
  assert.equal((await ok(await execute(pending.id))).state,'uncertain');assert.equal(remote.state.length,1,'step two never receives the unbounded value');
  const diagnostics=JSON.stringify(await ok(await r.call('/api/auth/automations',{cookie:r.owner.cookie})));
  assert.ok(!diagnostics.includes('x'.repeat(257)));assert.ok(!diagnostics.includes(credentials.clientSecret));
+ const revoked=await prepare();await approve(revoked.id);const count=remote.calls.length;
+ await ok(await r.admin('automations/revoke',{id:connection.id}));
+ assert.equal((await execute(revoked.id)).status,403);assert.equal(remote.calls.length,count);
 });
