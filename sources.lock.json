@@ -107,7 +107,7 @@
   ],
   "files": {
     ".github/workflows/continuity.yml": {
-      "sha256": "7caa29d70191fc0f00841bfb0bdd714e9e6eeec191908c8cfc4017fa408a6135",
+      "sha256": "5308c6b945868f56f4d46f895ca88288e1c61b1e602547f42c10c764e40a73f9",
       "executable": false
     },
     ".github/workflows/rer-managed.yml": {
@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "15793506c1300428969d63d8060102844a3cd5d2c163f9b77a8f821b30c8a7ec",
+      "sha256": "8219dc7bce1dfaeef21dbbde2e72f0663f666a5fc5e118aa96f7635d7a63a3e1",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "3253c294eee13e8579742621c1e3d0d916f93d235f6f880fd1817863d0a66b0c",
+      "sha256": "c9b44ba4139d4663b39cdafd67ce4a0e1c11c010466791fe529a77f8f075b84d",
       "executable": false
     },
     "deploy-site.json": {
