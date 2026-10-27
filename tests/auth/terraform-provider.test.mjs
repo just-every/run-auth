@@ -65,6 +65,20 @@ for(const cli of ['terraform','tofu'])test(`${cli} installs the Auth provider an
  assert.equal(values['auth_group.team'].name,'Engineering');assert.equal(values['auth_saml_app.payroll'].name,'Payroll');
  assert.equal(values['auth_assignment.payroll'].app_id,values['auth_saml_app.payroll'].id);assert.equal(values['auth_assignment.payroll'].principal_id,values['auth_group.team'].id);assert.equal(values['auth_assignment.payroll'].role,'employee');
  await command(['plan','-input=false','-no-color','-detailed-exitcode']);
+ // An unsupported UI rule must not become an invisible destructive replacement.
+ const rule={conditions:[{field:'department',op:'eq',value:'Engineering'}]};
+ const ruleChange=await r.call('/api/auth/groups/rule',post({groupId:values['auth_group.team'].id,rule},owner.cookie));assert.equal(ruleChange.status,200,await ruleChange.clone().text());
+ const ruledGroup=await r.db.prepare('SELECT * FROM auth_groups WHERE id=?').bind(values['auth_group.team'].id).first();
+ const unsupported=await command(['plan','-input=false','-no-color'],1);assert.match(unsupported,/supported static profile/);
+ assert.deepEqual(await r.db.prepare('SELECT * FROM auth_groups WHERE id=?').bind(values['auth_group.team'].id).first(),ruledGroup,'refusing an unsupported group leaves its rule untouched');
+ const unsupportedDir=join(dir,'unsupported');await mkdir(unsupportedDir);await writeFile(join(unsupportedDir,'main.tf'),header+'resource "auth_group" "ruled" { name = "Engineering" }\n');
+ const initialized=await run(cli,['init','-input=false','-no-color'],{cwd:unsupportedDir,env});assert.equal(initialized.code,0,initialized.output);
+ const ruledImport=await run(cli,['import','-input=false','-no-color','auth_group.ruled',values['auth_group.team'].id],{cwd:unsupportedDir,env});diagnostics+=ruledImport.output;
+ assert.equal(ruledImport.code,1,ruledImport.output);assert.match(ruledImport.output,/supported static profile/);
+ const unsupportedState=await run(cli,['show','-json'],{cwd:unsupportedDir,env});assert.equal(unsupportedState.code,0,unsupportedState.output);assert.deepEqual(JSON.parse(unsupportedState.output).values?.root_module?.resources??[],[],'a refused import adopts no resource');
+ assert.deepEqual(await r.db.prepare('SELECT * FROM auth_groups WHERE id=?').bind(values['auth_group.team'].id).first(),ruledGroup,'import does not change an unsupported group');
+ assert.equal((await r.call('/api/auth/groups/rule',post({groupId:values['auth_group.team'].id,rule:null},owner.cookie))).status,200);
+ await command(['plan','-input=false','-no-color','-detailed-exitcode']);
  // The same authenticated command used by the Apps UI changes live settings.
  const appID=values['auth_saml_app.payroll'].id;
  const ui=await r.call('/api/auth/company-apps/update',post({id:appID,name:'Payroll UI change',entityId:'https://payroll.example.com/saml',acsUrl:'https://payroll.example.com/acs'},owner.cookie));assert.equal(ui.status,200,await ui.clone().text());
@@ -86,17 +100,24 @@ for(const cli of ['terraform','tofu'])test(`${cli} installs the Auth provider an
  await writeFile(join(dir,'main.tf'),header+resources('Reviewed rename')+renamedImport);
  await command(['plan','-input=false','-no-color','-out=stale.plan']);
  assert.equal((await r.call('/api/auth/company-apps/update',post({id:appID,name:'Concurrent UI edit',entityId:'https://payroll.example.com/saml',acsUrl:'https://payroll.example.com/acs'},owner.cookie))).status,200);
+ const beforeStale=JSON.parse(await command(['show','-json','stale.plan'])).prior_state.values;
+ const liveBeforeStale=await r.db.prepare('SELECT * FROM auth_apps WHERE id=?').bind(appID).first();
  const at=requests.length;await command(['apply','-input=false','-no-color','stale.plan'],1);
  assert.equal(requests.slice(at).filter(row=>row.method==='PATCH'&&row.path===`/api/auth/admin/v1/apps/${appID}`).length,1,'stale mutations never retry');
  assert.ok(requests.slice(at).some(row=>row.status===412));
  assert.equal((await r.db.prepare('SELECT name FROM auth_apps WHERE id=?').bind(appID).first()).name,'Concurrent UI edit');
- const afterStale=JSON.parse(await command(['show','-json']));assert.notEqual(afterStale.values.root_module.resources.find(row=>row.address==='auth_saml_app.payroll').values.name,'Reviewed rename','refused state is never recorded as applied');
+ assert.deepEqual(await r.db.prepare('SELECT * FROM auth_apps WHERE id=?').bind(appID).first(),liveBeforeStale,'a stale refusal changes no app field');
+ const afterStale=JSON.parse(await command(['show','-json']));assert.deepEqual(afterStale.values,beforeStale,'a stale refusal preserves the exact prior resource state');
  // A narrower credential can read the reviewed app but cannot change it.
  const limited=await create(['apps.read'],{people:[],groups:[],apps:[appID]});
  const restricted=join(dir,'restricted');await mkdir(restricted);await writeFile(join(restricted,'main.tf'),header+`resource "auth_saml_app" "denied" {\n name = "Forbidden rename"\n entity_id = "https://payroll.example.com/saml"\n acs_url = "https://payroll.example.com/acs"\n}\n`);
  const limitedEnv={...env,AUTH_CLIENT_ID:limited.clientId};
  for(const args of [['init','-input=false','-no-color'],['import','-input=false','-no-color','auth_saml_app.denied',appID],['plan','-input=false','-no-color','-out=denied.plan']]){const result=await run(cli,args,{cwd:restricted,env:limitedEnv});diagnostics+=result.output;assert.equal(result.code,0,result.output);}
+ const beforeDenied=JSON.parse((await run(cli,['show','-json','denied.plan'],{cwd:restricted,env:limitedEnv})).output).prior_state.values;
+ const liveBeforeDenied=await r.db.prepare('SELECT * FROM auth_apps WHERE id=?').bind(appID).first();
  const denied=await run(cli,['apply','-input=false','-no-color','denied.plan'],{cwd:restricted,env:limitedEnv});diagnostics+=denied.output;assert.equal(denied.code,1,denied.output);
+ assert.deepEqual(JSON.parse((await run(cli,['show','-json'],{cwd:restricted,env:limitedEnv})).output).values,beforeDenied,'a scope refusal preserves the exact prior resource state');
+ assert.deepEqual(await r.db.prepare('SELECT * FROM auth_apps WHERE id=?').bind(appID).first(),liveBeforeDenied,'a scope refusal changes no app field');
  assert.equal((await r.db.prepare('SELECT name FROM auth_apps WHERE id=?').bind(appID).first()).name,'Concurrent UI edit');
  const audit=await activity(r,'admin_api_call');assert.ok(audit.some(row=>row.detail.serviceApp===limited.id&&row.detail.result==='admin_service_scope_required'));assert.ok(audit.some(row=>row.detail.serviceApp===full.id&&row.detail.result==='precondition_failed'));
  // A management scope alone cannot create outside its live resource grant.
@@ -107,7 +128,21 @@ for(const cli of ['terraform','tofu'])test(`${cli} installs the Auth provider an
  const boundedApply=await run(cli,['apply','-input=false','-no-color','bounded.plan'],{cwd:boundedDir,env:boundedEnv});diagnostics+=boundedApply.output;assert.equal(boundedApply.code,1,boundedApply.output);
  assert.equal(await r.db.prepare('SELECT id FROM auth_groups WHERE name=?').bind('Forbidden group').first(),null,'a refused creation leaves no partial group');
  assert.ok((await activity(r,'admin_api_call')).some(row=>row.detail.serviceApp===bounded.id&&row.detail.result==='admin_service_resource_refused'));
- const exposed=diagnostics+await readFile(join(dir,'terraform.tfstate'),'utf8')+await readFile(join(restricted,'terraform.tfstate'),'utf8')+await everyRow(r);
+ // A reviewed plan confers no authority after the human revokes its credential.
+ const revocable=await create(['apps.manage'],{people:[],groups:[],apps:[appID]});
+ const revokedDir=join(dir,'revoked');await mkdir(revokedDir);await writeFile(join(revokedDir,'main.tf'),header+`resource "auth_saml_app" "revoked" {\n name = "Revoked rename"\n entity_id = "https://payroll.example.com/saml"\n acs_url = "https://payroll.example.com/acs"\n}\n`);
+ const revokedEnv={...env,AUTH_CLIENT_ID:revocable.clientId};
+ const revokedCommand=async(args,expected=0)=>{const result=await run(cli,args,{cwd:revokedDir,env:revokedEnv});diagnostics+=result.output;assert.equal(result.code,expected,result.output);return result.output;};
+ await revokedCommand(['init','-input=false','-no-color']);await revokedCommand(['import','-input=false','-no-color','auth_saml_app.revoked',appID]);await revokedCommand(['plan','-input=false','-no-color','-out=revoked.plan']);
+ const revokedPrior=JSON.parse(await revokedCommand(['show','-json','revoked.plan'])).prior_state.values;
+ const liveBeforeRevocation=await r.db.prepare('SELECT * FROM auth_apps WHERE id=?').bind(appID).first();
+ assert.equal((await r.call('/api/auth/admin-service-apps/revoke',post({id:revocable.id},owner.cookie))).status,200);
+ const revokedAt=requests.length;assert.match(await revokedCommand(['apply','-input=false','-no-color','revoked.plan'],1),/Auth token request refused \(401\)/);
+ assert.deepEqual(requests.slice(revokedAt).map(row=>[row.method,row.path,row.status]),[['POST','/oidc/token',401]],'revocation refuses the token before any resource mutation');
+ assert.deepEqual(await r.db.prepare('SELECT * FROM auth_apps WHERE id=?').bind(appID).first(),liveBeforeRevocation,'revocation leaves every app field unchanged');
+ assert.deepEqual(JSON.parse(await revokedCommand(['show','-json'])).values,revokedPrior,'revocation never records the proposed rename');
+ assert.ok((await activity(r,'admin_service_token')).some(row=>row.detail.serviceApp===revocable.id&&row.detail.result==='invalid_client'),'the live credential refusal is audited');
+ const exposed=diagnostics+await readFile(join(dir,'terraform.tfstate'),'utf8')+await readFile(join(restricted,'terraform.tfstate'),'utf8')+await readFile(join(revokedDir,'terraform.tfstate'),'utf8')+await everyRow(r);
  for(const secret of [privateKey,(await exportJWK(key.privateKey)).d,...tokens])assert.ok(!exposed.includes(secret),'private keys and tokens stay out of state and diagnostics');
  assert.ok(tokens.length>0,'real private-key OAuth was exercised');
  // Update an assignment and destroy through the same reviewed public doors.

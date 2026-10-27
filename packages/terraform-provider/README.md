@@ -99,7 +99,7 @@ another resource fails: refusal is atomic per Auth resource, not across a whole 
 
 | Resource | Fields | Update and import |
 | --- | --- | --- |
-| `auth_group` | Required `name` | A name change replaces the group, because the API has no rename command. Import by existing group ID. Deletion uses the reviewed ETag and Auth checks every affected member and assignment. |
+| `auth_group` | Required `name` | A name change replaces the group, because the API has no rename command. Import by existing group ID. Groups with rules refuse import or refresh because this preview manages static groups only. Deletion uses the reviewed ETag and Auth checks every affected member and assignment. |
 | `auth_saml_app` | Required `name`, `entity_id`, `acs_url`; optional `acs_binding` (post), `name_id_format` (persistent), `name_id_source` (empty), `sign` (response), `digest` (sha256), `launch_url`, `slo_url`, `slo_binding` (redirect), `relay_state`, `idp_initiated` (false) | Updates use PATCH with the exact reviewed tag. Import by existing app ID. Only one ACS and apps without attribute lists, encryption, required signed requests or SHA1 exceptions are supported; other profiles refuse import or refresh rather than resetting those settings. Stored service-provider certificates are preserved by machine updates when omitted. Delete disables the app. |
 | `auth_assignment` | Required `app_id`, `principal_type` (person or group), `principal_id`; optional app `role` | Changing the target replaces the assignment. Role changes use the reviewed tag. Import ID is the app ID, principal type and principal ID joined by slashes. Paginated reads find the exact tuple; creation refuses an existing assignment until imported. |
 
