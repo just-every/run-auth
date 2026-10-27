@@ -14,7 +14,7 @@ export async function launcher(ctx,personId) {
   const assigned=await assignment(ctx,a.id,personId);
   const hasAssignment=await one(ctx,`SELECT 1 FROM auth_app_assignments a LEFT JOIN auth_group_members m ON a.principal_type='group' AND m.group_id=a.principal_id WHERE a.app_id=? AND ((a.principal_type='person' AND a.principal_id=?) OR m.person_id=?)`,a.id,personId,personId);
   const denied=await one(ctx,'SELECT 1 FROM auth_app_denials WHERE app_id=? AND person_id=?',a.id,personId);
-  const request=await one(ctx,'SELECT state,expires_at FROM auth_access_requests WHERE app_id=? AND person_id=? ORDER BY created_at DESC,id DESC LIMIT 1',a.id,personId);
+  const request=await one(ctx,"SELECT state,expires_at FROM auth_access_requests WHERE app_id=? AND person_id=? AND state IN ('denied','approved','revocation_pending','expired_verified') ORDER BY created_at DESC,id DESC LIMIT 1",a.id,personId);
   const policy=await one(ctx,'SELECT 1 FROM auth_request_policies WHERE app_id=?',a.id);
   let state=assigned?'ready':denied||request?.state==='denied'?'denied':request?.expires_at&&request.expires_at<=ctx.now()?'expired':hasAssignment?'denied':'unassigned';
   if(assigned) {

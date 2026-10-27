@@ -246,6 +246,7 @@ test('launcher preferences never grant access: current groups control credential
  const repeated=await submitRequest(r,employee,{appId:app.id,purpose:'A new approved access period is needed',durationMs:60000});
  assert.equal(repeated.status,201,'an expired approval does not block a new request before maintenance');
  const renewed=await repeated.json();
+ assert.equal((await read()).find(a=>a.id===app.id).state,'expired','a pending renewal keeps the expired-access explanation');
  assert.equal((await r.db.prepare('SELECT state FROM auth_access_requests WHERE id=?').bind(renewed.id).first()).state,'pending','requesting again never restores access');
  assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,403);
  assert.equal((await submitRequest(r,employee,{appId:app.id,purpose:'Duplicate pending request',durationMs:60000})).status,409,'a pending request still blocks duplicates');

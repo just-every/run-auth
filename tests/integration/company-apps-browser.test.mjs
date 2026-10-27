@@ -89,7 +89,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
 
  // An employee, invited and signed in from their own browser.
  assert.equal((await context.request.post(app.origin+'/api/auth/people/invite',{data:{email:EMPLOYEE,name:'Erin Example'},headers:{origin:app.origin}})).status(),201);
- const employee=await browser.newContext(),employeePage=await employee.newPage();
+ const employee=await browser.newContext(),employeePage=await employee.newPage();await employeePage.clock.install({time:new Date()});
  assert.equal((await employee.request.post(app.origin+'/auth/identity/email/request',{data:{email:EMPLOYEE},headers:{origin:app.origin}})).status(),202);
  const link=await app.link();assert.equal((await employee.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:link.searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
 
@@ -208,7 +208,11 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  loaded=page.waitForEvent('load');await approval.getByRole('button',{name:'Approve request with passkey'}).click();await loaded;
  const approved=(await (await employee.request.get(app.origin+'/api/auth/requests')).json()).requests.find(r=>r.app_id===archive.id);assert.equal(approved.state,'approved');
  await employeePage.reload();await requestTile.getByRole('button',{name:'Add favorite',exact:true}).click();await expect(requestTile.getByRole('button',{name:'Remove favorite'})).toBeVisible();
- const theme=employeePage.getByRole('button',{name:'Toggle color theme'});await theme.focus();await expect(employeePage.getByRole('tooltip')).toHaveText('Color theme');await theme.blur();
+ const theme=employeePage.getByRole('button',{name:'Toggle color theme'});
+ await employeePage.clock.pauseAt(await employeePage.evaluate(()=>Date.now()+1000));await theme.hover();
+ await employeePage.clock.runFor(150);assert.equal(await employeePage.getByRole('tooltip').isVisible(),false);
+ await employeePage.clock.runFor(200);await expect(employeePage.getByRole('tooltip')).toHaveText('Color theme');
+ await employeePage.mouse.move(0,0);await expect(employeePage.getByRole('tooltip')).toBeHidden();await theme.focus();assert.equal(await employeePage.getByRole('tooltip').isVisible(),true);await theme.blur();await employeePage.clock.resume();
  await shoot(employeePage,'launcher');
 
  // Expiry is enforced on the real server clock, without a maintenance trigger.
@@ -226,6 +230,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  loaded=employeePage.waitForEvent('load');await requestForm.getByRole('button',{name:'Request temporary access with passkey'}).click();await loaded;
  const requests=(await (await employee.request.get(app.origin+'/api/auth/requests')).json()).requests.filter(r=>r.app_id===archive.id);
  assert.deepEqual(requests.map(r=>r.state).sort(),['approved','pending'],'renewal awaits a separate decision and keeps the expired receipt');
+ await expect(requestTile).toContainText('Temporary access expired');
  assert.equal((await employee.request.get(app.origin+'/api/auth/launcher/open?id='+archive.id,{maxRedirects:0})).status(),403);
 
  // Removed from the group: Auth refuses the next sign-in to the app.
