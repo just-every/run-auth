@@ -123,7 +123,7 @@ jobs:
       - if: matrix.shard != 'protocol'
         run: pnpm run build
       - if: matrix.shard == 'app'
-        run: pnpm run typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site && pnpm run test:auth:directory
+        run: pnpm run typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site && pnpm run test:auth:app
       - if: matrix.shard == 'protocol'
         run: pnpm run test:auth:protocol
       - if: matrix.shard == 'workforce'
