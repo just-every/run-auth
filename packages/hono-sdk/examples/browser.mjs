@@ -87,6 +87,10 @@ export function createBrowserApp({origin, organizations, sessionLifetimeMs = 360
     const session = resolve(context), org = configured.get(context.req.param('organization'));
     const transaction = org && session?.pending.get(org.id);
     if (!transaction || transaction.expires <= Date.now()) return context.json({error: 'invalid_state'}, 400);
+    // The first arriving callback owns rotation until its response is prepared.
+    // A concurrent callback leaves its transaction pending and sets no cookie.
+    if (session.callbackInFlight) return context.json({error: 'callback_in_progress'}, 409);
+    session.callbackInFlight = true;
     session.pending.delete(org.id);
     try {
       await transaction.client.complete(context.req.url);
@@ -101,6 +105,8 @@ export function createBrowserApp({origin, organizations, sessionLifetimeMs = 360
     } catch (error) {
       transaction.client.restore(null);
       return context.json({error: /^[a-z_]{1,80}$/.test(error?.code || '') ? error.code : 'membership_required'}, 400);
+    } finally {
+      session.callbackInFlight = false;
     }
   });
   app.post('/switch', async context => {

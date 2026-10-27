@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "34d542d4553b9ba8cb5f2df9b3ea31664b13e163bf87d3df745ca14554b4c34a",
+      "sha256": "0d42107957ae505b1e980320a51c1c855160903a826c10241595a9b5ac23e0c9",
       "executable": false
     },
     "AGENTS.md": {
@@ -651,7 +651,7 @@
       "executable": false
     },
     "packages/hono-sdk/examples/browser.mjs": {
-      "sha256": "ba30cd162d0887010d9c0551f8f0b0ee5b694a66be8362e5d7bd40a1cd59e86f",
+      "sha256": "652c947f52b065f898af65da8bcb7d999da2e56ea8cae447a312e0b97afdc0f1",
       "executable": false
     },
     "packages/hono-sdk/examples/protected.mjs": {
@@ -671,7 +671,7 @@
       "executable": false
     },
     "packages/hono-sdk/README.md": {
-      "sha256": "d4e03ee7b7af5d8582a98d9caefd4299b678f3dca483f376b206be4cfc367f17",
+      "sha256": "980c2a05c86173e2f141056ce905865258b6ed77ee7339728f3c7550b2168b88",
       "executable": false
     },
     "packages/session-sdk/admin.mjs": {
@@ -3743,7 +3743,7 @@
       "executable": false
     },
     "tests/integration/sdk-browser.test.mjs": {
-      "sha256": "e5c1b17f1a3426d185df707dcf03ac48b6bfb4b5c5f66355a7c4a563a104a9c2",
+      "sha256": "a5fc76dad1754471228faf761eaccf7d3583b0bd6cf6bef36d85f47f9923fb78",
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {
