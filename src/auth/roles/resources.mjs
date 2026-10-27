@@ -1,3 +1,4 @@
+import {requireRecoveryEmployee} from '../recovery-cases/eligibility.mjs';
 import {json,random,fail} from '../core.mjs';
 import {requireRolePermission,assertPermission} from './policy.mjs';
 import {commit} from './commit.mjs';
@@ -40,7 +41,7 @@ export async function recoveryCase(ctx,s,data) {
  data={...data,action:data.caseAction??data.action};
  if(data.action==='open') {
   const personId=String(data.personId??''),guard=await requireRolePermission(ctx,s,'cases.open',{personId,write:true}),reason=String(data.reason??'').trim();
-  if(guard.state.rankOf(personId)>0||guard.state.dir.people.get(personId).role!=='member')fail('administrator_recovery_required',403);
+  await requireRecoveryEmployee(ctx,guard.state,personId);
   if(!reason||reason.length>500)fail('case_reason_required');
   const id=random();
   const {operationId}=await commit(ctx,s,guard,'roles.case.open',id,{personId,reason},(g,q)=>[
@@ -50,7 +51,7 @@ export async function recoveryCase(ctx,s,data) {
  }
  const caseId=String(data.caseId??''),guard=await requireRolePermission(ctx,s,'cases.verify',{caseId,write:true}),review=guard.state.cases.find(c=>c.id===caseId);
  if(!review||review.state==='closed')fail('case_unavailable',404);
- if(guard.state.rankOf(review.person_id)>0||guard.state.dir.people.get(review.person_id).role!=='member')fail('administrator_recovery_required',403);
+ await requireRecoveryEmployee(ctx,guard.state,review.person_id);
  if(review.person_id===s.person_id)fail('distinct_administrator_required',403);
  if(!['verify','close'].includes(data.action))fail('invalid_case_action');
  if(data.action==='verify')assertPermission(guard.state,'recovery.approve',{caseId,write:true});

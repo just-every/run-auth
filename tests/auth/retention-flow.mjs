@@ -42,6 +42,10 @@ export async function retentionFlow(t) {
  await r.db.prepare("INSERT INTO auth_person_fields VALUES('synthetic-auth-7','department','manual','\"synthetic-auth-7\"','synthetic-auth-1',?)").bind(aged).run();
  await r.db.prepare("INSERT INTO auth_erasure_receipts VALUES('synthetic-auth-8','synthetic-auth-8','person','anonymous',?,'{}','[]','{}','completed','{}')").bind(aged).run();
  await r.db.prepare("INSERT INTO auth_sessions(id,token_hash,person_id,person_version,amr,created_at,expires_at) SELECT 'synthetic-auth-9','synthetic-auth-9',id,version,'[\"hwk\"]',?,? FROM oa_operators WHERE id='synthetic-auth-2'").bind(aged,aged+DAY).run();
+ // Recovered cases carry a dependent enrollment capability; retention must
+ // remove it atomically with the selected closed case, without exporting it.
+ await r.db.prepare("INSERT INTO auth_role_cases(id,person_id,reason,state,opened_by,created_at,updated_at) VALUES('synthetic-auth-recovered','synthetic-auth-2','Lost factor','closed','synthetic-auth-1',?,?)").bind(aged,aged).run();
+ await r.db.prepare("INSERT INTO auth_recovery_enrollments(case_id,person_id,person_version,issuer_id,issuer_session_id,token_hash,created_at,expires_at,completed_at) VALUES('synthetic-auth-recovered','synthetic-auth-2',1,'synthetic-auth-1','synthetic-auth-session','synthetic-auth-digest',?,?,?)").bind(aged,aged+3600000,aged+60000).run();
  const started=await r.call('/api/auth/reviews/create',{method:'POST',cookie:owner.cookie,data:{name:'synthetic-auth-13',reviewerId:'synthetic-auth-1',periodStart:heldAt-1,periodEnd:heldAt+1,dueAt:r.now+30*DAY}});assert.equal(started.status,201,await started.clone().text());const review=await started.json();
  const hold=await admin('hold',{kind:'legal',periodStart:heldAt,periodEnd:heldAt,classes:['profiles'],reason:'synthetic-auth legal period'});
  const preview=await read('/preview'),records=JSON.stringify(preview.preview);
@@ -59,6 +63,8 @@ export async function retentionFlow(t) {
  owner=await signInAgain(r,owner,address);
  const history=await(await r.call('/api/auth/activity',{cookie:owner.cookie})).json(),text=JSON.stringify(history);
  assert.doesNotMatch(text,/synthetic_retention_expire/);assert.match(text,/synthetic_retention_review/);assert.match(text,/model_synthetic_trace/);
+ assert.equal(await r.db.prepare("SELECT 1 FROM auth_role_cases WHERE id='synthetic-auth-recovered'").first(),null,'retention removes the recovered case');
+ assert.equal(await r.db.prepare("SELECT 1 FROM auth_recovery_enrollments WHERE case_id='synthetic-auth-recovered'").first(),null,'retention removes its enrollment capability');
  const after=await read(),completed=after.runs.find(run=>run.id===queued.run.id);assert.equal(completed.status,'completed');
  assert.ok(Object.values(completed.result).some(count=>count>0));assert.ok(after.expiryEvidence.some(proof=>proof.runId===queued.run.id&&proof.tableName==='auth_activity'&&typeof proof.signature==='string'),'policy expiry commits authenticated row evidence through the public read');
  assert.equal((await r.call('/api/auth/retention/export?runId='+queued.run.id,{cookie:owner.cookie})).status,404);
