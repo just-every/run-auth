@@ -107,6 +107,35 @@
     }
     return body || {}
   }
+  for (const form of document.querySelectorAll('[data-abuse-autosave]')) {
+    const status = form.querySelector('[data-abuse-save-status]')
+    let timer, saving = false, dirty = false
+    const save = async () => {
+      clearTimeout(timer)
+      if (saving || !dirty) return
+      if (!form.checkValidity()) { status.textContent = 'Enter valid limits to save.'; return }
+      saving = true
+      status.textContent = 'Saving changes…'
+      try {
+        while (dirty && form.checkValidity()) {
+          dirty = false
+          await requestJSON(form.action, Object.fromEntries(new FormData(form)))
+        }
+        status.textContent = dirty ? 'Enter valid limits to save.' : 'Changes saved.'
+      } catch (error) {
+        dirty = true
+        status.textContent = error.message + ' Changes have not been saved. Edit a field to try again.'
+        showStatus(error.message, 'error')
+      } finally { saving = false }
+    }
+    form.addEventListener('input', () => {
+      dirty = true
+      status.textContent = 'Changes pending…'
+      clearTimeout(timer)
+      timer = setTimeout(save, 400)
+    })
+    form.addEventListener('submit', event => { event.preventDefault(); dirty = true; save() })
+  }
   const localPath = value => typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !/[\\\r\n]/.test(value) ? value : '/app/account'
   const decodeBase64Url = value => {
     const normalized = String(value).replace(/-/g, '+').replace(/_/g, '/')

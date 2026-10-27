@@ -683,7 +683,7 @@
       "executable": false
     },
     "public/auth-assets/auth-ui.js": {
-      "sha256": "b305b564c605543861656e47ce89358a57d062de825c6be6a87a53ea72dd07e2",
+      "sha256": "a79ead75acd71c7b7947c163a63d7c357dcd9cd16adf33ded489470fbc483475",
       "executable": false
     },
     "public/auth-assets/auth.css": {
@@ -1007,7 +1007,7 @@
       "executable": false
     },
     "src/auth/abuse/index.mjs": {
-      "sha256": "620d2816559cf206ea7917d64eeba4d86e2308d506ff3d000bc746d92efd0da7",
+      "sha256": "987fd42e8f73bd9c1a96073a66278f4f79df36d7fa2df31152969ae53fe798ad",
       "executable": false
     },
     "src/auth/admin-api/commands.mjs": {
@@ -1623,7 +1623,7 @@
       "executable": false
     },
     "src/auth/migration/bridge.mjs": {
-      "sha256": "1f93a76969d1059f36ee2db70cced294a941ef0d6a3a8220de408d1a368347b4",
+      "sha256": "e11b58ece1153f5b9e84910d751ebdcde79fe282f5777232e9fb968cfa50a2fb",
       "executable": false
     },
     "src/auth/migration/campaign-followup.mjs": {
@@ -3083,7 +3083,7 @@
       "executable": false
     },
     "src/ui/pages/methods.ts": {
-      "sha256": "6a85f90c5cbdc01ba739af64a7ec514a8fbe2602b55f2f699c2a09393aafbbf1",
+      "sha256": "ebaf543f6b2b27aabeb85e838cd58a216ab7545d5f82cb8c35f1fcea55f20138",
       "executable": false
     },
     "src/ui/pages/move-in-campaigns.ts": {
@@ -3143,7 +3143,7 @@
       "executable": false
     },
     "tests/auth/abuse.test.mjs": {
-      "sha256": "007981822596d18d208cf0b4fabff86b45a18939cfdc57437833014b21415a39",
+      "sha256": "bec5ca2d3e481baec5be506cdcd6c6d94aa3a8be5aa67afb21cf12eeb0c9e55e",
       "executable": false
     },
     "tests/auth/access-decisions-flow.mjs": {
@@ -3155,11 +3155,11 @@
       "executable": false
     },
     "tests/auth/agents-keys.test.mjs": {
-      "sha256": "8997c90565c914eea9df0742a9e39dd36afd0c7c986992e5cfb44546d7a9259b",
+      "sha256": "08a718965ec371c48f353259b1cd27cf456e2647fde0fbb92f0bb774cbdfe1d5",
       "executable": false
     },
     "tests/auth/agents-proposals.test.mjs": {
-      "sha256": "82f33027e138cec4f18058b9f84275cfff1cd02811d463f9360399ad3bde9275",
+      "sha256": "3839391fac40246554f127745ddfeded5e00eb75337b9a7e952499ee30d783db",
       "executable": false
     },
     "tests/auth/authorization-policy.test.mjs": {
@@ -3255,7 +3255,7 @@
       "executable": false
     },
     "tests/auth/legacy-bridge-flow.mjs": {
-      "sha256": "fa54e8a04ac08f7707ef81d5166a50c854ddc77fbae983a7b1533f1698adf39f",
+      "sha256": "05d8c81834b8d77c06e340e991fe6367416a2f06db69b9371bb9487092cd639b",
       "executable": false
     },
     "tests/auth/link/app-worker.mjs": {
@@ -3287,7 +3287,7 @@
       "executable": false
     },
     "tests/auth/local-email.test.mjs": {
-      "sha256": "0ac4494309b08bb9a7881e078ad2a992d85da7bdfca49632218c5713a8d2e51f",
+      "sha256": "ccc4d89382fb99a06c6518c6b7696db550ed7d11eb00632e6b57d7030a1243e4",
       "executable": false
     },
     "tests/auth/move-in-admission.test.mjs": {
@@ -3307,7 +3307,7 @@
       "executable": false
     },
     "tests/auth/notifications-flow.mjs": {
-      "sha256": "bb3d2154016cb21bf952545753df7639c104b4fbf66ad6f6b349aa4fc552131e",
+      "sha256": "a7ae7494549d09172d2c9b9cb969ecb7957db31b2616154934bda2492ea780e9",
       "executable": false
     },
     "tests/auth/notifications.test.mjs": {
@@ -3655,7 +3655,7 @@
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {
-      "sha256": "fc4184ede668a3fa3a8eb81c92c5fead66841a30be9a63aaaf98739da1946a05",
+      "sha256": "bddf6776623ab34af3056195632959f7984669da5632b6785150b7ae5405c6fa",
       "executable": false
     },
     "tests/runtime.mjs": {

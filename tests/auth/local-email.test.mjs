@@ -133,7 +133,7 @@ test('only the signed-in address sees mail limits and delivery failure, with ret
  const request=(address='owner@example.com',cookie=r.owner.cookie)=>r.call('/auth/identity/email/request',post({email:address},cookie));
  const before=(await r.mails()).length;
  const {hash}=await import('../../src/auth/core.mjs');
- for(const [bucket,count] of [['proof-mail:owner',5],['mail-address:'+await hash('owner@example.com'),5],['mail-ip:'+await hash('192.0.2.10'),20]]) {
+ for(const [bucket,count] of [['proof-mail:owner',5],['mail-address:'+await hash('owner@example.com'),5],['mail-ip:'+await hash('unavailable'),20]]) {
   await r.db.prepare('DELETE FROM auth_limits').run();
   await r.db.prepare('INSERT INTO auth_limits(bucket,count,expires_at) VALUES(?,?,?)').bind(bucket,count,r.now+120001).run();
   const response=await request();assert.equal(response.status,429);

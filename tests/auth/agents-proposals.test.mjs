@@ -334,6 +334,8 @@ test('a person-consented agent changes exactly one employer assignment after ind
  await auditRefusal(await oauth(grant,agent,{signed:await tokenAssertion(grant,agent,{},undefined,foreignKey.privateKey)}),'delegation_token_refused','DPoP alone cannot attribute a claimed grant',{verified:'agent-only',code:'invalid_client',status:401});
  await auditRefusal(await oauth(grant,agent,{signed:await tokenAssertion(sibling)}),'delegation_token_refused','another grant assertion cannot supply person attribution',{verified:'agent-only',code:'invalid_client',status:401});
  assert.deepEqual(await assignmentRoles(),initialRoles,'human, preparer and forged token requests leave assignments unchanged');
+ // Keep the outer configurable HTTP budget above this separate proof budget.
+ await json(await r.call('/api/auth/abuse/configure',post({sourceLimit:200,aggregateLimit:300,cooldownSeconds:60},owner.cookie)));
  // Refused scope/resource requests spend the proof budget too. Replaying valid
  // signatures must not buy unbounded refusal-attribution verification.
  r.now+=60000;
