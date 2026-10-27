@@ -223,7 +223,15 @@ test('organization and authority journey: switch employers, delegate a scoped re
     assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits');
     const axe=await new AxeBuilder({page:target}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})),[]);
     for(const control of await target.locator('[data-tooltip]:visible').all()) {
-     await target.mouse.move(0,0);await control.blur();await control.hover();await target.waitForTimeout(150);await expect(target.getByRole('tooltip')).toBeHidden();await target.waitForTimeout(200);await expect(target.getByRole('tooltip')).toBeVisible();await target.mouse.move(0,0);await control.focus();assert.equal(await target.getByRole('tooltip').isVisible(),true);await target.keyboard.press('Escape');await control.blur();
+     await target.mouse.move(0,0);await target.keyboard.press('Escape');await control.blur();await expect(target.getByRole('tooltip')).toBeHidden();
+     await control.evaluate(el=>{
+      const tip=document.querySelector('[role=tooltip]');delete el.dataset.auditHoverDelay;
+      el.addEventListener('mouseenter',()=>{el.dataset.auditHoverStarted=String(performance.now());},{once:true});
+      const observer=new MutationObserver(()=>{if(!tip.hidden){el.dataset.auditHoverDelay=String(performance.now()-Number(el.dataset.auditHoverStarted));observer.disconnect();}});
+      observer.observe(tip,{attributes:true,attributeFilter:['hidden']});
+     });
+     await control.hover();await expect(target.getByRole('tooltip')).toBeVisible();assert.ok(Number(await control.getAttribute('data-audit-hover-delay'))>=250,'tooltip waits about 300 ms after actual pointer entry');
+     await target.mouse.move(0,0);await control.focus();assert.equal(await target.getByRole('tooltip').isVisible(),true);await target.keyboard.press('Escape');await control.blur();
     }
    }
    await target.screenshot({path:join(directory,`audit-${name}-${width}-${theme}.png`),fullPage:true});
