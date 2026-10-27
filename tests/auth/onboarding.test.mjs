@@ -86,6 +86,11 @@ test('future hire activates once at the lead boundary, enrolls with personal pro
  r.now=r.base+12*DAY;const signed=await authenticate(r,enrolled.key);cookie=cookieOf(signed.response);
  assert.ok(new URL((await authorization(r,a,cookie)).headers.get('location')).searchParams.get('code'),'launch works at start');
  const mails=(await r.mails()).filter(m=>m.to==='personal@example.net').length;await r.call('/',{action:'maintain'});assert.equal((await r.mails()).filter(m=>m.to==='personal@example.net').length,mails,'activation mail stops at start');
+ await r.refresh();
+ await hire(r,20,{email:'late-hire@example.com',personalEmail:'late-contact@example.net'});
+ assert.equal((await r.mails()).filter(m=>m.to==='late-contact@example.net').length,0,'a second hire is still outside the lead window');
+ r.now=r.base+20*DAY;await r.call('/',{action:'maintain'});
+ assert.equal((await r.mails()).filter(m=>m.to==='late-contact@example.net').length,0,'maintenance does not send a missed activation at start');
  assert.ok(work);
 });
 
@@ -107,7 +112,11 @@ test('expiry, explicit reissue, duplicate addresses and rescission never merge i
  assert.equal((await r.call('/auth/passkeys/register/options',post({},enrolled.cookie))).status,401);
  assert.equal((await authenticate(r,enrolled.key)).response.status,400);
  assert.equal((await redeem(r,fresh)).status,403);
- await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).filter(m=>m.subject==='Activate your Auth enrollment').length,3);
+ const pendingId=await hire(r,30,{email:'rescinded-hire@example.com',personalEmail:'rescinded-contact@example.net',leadDays:30}),unused=await invitation(r);
+ assert.equal((await r.admin('rescind',{personId:pendingId})).status,200);
+ assert.equal((await redeem(r,unused)).status,403,'rescission invalidates an unused outstanding activation');
+ assert.equal(await r.db.prepare('SELECT person_id FROM auth_onboarding_links WHERE person_id=?').bind(pendingId).first(),null);
+ await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).filter(m=>m.subject==='Activate your Auth enrollment').length,4);
 });
 
 test('future-hire administration refuses missing, weak, foreign and expired authority and invalid local schedules',async t=>{

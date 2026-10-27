@@ -3415,7 +3415,7 @@
       "executable": false
     },
     "tests/auth/onboarding.test.mjs": {
-      "sha256": "20a8a5f44a36af91d4bfd85f628d4c891594d6e2a0c2029525cb87ec3b5711c6",
+      "sha256": "ec029ee2f2cbe0d9fc0a1fab297e456c3c390f82267c786616ea980e22c9a636",
       "executable": false
     },
     "tests/auth/policy-helpers.mjs": {
