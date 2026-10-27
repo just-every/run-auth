@@ -77,7 +77,7 @@ test('email responses stay uniform under distributed traffic and every native au
  }
  assert.equal(new Set(bodies).size,1);
  assert.equal((await r.mails()).filter(m=>m.subject==='Your Auth sign-in link').length,4,'only the two admitted known-address requests add mail to the two setup confirmations');
- for(const path of ['/auth/identity/email/confirm','/auth/passkeys/register/options','/auth/identity/passkeys/register/verify','/auth/passkeys/authenticate/verify','/api/auth/recovery/token']) {
+ for(const path of ['/auth/identity/email/confirm','/auth/passkeys/register/options','/auth/identity/passkeys/register/verify','/auth/passkeys/authenticate/verify','/api/auth/recovery/token','/api/auth/migration/bridge/login']) {
   r.now+=30000;
   const replies=[];
   for(let i=0;i<5;i++)replies.push(await r.call(path,post({},undefined,{sourceIdentity:'synthetic-auth-'+i})));
