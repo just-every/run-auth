@@ -204,8 +204,8 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
   const response=await r.call('/api/auth/roles/preview',{method:'POST',cookie,data});assert.equal(response.status,status,await response.clone().text());assert.equal((await response.json()).error,error);
  };
  for(const rank of [90,100])await refusedPlan({kind:'role',role:{name:'Too powerful',rank,permissions:['people.view']}},r.owner.cookie,400,'invalid_role');
- const role=await plan({kind:'role',role:{name:'Regional recovery specialists',rank:25,permissions:['roles.view','roles.grant','people.view','people.factors.reset','groups.view','cases.view','cases.open','cases.verify']}});
- const resources={view:{groups:[a.id,b.id]},edit:{groups:[a.id]}};
+ const role=await plan({kind:'role',role:{name:'Regional recovery specialists',rank:25,permissions:['roles.view','roles.grant','people.view','people.factors.reset','groups.view','cases.view','cases.open','cases.verify','recovery.approve']}});
+ const resources={view:{groups:[a.id,b.id],cases:['*']},edit:{groups:[a.id],cases:['*']}};
  const granted=await plan({kind:'grant',personId:'helper',roleId:role.role.id,resources});
  const action=(permission,resourceId,resourceKind='people')=>({permission,...(resourceId?{resourceKind,resourceId}:{})});
  const ordered=actions=>actions.map(a=>JSON.stringify(a)).sort();
@@ -213,19 +213,31 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  assert.deepEqual(granted.effects[0].lost,[]);
  assert.deepEqual(ordered(granted.effects[0].gained),ordered([action('roles.view'),action('roles.grant'),action('people.view','ada'),action('people.view','bob'),action('people.factors.reset','ada'),action('groups.view',a.id,'groups'),action('groups.view',b.id,'groups')]),'preview names the exact recipient, permissions and resources gained');
  const command=async(data)=>r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{reason:'Employee requested a verified factor reset',...data}});
+ await admin(r,'directory/edit',{personId:'ada',set:{manager:'owner'}});
+ const cases=[];
+ const verifiedCase=async()=>{
+  const opened=await r.call('/api/auth/roles/recovery-case',{method:'POST',cookie:helper.cookie,data:{action:'open',personId:'ada',reason:'Employee lost their factor'}});assert.equal(opened.status,201);
+  const {caseId}=await opened.json();cases.push(caseId);
+  const attested=await r.call('/api/auth/recovery/case-attest',{method:'POST',cookie:r.owner.cookie,data:{caseId}});assert.equal(attested.status,200);
+  return caseId;
+ };
  const visible=await (await r.call('/api/auth/roles/people',{cookie:helper.cookie})).json();assert.deepEqual(visible.people.map(p=>p.id).sort(),['ada','bob']);
  assert.equal((await r.call('/api/auth/roles/people?personId=bob',{cookie:helper.cookie})).status,200,'view B succeeds');
  assert.equal((await command({personId:'bob'})).status,403);assert.equal((await r.call('/api/auth/roles/export',{cookie:helper.cookie})).status,403);
  for(const path of ['people','directory','move-in/subjects.csv?batch=foreign'])assert.equal((await r.call('/api/auth/'+path,{cookie:helper.cookie})).status,403,'legacy unscoped read/export remains closed');
  assert.equal((await r.call('/api/auth/people/suspend',{method:'POST',cookie:helper.cookie,data:{personId:'bob'}})).status,403,'direct legacy write closed');
  assert.equal((await r.call('/api/auth/roles/preview',{method:'POST',cookie:helper.cookie,data:{kind:'grant',personId:'bob',roleId:'help-desk',resources:{view:{groups:['*']},edit:{groups:['*']}}}})).status,403,'cannot delegate a wider resource set');
- assert.equal((await command({personId:'ada'})).status,200);assert.equal((await r.call('/api/auth/me',{cookie:ada.cookie})).status,401);
+ assert.equal((await command({personId:'ada'})).status,403,'reset requires a verified case even inside edit scope');
+ const firstCase=await verifiedCase();
+ assert.equal((await command({personId:'ada',caseId:firstCase})).status,200);assert.equal((await r.call('/api/auth/me',{cookie:ada.cookie})).status,401);
+ await admin(r,'/api/auth/roles/recovery-case',{action:'close',caseId:firstCase});
  // A fresh factor for Ada, followed by membership change, affects the next decision.
  const adaAgain=await register(r,await emailSession(r,'ada@example.com'));
+ const secondCase=await verifiedCase();
  await admin(r,'groups/add',{groupId:b.id,personId:'ada'});
- assert.equal((await command({personId:'ada'})).status,403,'membership outside edit scope refuses even when still in A');
+ assert.equal((await command({personId:'ada',caseId:secondCase})).status,403,'membership outside edit scope refuses even when still in A');
  await admin(r,'groups/remove',{groupId:b.id,personId:'ada'});
- assert.equal((await command({personId:'ada'})).status,200);
+ assert.equal((await command({personId:'ada',caseId:secondCase})).status,200);
  assert.equal((await r.call('/api/auth/me',{cookie:adaAgain.cookie})).status,401);
  await r.person('senior','senior@example.com','admin');await admin(r,'groups/add',{groupId:a.id,personId:'senior'});
  assert.equal((await command({personId:'senior'})).status,403,'administrator in A cannot be reset');
@@ -235,7 +247,7 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  // Revocation is live, rather than a session-embedded permission.
  const revoked=await plan({kind:'revoke',grantId:granted.id});assert.equal((await r.call('/api/auth/roles/people',{cookie:helper.cookie})).status,403);
  assert.equal(revoked.effects.length,1);assert.equal(revoked.effects[0].personId,'helper');assert.equal(revoked.effects[0].email,'helper@example.com');assert.deepEqual(revoked.effects[0].gained,[]);
- assert.deepEqual(ordered(revoked.effects[0].lost),ordered([action('roles.view'),action('roles.grant'),action('people.view','bob'),action('people.view','senior'),action('groups.view',a.id,'groups'),action('groups.view',b.id,'groups')]),'revocation preview names current actions lost after live membership changed');
+ assert.deepEqual(ordered(revoked.effects[0].lost),ordered([action('roles.view'),action('roles.grant'),action('people.view','bob'),action('people.view','senior'),action('groups.view',a.id,'groups'),action('groups.view',b.id,'groups'),...cases.flatMap(id=>['cases.view','cases.open','cases.verify','recovery.approve'].map(permission=>action(permission,id,'cases')))]),'revocation preview names current actions lost after live membership changed');
  assert.equal((await r.call('/api/auth/me',{cookie:bob.cookie})).status,200);
  // Legacy administrators cannot create their equal or a higher rank. A scoped
  // holder cannot author roles even when explicitly delegated roles.edit.
