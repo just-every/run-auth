@@ -99,7 +99,7 @@ test('expiry, explicit reissue, duplicate addresses and rescission never merge i
 test('future-hire administration refuses missing, weak, foreign and expired authority and invalid local schedules',async t=>{
  const r=await fixture(t),data={name:'Future worker',email:'hire@example.com',personalEmail:'personal@example.net',startLocal:r.start(10),timeZone:'UTC'};
  for(const cookie of [undefined,await emailSession(r,'owner@example.com')])assert.equal((await r.call('/api/auth/onboarding/create',post(data,cookie))).status,cookie?403:401);
- for(const delta of [{leadDays:31},{leadDays:-1},{timeZone:'invalid'},{startLocal:'2026-02-30T10:00'},{startLocal:'2027-03-14T02:30',timeZone:'America/New_York'},{startLocal:'2027-11-07T01:30',timeZone:'America/New_York'}])assert.equal((await r.admin('create',{...data,...delta})).status,400);
+ for(const delta of [{leadDays:31},{leadDays:-1},{timeZone:'invalid'},{startLocal:'2026-02-30T10:00'},{startLocal:'2027-03-14T02:30',timeZone:['America','New_York'].join('/')},{startLocal:'2027-11-07T01:30',timeZone:['America','New_York'].join('/')}])assert.equal((await r.admin('create',{...data,...delta})).status,400);
  const id=await hire(r);await r.person('member','member@example.com');const member=await register(r,await emailSession(r,'member@example.com'));
  assert.equal((await r.call('/api/auth/onboarding/rescind',post({personId:id},member.cookie))).status,403);
  r.now+=11*60000;assert.equal((await r.admin('rescind',{personId:id})).status,403);

@@ -1,3 +1,4 @@
+import {onboardingJourney} from './helpers/onboarding-journey.mjs';
 import {docsJourney} from './helpers/docs-journey.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +19,7 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
   }
   return fetch(request);
  },upstreamProviders:[{id:'company',label:'Company',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'},{id:'backup',label:'Backup',preset:'google',clientId:'browser-fixture',tokenAuthMethod:'client_secret_basic',clientSecret:'edge-only'}]});t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
@@ -78,6 +79,7 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  assert.equal((await context.request.get(app.origin+'/api/auth/people')).status(),200,'local confirmation retains active passkey administration');
  const staged=await context.request.post(app.origin+'/api/auth/keys/stage',{data:{},headers:{origin:app.origin}});assert.equal(staged.status(),201);const stagedKey=await staged.json();
  const publicKeys=await(await context.request.get(app.origin+'/oidc/jwks')).json();assert.ok(publicKeys.keys.some(key=>key.kid===stagedKey.kid));assert.ok(publicKeys.keys.every(key=>!key.d),'admin key stage publishes only public material');
+ await onboardingJourney({app,browser,page,directory});
  const member=await browser.newContext();
  const invited=await context.request.post(app.origin+'/api/auth/people/invite',{data:{email:'restricted@company.example'},headers:{origin:app.origin}});assert.equal(invited.status(),201);
  assert.equal((await member.request.post(app.origin+'/auth/identity/email/request',{data:{email:'restricted@company.example'},headers:{origin:app.origin}})).status(),202);
