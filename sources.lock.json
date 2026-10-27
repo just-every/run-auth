@@ -3839,7 +3839,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "ff214266b4140c83f561b9895dbade61322571b610582773a9c60ffe078b2627",
+      "sha256": "2c74d90f31bf6da590e118b0972714f1a0688a3b2e69a6f81a39454054a99f41",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
