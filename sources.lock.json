@@ -3555,7 +3555,7 @@
       "executable": false
     },
     "tests/auth/worker.mjs": {
-      "sha256": "f2f90d9e6d3cbf55c796f0a32bc1a7cfcd835217036bbbdba1b92a84a0b3c382",
+      "sha256": "14501468e648612d6d0132b7fa490c367d70c037e08de7cfaa6f6a7d4d7dfb25",
       "executable": false
     },
     "tests/conformance/auth-fixture.mjs": {
