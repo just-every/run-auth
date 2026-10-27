@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "8b3ffbd52ad7f30f756eb1756d794112f5eda655f9104346876dc440d30e5789",
+      "sha256": "32a709964ea14a454d5ba2030e5156fc9c3112a4ef2e1289f139d4c18062352a",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "1bc7eef508b88dc0c073b6db76d9403d5ee7635ed98e9ce8c59d85d25b755f66",
+      "sha256": "1c6737d45715ff694d44f6ae6ffedb381bfb0bdb1526a84fd8fd3e2f4f9cfc2d",
       "executable": false
     },
     "deploy-site.json": {
@@ -623,7 +623,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "25568f20af9674e1803cbf14525246f9fc5ba9fccc6f5337480fa1b6e9b00f85",
+      "sha256": "721ce609af5b8f8c620d0c030fb5bbc49c7f9665e7630ca6c27a937d0e0f6913",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -654,8 +654,16 @@
       "sha256": "98222537104e8ad386a6215c8f7a5cf24d3be8c806dd86df544f5f5dda4c8587",
       "executable": false
     },
+    "packages/hono-sdk/examples/browser.mjs": {
+      "sha256": "652c947f52b065f898af65da8bcb7d999da2e56ea8cae447a312e0b97afdc0f1",
+      "executable": false
+    },
     "packages/hono-sdk/examples/protected.mjs": {
       "sha256": "13f59cf76bc1dc34caf7aef1c10b3198a8ce1bdb402787e57119fef02568e540",
+      "executable": false
+    },
+    "packages/hono-sdk/examples/server.mjs": {
+      "sha256": "5d56fb8cf6cf1c3e4f6880a0f2f35fffd35c0c0614e4f464515701a971f6b9cd",
       "executable": false
     },
     "packages/hono-sdk/index.mjs": {
@@ -667,7 +675,7 @@
       "executable": false
     },
     "packages/hono-sdk/README.md": {
-      "sha256": "6cec876ead8ed0268d2e8770a9c0252e4ceda18333626a9a2b7f06961e6bfa4d",
+      "sha256": "980c2a05c86173e2f141056ce905865258b6ed77ee7339728f3c7550b2168b88",
       "executable": false
     },
     "packages/session-sdk/admin.mjs": {
@@ -687,7 +695,7 @@
       "executable": false
     },
     "packages/session-sdk/README.md": {
-      "sha256": "791fac93857c3a7058f7d56a83d314818ea6021dde63974301686959cfb36999",
+      "sha256": "5670de0764e706f997ff43b998c263284675bcd47db631030964c05adec6ea70",
       "executable": false
     },
     "packages/terraform-provider/go.mod": {
@@ -1631,7 +1639,7 @@
       "executable": false
     },
     "src/auth/links/end-session.mjs": {
-      "sha256": "7eaffb50bff7d8fbdd086bf770045ec5e5eaad5bbc52aadee528c66b5e031ee4",
+      "sha256": "84fe1c811efc05941ecac116789eb1ca9c9b34ef79418e4fdfb23cb8375164e7",
       "executable": false
     },
     "src/auth/links/grant-map.mjs": {
@@ -3744,6 +3752,10 @@
     },
     "tests/integration/runtime.mjs": {
       "sha256": "3202297aab14a7c069b339ce2b6fd98e88cfdfadc1c364619ae24eb4398af6f9",
+      "executable": false
+    },
+    "tests/integration/sdk-browser.test.mjs": {
+      "sha256": "01c8e6169f9e4bb1ed0500fc039dd5a0f80fcca64963d38822e0d16faf654703",
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {
