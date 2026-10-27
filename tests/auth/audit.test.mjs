@@ -110,7 +110,9 @@ test('interactive audit preserves stable event IDs and opaque projections after 
  for(const email of ['synthetic-auth-8@example.com','synthetic-auth-9@example.com']) {
   const edited=await r.call('/api/auth/directory/edit',post({personId:invitationPerson.id,email},owner.cookie));assert.equal(edited.status,200,await edited.clone().text());
  }
+ const erasedIds=new Set([invitation.id,...(await read(r,'/api/auth/audit?person='+invitationPerson.id,owner.cookie)).events.map(e=>e.id)]);
  const replacement=await r.call('/api/auth/directory/onboard',post({email:'synthetic-auth-7@example.com',name:'Independent New Holder',kind:'employee'},owner.cookie));assert.equal(replacement.status,201);const replacementPerson=await replacement.json();
+ const replacementIdentity=await register(r,await emailSession(r,'synthetic-auth-7@example.com'));
  await r.call('/api/auth/erasure/policy',post({confirm:true,automaticDeletion:false,honorLegalHolds:true},owner.cookie));
  const preview=await r.call('/api/auth/erasure/preview',post({kind:'person',target:worker.id},owner.cookie));assert.equal(preview.status,200);const proposal=await preview.json();
  const erased=await r.call('/api/auth/erasure/confirm',post({previewId:proposal.id,confirmation:'ERASE',destinations:[]},owner.cookie));assert.equal(erased.status,200,await erased.clone().text());const receipt=await erased.json();
@@ -123,13 +125,17 @@ test('interactive audit preserves stable event IDs and opaque projections after 
  for(const door of ['/api/auth/audit','/api/auth/roles/audit','/api/auth/activity']) {
   const result=await read(r,door,owner.cookie),events=Array.isArray(result)?result:result.events;
   const retained=events.find(e=>e.id===invitation.id);assert.ok(retained,door+' retains the invitation');assert.equal(retained.subject_id,invitationReceipt.reference,door+' anonymizes the historical invitation');
-  for(const personal of ['Taylor Historical','synthetic-auth-7@example.com','synthetic-auth-8@example.com','synthetic-auth-9@example.com',invitationPerson.id])assert.ok(!JSON.stringify(result).includes(personal),door+' removes historical personal data');
+  const related=events.filter(e=>erasedIds.has(e.id));assert.equal(related.length,erasedIds.size);
+  for(const personal of ['Taylor Historical','synthetic-auth-7@example.com','synthetic-auth-8@example.com','synthetic-auth-9@example.com',invitationPerson.id])assert.ok(!JSON.stringify(related).includes(personal),door+' removes historical personal data');
  }
  const stored=(await r.db.prepare('SELECT * FROM auth_activity ORDER BY id').all()).results;
  assert.equal(stored.find(e=>e.id===invitation.id).subject_id,invitationReceipt.reference,'native persistent evidence is redacted, not merely the projection');
  assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM oa_operators WHERE id=?').bind(invitationPerson.id).first()).n,0);
 
+ const replacementEvent=(await read(r,'/api/auth/audit?person='+replacementPerson.id+'&event=person_onboarded',owner.cookie)).events[0];assert.equal(JSON.parse(replacementEvent.detail).email,'synthetic-auth-7@example.com','independently attributed evidence stays with the new holder');
  const replacementRow=await r.db.prepare('SELECT email,display_name FROM oa_operators WHERE id=?').bind(replacementPerson.id).first();assert.deepEqual(replacementRow,{email:'synthetic-auth-7@example.com',display_name:'Independent New Holder'});
+ assert.equal((await r.call('/api/auth/me',{cookie:replacementIdentity.cookie})).status,200,'the new holder keeps the existing passkey session');
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_passkeys WHERE person_id=?').bind(replacementPerson.id).first()).n,1,'the new holder keeps the enrolled factor');
  assert.ok(await emailSession(r,'synthetic-auth-7@example.com'),'the new holder of a historical address can still sign in');
 
 });

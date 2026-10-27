@@ -63,7 +63,7 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  const removed=new Set(),updates=new Map(),decisions=[];
  // Role/state/type labels are values, never person identifiers. In particular,
  // erasing a creator whose id is 'owner' must not select every owner role.
- const canMatch=(name,row,matching=identifiers)=>contains(Object.fromEntries(Object.entries(row).filter(([column])=>!['role','state','status','kind','event','type'].includes(column))),matching);
+ const canMatch=(name,row)=>contains(Object.fromEntries(Object.entries(row).filter(([column])=>!['role','state','status','kind','event','type'].includes(column))),identifiers);
  const steward=people.find(p=>p.id!==target&&p.role==='owner'&&p.status==='active')?.id;
  for(const table of stores.values())for(const [index,row] of table.rows.entries()) {
   const key=rowId(table.name,index),name=table.name;
@@ -75,8 +75,8 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   }
   const followup=followupErasure(table,row,{stores,identifiers,reset,reference});
   if(followup) {if(followup.remove)removed.add(key);else updates.set(key,followup.update);continue;}
-  const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&canMatch('auth_activity',a,evidenceIdentifiers));
-  const matched=relatedActivity||canMatch(name,row,isEvidence(name)?evidenceIdentifiers:identifiers),discardMap=name==='auth_grant_maps',discardStage=staging.has(name);
+  const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&(canMatch('auth_activity',a)||contains(a.subject_id,historicalAddresses)));
+  const matched=relatedActivity||canMatch(name,row)||isEvidence(name)&&contains(row.subject_id,historicalAddresses),discardMap=name==='auth_grant_maps',discardStage=staging.has(name);
   if(isEvidence(name)) {
    if(reset||matched) {
     const changed={};

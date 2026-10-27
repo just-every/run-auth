@@ -1431,7 +1431,7 @@
       "executable": false
     },
     "src/auth/erasure/plan.mjs": {
-      "sha256": "435f5108b94eab3d0c5369ba0698a0310147128410451221bbf94b1a998552b3",
+      "sha256": "47aa8fb9c9425c42818fb4ce3ace90658d59eb2967234c51525f638ef779ec71",
       "executable": false
     },
     "src/auth/erasure/portability.mjs": {
@@ -3235,7 +3235,7 @@
       "executable": false
     },
     "tests/auth/audit.test.mjs": {
-      "sha256": "43fd849ad436327c6ba3a18273c38dcbf289d814d5b8fb7c3f70178457e645c0",
+      "sha256": "53fdc91b6461802286fd7da1416e9eb770d3af95586796c9d9b5382c2f92698d",
       "executable": false
     },
     "tests/auth/authorization-policy.test.mjs": {
