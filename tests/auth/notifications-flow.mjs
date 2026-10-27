@@ -111,15 +111,21 @@ export async function notificationsSafety(t) {
  assert.ok((await r.mails()).some(mail=>mail.subject==='Auth sign-in factor reset'&&reportLink(mail)));
  // Help-desk custody is scoped through its normal role and reset doors.
  const desk=await passkeyPerson(r,'synthetic-auth-3','help-desk@example.com','member');
- const preview=await post('/roles/preview',{kind:'grant',personId:'synthetic-auth-3',roleId:'help-desk',resources:{view:{people:['synthetic-auth-2']},edit:{people:['synthetic-auth-2']}}});
+ const preview=await post('/roles/preview',{kind:'grant',personId:'synthetic-auth-3',roleId:'help-desk',resources:{view:{people:['synthetic-auth-2'],cases:['*']},edit:{people:['synthetic-auth-2'],cases:['*']}}});
  await post('/roles/apply',{previewId:preview.previewId});
  employee=await register(r,await emailSession(r,'employee@example.com'));
+ await post('/directory/edit',{personId:'synthetic-auth-2',set:{manager:'synthetic-auth-1'}});
+ const recoveryCase=await post('/roles/recovery-case',{action:'open',personId:'synthetic-auth-2',reason:'Employee lost their factor'},201,desk.cookie);
+ await post('/recovery/case-attest',{caseId:recoveryCase.caseId});
  const resetCount=(await r.mails()).filter(mail=>mail.subject==='Auth sign-in factor reset').length;
- await post('/roles/reset-factors',{personId:'synthetic-auth-2',reason:'Synthetic Auth verified help-desk request'},200,desk.cookie);
+ await post('/roles/reset-factors',{personId:'synthetic-auth-2',caseId:recoveryCase.caseId,reason:'Synthetic Auth verified help-desk request'},200,desk.cookie);
  const reset=(await r.mails()).filter(mail=>mail.subject==='Auth sign-in factor reset');assert.equal(reset.length,resetCount+1);assert.match(reset.at(-1).text,/Passkeys reset by help desk/);assert.ok(reportLink(reset.at(-1)));
  assert.equal((await r.call('/api/auth/me',{cookie:employee.cookie})).status,401);
  // Former browser recognition falls outside the last twenty successful sign-ins.
- employee=await register(r,await emailSession(r,'employee@example.com'));
+ const replacementEmail=await emailSession(r,'employee@example.com'),enrollment=(await r.mails()).findLast(mail=>mail.subject==='Auth recovery enrollment link');
+ const enrollmentLink=new URL(enrollment.text.match(/https:\/\/\S+$/)[0]);
+ await post('/recovery/enroll',Object.fromEntries(new URLSearchParams(enrollmentLink.hash.slice(1))),200,replacementEmail);
+ employee=await register(r,replacementEmail);
  await post('/notifications/settings',{...policy,newDevice:true});const old=await signIn(r,employee.key);
  await post('/notifications/settings',{...policy,newDevice:false});
  for(let i=0;i<20;i++){r.now++;await signIn(r,employee.key);}

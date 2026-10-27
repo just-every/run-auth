@@ -3259,7 +3259,7 @@
       "executable": false
     },
     "tests/auth/directory.test.mjs": {
-      "sha256": "b0eae2b53cbe887971af0de3581608f64c9b773b8e7f5404f9e4b07c4169d2be",
+      "sha256": "a4a65a84df3318779223c2970dd6ae0a06ea93e2c5b90f449a5b5b7e00b2c365",
       "executable": false
     },
     "tests/auth/domain-helpers.mjs": {
@@ -3367,7 +3367,7 @@
       "executable": false
     },
     "tests/auth/notifications-flow.mjs": {
-      "sha256": "bb3d2154016cb21bf952545753df7639c104b4fbf66ad6f6b349aa4fc552131e",
+      "sha256": "b5c960081ad26921b09e2242960909698c774237d0bb47db213e6d85d8df1a15",
       "executable": false
     },
     "tests/auth/notifications.test.mjs": {
