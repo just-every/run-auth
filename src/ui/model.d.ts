@@ -305,6 +305,7 @@ export interface AuthPageModel {
   methods?: AuthPasskey[]
   passkeys?: AuthPasskey[]
   canReadAudit?: boolean
+  activityError?: {status: number;message: string;filters: Record<string,string>}
   activityPage?: {events: AuthActivity[];total: number;asOf: number;limit: number;nextCursor: string | null;filters: {from: number;to: number;person: string;event: string}}
   activity?: AuthActivity[]
   notices?: AuthNotice[]

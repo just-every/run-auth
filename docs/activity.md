@@ -8,7 +8,9 @@ role endpoint `GET /api/auth/roles/audit` also uses this query. The older
 Queries accept an inclusive `from` and `to` in Unix milliseconds or a UTC date
 and time such as `2026-10-27T12:00`, an exact `person` reference, an exact `event`
 type, and a `limit` of 1 through 100 (default 50). Duplicate parameters and invalid
-bounds are refused. No retention setting changes: the existing default remains
+bounds are refused. Activity returns a recoverable 400 response with the filter
+form retained. An expired cursor returns 410; a changed query or authority returns
+409. Apply the retained filters again or choose Newest events. No retention setting changes: the existing default remains
 13 calendar months, and this reader imposes no shorter look-back window.
 
 The response contains `events`, an authorized `total`, `asOf`, the normalized
@@ -26,7 +28,8 @@ that append-only snapshot guarantee. Erasure uses the existing opaque evidence
 projection; erased personal data is never reconstructed by joining old profiles.
 Scoped readers receive summaries without free-form details or directory names.
 Related targets outside the role scope are excluded, even for the reader's own
-actions. Native machine log reads remain a separate business-event projection;
+actions. Unresolvable related references and target-free command receipts remain
+administrator-only. Native machine log reads remain a separate business-event projection;
 related people and groups must also fall inside the machine credential's scope.
 Credential, factor, recovery and role events remain excluded from that door.
 
