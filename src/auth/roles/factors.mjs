@@ -21,7 +21,7 @@ export async function resetFactors(ctx,s,data) {
   if(!review||review.state!=='verified')fail('verified_recovery_case_required',403);
   // A case is an additional condition, never a replacement for people scope.
   if(!permitted(state,'cases.verify',{caseId:review.id,write:true})||!permitted(state,'recovery.approve',{caseId:review.id,write:true}))fail('role_permission_required',403);
-  const verified=verificationGuard(ctx,state,review);
+  const verified=await verificationGuard(ctx,state,review);
   guard.clause+=` AND ${verified.clause} AND NOT EXISTS(SELECT 1 FROM auth_recovery_enrollments WHERE case_id=?)`;guard.args.push(...verified.args,review.id);
  }
  const token=review?random():null,tokenHash=token?await hash(token):null;

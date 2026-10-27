@@ -1,3 +1,4 @@
+import {requireRecoveryEmployee} from './eligibility.mjs';
 import {one,random,hash,json,fail,requireSession} from '../core.mjs';
 import {authority,requireLocalEmail} from '../local-email.mjs';
 import {roleState} from '../roles/state.mjs';
@@ -6,13 +7,8 @@ import {commit} from '../roles/commit.mjs';
 
 export const HOUR=3600000;
 const managerOf=(state,id)=>{const p=state.dir.people.get(id);return p?state.dir.values(p).manager:null;};
-function employee(state,id) {
- const p=state.dir.people.get(id);
- if(!p||p.status!=='active'||p.role!=='member'||state.rankOf(id)>0)fail('administrator_recovery_required',403);
- return p;
-}
-export function verificationGuard(ctx,state,review) {
- employee(state,review.person_id);
+export async function verificationGuard(ctx,state,review) {
+ await requireRecoveryEmployee(ctx,state,review.person_id);
  const v=review.verification?JSON.parse(review.verification):null;
  if(review.state!=='verified'||v?.method!=='manager_attestation'||v.caseId!==review.id||v.personId!==review.person_id||v.managerId!==managerOf(state,review.person_id)||v.managerId===review.person_id||v.at>ctx.now()||v.at<=ctx.now()-HOUR)fail('manager_attestation_required',403);
  return {clause:`EXISTS(SELECT 1 FROM auth_role_cases c JOIN auth_sessions a ON a.id=c.verified_session_id JOIN oa_operators p ON p.id=a.person_id WHERE c.id=? AND c.state='verified' AND c.verification=? AND c.verified_by=? AND a.person_id=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND a.amr LIKE '%"hwk"%')`,args:[review.id,review.verification,v.managerId,v.managerId,ctx.now()]};
@@ -21,7 +17,7 @@ export async function attestCase(ctx,request,data) {
  const s=await requireSession(ctx,request);requireHardware(s);requireLocalEmail(ctx,s);
  const state=await roleState(ctx,s),review=state.cases.find(c=>c.id===data.caseId);
  if(!review||review.state!=='open')fail('case_unavailable',404);
- employee(state,review.person_id);
+ await requireRecoveryEmployee(ctx,state,review.person_id);
  if(s.person_id===review.person_id||managerOf(state,review.person_id)!==s.person_id)fail('current_manager_required',403);
  const verification={method:'manager_attestation',caseId:review.id,personId:review.person_id,managerId:s.person_id,at:ctx.now()},guard=roleGuard(ctx,s,state);
  guard.clause+=" AND EXISTS(SELECT 1 FROM auth_role_cases WHERE id=? AND state='open')";guard.args.push(review.id);
@@ -50,7 +46,7 @@ export async function cancelCase(ctx,request,data) {
 async function enrollmentAuthority(ctx,s,link) {
  const state=await roleState(ctx,s),review=state.cases.find(c=>c.id===link.case_id);
  if(!review||link.person_id!==s.person_id||link.person_version!==s.person_version||link.expires_at<=ctx.now()||link.cancelled_at||link.completed_at)fail('recovery_link_unavailable',403);
- const verified=verificationGuard(ctx,state,review);
+ const verified=await verificationGuard(ctx,state,review);
  const issuer=await one(ctx,`SELECT a.*,p.role FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id WHERE a.id=? AND a.person_id=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND a.amr LIKE '%"hwk"%'`,link.issuer_session_id,link.issuer_id,ctx.now());
  if(!issuer)fail('recovery_authority_changed',403);
  const issuerState=await roleState(ctx,issuer);
