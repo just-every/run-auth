@@ -3,6 +3,7 @@
 // A new managed store requires an explicit decision before either operation.
 const groups = {
  portable: [
+  'auth_onboarding',
   'auth_launcher_bookmarks', 'auth_launcher_preferences',
   'auth_import_history',
   'auth_app_role_order', 'auth_app_reductions', 'auth_app_denials', 'auth_privileged_resources', 'auth_privileged_app_roles', 'auth_decision_operations',
@@ -40,7 +41,7 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
-  'auth_onboarding',
+  'auth_onboarding_links',
   'auth_recovery_enrollments',
   'auth_directory_sources','auth_directory_resources','auth_directory_source_groups','auth_federation_setups',
   'auth_campaigns','auth_campaign_people',

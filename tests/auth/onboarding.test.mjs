@@ -1,3 +1,4 @@
+import {issueClient} from './policy-helpers.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {openRuntime,emailSession,cookieOf} from './runtime.mjs';
@@ -30,16 +31,16 @@ async function app(r,id) {
  assert.equal((await r.call('/api/auth/company-apps/assign',post({appId:a.id,principalType:'person',principalId:id},r.owner.cookie))).status,200);return a;
 }
 const verifier='synthetic-auth-verifier-with-at-least-43-characters';
-async function authorization(r,a,cookie) {
- return r.call('/oidc/authorize?'+new URLSearchParams({client_id:a.clientId,redirect_uri:'https://rp.example.com/cb',response_type:'code',scope:'openid email',state:'synthetic-auth-state',code_challenge:await hash(verifier),code_challenge_method:'S256'}),{cookie});
+async function authorization(r,a,cookie,extra={}) {
+ return r.call('/oidc/authorize?'+new URLSearchParams({client_id:a.clientId,redirect_uri:'https://rp.example.com/cb',response_type:'code',scope:'openid email',state:'synthetic-auth-state',code_challenge:await hash(verifier),code_challenge_method:'S256'}),{cookie,...extra});
 }
-async function exchange(r,a,response) {
+async function exchange(r,a,response,extra={}) {
  const code=new URL(response.headers.get('location')).searchParams.get('code');assert.ok(code);
- return r.call('/oidc/token',{method:'POST',form:{grant_type:'authorization_code',client_id:a.clientId,redirect_uri:'https://rp.example.com/cb',code,code_verifier:verifier}});
+ return r.call('/oidc/token',{method:'POST',form:{grant_type:'authorization_code',client_id:a.clientId,redirect_uri:'https://rp.example.com/cb',code,code_verifier:verifier},...extra});
 }
 
 test('future hire activates once at the lead boundary, enrolls with personal proof only, and obeys changed start times at protocol doors',async t=>{
- const r=await fixture(t),id=await hire(r),a=await app(r,id);
+ const r=await fixture(t),id=await hire(r),a=await app(r,id),strict=await issueClient(r);
  const createdSaml=await r.call('/api/auth/company-apps/create',post({name:'Native SAML',entityId:'https://sp.example.com',acsUrl:'https://sp.example.com/acs',idpInitiated:true},r.owner.cookie));assert.equal(createdSaml.status,201);const saml=await createdSaml.json();
  assert.equal((await r.call('/api/auth/company-apps/assign',post({appId:saml.id,principalType:'person',principalId:id},r.owner.cookie))).status,200);
  assert.equal((await r.mails()).filter(m=>m.subject==='Activate your Auth enrollment').length,0);
@@ -48,7 +49,7 @@ test('future hire activates once at the lead boundary, enrolls with personal pro
  assert.equal((await r.mails()).filter(m=>m.subject==='Activate your Auth enrollment').length,1);
  await r.refresh();
  const link=await invitation(r),stored=await r.db.prepare('SELECT * FROM auth_onboarding WHERE person_id=?').bind(id).first();
- assert.equal(stored.token_hash,await hash(link.searchParams.get('token')));assert.equal(stored.personal_verified_at,null);
+ assert.equal((await r.db.prepare('SELECT token_hash FROM auth_onboarding_links WHERE person_id=?').bind(id).first()).token_hash,await hash(link.searchParams.get('token')));assert.equal(stored.personal_verified_at,null);
  assert.equal((await redeem(r,link,r.owner.cookie)).status,403,'another person cannot consume this activation');
  const activated=await redeem(r,link);assert.equal(activated.status,200,await activated.clone().text());
  assert.equal((await redeem(r,link)).status,403);
@@ -58,14 +59,25 @@ test('future hire activates once at the lead boundary, enrolls with personal pro
  const before=(await r.mails()).length;await r.call('/auth/identity/email/request',post({email:'personal@example.net'}));assert.equal((await r.mails()).length,before,'personal contact is not a work alias');
  const work=await emailSession(r,'hire@example.com'),hardware=await authenticate(r,enrolled.key);assert.equal(hardware.response.status,200);let cookie=cookieOf(hardware.response);
  assert.equal(new URL((await authorization(r,a,cookie)).headers.get('location')).searchParams.get('error'),'access_denied');
+ assert.equal((await strict.authorize(cookie)).code,null,'the strict linked-app profile also refuses before start');
  const samlDenied=await r.call('/saml/launch/'+saml.id,{cookie});assert.equal(samlDenied.status,400);assert.match(await samlDenied.text(),/start_time_or_work_proof_required/);
  await r.refresh();
  assert.equal((await r.admin('schedule',{personId:id,startLocal:r.start(3),timeZone:'UTC',leadDays:7})).status,200);
  await r.call('/.well-known/openid-configuration');await r.db.prepare('UPDATE auth_signing_keys SET use_after=?').bind(r.now-1).run();
  assert.equal((await r.call('/saml/launch/'+saml.id,{cookie})).status,200,'SAML launches at the earlier start');
+ const strictPending=await strict.authorize(cookie);assert.ok(strictPending.code);
  let allowed=await authorization(r,a,cookie);assert.ok(new URL(allowed.headers.get('location')).searchParams.get('code'));
  assert.equal((await r.admin('schedule',{personId:id,startLocal:r.start(12),timeZone:'UTC',leadDays:7})).status,200);
  assert.equal((await exchange(r,a,allowed)).status,400,'moving later refuses a previously issued code');
+ assert.equal((await strict.redeem(strictPending)).status,400,'strict linked-app token issuance follows start changes');
+ assert.equal((await r.admin('schedule',{personId:id,startLocal:r.start(3),timeZone:'UTC',leadDays:7})).status,200);
+ const later=r.base+12*DAY;
+ const shifted=await authorization(r,a,cookie,{onboardingRace:{prefix:'INSERT INTO auth_oidc_codes',sql:`UPDATE auth_onboarding SET start_at=${later}`}});
+ assert.equal(new URL(shifted.headers.get('location')).searchParams.get('error'),'access_denied','authorization rechecks a concurrent start change in the code write');
+ assert.equal((await r.admin('schedule',{personId:id,startLocal:r.start(3),timeZone:'UTC',leadDays:7})).status,200);
+ const pending=await authorization(r,a,cookie);
+ const raced=await exchange(r,a,pending,{onboardingRace:{prefix:'SELECT a.*,p.email,p.role FROM auth_sessions',sql:`UPDATE auth_onboarding SET start_at=${later}`}});
+ assert.equal(raced.status,403,'token completion rechecks a start change after preflight');
  assert.equal((await r.admin('schedule',{personId:id,startLocal:r.start(3),timeZone:'UTC',leadDays:7})).status,200);
  allowed=await authorization(r,a,cookie);const issued=await exchange(r,a,allowed);assert.equal(issued.status,200,await issued.clone().text());const token=(await issued.json()).access_token;
  assert.equal((await r.call('/oidc/userinfo',{headers:{authorization:'Bearer '+token}})).status,200);
@@ -82,7 +94,9 @@ test('expiry, explicit reissue, duplicate addresses and rescission never merge i
  const id=await hire(r,30,{leadDays:30}),old=await invitation(r);
  assert.equal((await r.admin('create',{name:'Duplicate',email:'hire@example.com',personalEmail:'other@example.net',startLocal:r.start(30),timeZone:'UTC'})).status,409);
  assert.equal((await r.db.prepare("SELECT count(*) AS n FROM oa_operators WHERE email='personal@example.net'").first()).n,1);
- r.now+=7*DAY;assert.equal((await redeem(r,old)).status,403);
+ assert.equal((await r.db.prepare('SELECT person_id FROM auth_mail_deliveries ORDER BY rowid DESC LIMIT 1').first()).person_id,id,'activation mail belongs to the hire rather than an account matching their contact');
+ const replaced=old;assert.equal((await r.admin('reissue',{personId:id})).status,200);const expiring=await invitation(r);assert.notEqual(expiring.href,replaced.href);assert.equal((await redeem(r,replaced)).status,403,'reissue invalidates a still-valid old credential');
+ r.now+=7*DAY;assert.equal((await redeem(r,expiring)).status,403);
  await r.refresh();assert.equal((await r.admin('reissue',{personId:id})).status,200);const fresh=await invitation(r);assert.notEqual(fresh.href,old.href);
  const foreign=new URL(fresh);foreign.searchParams.set('person','personal-owner');assert.equal((await redeem(r,foreign)).status,403);
  assert.equal((await redeem(r,old)).status,403);
@@ -93,7 +107,7 @@ test('expiry, explicit reissue, duplicate addresses and rescission never merge i
  assert.equal((await r.call('/auth/passkeys/register/options',post({},enrolled.cookie))).status,401);
  assert.equal((await authenticate(r,enrolled.key)).response.status,400);
  assert.equal((await redeem(r,fresh)).status,403);
- await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).filter(m=>m.subject==='Activate your Auth enrollment').length,2);
+ await r.restart();await r.call('/',{action:'maintain'});assert.equal((await r.mails()).filter(m=>m.subject==='Activate your Auth enrollment').length,3);
 });
 
 test('future-hire administration refuses missing, weak, foreign and expired authority and invalid local schedules',async t=>{
@@ -102,6 +116,11 @@ test('future-hire administration refuses missing, weak, foreign and expired auth
  for(const delta of [{leadDays:31},{leadDays:-1},{timeZone:'invalid'},{startLocal:'2026-02-30T10:00'},{startLocal:'2027-03-14T02:30',timeZone:['America','New_York'].join('/')},{startLocal:'2027-11-07T01:30',timeZone:['America','New_York'].join('/')}])assert.equal((await r.admin('create',{...data,...delta})).status,400);
  const id=await hire(r);await r.person('member','member@example.com');const member=await register(r,await emailSession(r,'member@example.com'));
  assert.equal((await r.call('/api/auth/onboarding/rescind',post({personId:id},member.cookie))).status,403);
+ const organization=await r.call('/api/auth/organizations/create',post({name:'Separate employer'},r.owner.cookie));assert.equal(organization.status,201);const foreign=await organization.json();
+ assert.equal((await r.call('/org/'+foreign.id+'/api/auth/onboarding/rescind',post({personId:id},r.owner.cookie))).status,401,'a root administrator session has no foreign employer authority');
+ const raced=await r.call('/api/auth/onboarding/schedule',post({personId:id,startLocal:r.start(12),timeZone:'UTC'},r.owner.cookie,{onboardingRace:{prefix:'UPDATE auth_onboarding SET start_at=',sql:'UPDATE auth_sessions SET local_email_verified_at=0'}}));
+ assert.equal(raced.status,403,'administrator proof is fenced in the schedule write');
+ assert.equal((await r.db.prepare('SELECT start_at FROM auth_onboarding WHERE person_id=?').bind(id).first()).start_at,Date.parse(r.start(10)+'Z'));
  r.now+=11*60000;assert.equal((await r.admin('rescind',{personId:id})).status,403);
  assert.equal((await r.db.prepare('SELECT rescinded_at FROM auth_onboarding WHERE person_id=?').bind(id).first()).rescinded_at,null);
 });

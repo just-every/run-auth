@@ -1,4 +1,4 @@
-import {onboardingAction,activationPage,activate} from './onboarding/index.mjs';
+import {onboardingAction,activationPage,activationError,activate} from './onboarding/index.mjs';
 import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -205,6 +205,7 @@ function scopedRuntime(options) {
    fail('not_found',404);
   } catch(error) {
    if(!(error instanceof AuthError))throw error;
+   if(path==='/auth/identity/onboarding'&&(request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded'))return activationError(error);
    if(path==='/auth/identity/email/confirm'&&(request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded'))return confirmationError(ctx,error);
    if(error.message==='email_rate_limited')return json({error:error.message,retryAfter:error.retryAfter,message:`Too many email confirmation requests. Try again in ${Math.ceil(error.retryAfter/60)} minute${error.retryAfter<=60?'':'s'}. Your current email confirmation is not extended.`},429,{'retry-after':String(error.retryAfter)});
    if(error.message==='email_delivery_failed')return json({error:error.message,message:'Auth could not send your confirmation email. Try again later or contact your administrator. Your current email confirmation is not extended.'},503);

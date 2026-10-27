@@ -71,6 +71,7 @@ async function activeSession(ctx,request,column,value) {
 export async function requireSession(ctx, request, admin = false) {
  const s = await session(ctx,request); if (!s) fail('sign_in_required',401);
  if(JSON.parse(s.amr).includes('onboarding')&&!['/auth/passkeys/register/options','/auth/passkeys/register/verify','/api/auth/signout'].includes(new URL(request.url).pathname.replace('/auth/identity/passkeys/','/auth/passkeys/')))fail('enrollment_only',403);
+ if(admin&&await one(ctx,'SELECT 1 FROM auth_onboarding WHERE person_id=? AND (start_at>? OR rescinded_at IS NOT NULL)',s.person_id,ctx.now()))fail('start_time_required',403);
  if (admin && (!['owner','admin'].includes(s.role) || !JSON.parse(s.amr).includes('hwk'))) fail('passkey_admin_required',403);
  return s;
 }

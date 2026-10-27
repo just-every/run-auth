@@ -34,7 +34,8 @@ export async function onboardingJourney({app,browser,page,directory}) {
    await hire.screenshot({path:join(directory,`onboarding-activate-${width}-${theme}.png`),fullPage:true});
   }
   await hire.setViewportSize({width:1440,height:1000});
-  await hire.getByRole('button',{name:'Activate enrollment',exact:true}).click();
+  const activated=hire.waitForResponse(response=>response.request().method()==='POST'&&response.url().includes('/auth/identity/onboarding?'));
+  await hire.getByRole('button',{name:'Activate enrollment',exact:true}).click();assert.equal((await activated).status(),303);
   await expect(hire).toHaveURL(app.origin+'/app/methods');
   const registered=hire.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
   await hire.getByRole('button',{name:'Register a passkey',exact:true}).click();assert.equal((await registered).status(),200);
@@ -46,7 +47,7 @@ export async function onboardingJourney({app,browser,page,directory}) {
   }
   await page.reload();await expect(page.getByText('Personal contact proved',{exact:false})).toBeVisible();
   // The existing icon-only shell controls retain the shared delayed tooltip.
-  const theme=page.locator('[data-theme-toggle]');await theme.focus();await expect(page.getByRole('tooltip')).toHaveText('Color theme');
+  const theme=page.locator('[data-theme-toggle]:visible').first();await theme.focus();await expect(page.getByRole('tooltip')).toHaveText('Color theme');
   await page.keyboard.press('Tab');await theme.hover();await page.waitForTimeout(350);await expect(page.getByRole('tooltip')).toHaveText('Color theme');
  }finally {await context.close();}
 }
