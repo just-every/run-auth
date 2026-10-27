@@ -1563,7 +1563,7 @@
       "executable": false
     },
     "src/auth/launcher/index.mjs": {
-      "sha256": "7692e778689037f62fbcf18cacc19a58bb90570200dc7565764d1e5e1deef6dd",
+      "sha256": "0ad1d2c4dfd33fc4db69239cd80ef8677ab3ad9352e99454a1c69080ed861aeb",
       "executable": false
     },
     "src/auth/links/app.mjs": {
@@ -1831,7 +1831,7 @@
       "executable": false
     },
     "src/auth/requests/submission.mjs": {
-      "sha256": "72a2304943f5d5fecc7b3ce139b0c76c0f8208dc19595473ecc2c92f7519f030",
+      "sha256": "62c238387223a2fe8368503cc41aa6257571a203a3cf8eafca3079a66ccc3a1d",
       "executable": false
     },
     "src/auth/retention/catalog.mjs": {
@@ -3043,7 +3043,7 @@
       "executable": false
     },
     "src/ui/pages/company-apps.ts": {
-      "sha256": "c96a2c63827306b9ff21708dfa74e87ac2b1dd6cd2abb87da3e886801ed8799c",
+      "sha256": "225f021621fca77f22d5d018e61a77ec4a77c80e55eb46385e9b372ac991266e",
       "executable": false
     },
     "src/ui/pages/delegation.ts": {
@@ -3391,7 +3391,7 @@
       "executable": false
     },
     "tests/auth/saml.test.mjs": {
-      "sha256": "1849a4a801db30f88327dc4994f061191c43be8d95865753087b7c4bc27b700e",
+      "sha256": "56fb8b4e084af1b73d8537bec2a76680e59c27f14f4ac779eab4c2cd7fa588d8",
       "executable": false
     },
     "tests/auth/scim-server.mjs": {
@@ -3567,7 +3567,7 @@
       "executable": false
     },
     "tests/integration/company-apps-browser.test.mjs": {
-      "sha256": "8b63cfe4ba63ef5de333a9d859efca63d89840b672547b2ce4e3e3b0b5dc23d1",
+      "sha256": "27d6a9febb6b372a0b790b6575891e67fa25f10e3024ee70df95914f0a0dc276",
       "executable": false
     },
     "tests/integration/continuity-drill.mjs": {

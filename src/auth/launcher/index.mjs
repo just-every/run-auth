@@ -34,8 +34,9 @@ export async function launcher(ctx,personId) {
 
 export async function launcherPreference(ctx,request,data) {
  const s=await requireSession(ctx,request),tile=(await launcher(ctx,s.person_id)).find(t=>t.id===data.id);
- if(!tile||tile.state!=='ready')fail('launcher_access_unavailable',403);
- await run(ctx,`INSERT INTO auth_launcher_preferences(person_id,tile_id,favorite) VALUES(?,?,?) ON CONFLICT(person_id,tile_id) DO UPDATE SET favorite=excluded.favorite`,s.person_id,tile.id,data.favorite===true||data.favorite==='true'?1:0);
+ const favorite=data.favorite===true||data.favorite==='true';
+ if(!tile||(favorite&&tile.state!=='ready'))fail('launcher_access_unavailable',403);
+ await run(ctx,`INSERT INTO auth_launcher_preferences(person_id,tile_id,favorite) VALUES(?,?,?) ON CONFLICT(person_id,tile_id) DO UPDATE SET favorite=excluded.favorite`,s.person_id,tile.id,favorite?1:0);
  return json({ok:true});
 }
 

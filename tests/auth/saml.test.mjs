@@ -226,6 +226,8 @@ test('launcher preferences never grant access: current groups control credential
  const r=await samlInstall(t);r.tick=()=>{};
  const app=await addApp(r,{name:'Temporary expenses',entityId:'https://temporary.example.com',acsUrl:'https://temporary.example.com/acs',idpInitiated:true,assign:[]});
  const employee=await temporaryLauncherGrant(r,app);
+ const {submitRequest}=await import('./access-decisions-flow.mjs');
+ assert.equal((await submitRequest(r,employee,{appId:app.id,purpose:'Duplicate active approval',durationMs:60000})).status,409,'a live approval still blocks duplicate requests');
  const read=async(cookie=employee.cookie)=>(await (await r.call('/api/auth/launcher',{cookie})).json()).apps;
  const action=(path,data,cookie=employee.cookie)=>r.call(path,{method:'POST',data,cookie});
  assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,200);
@@ -238,6 +240,15 @@ test('launcher preferences never grant access: current groups control credential
  assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,403);
  assert.equal((await r.call(`/api/auth/launcher/open?id=${app.id}`,{cookie:employee.cookie})).status,403);
  assert.equal((await action('/api/auth/launcher/favorite',{id:app.id,favorite:true})).status,403);
+ assert.equal((await action('/api/auth/launcher/favorite',{id:app.id,favorite:false})).status,200,'an expired favorite can be removed before maintenance');
+ assert.equal((await read()).find(a=>a.id===app.id).favorite,false);
+ await r.restart();assert.equal((await read()).find(a=>a.id===app.id).favorite,false,'removal persists across restart');
+ const repeated=await submitRequest(r,employee,{appId:app.id,purpose:'A new approved access period is needed',durationMs:60000});
+ assert.equal(repeated.status,201,'an expired approval does not block a new request before maintenance');
+ const renewed=await repeated.json();
+ assert.equal((await r.db.prepare('SELECT state FROM auth_access_requests WHERE id=?').bind(renewed.id).first()).state,'pending','requesting again never restores access');
+ assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,403);
+ assert.equal((await submitRequest(r,employee,{appId:app.id,purpose:'Duplicate pending request',durationMs:60000})).status,409,'a pending request still blocks duplicates');
  // A connector account still being created is explained, then an edge refusal
  // becomes a blocked connector without exposing its credential or error text.
  const edge=await scimServer(t,'synthetic-auth-71');r.scimServer=edge.url;
