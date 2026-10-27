@@ -423,9 +423,27 @@
     },
     {
       "binding": "DB",
-      "name": "0072_auth_onboarding.sql",
+      "name": "0072_auth_automations.sql",
+      "sha256": "f1b2b65cd1e77ed0a3a623df4659106bad1c0a82441df64640dc0cd297b7f7c4",
+      "sql": "-- Connection custody and exact per-run approval stay in this installation.\nCREATE TABLE auth_automation_connections (\n id TEXT PRIMARY KEY,\n name TEXT NOT NULL,\n origin TEXT NOT NULL,\n token_url TEXT NOT NULL,\n paths TEXT NOT NULL,\n group_id TEXT NOT NULL REFERENCES auth_groups(id),\n granted_to TEXT NOT NULL REFERENCES oa_operators(id),\n sealed_credentials TEXT NOT NULL,\n version INTEGER NOT NULL DEFAULT 1,\n revoked_at INTEGER,\n created_by TEXT NOT NULL REFERENCES oa_operators(id),\n created_at INTEGER NOT NULL\n);\nCREATE TABLE auth_automations (\n id TEXT PRIMARY KEY REFERENCES auth_automation_connections(id),\n name TEXT NOT NULL,\n version INTEGER NOT NULL,\n config TEXT NOT NULL,\n updated_by TEXT NOT NULL REFERENCES oa_operators(id),\n updated_at INTEGER NOT NULL\n);\nCREATE TABLE auth_automation_versions (\n automation_id TEXT NOT NULL REFERENCES auth_automations(id),\n version INTEGER NOT NULL,\n name TEXT NOT NULL,\n config TEXT NOT NULL,\n created_by TEXT NOT NULL REFERENCES oa_operators(id),\n created_at INTEGER NOT NULL,\n PRIMARY KEY(automation_id,version)\n);\nCREATE TABLE auth_automation_runs (\n id TEXT PRIMARY KEY,\n automation_id TEXT NOT NULL REFERENCES auth_automations(id),\n automation_version INTEGER NOT NULL,\n connection_version INTEGER NOT NULL,\n person_id TEXT NOT NULL REFERENCES oa_operators(id),\n person_version INTEGER NOT NULL,\n event_id TEXT,\n state TEXT NOT NULL CHECK(state IN ('dry_run','awaiting_approval','approved','running','completed','failed','uncertain','invalidated')),\n approved_by TEXT REFERENCES oa_operators(id),\n session_id TEXT,\n epoch INTEGER,\n approved_at INTEGER,\n lease_until INTEGER,\n error TEXT,\n created_at INTEGER NOT NULL,\n finished_at INTEGER,\n UNIQUE(automation_id,event_id)\n);\nCREATE TABLE auth_automation_steps (\n run_id TEXT NOT NULL REFERENCES auth_automation_runs(id),\n ordinal INTEGER NOT NULL CHECK(ordinal IN (1,2)),\n state TEXT NOT NULL CHECK(state IN ('intended','running','completed','failed','uncertain')),\n status INTEGER,\n error TEXT,\n started_at INTEGER,\n finished_at INTEGER,\n PRIMARY KEY(run_id,ordinal)\n);\nCREATE INDEX auth_automation_pending ON auth_automation_runs(state,lease_until);\n"
+    },
+    {
+      "binding": "DB",
+      "name": "0073_auth_onboarding.sql",
       "sha256": "ffb30769067248c6556bf209ab1029bde61bc6de665d18c6fe6335a34169393b",
       "sql": "CREATE TABLE auth_onboarding (\n person_id TEXT PRIMARY KEY REFERENCES oa_operators(id),\n personal_email TEXT NOT NULL,\n personal_verified_at INTEGER,\n start_at INTEGER NOT NULL,\n start_local TEXT NOT NULL,\n time_zone TEXT NOT NULL,\n lead_days INTEGER NOT NULL CHECK(lead_days BETWEEN 0 AND 30),\n generation INTEGER NOT NULL DEFAULT 1,\n operation_id TEXT,\n dispatched_at INTEGER,\n consumed_at INTEGER,\n rescinded_at INTEGER,\n created_at INTEGER NOT NULL\n);\nCREATE TABLE auth_onboarding_links (\n person_id TEXT PRIMARY KEY REFERENCES oa_operators(id),\n generation INTEGER NOT NULL,\n token_hash TEXT NOT NULL,\n expires_at INTEGER NOT NULL\n);\nALTER TABLE auth_emails ADD COLUMN proof_kind TEXT NOT NULL DEFAULT 'work';\n"
+    },
+    {
+      "binding": "DB",
+      "name": "0074_auth_onboarding_authority.sql",
+      "sha256": "2a48d605eab1585e3b64ef6e6a3cd4423c23a1f1be9eab8d6dd2b5858d00f615",
+      "sql": "ALTER TABLE auth_onboarding ADD COLUMN contact_authority TEXT;\nALTER TABLE auth_onboarding ADD COLUMN sending_person_id TEXT REFERENCES oa_operators(id);\nALTER TABLE auth_onboarding ADD COLUMN sending_person_version INTEGER;\nALTER TABLE auth_onboarding ADD COLUMN send_reason TEXT NOT NULL DEFAULT 'initial';\nALTER TABLE auth_onboarding ADD COLUMN recovery_notices_enabled INTEGER NOT NULL DEFAULT 0;\n"
+    },
+    {
+      "binding": "DB",
+      "name": "0075_auth_temporary_passes.sql",
+      "sha256": "06fc08fed35bdbdb6f25514c3d3529337088014efb593716850553fa721a140b",
+      "sql": "-- Temporary enrollment capabilities are local secrets, never portable identity.\nCREATE TABLE auth_temporary_pass_requests (\n id TEXT PRIMARY KEY,\n person_id TEXT NOT NULL REFERENCES oa_operators(id),\n person_version INTEGER NOT NULL,\n manager_id TEXT NOT NULL,\n manager_session_id TEXT NOT NULL,\n reason TEXT NOT NULL,\n created_at INTEGER NOT NULL,\n expires_at INTEGER NOT NULL,\n issued_at INTEGER\n);\nCREATE TABLE auth_temporary_passes (\n id TEXT PRIMARY KEY,\n request_id TEXT NOT NULL UNIQUE REFERENCES auth_temporary_pass_requests(id),\n person_id TEXT NOT NULL REFERENCES oa_operators(id),\n person_version INTEGER NOT NULL,\n issuer_id TEXT NOT NULL,\n issuer_session_id TEXT NOT NULL,\n token_hash TEXT NOT NULL UNIQUE,\n created_at INTEGER NOT NULL,\n expires_at INTEGER NOT NULL,\n consumed_at INTEGER,\n enrollment_session_id TEXT,\n completed_at INTEGER,\n revoked_at INTEGER\n);\nCREATE INDEX auth_temporary_passes_person ON auth_temporary_passes(person_id,created_at);\n"
     }
   ],
   "compatibilityDate": "2026-09-08",

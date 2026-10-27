@@ -2,7 +2,7 @@
 
 Generated from CONTRACT.md. Acceptance journeys remain in ACCEPTANCE.md.
 
-Done: 38; partial: 36; missing: 18; total: 92.
+Done: 38; partial: 37; missing: 17; total: 92.
 
 | Clause | Title | Status |
 | --- | --- | --- |
@@ -53,7 +53,7 @@ Done: 38; partial: 36; missing: 18; total: 92.
 | AUTH-HRIS-002 | Scheduled HR file feeds | done |
 | AUTH-LIFECYCLE-001 | Complete joiner, mover and leaver execution | partial |
 | AUTH-TIMING-001 | Measured lifecycle time bounds | partial |
-| AUTH-WORKFLOWS-001 | Employer-built identity automations | missing |
+| AUTH-WORKFLOWS-001 | Employer-built identity automations | partial |
 | AUTH-FEDERATION-001 | Generic upstream federation | partial |
 | AUTH-SOCIAL-001 | Controlled external identity sign-in | partial |
 | AUTH-LEGACY-001 | LDAP, Active Directory and RADIUS access | missing |

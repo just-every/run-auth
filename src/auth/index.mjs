@@ -1,5 +1,6 @@
 import {requestPass,issuePass,revokePass,redeemPass,temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction,activationPage,activationError,activate} from './onboarding/index.mjs';
+import {AUTOMATIONS_READ,isAutomationAction,automationsRead,automationAction} from './automations/routes.mjs';
 import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -93,6 +94,7 @@ function scopedRuntime(options) {
    if(request.method==='GET') {
     if(path==='/api/auth/temporary-passes')return json(await temporaryPassesModel(ctx,await requireSession(ctx,request)));
     if(path==='/api/auth/onboarding'){await requireSession(ctx,request,true);return json(await onboardingModel(ctx));}
+    if(path===AUTOMATIONS_READ)return await automationsRead(ctx,request);
     if(path==='/api/auth/abuse')return await abuseRead(ctx,request);
     if(path==='/api/auth/audit')return json(await auditPage(ctx,await requireSession(ctx,request),request));
     if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);
@@ -205,6 +207,7 @@ function scopedRuntime(options) {
      if(isHookAction(action))return await hookAction(ctx,request,action,data);
      if(isMappingAction(action))return await mappingAction(ctx,request,action,data);
      if(isWorkforceAction(action))return await workforceAction(ctx,request,action,data);
+     if(isAutomationAction(action))return await automationAction(ctx,request,action,data);
      if(isEventsAction(action))return await eventsAction(ctx,request,action,data);
      return await adminAction(ctx,request,action,data);
     }

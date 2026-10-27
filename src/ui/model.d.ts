@@ -263,6 +263,7 @@ export interface FollowupModel {
 
 export interface AuthPageModel {
   onboarding?: Array<{person_id:string; start_local:string; time_zone:string; lead_days:number; personal_verified_at:number|null; rescinded_at:number|null; contact_authority:string|null; recovery_notices_enabled:number; temporaryPassRequired:boolean}>
+  automations?: import('./pages/automations.js').AutomationsModel
   retention?: RetentionModel
   requests?: AccessRequestsModel
   decisions?: AccessDecisionsModel

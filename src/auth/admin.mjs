@@ -1,5 +1,6 @@
 import {temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction} from './onboarding/index.mjs';
+import {automationsModel} from './automations/routes.mjs';
 import {recoveryCasesModel} from './recovery-cases/index.mjs';
 import {abuseModel} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -68,7 +69,7 @@ export async function model(ctx,request,page='account') {
   if(page==='agents'){Object.assign(result,await agentsModel(ctx,request));result.adminServices=await adminServicesModel(ctx);}
   if(page==='people'){result.directory=await directoryModel(ctx);result.onboarding=await onboardingModel(ctx);}
   if(page==='activity')result.followup=await (await followupRead(ctx,request)).json();
-  if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
+  if(page==='apps'){result.automations=await automationsModel(ctx,s);result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
  if(page==='activity') {
   try {result.activityPage=await auditPage(ctx,s,request);result.activity=result.activityPage.events;result.canReadAudit=true;}
