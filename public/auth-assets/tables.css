@@ -45,7 +45,7 @@ th:last-child, td:last-child { padding-right: 4px; }
 .flag-list { margin-top: 8px; }
 .app-table .actions-cell .button-row + .data-meta { margin-top: 6px; text-align: right; }
 .activity-event { display: block; font-weight: 600; }
-.activity-subject { display: block; margin-top: 2px; font-size: 13px; color: var(--rer-muted); }
+.activity-subject { overflow-wrap: anywhere; display: block; margin-top: 2px; font-size: 13px; color: var(--rer-muted); }
 
 @media (max-width: 1023px) {
   .page-content > .toolbar { padding: 16px; border: 1px solid var(--rer-border); border-radius: 16px; background: var(--rer-surface); }
