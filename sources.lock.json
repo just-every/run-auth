@@ -1866,6 +1866,10 @@
       "sha256": "bcf82ff8b5ac43d974bd4dfa3488568b93e8506d3fe735bb0add7fc6a14fa941",
       "executable": false
     },
+    "src/auth/recovery-cases/eligibility.mjs": {
+      "sha256": "235a6feea60f936786964126bd7139f9a9b7f62c4c39eb198f03599e607da7d9",
+      "executable": false
+    },
     "src/auth/recovery-cases/index.mjs": {
       "sha256": "539e75074e019770b8aeff15674b9d5aec5058a7a9840115fadf907e89b56563",
       "executable": false
