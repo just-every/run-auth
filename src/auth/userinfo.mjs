@@ -1,3 +1,4 @@
+import {appAccess} from './onboarding/gate.mjs';
 import {createLocalJWKSet,jwtVerify} from 'jose';
 import {AuthError,json,one,sessionById,validateClientOrigin,EMAIL_MAX_AGE} from './core.mjs';
 import {jwks,SIGNING_ALGORITHMS,TOKEN_SECONDS} from './keys.mjs';
@@ -47,7 +48,7 @@ export async function userinfo(ctx,request) {
  if(!client)return refusal();
  try {validateClientOrigin(ctx,client.origin);}catch(error) {if(error instanceof AuthError)return refusal();throw error;}
  const s=await sessionById(ctx,request,payload.sid);
- if(!s)return refusal();
+ if(!s||!await appAccess(ctx,s))return refusal();
  const subject=await one(ctx,'SELECT subject FROM auth_subjects WHERE sector_id=? AND person_id=?',client.sector_id,s.person_id);
  const grant=await one(ctx,'SELECT person_id FROM auth_grants WHERE client_id=? AND person_id=?',client.id,s.person_id);
  const proof=await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',s.person_id);

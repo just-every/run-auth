@@ -262,6 +262,7 @@ export interface FollowupModel {
 }
 
 export interface AuthPageModel {
+  onboarding?: Array<{person_id:string; start_local:string; time_zone:string; lead_days:number; personal_verified_at:number|null; rescinded_at:number|null}>
   retention?: RetentionModel
   requests?: AccessRequestsModel
   decisions?: AccessDecisionsModel
@@ -321,7 +322,7 @@ export interface AuthPageModel {
   launcher?: LauncherApp[]
 }
 
-export interface LauncherApp { id: string; name: string; launch: string | null; kind: string; state: string; role?: string | null; icon?: string; favorite: boolean; lastUsedAt: number | null; requestable?: boolean }
+export interface LauncherApp { id: string; name: string; launch: string | null; kind: string; state: string; role?: string | null; icon?: string; availableFrom?: number | null; favorite: boolean; lastUsedAt: number | null; requestable?: boolean }
 export interface CompanyAppObligation {
   subject_type: string; subject_id: string; label?: string | null; reason: string; operation?: string | null; state: string
   event_at: number; dispatched_at?: number | null; verified_at?: number | null; attempts: number; last_status?: number | null; last_error?: string | null; overdue?: boolean

@@ -1,3 +1,4 @@
+import {appAccess} from '../onboarding/gate.mjs';
 // What a general OIDC app gets after sign-in: UserInfo while the person, the
 // session and the app assignment all still hold, and front- and back-channel
 // logout when the Auth session ends.
@@ -14,7 +15,7 @@ export async function genericUserinfo(ctx,request,payload,client) {
  if(!scopes.includes('openid')||scopes.some(s=>!SCOPES.includes(s)))return refusal();
  const s=await sessionById(ctx,request,payload.sid),assigned=s&&await assignment(ctx,client.app_id,s.person_id);
  const proof=s&&await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',s.person_id);
- if(!assigned||!proof||ctx.now()-proof.verified_at>EMAIL_MAX_AGE||await subjectFor(ctx,client,s.person_id)!==payload.sub)return refusal();
+ if(!assigned||!await appAccess(ctx,s)||!proof||ctx.now()-proof.verified_at>EMAIL_MAX_AGE||await subjectFor(ctx,client,s.person_id)!==payload.sub)return refusal();
  return json({sub:payload.sub,...await claimsFor(ctx,client,s,scopes,assigned.role,proof.verified_at)});
 }
 

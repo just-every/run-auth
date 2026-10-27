@@ -10,8 +10,9 @@ export async function prepareSession(ctx,personId,amr,upstreamProofId=null,{loca
  if(upstreamProofId&&!proof)fail('upstream_proof_expired',403);
  const raw=random(),id=random(),now=ctx.now();
  const devOnly=ctx.local&&amr.every(method=>method==='dev');
- const emailProof=devOnly?null:await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',personId);
+ const emailProof=devOnly?null:await one(ctx,'SELECT verified_at,proof_kind FROM auth_emails WHERE person_id=?',personId);
  if(!devOnly&&(!emailProof||emailProof.verified_at+EMAIL_MAX_AGE<=now))fail('email_proof_expired',403);
+ if(emailProof?.proof_kind==='onboarding'&&!amr.includes('onboarding'))amr=[...amr,'onboarding'];
  const deadline=Math.min(now+SESSION_MAX_AGE,proof?.expires_at??Infinity,expiresAt,emailProof?emailProof.verified_at+EMAIL_MAX_AGE:Infinity);
  // The session write is also the enrollment gate. All dependent writes use its
  // new id in the same transaction, so a zero-row refusal persists nothing.

@@ -1,3 +1,4 @@
+import {onboardingGate} from '../onboarding/gate.mjs';
 import {effectiveRole} from '../reviews/reductions.mjs';
 // Groups and app assignments: who may use which company app, and with which
 // app role. A direct assignment's role wins over a group's.
@@ -11,7 +12,7 @@ const ASSIGNED=`SELECT a.role,0 AS rank FROM auth_app_assignments a WHERE a.app_
 export async function assignment(ctx,appId,personId) {
  const person=await one(ctx,"SELECT id FROM oa_operators WHERE id=? AND status='active'",personId);
  const app=await one(ctx,'SELECT id FROM auth_apps WHERE id=? AND disabled_at IS NULL',appId);
- if(!person||!app||await one(ctx,'SELECT 1 FROM auth_app_denials WHERE app_id=? AND person_id=?',appId,personId))return null;
+ if(!person||!app||await onboardingGate(ctx,personId)||await one(ctx,'SELECT 1 FROM auth_app_denials WHERE app_id=? AND person_id=?',appId,personId))return null;
  return effectiveRole(ctx,appId,personId,await one(ctx,ASSIGNED,appId,personId,ctx.now(),appId,personId));
 }
 

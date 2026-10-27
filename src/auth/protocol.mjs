@@ -1,3 +1,4 @@
+import {appAccessGuard,appAccess} from './onboarding/gate.mjs';
 import {invokeHooks} from './hooks/index.mjs';
 import {recheckIssuance} from './hooks/fences.mjs';
 import {permitsSession} from './domain-policy.mjs';
@@ -51,13 +52,14 @@ export async function authorize(ctx,request,login=null) {
   if(prompts.includes('none'))return error('login_required');
   return beginAuthorizationLogin(ctx,request,s,reauthenticate);
  }
+ if(!await appAccess(ctx,s))return error('access_denied');
  const proof=await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',s.person_id);
  if(!proof||ctx.now()-proof.verified_at>=EMAIL_MAX_AGE) {
   if(prompts.includes('none'))return error('login_required');
   return beginAuthorizationLogin(ctx,request,s);
  }
  await activeSigningKey(ctx,c.id_token_signed_response_alg);
- const code=random();await run(ctx,'INSERT INTO auth_codes(code_hash,client_id,person_id,session_id,redirect_uri,challenge,nonce,scopes,expires_at) VALUES(?,?,?,?,?,?,?,?,?)',await hash(code),c.id,s.person_id,s.id,uri.href,pkce,nonce,JSON.stringify(scopes),ctx.now()+60000);
+ const code=random(),gate=appAccessGuard(ctx,s);const inserted=await run(ctx,`INSERT INTO auth_codes(code_hash,client_id,person_id,session_id,redirect_uri,challenge,nonce,scopes,expires_at) SELECT ?,?,?,?,?,?,?,?,? WHERE ${gate.clause}`,await hash(code),c.id,s.person_id,s.id,uri.href,pkce,nonce,JSON.stringify(scopes),ctx.now()+60000,...gate.args);if(!inserted.meta.changes)return error('access_denied');
  await run(ctx,'INSERT OR IGNORE INTO auth_grants(client_id,person_id,created_at) VALUES(?,?,?)',c.id,s.person_id,ctx.now());
  return oauthRedirect(ctx,uri,{code,state});
 }
@@ -76,7 +78,7 @@ export async function token(ctx,request) {
  redirect(c,code.redirect_uri);
  const s=await one(ctx,"SELECT s.*,p.email,p.display_name,p.status,p.version,p.role FROM auth_sessions s JOIN oa_operators p ON p.id=s.person_id WHERE s.id=? AND s.revoked_at IS NULL AND s.expires_at>? AND p.status='active' AND p.version=s.person_version",code.session_id,ctx.now());
  const proof=await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',code.person_id);if(!s||!proof||ctx.now()-proof.verified_at>=EMAIL_MAX_AGE||(!ctx.local&&JSON.parse(s.amr).includes('dev')))fail('invalid_grant');
- if(!await permitsSession(ctx,s))fail('invalid_grant');
+ if(!await appAccess(ctx,s)||!await permitsSession(ctx,s))fail('invalid_grant');
  await activeSigningKey(ctx,c.id_token_signed_response_alg);
  const consumed=await one(ctx,'DELETE FROM auth_codes WHERE code_hash=? AND consumed_at IS NULL RETURNING code_hash',code.code_hash);if(!consumed)fail('invalid_grant');
  const scopes=JSON.parse(code.scopes),claims={aud:c.id,sub:await pairwiseSubject(ctx,c.sector_id,code.person_id),nonce:code.nonce,sid:s.id,amr:ctx.local?['dev']:JSON.parse(s.amr),auth_time:Math.floor(s.created_at/1000),email_verified_at:Math.floor(proof.verified_at/1000)};
@@ -91,5 +93,6 @@ export async function token(ctx,request) {
  const access_token=await signToken(ctx,{aud:`${(ctx.issuer??ctx.origin)}/oidc/userinfo`,sub:claims.sub,client_id:c.id,sid:s.id,scope:scopes.join(' '),jti:random()},{alg,typ:'at+jwt',expiresAt});
  claims.at_hash=b64(new Uint8Array(await crypto.subtle.digest('SHA-256',utf8.encode(access_token))).slice(0,16));
  const id_token=await signToken(ctx,claims,{alg});await audit(ctx,code.person_id,'id_token_issued',c.id);
+ await recheckIssuance(ctx,s,{clientId:c.id});
  await run(ctx,'INSERT OR IGNORE INTO auth_session_clients(session_id,client_id) VALUES(?,?)',s.id,c.id);return json({id_token,access_token,token_type:'Bearer',expires_in:expiresAt-Math.floor(ctx.now()/1000),scope:scopes.join(' ')},200,{pragma:'no-cache'});
 }

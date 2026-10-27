@@ -1,3 +1,4 @@
+import {maintainOnboarding} from './onboarding/index.mjs';
 import {maintainDirectorySources} from './directory-sources/maintenance.mjs';
 import {maintainNotifications} from './notifications/index.mjs';
 import {executeHrRows} from './hris/files/apply.mjs';
@@ -39,6 +40,7 @@ export async function maintainAuth(ctx) {
   ctx.db.prepare('DELETE FROM auth_oidc_codes WHERE expires_at<=?').bind(now),
   ctx.db.prepare('DELETE FROM auth_link_intents WHERE expires_at<=?').bind(now),
  ]);
+ await maintainOnboarding(ctx);
  await maintainDirectorySources(ctx);
  await executeHrRows(ctx);
  await maintainFamilies(ctx);

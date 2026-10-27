@@ -1,3 +1,4 @@
+import {appAccess} from '../onboarding/gate.mjs';
 import {one,fail} from '../core.mjs';
 import {permitsSession} from '../domain-policy.mjs';
 import {assignment} from '../workforce/directory.mjs';
@@ -15,16 +16,18 @@ export function familyGuard(ctx,f) {
  WHERE rf.id=? AND rf.revoked_at IS NULL AND rf.idle_expires_at>? AND rf.absolute_expires_at>?
  AND rp.enabled=1 AND rp.revision=rf.profile_revision AND rp.api_id=rf.api_id
  AND api.revision=rf.api_revision AND api.app_id=ra.id AND ra.version=rf.app_version AND ra.disabled_at IS NULL
+ AND NOT EXISTS(SELECT 1 FROM auth_onboarding h WHERE h.person_id=person.id AND (h.start_at>? OR h.rescinded_at IS NOT NULL))
+ AND source.amr NOT LIKE '%"onboarding"%'
  AND person.status='active' AND person.version=rf.person_version AND source.person_id=person.id
  AND source.person_version=person.version AND source.revoked_at IS NULL
  AND NOT EXISTS(SELECT 1 FROM auth_app_denials d WHERE d.app_id=ra.id AND d.person_id=person.id)
- AND EXISTS(SELECT 1 FROM auth_app_assignments a LEFT JOIN auth_group_members m ON a.principal_type='group' AND m.group_id=a.principal_id WHERE a.app_id=ra.id AND ((a.principal_type='person' AND a.principal_id=person.id) OR m.person_id=person.id)))`,args:[f.id,ctx.now(),ctx.now()]};
+ AND EXISTS(SELECT 1 FROM auth_app_assignments a LEFT JOIN auth_group_members m ON a.principal_type='group' AND m.group_id=a.principal_id WHERE a.app_id=ra.id AND ((a.principal_type='person' AND a.principal_id=person.id) OR m.person_id=person.id)))`,args:[f.id,ctx.now(),ctx.now(),ctx.now()]};
 }
 export async function liveFamily(ctx,f) {
  const g=familyGuard(ctx,f);
  if(!(await one(ctx,`SELECT ${g.clause} AS held`,...g.args)).held)return false;
  const s=await one(ctx,'SELECT s.*,p.email,p.role FROM auth_sessions s JOIN oa_operators p ON p.id=s.person_id WHERE s.id=?',f.session_id);
- if(!s||!ctx.local&&JSON.parse(s.amr).includes('dev')||!await permitsSession(ctx,s))return false;
+ if(!s||!await appAccess(ctx,s)||!ctx.local&&JSON.parse(s.amr).includes('dev')||!await permitsSession(ctx,s))return false;
  const client=await one(ctx,'SELECT app_id FROM auth_oidc_clients WHERE client_id=?',f.client_id);
  return Boolean(client&&await assignment(ctx,client.app_id,f.person_id));
 }

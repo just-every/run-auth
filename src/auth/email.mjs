@@ -29,6 +29,7 @@ async function startProof(ctx, request, data, address, bound, report = false) {
   await run(ctx,"INSERT OR IGNORE INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE EXISTS(SELECT 1 FROM auth_domains WHERE domain=?) AND NOT EXISTS(SELECT 1 FROM oa_domain_rules WHERE domain=?)",random(),address,extension.profile?.name??address,ctx.now(),address.split('@')[1],address.split('@')[1]);
   person=await one(ctx,'SELECT * FROM oa_operators WHERE email=?',address);
  }
+ if(person&&await one(ctx,'SELECT 1 FROM auth_onboarding WHERE person_id=? AND (personal_verified_at IS NULL OR rescinded_at IS NOT NULL)',person.id))return;
  if(!person||!await invitationAdmitted(ctx,person)){if(report)fail('account_unavailable',403);return;}
  if(person.status==='invited')await syncObligations(ctx);
  const current=await session(ctx,request),proofId=current?.person_id===person.id&&await upstreamProof(ctx,person.id,current.upstream_proof_id)?current.upstream_proof_id:null;
@@ -71,7 +72,7 @@ export async function confirmEmail(ctx,request,data) {
  if(proof.payload.hardwareSessionId&&(!hardware||hardware.person_id!==person.id||!JSON.parse(hardware.amr).includes('hwk')))fail('passkey_session_expired',403);
  await ctx.db.batch([
   ctx.db.prepare("UPDATE oa_operators SET status='active' WHERE id=? AND status='invited'").bind(proof.person_id),
-  ctx.db.prepare('INSERT INTO auth_emails(person_id,verified_at) VALUES(?,?) ON CONFLICT(person_id) DO UPDATE SET verified_at=excluded.verified_at').bind(proof.person_id,ctx.now()),
+  ctx.db.prepare("INSERT INTO auth_emails(person_id,verified_at,proof_kind) VALUES(?,?,'work') ON CONFLICT(person_id) DO UPDATE SET verified_at=excluded.verified_at,proof_kind='work'").bind(proof.person_id,ctx.now()),
  ]);
  const s=await createSession(ctx,proof.person_id,[...proof.payload.amr,...(hardware?['hwk']:[])],proof.payload.upstreamProofId,{request,app:await notificationApp(ctx,proof.payload.returnTo,request),localEmailVerifiedAt:ctx.now(),expiresAt:hardware?.expires_at,sourceSession:hardware,personVersion:person.status==='active'?person.version:null});
  await syncObligations(ctx);

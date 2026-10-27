@@ -1,3 +1,4 @@
+import {onboardingAction,activationPage,activate} from './onboarding/index.mjs';
 import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -101,6 +102,7 @@ function scopedRuntime(options) {
     if(path==='/oidc/jwks'){await ensureSigningKey(ctx);return json(await jwks(ctx),200,{'cache-control':`public, max-age=${JWKS_CACHE_SECONDS}`});}
     if(path==='/oidc/authorize')return await authorize(ctx,request);
     if(path==='/oidc/authorize/resume')return await resumeAuthorization(ctx,request);
+    if(path==='/auth/identity/onboarding')return activationPage();
     if(path==='/auth/identity/email/confirm')return await confirmationPage(ctx,request);
     if(path===PAIRS_PREFIX||path===PAIRS_PREFIX+'/export')return json(await pairModel(ctx,request),200,path.endsWith('/export')?{'content-disposition':'attachment; filename="auth-identity-links.json"'}:{});
     if(path==='/api/auth/identity-release-notices')return releaseRead(ctx,request);
@@ -156,6 +158,7 @@ function scopedRuntime(options) {
     if(path===PAIRS_PREFIX+'/receipt-key'||path===PAIRS_PREFIX+'/receipt-revoke')return receiptAction(ctx,request,path,data);
     if(isPairPath(path))return pairAction(ctx,request,path,data);
     if(path==='/api/auth/identity-release-notices/hold')return releaseAction(ctx,request,data);
+    if(path==='/auth/identity/onboarding')return await activate(ctx,request,{...data,person:url.searchParams.get('person'),token:url.searchParams.get('token')});
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);
     if(path==='/auth/identity/email/confirm')return await confirmEmail(ctx,request,{...data,token:data.token||url.searchParams.get('token')});
     const passkeyPath=path.replace('/auth/identity/passkeys/','/auth/passkeys/');
@@ -165,6 +168,7 @@ function scopedRuntime(options) {
     if(passkeyPath==='/auth/passkeys/authenticate/verify')return await authenticationVerify(ctx,request,data);
     if(path.startsWith('/api/auth/')) {
      const action=path.slice('/api/auth'.length);
+     if(action.startsWith('/onboarding/'))return await onboardingAction(ctx,request,action,data);
      if(isRefreshAction(action))return await refreshAction(ctx,request,action,data);
      if(isDecisionAction(action))return await decisionAction(ctx,request,action,data);
      if(isReviewAction(action))return await reviewAction(ctx,request,action,data);

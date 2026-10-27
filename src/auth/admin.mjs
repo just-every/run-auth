@@ -1,3 +1,4 @@
+import {onboardingModel,onboardingAction} from './onboarding/index.mjs';
 import {recoveryCasesModel} from './recovery-cases/index.mjs';
 import {abuseModel} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -64,7 +65,7 @@ export async function model(ctx,request,page='account') {
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
   if(page==='agents'){Object.assign(result,await agentsModel(ctx,request));result.adminServices=await adminServicesModel(ctx);}
-  if(page==='people')result.directory=await directoryModel(ctx);
+  if(page==='people'){result.directory=await directoryModel(ctx);result.onboarding=await onboardingModel(ctx);}
   if(page==='activity')result.followup=await (await followupRead(ctx,request)).json();
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
@@ -124,6 +125,7 @@ export async function adminAction(ctx,request,path,data) {
  // rechecked with its authority by the write itself.
  requireLocalEmail(ctx,s);
  const guard=authority(ctx,s,owner?['owner']:['owner','admin']),g=guard.clause,ga=guard.args;
+ if(path==='/people/invite'&&(data.personalEmail||data.startLocal))return onboardingAction(ctx,request,'/onboarding/create',data);
  if(path==='/people/invite') {
   const address=email(data.email);if(!address||(!ctx.local && /\.(localhost|test|invalid)$/.test(address)))fail('invalid_email');
   const name=String(data.name||address).trim().slice(0,160);

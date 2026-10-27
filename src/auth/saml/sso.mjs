@@ -1,3 +1,4 @@
+import {requireAppAccess} from '../onboarding/gate.mjs';
 // SAML single sign-on: SP-initiated requests over HTTP-Redirect and HTTP-POST,
 // and IdP-initiated launches an app explicitly permits.
 import {one,run,hash,random,session,cookie,cookies,challenge,consumeChallenge,audit,fail} from '../core.mjs';
@@ -86,9 +87,11 @@ async function answer(ctx,request,pending) {
 }
 
 async function issue(ctx,app,s,acs,inResponseTo,relayState,reply) {
+ await requireAppAccess(ctx,s);
  const assigned=await assignment(ctx,app.id,s.person_id);
  if(!assigned){await audit(ctx,s.person_id,'saml_refused_unassigned',app.id);return samlPage('You are not assigned to this app',`Ask an administrator for access to ${app.name}.`,403);}
  const element=await signInResponse(ctx,{app,s,acs,inResponseTo,role:assigned.role});
+ await requireAppAccess(ctx,s);
  await audit(ctx,s.person_id,'saml_assertion_issued',app.id);
  return reply(element);
 }

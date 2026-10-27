@@ -1,0 +1,11 @@
+# Administrator-created future hires
+
+On People, choose Invite person and enter the work email, personal contact, employer-local start time, IANA time zone and invitation lead days. The default lead is seven days; the supported range is zero to thirty. Invalid local times and ambiguous daylight-saving times are refused. An existing work email is refused rather than merged. A personal contact never becomes a work sign-in alias, including when it matches another person's work email.
+
+The scheduled maintenance handler sends one activation invitation when the hire enters the lead window, before start. The contact is marked unverified until activation. The link expires after seven days or at start, whichever comes first. Its digest, person binding, generation and consumption are durable; the usable link exists only in the message. Reissue invalidates the old link before a replacement is sent. An uncertain transport outcome is recorded without an automatic resend; an administrator must explicitly reissue.
+
+Activation permits passkey enrollment with the existing fresh-email and first-factor gates. It does not prove the work address. The hire must prove the work address through ordinary email confirmation before using an application. Auth refuses launcher opens, native SAML assertions, OIDC authorization, token issuance and online token use before the current start time. Moving start later also refuses an already-issued code or online token. Self-contained tokens cannot be recalled from applications that do not check current Auth authority.
+
+People provides Update start time, Reissue activation and Rescind offer. Each requires a hardware administrator session and fresh local email confirmation, rechecked at the write. Rescission revokes local sessions, deletes passkeys, invalidates activation and fences native linked sessions. Maintenance never sends activation after start or rescission. A zero-day lead leaves no pre-start activation window; use the existing post-start enrollment path where available.
+
+This bounded path supplies no HR-source qualification, live-delivery receipt, reminder or manager escalation, push authenticator, password, temporary-pass, downstream provisioning, RADIUS or desktop qualification. These remain in AUTH-ONBOARD-001's Gap.

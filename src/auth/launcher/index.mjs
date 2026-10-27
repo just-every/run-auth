@@ -1,3 +1,4 @@
+import {onboardingGate} from '../onboarding/gate.mjs';
 import {all,one,run,json,fail,requireSession} from '../core.mjs';
 import {assignment} from '../workforce/directory.mjs';
 
@@ -9,6 +10,7 @@ export async function launcher(ctx,personId) {
  WHERE a.app_id=p.id AND ((a.principal_type='person' AND a.principal_id=?) OR m.person_id=?))
  OR EXISTS(SELECT 1 FROM auth_request_policies r WHERE r.app_id=p.id)
  OR EXISTS(SELECT 1 FROM auth_access_requests r WHERE r.app_id=p.id AND r.person_id=? AND r.state IN ('denied','approved','revocation_pending','expired_verified')))`,personId,personId,personId);
+ const hire=await onboardingGate(ctx,personId);
  const tiles=[];
  for(const a of apps) {
   const assigned=await assignment(ctx,a.id,personId);
@@ -24,10 +26,11 @@ export async function launcher(ctx,personId) {
    if(connector&&(connector.last_error||['failed','blocked'].includes(pending?.state)))state='connector-blocked';
    else if(connector&&account?.state!=='active')state='unprovisioned';
   }
-  tiles.push({id:a.id,name:a.name,kind:a.protocol,role:assigned?.role??null,state,requestable:Boolean(policy),launch:state==='ready'?(a.idp_initiated?`/saml/launch/${encodeURIComponent(a.id)}`:a.launch_url):null});
+  if(hire)state='before-start';
+  tiles.push({availableFrom:hire?.start_at??null,id:a.id,name:a.name,kind:a.protocol,role:assigned?.role??null,state,requestable:Boolean(policy),launch:state==='ready'?(a.idp_initiated?`/saml/launch/${encodeURIComponent(a.id)}`:a.launch_url):null});
  }
  const bookmarks=await all(ctx,`SELECT b.* FROM auth_launcher_bookmarks b JOIN auth_group_members m ON m.group_id=b.group_id WHERE m.person_id=?`,personId);
- tiles.push(...bookmarks.map(b=>({id:b.id,name:b.name,icon:b.icon,kind:'bookmark',state:'ready',launch:b.url})));
+ if(!hire)tiles.push(...bookmarks.map(b=>({id:b.id,name:b.name,icon:b.icon,kind:'bookmark',state:'ready',launch:b.url})));
  const preferences=await all(ctx,'SELECT * FROM auth_launcher_preferences WHERE person_id=?',personId);
  return tiles.map(tile=>{const p=preferences.find(p=>p.tile_id===tile.id);return {...tile,favorite:Boolean(p?.favorite),lastUsedAt:p?.last_used_at??null};}).sort((a,b)=>a.name.localeCompare(b.name));
 }
