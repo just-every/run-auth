@@ -1,3 +1,4 @@
+import {temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction} from './onboarding/index.mjs';
 import {recoveryCasesModel} from './recovery-cases/index.mjs';
 import {abuseModel} from './abuse/index.mjs';
@@ -78,6 +79,7 @@ export async function model(ctx,request,page='account') {
  if(page==='methods'&&result.isAdmin){result.delivery=await deliveryModel(ctx);result.abuse=await abuseModel(ctx);}
  if(page==='account'||page==='activity')result.notifications=await notificationsModel(ctx,request);
  if(page==='account')result.followup=await (await followupRead(ctx,request)).json();
+ if(page==='account'&&amr.includes('hwk'))result.temporaryPasses=await temporaryPassesModel(ctx,s);
  if(['account','people','roles'].includes(page))result.recoveryCases=await recoveryCasesModel(ctx,s);
  if(page==='roles') {
   try { result.roles=await roleModel(ctx,s); }

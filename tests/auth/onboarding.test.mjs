@@ -21,7 +21,7 @@ async function registerOrProve(r) {
  return {...r.owner,cookie:cookieOf(confirmed)};
 }
 async function hire(r,days=10,extra={}) {
- const response=await r.admin('create',{name:'Future worker',email:'hire@example.com',personalEmail:'personal@example.net',startLocal:r.start(days),timeZone:'UTC',leadDays:7,...extra});
+ const response=await r.admin('create',{name:'Future worker',email:'hire@example.com',personalEmail:'personal@example.net',startLocal:r.start(days),timeZone:'UTC',leadDays:7,contactAuthority:true,...extra});
  assert.equal(response.status,201,await response.clone().text());return (await response.json()).personId;
 }
 async function invitation(r) {const message=(await r.mails()).filter(m=>m.subject==='Activate your Auth enrollment').at(-1);assert.ok(message);return new URL(message.text.match(/https?:\/\/\S+$/)[0]);}
@@ -91,6 +91,17 @@ test('future hire activates once at the lead boundary, enrolls with personal pro
  assert.equal((await r.mails()).filter(m=>m.to==='late-contact@example.net').length,0,'a second hire is still outside the lead window');
  r.now=r.base+20*DAY;await r.call('/',{action:'maintain'});
  assert.equal((await r.mails()).filter(m=>m.to==='late-contact@example.net').length,0,'maintenance does not send a missed activation at start');
+
+ await r.refresh();
+ assert.equal((await r.admin('authority',{personId:id,contactAuthority:true,recoveryNotices:true})).status,200);
+ const recovery=await r.call('/api/auth/recovery/start',post({},await emailSession(r,'hire@example.com')));assert.equal(recovery.status,201,await recovery.clone().text());
+ const recoveryMails=(await r.mails()).filter(m=>m.to==='personal@example.net');
+ assert.equal(recoveryMails.length,mails+1,'a separately employer-enabled recovery notice may dispatch after start');
+ assert.equal(recoveryMails.at(-1).subject,'Auth account recovery notice');
+ assert.ok(!recoveryMails.at(-1).text.includes('token='),'personal recovery notice carries no credential');
+ assert.equal((await r.admin('authority',{personId:id,contactAuthority:true,recoveryNotices:false})).status,200);
+ assert.equal((await r.call('/api/auth/recovery/cancel',post({id:(await recovery.json()).id},await emailSession(r,'hire@example.com')))).status,200);
+ assert.equal((await r.mails()).filter(m=>m.to==='personal@example.net').length,recoveryMails.length,'disabled personal recovery notices remain silent');
  assert.ok(work);
 });
 
@@ -132,4 +143,52 @@ test('future-hire administration refuses missing, weak, foreign and expired auth
  assert.equal((await r.db.prepare('SELECT start_at FROM auth_onboarding WHERE person_id=?').bind(id).first()).start_at,Date.parse(r.start(10)+'Z'));
  r.now+=11*60000;assert.equal((await r.admin('rescind',{personId:id})).status,403);
  assert.equal((await r.db.prepare('SELECT rescinded_at FROM auth_onboarding WHERE person_id=?').bind(id).first()).rescinded_at,null);
+});
+
+
+test('activation dispatch uses recorded employer authority and the current schedule at every queued transport boundary',async t=>{
+ const r=await fixture(t),activationMails=async address=>(await r.mails()).filter(m=>m.to===address&&m.subject==='Activate your Auth enrollment');
+ const unapproved=await hire(r,10,{leadDays:30,contactAuthority:false});
+ assert.equal((await activationMails('personal@example.net')).length,0,'importing contact is not dispatch authority');
+ assert.equal((await r.admin('authority',{personId:unapproved,contactAuthority:true})).status,200);
+ assert.equal((await activationMails('personal@example.net')).length,1,'recorded authority opens the permitted pre-start window');
+ let seq=0;
+ for(const verb of ['initial','reissue','retry','remind'])for(const boundary of ['exact','after','later','rescinded','authority','sender']) {
+  r.base=r.now+DAY;r.now=r.base;await r.refresh();
+  const n=++seq,address=`contact-${n}@example.net`,id=await hire(r,10,{email:`hire-${n}@example.com`,personalEmail:address});
+  const start=r.base+10*DAY;
+  // A queued attempt is held between its journal claim and final dispatch read.
+  // The concurrent employer update occurs there, after all initial preflight.
+  r.now=r.base+3*DAY;await r.refresh();
+  const changes={exact:`UPDATE auth_onboarding SET start_at=${r.now} WHERE person_id='${id}'`,after:`UPDATE auth_onboarding SET start_at=${r.now-1} WHERE person_id='${id}'`,later:`UPDATE auth_onboarding SET start_at=${start+DAY} WHERE person_id='${id}'`,rescinded:`UPDATE auth_onboarding SET rescinded_at=${r.now} WHERE person_id='${id}'`,authority:`UPDATE auth_onboarding SET contact_authority=NULL WHERE person_id='${id}'`,sender:"UPDATE oa_operators SET role='member' WHERE id='owner'"};
+  const race={onboardingRace:{prefix:'SELECT h.person_id FROM auth_onboarding',sql:changes[boundary]}};
+  if(verb==='initial')await r.call('/',{action:'maintain',...race});
+  else assert.equal((await r.call('/api/auth/onboarding/'+verb,post({personId:id},r.owner.cookie,race))).status,200);
+  assert.equal((await activationMails(address)).length,0,`${verb} refuses queued ${boundary} change`);
+  if(boundary==='sender')await r.db.prepare("UPDATE oa_operators SET role='owner' WHERE id='owner'").run();
+  // Keep the next fixture outside its lead window until its own queued attempt.
+ }
+ for(const verb of ['reissue','retry','remind'])for(const delta of [0,1]) {
+  r.base=r.now+DAY;r.now=r.base;await r.refresh();
+  const n=++seq,address=`contact-${n}@example.net`,id=await hire(r,10,{email:`hire-${n}@example.com`,personalEmail:address});
+  r.now=r.base+10*DAY+delta;await r.refresh();
+  assert.equal((await r.admin(verb,{personId:id})).status,409,`${verb} refuses at and after start`);
+  assert.equal((await activationMails(address)).length,0);
+ }
+ r.base=r.now+DAY;r.now=r.base;await r.refresh();
+ const zero=await hire(r,10,{email:'zero@example.com',personalEmail:'zero@example.net',leadDays:0});
+ const zeroModel=await(await r.call('/api/auth/onboarding',{cookie:r.owner.cookie})).json();
+ assert.equal(zeroModel.find(h=>h.person_id===zero).temporaryPassRequired,true,'zero lead exposes the temporary-pass next step');r.now=r.base+10*DAY;await r.call('/',{action:'maintain'});
+ assert.equal((await activationMails('zero@example.net')).length,0,'zero lead time grants no personal-mail exception');
+ await r.refresh();
+ const detail=await r.call('/api/auth/me',{cookie:r.owner.cookie});assert.equal(detail.status,200);
+ assert.equal((await r.db.prepare('SELECT dispatched_at FROM auth_onboarding WHERE person_id=?').bind(zero).first()).dispatched_at,null);
+ // A current schedule moving into the window is used, rather than its old due snapshot.
+ r.base=r.now+DAY;r.now=r.base;await r.refresh();const earlier=await hire(r,10,{email:'earlier@example.com',personalEmail:'earlier@example.net'});
+ assert.equal((await r.admin('schedule',{personId:earlier,startLocal:r.start(5),timeZone:'UTC',leadDays:7})).status,200);
+ assert.equal((await activationMails('earlier@example.net')).length,1,'moving earlier opens the current permitted window');
+ for(const verb of ['reissue','retry','remind']) {
+  assert.equal((await r.admin(verb,{personId:earlier})).status,200);
+ }
+ assert.equal((await activationMails('earlier@example.net')).length,4,'each explicit pre-start attempt can dispatch once');
 });

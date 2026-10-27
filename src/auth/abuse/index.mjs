@@ -35,6 +35,7 @@ export async function configureAbuse(ctx,request,data) {
 function door(path) {
  if(path==='/api/auth/migration/bridge/login')return 'migration-enrollment';
  if(path==='/auth/identity/email/request')return 'email-request';
+ if(path==='/auth/identity/temporary-pass')return 'recovery';
  if(path==='/auth/identity/email/confirm')return 'email-confirm';
  if(/^\/auth\/(?:identity\/)?passkeys\/(?:register|authenticate)\/(?:options|verify)$/.test(path))return 'webauthn';
  if(/^\/api\/auth\/recovery\/(?:start|request|approve|complete|cancel|token)$/.test(path))return 'recovery';

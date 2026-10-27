@@ -1,3 +1,4 @@
+import {temporaryPassJourney} from './temporary-pass-journey.mjs';
 import assert from 'node:assert/strict';
 import {join} from 'node:path';
 import {expect} from '@playwright/test';
@@ -12,6 +13,7 @@ export async function onboardingJourney({app,browser,page,directory}) {
  await dialog.getByLabel('Personal contact',{exact:true}).fill('synthetic-personal@example.net');
  await dialog.getByLabel('Employer-local start time').fill(new Date(Date.now()+10*86400000).toISOString().slice(0,16));
  await dialog.getByLabel('Employer time zone').fill('UTC');await dialog.getByLabel('Invitation lead days').fill('30');
+ await dialog.getByRole('checkbox').check();
  await expect(dialog.getByText('Personal contact starts unverified',{exact:false})).toBeVisible();
  for(const width of [1440,390])for(const theme of ['light','dark']) {
   await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});
@@ -50,4 +52,5 @@ export async function onboardingJourney({app,browser,page,directory}) {
   const theme=page.locator('[data-theme-toggle]:visible').first();await theme.focus();await expect(page.getByRole('tooltip')).toHaveText('Color theme');
   await page.keyboard.press('Tab');await theme.hover();await page.waitForTimeout(350);await expect(page.getByRole('tooltip')).toHaveText('Color theme');
  }finally {await context.close();}
+ await temporaryPassJourney({app,browser,page,directory});
 }

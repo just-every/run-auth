@@ -7,12 +7,12 @@ import {framedPage,FRAME_SOURCES} from './page-frame.mjs';
 import {emit} from './events/store.mjs';
 import {evaluatePerson} from './workforce/people/evaluate.mjs';
 import {email,hash,random,binding,bindingName,cookie,challenge,consumeChallenge,one,run,limitState,json,createSession,audit,fail,AuthError,returnPath,session,sessionById} from './core.mjs';
-export async function sendProof(ctx, person, bindingHash, amr = ['email'], returnTo = '/app/account', upstreamProofId = null, hardwareSessionId = null, report = false) {
+export async function sendProof(ctx, person, bindingHash, amr = ['email'], returnTo = '/app/account', upstreamProofId = null, hardwareSessionId = null, report = false, enrollmentSessionId = null) {
  await requirePolicy(ctx,person,upstreamProofId);
  if(upstreamProofId&&!await upstreamProof(ctx,person.id,upstreamProofId))fail('upstream_proof_expired',403);
  const allowance=await limitState(ctx,`proof-mail:${person.id}`,5,3600000);
  if(!allowance.allowed){if(report)throw mailLimited(allowance.retryAfter);return false;}
- const token = await challenge(ctx,'email',person.id,bindingHash,{amr,upstreamProofId,hardwareSessionId,personVersion:person.version,returnTo:returnPath(returnTo)},900000);
+ const token = await challenge(ctx,'email',person.id,bindingHash,{amr,upstreamProofId,hardwareSessionId,enrollmentSessionId,personVersion:person.version,returnTo:returnPath(returnTo)},900000);
  const link = `${ctx.origin}${ctx.basePath??''}/auth/identity/email/confirm?token=${encodeURIComponent(token)}`;
  if (!ctx.mail) fail('mail_not_configured',503);
  await ctx.mail({to:person.email,subject:'Your Auth sign-in link',text:`Confirm your email in the browser where you requested this link: ${link}`,html:`<p>Confirm your email in the browser where you requested this link:</p><p><a href="${link}">Continue to Auth</a></p>`});
@@ -29,12 +29,13 @@ async function startProof(ctx, request, data, address, bound, report = false) {
   await run(ctx,"INSERT OR IGNORE INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE EXISTS(SELECT 1 FROM auth_domains WHERE domain=?) AND NOT EXISTS(SELECT 1 FROM oa_domain_rules WHERE domain=?)",random(),address,extension.profile?.name??address,ctx.now(),address.split('@')[1],address.split('@')[1]);
   person=await one(ctx,'SELECT * FROM oa_operators WHERE email=?',address);
  }
- if(person&&await one(ctx,'SELECT 1 FROM auth_onboarding WHERE person_id=? AND (personal_verified_at IS NULL OR rescinded_at IS NOT NULL)',person.id))return;
+ const current=await session(ctx,request),tap=current?.person_id===person?.id&&JSON.parse(current.amr).includes('tap')?current:null;
+ if(person&&!tap&&await one(ctx,`SELECT 1 FROM auth_onboarding WHERE person_id=? AND (rescinded_at IS NOT NULL OR (personal_verified_at IS NULL AND NOT EXISTS(SELECT 1 FROM auth_passkeys k JOIN auth_emails e ON e.person_id=k.person_id WHERE k.person_id=auth_onboarding.person_id AND e.proof_kind='work')))`,person.id))return;
  if(!person||!await invitationAdmitted(ctx,person)){if(report)fail('account_unavailable',403);return;}
  if(person.status==='invited')await syncObligations(ctx);
- const current=await session(ctx,request),proofId=current?.person_id===person.id&&await upstreamProof(ctx,person.id,current.upstream_proof_id)?current.upstream_proof_id:null;
+ const proofId=current?.person_id===person.id&&await upstreamProof(ctx,person.id,current.upstream_proof_id)?current.upstream_proof_id:null;
  const hardwareId=current?.person_id===person.id&&JSON.parse(current.amr).includes('hwk')?current.id:null;
- if(await permitsSession(ctx,person,proofId))try {await sendProof(ctx,person,bound,proofId?['oidc','email']:['email'],data.returnTo,proofId,hardwareId,report);}
+ if(await permitsSession(ctx,person,proofId))try {await sendProof(ctx,person,bound,tap?['tap','onboarding','email']:proofId?['oidc','email']:['email'],data.returnTo,proofId,hardwareId,report,tap?.id);}
  catch(error) {
   if(error instanceof AuthError&&error.message==='email_rate_limited'){if(report)throw error;return;}
   await audit(ctx,null,'email_delivery_failed',person.id);
@@ -68,13 +69,15 @@ export async function confirmEmail(ctx,request,data) {
  await requirePolicy(ctx,person,proof.payload.upstreamProofId);
  if(proof.payload.upstreamProofId&&!await upstreamProof(ctx,person.id,proof.payload.upstreamProofId))fail('upstream_proof_expired',403);
  // The browser challenge refers to existing authority, never a caller's method label.
+ const enrollment=await sessionById(ctx,request,proof.payload.enrollmentSessionId);
+ if(proof.payload.enrollmentSessionId&&(!enrollment||enrollment.person_id!==person.id||!JSON.parse(enrollment.amr).includes('tap')||(await session(ctx,request))?.id!==enrollment.id))fail('temporary_pass_unavailable',403);
  const hardware=await sessionById(ctx,request,proof.payload.hardwareSessionId);
  if(proof.payload.hardwareSessionId&&(!hardware||hardware.person_id!==person.id||!JSON.parse(hardware.amr).includes('hwk')))fail('passkey_session_expired',403);
  await ctx.db.batch([
   ctx.db.prepare("UPDATE oa_operators SET status='active' WHERE id=? AND status='invited'").bind(proof.person_id),
   ctx.db.prepare("INSERT INTO auth_emails(person_id,verified_at,proof_kind) VALUES(?,?,'work') ON CONFLICT(person_id) DO UPDATE SET verified_at=excluded.verified_at,proof_kind='work'").bind(proof.person_id,ctx.now()),
  ]);
- const s=await createSession(ctx,proof.person_id,[...proof.payload.amr,...(hardware?['hwk']:[])],proof.payload.upstreamProofId,{request,app:await notificationApp(ctx,proof.payload.returnTo,request),localEmailVerifiedAt:ctx.now(),expiresAt:hardware?.expires_at,sourceSession:hardware,personVersion:person.status==='active'?person.version:null});
+ const s=await createSession(ctx,proof.person_id,[...proof.payload.amr,...(hardware?['hwk']:[])],proof.payload.upstreamProofId,{request,app:await notificationApp(ctx,proof.payload.returnTo,request),localEmailVerifiedAt:ctx.now(),expiresAt:(hardware??enrollment)?.expires_at,sourceSession:hardware??enrollment,personVersion:person.status==='active'?person.version:null});
  await syncObligations(ctx);
  await audit(ctx,proof.person_id,'email_confirmed');
  if(person.status==='invited'){await emit(ctx,'person.activated',{type:'person',id:person.id,email:person.email},{method:'email'});await evaluatePerson(ctx,person.id);}

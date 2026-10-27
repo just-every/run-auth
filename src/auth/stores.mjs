@@ -41,7 +41,7 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
-  'auth_onboarding_links',
+  'auth_onboarding_links','auth_temporary_pass_requests','auth_temporary_passes',
   'auth_recovery_enrollments',
   'auth_directory_sources','auth_directory_resources','auth_directory_source_groups','auth_federation_setups',
   'auth_campaigns','auth_campaign_people',

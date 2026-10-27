@@ -1,8 +1,11 @@
+import {sessionPass,rebindSession} from './temporary-passes/enrollment.mjs';
+import {capabilityGuard} from './temporary-passes/authority.mjs';
 import {notifyNewDevice} from './notifications/index.mjs';
 import {one,fail,random,hash,cookie,cookieName,SESSION_MAX_AGE,EMAIL_MAX_AGE} from './core.mjs';
 import {requirePolicy,upstreamProof} from './domain-policy.mjs';
 
 export async function prepareSession(ctx,personId,amr,upstreamProofId=null,{localEmailVerifiedAt=null,expiresAt=Infinity,sourceSession=null,personVersion=null,enrollment=false,guard=null}={}) {
+ if(sourceSession&&JSON.parse(sourceSession.amr).includes('tap')&&!enrollment)guard=await capabilityGuard(ctx,await sessionPass(ctx,sourceSession));
  const person=await one(ctx,"SELECT * FROM oa_operators WHERE id=? AND status='active'",personId);if(!person)fail('account_unavailable',403);
  if(personVersion!==null&&person.version!==personVersion)fail('session_authority_changed',403);
  await requirePolicy(ctx,person,upstreamProofId);
@@ -30,7 +33,8 @@ export async function prepareSession(ctx,personId,amr,upstreamProofId=null,{loca
 }
 
 export async function createSession(ctx,...args) {
- const prepared=await prepareSession(ctx,...args),inserted=await prepared.statement.run();
+ const prepared=await prepareSession(ctx,...args),source=args[3]?.sourceSession;
+ const [inserted]=await ctx.db.batch([prepared.statement,...rebindSession(ctx,source,prepared.id)]);
  if(!inserted.meta.changes)fail('session_authority_changed',403);
  const deviceHeader=await notifyNewDevice(ctx,{personId:args[0],sessionId:prepared.id,request:args[3]?.request,app:args[3]?.app});
  return {id:prepared.id,header:prepared.header,deviceHeader};

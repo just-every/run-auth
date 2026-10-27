@@ -1,3 +1,4 @@
+import {sessionValid as temporarySessionValid} from './temporary-passes/enrollment.mjs';
 import {permitsSession,upstreamProof} from './domain-policy.mjs';
 export {createSession} from './session-write.mjs';
 export const DAY = 86400000;
@@ -58,7 +59,8 @@ async function activeSession(ctx,request,column,value) {
  if(methods.includes('dev')&&!ctx.local)return null;
  if(methods.length&&methods.every(method=>method==='dev')&&(!ctx.allowDevSession||!await ctx.allowDevSession(request)))return null;
  // Also end sessions issued before the email-horizon cap was introduced.
- if(!(methods.length&&methods.every(method=>method==='dev'))) {
+ if(methods.includes('tap')){if(!await temporarySessionValid(ctx,s))return null;}
+ else if(!(methods.length&&methods.every(method=>method==='dev'))) {
   const proof=await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',s.person_id);
   if(!proof||proof.verified_at+EMAIL_MAX_AGE<=ctx.now())return null;
  }

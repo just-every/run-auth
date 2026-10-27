@@ -1,3 +1,4 @@
+import {dispatchFrom,dispatchRule} from './dispatch.mjs';
 import {one,all,run,email,random,hash,fail,json,requireSession,session,createSession,audit,DAY} from '../core.mjs';
 import {authority,requireLocalEmail,requireAuthority} from '../local-email.mjs';
 import {requireAccountRank} from '../ranks.mjs';
@@ -24,20 +25,23 @@ function schedule(data) {
  return {start_at,lead_days};
 }
 export async function onboardingModel(ctx) {
- return all(ctx,'SELECT person_id,start_at,start_local,time_zone,lead_days,personal_verified_at,dispatched_at,consumed_at,rescinded_at FROM auth_onboarding ORDER BY start_at');
+ const rows=await all(ctx,'SELECT person_id,start_at,start_local,time_zone,lead_days,personal_verified_at,dispatched_at,consumed_at,rescinded_at,contact_authority,recovery_notices_enabled FROM auth_onboarding ORDER BY start_at');
+ return rows.map(h=>({...h,temporaryPassRequired:!h.personal_verified_at&&!h.rescinded_at&&(h.lead_days===0||h.start_at<=ctx.now())}));
 }
 export async function onboardingAction(ctx,request,action,data) {
  const s=await requireSession(ctx,request,true);requireLocalEmail(ctx,s);
  let guard=authority(ctx,s,['owner','admin']);
  const q=(sql,...args)=>ctx.db.prepare(sql).bind(...args);
+ const contactAuthority=data.contactAuthority===true||data.contactAuthority==='on';
+ const record=contactAuthority?JSON.stringify({by:s.person_id,at:ctx.now(),transactionalOnboarding:true,requiredNoticeAndConsentResponsibility:true}):null;
  if(action==='/onboarding/create') {
   const address=email(data.email),personal=email(data.personalEmail),name=String(data.name??'').trim().slice(0,160),values=schedule(data),id=random();
-  if(!address||!personal||personal===address||!name||values.start_at<=ctx.now())fail('invalid_future_hire');
+  if(!address||!personal||personal===address||!name)fail('invalid_future_hire');
   // A duplicate work address is refused, never merged. Personal contacts are
   // not identifiers and may belong to an unrelated existing account.
   const result=await ctx.db.batch([
    q(`INSERT INTO oa_operators(id,email,display_name,role,status,version,created_at) SELECT ?,?,?,'member','invited',1,? WHERE ${guard.clause} ON CONFLICT(email) DO NOTHING`,id,address,name,ctx.now(),...guard.args),
-   q(`INSERT INTO auth_onboarding(person_id,personal_email,start_at,start_local,time_zone,lead_days,created_at) SELECT id,?,?,?,?,?,? FROM oa_operators WHERE id=?`,personal,values.start_at,data.startLocal,data.timeZone,values.lead_days,ctx.now(),id),
+   q(`INSERT INTO auth_onboarding(person_id,personal_email,start_at,start_local,time_zone,lead_days,created_at,contact_authority,sending_person_id,sending_person_version) SELECT id,?,?,?,?,?,?,?,?,? FROM oa_operators WHERE id=?`,personal,values.start_at,data.startLocal,data.timeZone,values.lead_days,ctx.now(),record,s.person_id,s.person_version,id),
   ]);
   if(!result[0].meta.changes){await requireAuthority(ctx,s,guard);fail('person_already_exists',409);}
   await audit(ctx,s.person_id,'onboarding_created',id);await maintainOnboarding(ctx);return json({ok:true,personId:id},201);
@@ -49,8 +53,10 @@ export async function onboardingAction(ctx,request,action,data) {
  if(action==='/onboarding/schedule') {
   const values=schedule(data);
   changed=await run(ctx,`UPDATE auth_onboarding SET start_at=?,start_local=?,time_zone=?,lead_days=? WHERE person_id=? AND rescinded_at IS NULL AND ${guard.clause}`,values.start_at,data.startLocal,data.timeZone,values.lead_days,id,...guard.args);
- } else if(action==='/onboarding/reissue') {
-  const results=await ctx.db.batch([q(`UPDATE auth_onboarding SET generation=generation+1,operation_id=?,dispatched_at=NULL,consumed_at=NULL WHERE person_id=? AND personal_verified_at IS NULL AND start_at>? AND rescinded_at IS NULL AND ${guard.clause}`,random(),id,ctx.now(),...guard.args)]);changed=results[0];
+ } else if(action==='/onboarding/authority') {
+  changed=await run(ctx,`UPDATE auth_onboarding SET contact_authority=?,sending_person_id=?,sending_person_version=?,recovery_notices_enabled=? WHERE person_id=? AND rescinded_at IS NULL AND ${guard.clause}`,record,s.person_id,s.person_version,contactAuthority&&(data.recoveryNotices===true||data.recoveryNotices==='on')?1:0,id,...guard.args);
+ } else if(['/onboarding/reissue','/onboarding/retry','/onboarding/remind'].includes(action)) {
+  const results=await ctx.db.batch([q(`UPDATE auth_onboarding SET generation=generation+1,operation_id=?,dispatched_at=NULL,consumed_at=NULL,send_reason=? WHERE person_id=? AND personal_verified_at IS NULL AND start_at>? AND rescinded_at IS NULL AND ${guard.clause}`,random(),action.split('/').at(-1),id,ctx.now(),...guard.args)]);changed=results[0];
  } else if(action==='/onboarding/rescind') {
   const marker=random();
   const result=await ctx.db.batch([
@@ -66,7 +72,7 @@ export async function onboardingAction(ctx,request,action,data) {
  await audit(ctx,s.person_id,'onboarding_'+action.split('/').at(-1),id);await maintainOnboarding(ctx);return json({ok:true});
 }
 export async function maintainOnboarding(ctx) {
- const due=await all(ctx,`SELECT h.* FROM auth_onboarding h JOIN oa_operators p ON p.id=h.person_id WHERE h.rescinded_at IS NULL AND h.personal_verified_at IS NULL AND h.dispatched_at IS NULL AND h.start_at>? AND h.start_at-h.lead_days*?<=? AND p.status='invited'`,ctx.now(),DAY,ctx.now());
+ const due=await all(ctx,`SELECT h.* FROM ${dispatchFrom} WHERE h.dispatched_at IS NULL AND ${dispatchRule}`,ctx.now(),ctx.now());
  for(const hire of due) {
   const raw=random(),digest=await hash(raw);
   const marker=random(),results=await ctx.db.batch([
@@ -77,7 +83,7 @@ export async function maintainOnboarding(ctx) {
   const link=`${ctx.origin}${ctx.basePath??''}/auth/identity/onboarding?person=${encodeURIComponent(hire.person_id)}&token=${encodeURIComponent(raw)}`;
   try {
    if(!ctx.mail)throw new Error('mail_unavailable');
-   await ctx.mail({personId:hire.person_id,to:hire.personal_email,subject:'Activate your Auth enrollment',text:`Enroll your passkey before your start time: ${link}`,html:`<p>Enroll your passkey before your start time.</p><p><a href="${link}">Activate enrollment</a></p>`});
+   await ctx.mail({activation:{personId:hire.person_id,generation:hire.generation,operationId:marker},personId:hire.person_id,to:hire.personal_email,subject:'Activate your Auth enrollment',text:`Enroll your passkey before your start time: ${link}`,html:`<p>Enroll your passkey before your start time.</p><p><a href="${link}">Activate enrollment</a></p>`});
    await audit(ctx,null,'onboarding_invitation_dispatched',hire.person_id);
   }catch {
    // An uncertain send is never retried automatically. Reissue explicitly

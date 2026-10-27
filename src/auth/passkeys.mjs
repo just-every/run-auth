@@ -1,3 +1,4 @@
+import {enrollmentGuard as temporaryEnrollmentGuard,completeEnrollment as completeTemporaryEnrollment} from './temporary-passes/enrollment.mjs';
 import {enrollmentGuard,completeEnrollment} from './recovery-cases/index.mjs';
 import {notifySecurity,notificationApp} from './notifications/index.mjs';
 import {syncObligations} from './obligations/sources.mjs';
@@ -17,6 +18,7 @@ async function enrollmentSession(ctx,request) {
   if(!methods.includes('email')) fail('email_proof_required',403);
  }
  requireLocalEmail(ctx,s);
+ await temporaryEnrollmentGuard(ctx,s);
  await enrollmentGuard(ctx,s);
  return s;
 }
@@ -25,7 +27,7 @@ export async function registrationOptions(ctx,request) {
  const options=await generateRegistrationOptions({rpName:'Auth',rpID:new URL(ctx.origin).hostname,userID:utf8.encode(s.person_id),userName:s.email,userDisplayName:s.display_name,supportedAlgorithmIDs:[-7,-257],attestationType:'none',authenticatorSelection:{residentKey:'required',userVerification:'required'},excludeCredentials:(await all(ctx,'SELECT id,transports FROM auth_passkeys WHERE person_id=?',s.person_id)).map(p=>({id:p.id,transports:JSON.parse(p.transports)}))});
  // The challenge belongs to this session and its authority snapshot; it is stored
  // only while that authority and its fresh local proof hold.
- const guard=await enrollmentGuard(ctx,s)??authority(ctx,s),token=await challenge(ctx,'register',s.person_id,await hash(raw),{challenge:options.challenge,sessionId:s.id,amr:s.amr,personVersion:s.person_version},600000,guard);
+ const guard=await temporaryEnrollmentGuard(ctx,s)??await enrollmentGuard(ctx,s)??authority(ctx,s),token=await challenge(ctx,'register',s.person_id,await hash(raw),{challenge:options.challenge,sessionId:s.id,amr:s.amr,personVersion:s.person_version},600000,guard);
  if(!token){await requireAuthority(ctx,s,guard);fail('session_authority_changed',403);}
  return json({options,transaction:token},200,{'set-cookie':cookie(ctx,bindingName(ctx),raw,600)});
 }
@@ -36,7 +38,7 @@ export async function registrationVerify(ctx,request,data) {
  let checked; try { checked=await verifyRegistrationResponse({response:data.response,expectedChallenge:tx.payload.challenge,expectedOrigin:ctx.origin,expectedRPID:new URL(ctx.origin).hostname,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]}); } catch {fail('invalid_passkey');}
  if(!checked.verified || !checked.registrationInfo) fail('invalid_passkey');
  const c=checked.registrationInfo.credential;
- const established=await prepareSession(ctx,s.person_id,s.upstream_proof_id?['oidc','hwk']:['hwk'],s.upstream_proof_id,{localEmailVerifiedAt:s.local_email_verified_at,sourceSession:s,enrollment:true,guard:await enrollmentGuard(ctx,s)??authority(ctx,s)});
+ const established=await prepareSession(ctx,s.person_id,s.upstream_proof_id?['oidc','hwk']:['hwk'],s.upstream_proof_id,{localEmailVerifiedAt:s.local_email_verified_at,sourceSession:s,enrollment:true,guard:await temporaryEnrollmentGuard(ctx,s)??await enrollmentGuard(ctx,s)??authority(ctx,s)});
  const response=json({ok:true},200,{'set-cookie':established.header});
  // D1 commits this batch together or rolls it all back. Both dependent inserts
  // select the new session, which exists only while the issuing session keeps its
@@ -44,6 +46,7 @@ export async function registrationVerify(ctx,request,data) {
  const [inserted]=await ctx.db.batch([
   established.statement,
   ...completeEnrollment(ctx,s,established.id),
+  ...completeTemporaryEnrollment(ctx,s,established.id),
   ctx.db.prepare('INSERT INTO auth_passkeys(id,person_id,public_key,counter,transports,created_at) SELECT ?,person_id,?,?,?,? FROM auth_sessions WHERE id=?').bind(c.id,b64(c.publicKey),c.counter,JSON.stringify(c.transports||[]),established.now,established.id),
   ctx.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) SELECT person_id,'passkey_registered',?,? FROM auth_sessions WHERE id=?").bind(c.id,established.now,established.id),
  ]);

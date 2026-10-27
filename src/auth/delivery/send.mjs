@@ -1,3 +1,4 @@
+import {requireActivationDispatch,requirePersonalRecoveryDispatch} from '../onboarding/dispatch.mjs';
 import {hash,random,one,run,limitState,AuthError} from '../core.mjs';
 
 export const recipientHash=(ctx,address)=>hash(JSON.stringify([ctx.secret,String(address)]));
@@ -6,7 +7,7 @@ const unavailable=()=>new AuthError('mail_delivery_unavailable',503);
 // Only identifiers and outcomes are durable. Message bodies, usable links,
 // provider responses and addresses never enter the delivery journal.
 export async function sendDelivery(ctx,message,transport) {
- const {personId,...outgoing}=message;
+ const {personId,activation,personalRecovery,...outgoing}=message;
  const id=random(),recipient=await recipientHash(ctx,message.to),provider=ctx.mailProvider??'configured';
  await run(ctx,"INSERT INTO auth_mail_deliveries(id,person_id,recipient_hash,provider,state,created_at,updated_at) VALUES(?,COALESCE((SELECT id FROM oa_operators WHERE id=?),(SELECT id FROM oa_operators WHERE email=?)),?,?,'queued',?,?)",id,personId??null,String(message.to).trim().toLowerCase(),recipient,provider,ctx.now(),ctx.now());
  const finish=async(state,error=null)=>run(ctx,"UPDATE auth_mail_deliveries SET state=?,error=?,updated_at=? WHERE id=? AND state IN ('queued','dispatching')",state,error,ctx.now(),id);
@@ -20,6 +21,8 @@ export async function sendDelivery(ctx,message,transport) {
  const claimed=await run(ctx,"UPDATE auth_mail_deliveries SET state='dispatching',updated_at=? WHERE id=? AND state='queued' AND NOT EXISTS(SELECT 1 FROM auth_mail_suppressions WHERE recipient_hash=?)",ctx.now(),id,recipient);
  if(!claimed.meta.changes){await finish('suppressed','recipient_suppressed');throw unavailable();}
  try {
+  if(personalRecovery)await requirePersonalRecoveryDispatch(ctx,personalRecovery,message.to);
+  if(activation)await requireActivationDispatch(ctx,activation);
   const result=await transport({...outgoing,deliveryId:id,...(provider==='sendgrid'?{customArgs:{rer_product:'auth',rer_seed:'auth',...(ctx.mailEventInstallationId?{rer_test_installation:ctx.mailEventInstallationId}:{})}}:{})});
   // A void result is the pre-existing custom transport's acceptance contract.
   const state=provider==='development'||result?.provider==='development'?'local_outbox':result?.status??'accepted';

@@ -1,3 +1,4 @@
+import {personalRecoveryNotice} from './onboarding/recovery-notices.mjs';
 import {one,audit,fail} from './core.mjs';
 
 const messages={
@@ -23,6 +24,7 @@ export async function recoveryEmail(ctx,personId,action) {
  // caller cannot supply an address or an authentication-bearing link.
  const person=await one(ctx,"SELECT p.email FROM oa_operators p JOIN auth_emails e ON e.person_id=p.id WHERE p.id=? AND p.status='active'",personId);
  if(!person)return;
+ await personalRecoveryNotice(ctx,personId);
  await ctx.mail({to:person.email,subject:action==='emergency'?'Auth emergency recovery used':'Auth passkey recovery update',text:`${messages[action]} Open ${(ctx.issuer??ctx.origin)}/app/account to inspect the outcome.`,html:`<p>${messages[action]}</p><p>Sign in to Auth to inspect the outcome.</p>`});
 }
 
@@ -36,5 +38,6 @@ export async function recoveryRequestedEmail(ctx,personId,recoveryId) {
   if(!ctx.mail)throw new Error('mail_not_configured');
   await ctx.mail({to:person.email,subject:'Auth passkey recovery requested',text:`A passkey recovery was requested. It becomes available after 72 hours unless another administrator approves it. Sign in to ${ctx.issuer??ctx.origin}/app/account to cancel it.`,html:'<p>A passkey recovery was requested. Sign in to Auth to review or cancel it.</p>'});
  }catch{await audit(ctx,null,'recovery_mail_failed',recoveryId);fail('recovery_mail_failed',503);}
+ await personalRecoveryNotice(ctx,personId);
  await audit(ctx,null,'recovery_mail_resent',recoveryId);
 }

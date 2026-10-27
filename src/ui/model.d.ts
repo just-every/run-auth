@@ -262,7 +262,7 @@ export interface FollowupModel {
 }
 
 export interface AuthPageModel {
-  onboarding?: Array<{person_id:string; start_local:string; time_zone:string; lead_days:number; personal_verified_at:number|null; rescinded_at:number|null}>
+  onboarding?: Array<{person_id:string; start_local:string; time_zone:string; lead_days:number; personal_verified_at:number|null; rescinded_at:number|null; contact_authority:string|null; recovery_notices_enabled:number; temporaryPassRequired:boolean}>
   retention?: RetentionModel
   requests?: AccessRequestsModel
   decisions?: AccessDecisionsModel
@@ -273,6 +273,7 @@ export interface AuthPageModel {
   delegation?: DelegatedTask & {canConsent:boolean;canApprove:boolean}
   delegationApps?: Array<{id:string;name:string}>
   roles?: { canDesignRoles:boolean; rank:number; permissions:Record<string,string>; roles:Array<{id:string;name:string;rank:number;permissions:string[]}>; ownGrants:Array<{id:string;roleId:string;permissions:string[]}>; grants:Array<{id:string;person_id:string;role_id:string;active:boolean}>; groups:Array<{id:string;name:string}>; apps:Array<{id:string;name:string}>; cases:Array<{id:string;person_id:string;state:string}> }
+  temporaryPasses?: {people:Array<{personId:string;email:string;name:string;canRequest:boolean;canIssue:boolean}>,requests:Array<{id:string;personId:string;createdAt:number;issuedAt:number|null}>,passes:Array<{id:string;personId:string;expiresAt:number;revokedAt:number|null;completedAt:number|null}>}
   recoveryCases?: {cases:Array<{id:string;personId:string;email:string;state:string;canAttest:boolean;canReset:boolean;canClose:boolean}>}
   rolePeople?: Array<{id:string;email:string;name:string;canResetFactors:boolean}>
   roleError?: string

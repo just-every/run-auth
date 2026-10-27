@@ -1,4 +1,5 @@
-import {onboardingAction,activationPage,activationError,activate} from './onboarding/index.mjs';
+import {requestPass,issuePass,revokePass,redeemPass,temporaryPassesModel} from './temporary-passes/index.mjs';
+import {onboardingModel,onboardingAction,activationPage,activationError,activate} from './onboarding/index.mjs';
 import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -90,6 +91,8 @@ function scopedRuntime(options) {
    if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
+    if(path==='/api/auth/temporary-passes')return json(await temporaryPassesModel(ctx,await requireSession(ctx,request)));
+    if(path==='/api/auth/onboarding'){await requireSession(ctx,request,true);return json(await onboardingModel(ctx));}
     if(path==='/api/auth/abuse')return await abuseRead(ctx,request);
     if(path==='/api/auth/audit')return json(await auditPage(ctx,await requireSession(ctx,request),request));
     if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);
@@ -159,6 +162,10 @@ function scopedRuntime(options) {
     if(isPairPath(path))return pairAction(ctx,request,path,data);
     if(path==='/api/auth/identity-release-notices/hold')return releaseAction(ctx,request,data);
     if(path==='/auth/identity/onboarding')return await activate(ctx,request,{...data,person:url.searchParams.get('person'),token:url.searchParams.get('token')});
+    if(path==='/auth/identity/temporary-pass')return await redeemPass(ctx,request,data);
+    if(path==='/api/auth/temporary-passes/request')return await requestPass(ctx,request,data);
+    if(path==='/api/auth/temporary-passes/issue')return await issuePass(ctx,request,data);
+    if(path==='/api/auth/temporary-passes/revoke')return await revokePass(ctx,request,data);
     if(path==='/auth/identity/email/request')return await requestEmail(ctx,request,data);
     if(path==='/auth/identity/email/confirm')return await confirmEmail(ctx,request,{...data,token:data.token||url.searchParams.get('token')});
     const passkeyPath=path.replace('/auth/identity/passkeys/','/auth/passkeys/');

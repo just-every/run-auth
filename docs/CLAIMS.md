@@ -2,7 +2,7 @@
 
 Generated from CONTRACT.md. Acceptance journeys remain in ACCEPTANCE.md.
 
-Done: 38; partial: 35; missing: 19; total: 92.
+Done: 38; partial: 36; missing: 18; total: 92.
 
 | Clause | Title | Status |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Done: 38; partial: 35; missing: 19; total: 92.
 | AUTH-PASSWORD-001 | Password policy per group | missing |
 | AUTH-PASSWORD-002 | Self-service password reset, unlock and propagation | missing |
 | AUTH-ONBOARD-001 | New-hire activation before the start date | partial |
-| AUTH-TAP-001 | Temporary access pass | missing |
+| AUTH-TAP-001 | Temporary access pass | partial |
 | AUTH-EXPERIENCE-001 | Hosted and embedded identity journeys | partial |
 | AUTH-LOCALE-001 | End-user display languages | missing |
 | AUTH-LAUNCHER-001 | Employee app launcher | partial |
