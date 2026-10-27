@@ -97,6 +97,12 @@ expired, replayed or belongs to another browser. `invalid_issuer` means the
 callback did not name that slot's exact issuer. Begin a deliberate new sign-in;
 never edit installed SDK internals to bypass these checks. An unavailable or
 unproved employer is refused, and authorization failure never grants a document.
+When employer callbacks arrive concurrently, the first arrival exclusively owns
+authentication and cookie rotation. The other receives `callback_in_progress`
+(409), sets no cookie and keeps its unconsumed transaction pending. After the
+first response finishes, retry that callback in the same browser with its new
+cookie, within the transaction lifetime, or deliberately start sign-in again.
+The rejected concurrent response cannot overwrite a successful session cookie.
 The permission middleware returns 401 for a missing or ended session, 403 for
 refused access and 503 for unavailable authorization; application operations
 return safe error codes without raw upstream responses or credentials.
