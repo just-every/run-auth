@@ -8,7 +8,7 @@ export async function submissionTarget(ctx,s,{targetId,operation,reason,role,dur
  const duration=Number(durationMs),requestedRole=role==null||role===''?null:String(role).trim();
  if(requestedRole?.length>80)fail('invalid_request_role');
  if(!Number.isSafeInteger(duration)||duration<60000||duration>policy.max_duration_ms)fail('invalid_request_duration');
- if(await one(ctx,"SELECT 1 FROM auth_access_requests WHERE app_id=? AND person_id=? AND state IN ('pending','approved')",targetId,s.person_id))fail('request_state_changed',409);
+ if(await one(ctx,"SELECT 1 FROM auth_access_requests WHERE app_id=? AND person_id=? AND (state='pending' OR (state='approved' AND (expires_at IS NULL OR expires_at>?)))",targetId,s.person_id,ctx.now()))fail('request_state_changed',409);
  const person=await one(ctx,"SELECT id,version FROM oa_operators WHERE id=? AND status='active'",s.person_id)??fail('requester_unavailable',403);
  return {snapshot:{policy,person,purpose:reason,role:requestedRole,durationMs:duration},role:requestedRole,durationMs:duration,personId:s.person_id};
 }

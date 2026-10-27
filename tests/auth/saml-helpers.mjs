@@ -21,7 +21,7 @@ export async function samlInstall(t) {
  await r.person('ada','ada@example.com');r.ada=await emailSession(r,'ada@example.com');
  await r.person('bob','bob@example.com');r.bob=await emailSession(r,'bob@example.com');
  r.tick=()=>{r.now=Date.now();};
- r.admin=async(path,data)=>{r.tick();return r.call('/api/auth/'+path,{method:'POST',data,cookie:r.owner.cookie});};
+ r.admin=async(path,data)=>{r.tick();return r.call(path.startsWith('/api/auth/')?path:'/api/auth/'+path,{method:'POST',data,cookie:r.owner.cookie});};
  return r;
 }
 export async function idpCertificates(r) {

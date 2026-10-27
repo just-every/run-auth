@@ -316,7 +316,7 @@ export interface AuthPageModel {
   launcher?: LauncherApp[]
 }
 
-export interface LauncherApp { id: string; name: string; launch: string | null }
+export interface LauncherApp { id: string; name: string; launch: string | null; kind: string; state: string; role?: string | null; icon?: string; favorite: boolean; lastUsedAt: number | null; requestable?: boolean }
 export interface CompanyAppObligation {
   subject_type: string; subject_id: string; label?: string | null; reason: string; operation?: string | null; state: string
   event_at: number; dispatched_at?: number | null; verified_at?: number | null; attempts: number; last_status?: number | null; last_error?: string | null; overdue?: boolean
@@ -336,6 +336,7 @@ export interface CatalogRecipe {
   edition: string; permissions: string; roles: string; attributes: string; testUser: string; rotation: string; limits: string; verifiedAt: number | null; verification: string
 }
 export interface WorkforceModel {
+  bookmarks?: Array<{id:string;name:string;url:string;icon:string;group_name:string}>
   idp: { entityId: string; metadataUrl: string; ssoUrl: string; sloUrl: string }
   samlKeys: Array<{ kid: string; state: string; createdAt: number; activatedAt?: number | null }>
   companyApps: CompanyApp[]

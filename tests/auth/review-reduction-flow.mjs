@@ -66,7 +66,9 @@ export async function reviewReductionFlow(t) {
  // Reordering cannot turn the saved cap into a higher grant: it closes access
  // until an administrator explicitly restores the reviewed assignment.
  await result(await publish());
- assert.deepEqual((await result(await r.call('/api/auth/launcher',{cookie:r.ada}))).apps.map(x=>x.id),[other.id]);
+ const blockedLauncher=(await result(await r.call('/api/auth/launcher',{cookie:r.ada}))).apps;
+ assert.deepEqual(blockedLauncher.filter(x=>x.state==='ready').map(x=>x.id),[other.id]);
+ assert.equal(blockedLauncher.find(x=>x.id===app.id).state,'denied');assert.equal(blockedLauncher.find(x=>x.id===app.id).launch,null);
  assert.equal((await check('read')).allowed,false,'a stale cap cannot bypass the hierarchy through resource checks');
  assert.equal([...edge.users.values()].find(x=>x.externalId==='ada').active,false);
  assert.equal((await r.call('/api/auth/reviews/reduction-clear',post({appId:app.id,personId:'ada',reason:'Restore assigned role'},manager.cookie))).status,403);

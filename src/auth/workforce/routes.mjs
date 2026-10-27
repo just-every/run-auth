@@ -14,17 +14,18 @@ import {idpEntity} from '../saml/assertion.mjs';
 import {scimBase,connectorOf,testConnection} from '../provisioning/scim.mjs';
 import {queue,queueApp,groupChanged,reconcile,preview,dispatch,ESCALATE_AFTER} from '../provisioning/obligations.mjs';
 import {recipe,catalog} from '../catalog/recipes.mjs';
-import {launcher} from './directory.mjs';
+import {launcher,launcherPreference,launcherOpen} from '../launcher/index.mjs';
 import {emit} from '../events/store.mjs';
 import {loadDirectory} from './people/load.mjs';
 import {matches} from './people/groups.mjs';
 
 const OWNER_ACTIONS=['/saml-keys/stage','/saml-keys/activate','/saml-keys/retire'];
-const ADMIN_ACTIONS=['/oidc-apps/create','/oidc-apps/rotate-secret','/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
-export const isWorkforceAction=path=>OWNER_ACTIONS.includes(path)||ADMIN_ACTIONS.includes(path);
+const ADMIN_ACTIONS=['/bookmarks/create','/bookmarks/remove','/oidc-apps/create','/oidc-apps/rotate-secret','/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
+export const isWorkforceAction=path=>path==='/launcher/favorite'||OWNER_ACTIONS.includes(path)||ADMIN_ACTIONS.includes(path);
 const text=(value,max,code)=>{const v=String(value??'').trim();if(!v||v.length>max)fail(code);return v;};
 
 export async function workforceAction(ctx,request,path,data) {
+ if(path==='/launcher/favorite')return launcherPreference(ctx,request,data);
  const s=await requireSession(ctx,request,true),owner=OWNER_ACTIONS.includes(path);
  if(owner&&s.role!=='owner')fail('owner_required',403);
  requireLocalEmail(ctx,s);
@@ -50,6 +51,17 @@ export async function workforceCommand(ctx,actor,path,data) {
  if(path==='/saml-keys/activate'){await ensureSamlKey(ctx);if(!await activateSamlKey(ctx,String(data.kid||''),guard)){await actor.assertAuthority();fail('saml_key_not_staged',409);}await log('saml_key_activated',data.kid,{});return json({ok:true});}
  if(path==='/saml-keys/retire'){if(!await retireSamlKey(ctx,String(data.kid||''),guard)){await actor.assertAuthority();fail('saml_key_not_found',404);}await log('saml_key_retired',data.kid,{});return json({ok:true});}
 
+ if(path==='/bookmarks/create') {
+  const name=text(data.name,120,'invalid_bookmark_name'),icon=text(data.icon||'Link',12,'invalid_bookmark_icon');
+  const url=endpoint(ctx,data.url,'bookmark_url');
+  const group=await one(ctx,'SELECT id FROM auth_groups WHERE id=?',String(data.groupId??''))||fail('group_not_found',404),id=random();
+  if(!await held(await run(ctx,`INSERT INTO auth_launcher_bookmarks(id,name,url,icon,group_id,created_by,created_at) SELECT ?,?,?,?,?,?,? WHERE ${g}`,id,name,url,icon,group.id,actor.actorId,ctx.now(),...ga)))fail('session_authority_changed',403);
+  await log('bookmark_created',id,{name,groupId:group.id});return json({id},201);
+ }
+ if(path==='/bookmarks/remove') {
+  if(!await held(await run(ctx,`DELETE FROM auth_launcher_bookmarks WHERE id=? AND ${g}`,String(data.id??''),...ga)))fail('bookmark_not_found',404);
+  await log('bookmark_removed',data.id,{});return json({ok:true});
+ }
  if(path==='/groups/create') {
   const id=random(),name=text(data.name,80,'invalid_group_name');
   if(await one(ctx,'SELECT 1 FROM auth_groups WHERE name=?',name))fail('group_exists',409);
@@ -161,7 +173,7 @@ export async function workforceCommand(ctx,actor,path,data) {
   if(!target)fail(`${type}_not_found`,404);
   const role=data.role?text(data.role,80,'invalid_role'):null;
   const changed=path==='/company-apps/assign'
-   ?await run(ctx,`INSERT INTO auth_app_assignments(app_id,principal_type,principal_id,role,created_by,created_at) SELECT ?,?,?,?,?,? WHERE ${g} ON CONFLICT(app_id,principal_type,principal_id) DO UPDATE SET role=excluded.role`,current.id,type,principal,role,actor.actorId,ctx.now(),...ga)
+   ?await run(ctx,`INSERT INTO auth_app_assignments(app_id,principal_type,principal_id,role,created_by,created_at) SELECT ?,?,?,?,?,? WHERE ${g} ON CONFLICT(app_id,principal_type,principal_id) DO UPDATE SET role=excluded.role,created_by=excluded.created_by,created_at=excluded.created_at`,current.id,type,principal,role,actor.actorId,ctx.now(),...ga)
    :await run(ctx,`DELETE FROM auth_app_assignments WHERE app_id=? AND principal_type=? AND principal_id=? AND ${g}`,current.id,type,principal,...ga);
   if(!await held(changed))return json({ok:true,changed:false});
   await log(path==='/company-apps/assign'?'app_assigned':'app_unassigned',current.id,{[type]:target.name,role});
@@ -229,6 +241,7 @@ export async function workforceModel(ctx) {
    provisioning:c?{baseUrl:c.base_url,deprovision:c.deprovision,groups:Boolean(c.push_groups),lastSuccessAt:c.last_success_at,lastError:c.last_error,lastReconciledAt:c.last_reconciled_at,rotatedAt:c.rotated_at}:null,
    obligations:obligations.filter(o=>o.app_id===a.id).map(o=>({...o,overdue:o.state!=='verified'&&now-o.event_at>ESCALATE_AFTER}))};}),
   groups:groups.map(gr=>({...gr,members:members.filter(m=>m.group_id===gr.id).map(m=>({id:m.id,email:m.email}))})),
+  bookmarks:await all(ctx,'SELECT b.*,g.name AS group_name FROM auth_launcher_bookmarks b JOIN auth_groups g ON g.id=b.group_id ORDER BY b.name'),
   catalog:catalog(),
   oidcMethods:METHODS,
   nameIdFormats:Object.keys(FORMATS),
@@ -238,10 +251,11 @@ export async function workforceModel(ctx) {
 // GET doors: administrators read the workforce model and an app's exported
 // metadata; everyone signed in reads their own launcher.
 export async function workforceRead(ctx,request,path) {
+ if(path==='/api/auth/launcher/open')return launcherOpen(ctx,request);
  if(path==='/api/auth/launcher'){const s=await session(ctx,request);if(!s)fail('sign_in_required',401);return json({apps:await launcher(ctx,s.person_id)});}
  await requireSession(ctx,request,true);
  if(path==='/api/auth/company-apps')return json(await workforceModel(ctx));
  if(path==='/api/auth/company-apps/metadata'){const a=appOf(await one(ctx,'SELECT * FROM auth_apps WHERE id=?',new URL(request.url).searchParams.get('id')||''))||fail('app_not_found',404);return new Response(spMetadata(a),{headers:{'content-type':'application/samlmetadata+xml; charset=utf-8','cache-control':'no-store'}});}
  fail('not_found',404);
 }
-export const WORKFORCE_READS=['/api/auth/launcher','/api/auth/company-apps','/api/auth/company-apps/metadata'];
+export const WORKFORCE_READS=['/api/auth/launcher/open','/api/auth/launcher','/api/auth/company-apps','/api/auth/company-apps/metadata'];

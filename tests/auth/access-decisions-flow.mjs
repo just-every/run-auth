@@ -84,7 +84,8 @@ export async function requestDecisionsFlow(t) {
  assert.equal((await r.call('/api/auth/decisions/commit',post({transaction:proof.transaction,response:proof.response},proof.cookie))).status,400);
  assert.deepEqual((await result(await r.call('/api/auth/launcher',{cookie:employee.cookie}))).apps.map(a=>a.id),[app.id]);
  r.now+=61000;await r.call('/',{action:'maintain'});
- assert.deepEqual((await result(await r.call('/api/auth/launcher',{cookie:employee.cookie}))).apps,[]);
+ const expiredTiles=(await result(await r.call('/api/auth/launcher',{cookie:employee.cookie}))).apps;
+ assert.deepEqual(expiredTiles.map(a=>[a.id,a.state,a.launch]),[[app.id,'expired',null]]);
  const expired=await r.db.prepare('SELECT * FROM auth_access_requests WHERE id=?').bind(next.id).first();assert.equal(expired.state,'revocation_pending','no connector acknowledgment can close remote removal');
  await r.restart();assert.equal((await r.db.prepare('SELECT state FROM auth_access_requests WHERE id=?').bind(next.id).first()).state,'revocation_pending');
  // The same decider cannot grant privileged access with ordinary proof. After

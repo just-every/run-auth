@@ -219,3 +219,66 @@ test('app setup previews typed mappings for three people, launches computed coll
  const history=(await r.db.prepare("SELECT event FROM auth_activity WHERE event LIKE 'mapping_%'").all()).results;
  assert.deepEqual(history.map(x=>x.event),['mapping_saved','mapping_saved','mapping_rolled_back']);
 });
+
+import {temporaryLauncherGrant} from './launcher-flow.mjs';
+import {scimServer} from './scim-server.mjs';
+test('launcher preferences never grant access: current groups control credential-free bookmarks and expired temporary SAML grants refuse direct launch',async t=>{
+ const r=await samlInstall(t);r.tick=()=>{};
+ const app=await addApp(r,{name:'Temporary expenses',entityId:'https://temporary.example.com',acsUrl:'https://temporary.example.com/acs',idpInitiated:true,assign:[]});
+ const employee=await temporaryLauncherGrant(r,app);
+ const {submitRequest}=await import('./access-decisions-flow.mjs');
+ assert.equal((await submitRequest(r,employee,{appId:app.id,purpose:'Duplicate active approval',durationMs:60000})).status,409,'a live approval still blocks duplicate requests');
+ const read=async(cookie=employee.cookie)=>(await (await r.call('/api/auth/launcher',{cookie})).json()).apps;
+ const action=(path,data,cookie=employee.cookie)=>r.call(path,{method:'POST',data,cookie});
+ assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,200);
+ assert.equal((await action('/api/auth/launcher/favorite',{id:app.id,favorite:true})).status,200);
+ assert.equal((await r.call(`/api/auth/launcher/open?id=${app.id}`,{cookie:employee.cookie})).headers.get('location'),`/saml/launch/${app.id}`);
+ await r.restart();assert.equal((await read()).find(a=>a.id===app.id).favorite,true);assert.equal((await read()).find(a=>a.id===app.id).lastUsedAt,r.now);
+ assert.equal((await read(r.bob)).find(a=>a.id===app.id).favorite,false);
+ r.now+=60001;
+ const expired=(await read()).find(a=>a.id===app.id);assert.equal(expired.state,'expired');assert.equal(expired.launch,null);
+ assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,403);
+ assert.equal((await r.call(`/api/auth/launcher/open?id=${app.id}`,{cookie:employee.cookie})).status,403);
+ assert.equal((await action('/api/auth/launcher/favorite',{id:app.id,favorite:true})).status,403);
+ assert.equal((await action('/api/auth/launcher/favorite',{id:app.id,favorite:false})).status,200,'an expired favorite can be removed before maintenance');
+ assert.equal((await read()).find(a=>a.id===app.id).favorite,false);
+ await r.restart();assert.equal((await read()).find(a=>a.id===app.id).favorite,false,'removal persists across restart');
+ const repeated=await submitRequest(r,employee,{appId:app.id,purpose:'A new approved access period is needed',durationMs:60000});
+ assert.equal(repeated.status,201,'an expired approval does not block a new request before maintenance');
+ const renewed=await repeated.json();
+ assert.equal((await read()).find(a=>a.id===app.id).state,'expired','a pending renewal keeps the expired-access explanation');
+ assert.equal((await r.db.prepare('SELECT state FROM auth_access_requests WHERE id=?').bind(renewed.id).first()).state,'pending','requesting again never restores access');
+ assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,403);
+ assert.equal((await submitRequest(r,employee,{appId:app.id,purpose:'Duplicate pending request',durationMs:60000})).status,409,'a pending request still blocks duplicates');
+ // A connector account still being created is explained, then an edge refusal
+ // becomes a blocked connector without exposing its credential or error text.
+ const edge=await scimServer(t,'synthetic-auth-71');r.scimServer=edge.url;
+ const provisioned=await addApp(r,{name:'Provisioned app',entityId:'https://provisioned.example.com',acsUrl:'https://provisioned.example.com/acs',idpInitiated:true});
+ let release,started;const ready=new Promise(resolve=>{started=resolve}),paused=new Promise(resolve=>{release=resolve});t.after(()=>release());
+ edge.beforeRequest=async()=>{started();await paused;};edge.fail(1,403);
+ assert.equal((await r.call('/api/auth/provisioning/connect',{method:'POST',cookie:r.owner.cookie,data:{appId:provisioned.id,baseUrl:'https://scim.example.com/scim/v2',token:'synthetic-auth-71'},detached:true})).status,201);
+ await ready;
+ assert.equal((await read(r.ada)).find(a=>a.id===provisioned.id).state,'unprovisioned');
+ release();edge.beforeRequest=null;
+ // Await the pending delivery through the native runtime's scheduled door.
+ for(let attempt=0;attempt<30;attempt++) {const tile=(await read(r.ada)).find(a=>a.id===provisioned.id);if(tile.state==='connector-blocked')break;await new Promise(resolve=>setTimeout(resolve,10));}
+ const blocked=(await read(r.ada)).find(a=>a.id===provisioned.id);assert.equal(blocked.state,'connector-blocked');assert.equal(blocked.launch,null);
+ assert.equal((await r.call(`/api/auth/launcher/open?id=${provisioned.id}`,{cookie:r.ada})).status,403);
+ const group=await (await r.admin('/api/auth/groups/create',{name:'Bookmark readers'})).json();
+ const bookmark=await (await r.admin('/api/auth/bookmarks/create',{name:'Handbook',url:'https://handbook.example.com/start',icon:'Book',groupId:group.id})).json();
+ assert.equal((await action('/api/auth/bookmarks/create',{name:'Forbidden',url:'https://handbook.example.com',groupId:group.id})).status,403);
+ assert.equal((await r.admin('/api/auth/bookmarks/create',{name:'Unsafe',url:'https://user:synthetic-auth-1@handbook.example.com',groupId:group.id})).status,400);
+ assert.equal((await read()).some(a=>a.id===bookmark.id),false);
+ await r.admin('/api/auth/groups/add',{groupId:group.id,personId:'temporary-worker'});
+ const tile=(await read()).find(a=>a.id===bookmark.id);assert.equal(tile.kind,'bookmark');assert.equal(tile.launch,'https://handbook.example.com/start');
+ assert.equal((await read(r.bob)).some(a=>a.id===bookmark.id),false);
+ await action('/api/auth/launcher/favorite',{id:bookmark.id,favorite:true});
+ const opened=await r.call(`/api/auth/launcher/open?id=${bookmark.id}`,{cookie:employee.cookie});assert.equal(opened.status,303);assert.equal(opened.headers.get('location'),tile.launch);assert.equal(opened.headers.get('set-cookie'),null);
+ await r.admin('/api/auth/groups/remove',{groupId:group.id,personId:'temporary-worker'});
+ assert.equal((await read()).some(a=>a.id===bookmark.id),false);
+ assert.equal((await r.call(`/api/auth/launcher/open?id=${bookmark.id}`,{cookie:employee.cookie})).status,403);
+ await r.admin('/api/auth/company-apps/assign',{appId:app.id,principalType:'person',principalId:'temporary-worker'});
+ assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,200,'an independent current grant works');
+ await r.admin('/api/auth/company-apps/unassign',{appId:app.id,principalType:'person',principalId:'temporary-worker'});
+ assert.equal((await r.call(`/saml/launch/${app.id}`,{cookie:employee.cookie})).status,403,'a saved favorite cannot replace a removed assignment');
+});

@@ -17,6 +17,7 @@ export async function scimServer(t,token='scim-secret-token-1') {
   const url=new URL(req.url,'http://scim'),parts=url.pathname.replace(/^\/scim\/v2/,'').split('/').filter(Boolean),json=body?JSON.parse(body):null;
   log.push({method:req.method,path:url.pathname+url.search,body:json});
   if(req.headers.authorization!==`Bearer ${state.token}`)return send(res,401,{status:'401',detail:'unauthorized'});
+  await state.beforeRequest?.({method:req.method,path:url.pathname});
   const fault=faults[0]&&(!faults[0].method||faults[0].method===req.method)?faults.shift():null;if(fault&&!fault.after)return send(res,fault.status,{status:String(fault.status)},fault.retryAfter?{'retry-after':String(fault.retryAfter)}:{});
   if(fault?.after){res={writeHead:()=>{},end:()=>send(original,fault.status,{status:String(fault.status)})};}
   if(parts[0]==='ServiceProviderConfig')return send(res,200,{patch:{supported:true},filter:{supported:true,maxResults:200}});

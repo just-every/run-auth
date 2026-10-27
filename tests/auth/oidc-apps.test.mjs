@@ -1,3 +1,4 @@
+import {temporaryLauncherGrant} from './launcher-flow.mjs';
 import {verifyDomains} from './domain-helpers.mjs';
 import {hookServer,verifiedHook} from './hooks-server.mjs';
 import {test} from 'node:test';
@@ -129,6 +130,17 @@ test('wrong, mismatched and rotated-out secrets, substituted redirects and codes
  r.tick=()=>{r.now=Date.now();};
  // Unassigned: access_denied, no code.
  const denied=await code(a,`${RP}/a`,r.bob);assert.equal(denied.get('error'),'access_denied');assert.equal(denied.get('code'),null);
+ // A code minted before temporary expiry cannot be redeemed after it.
+ r.tick();r.tick=()=>{};
+ const temporary=await temporaryLauncherGrant(r,a,'oidc-temporary');
+ const expiry=(await r.db.prepare("SELECT expires_at FROM auth_access_requests WHERE app_id=? AND person_id='oidc-temporary'").bind(a.id).first()).expires_at;
+ r.now+=30000;
+ const temporaryCode=(await code(a,`${RP}/a`,temporary.cookie)).get('code');assert.ok(temporaryCode);
+ r.now=expiry+1;
+ assert.equal((await code(a,`${RP}/a`,temporary.cookie)).get('error'),'access_denied');
+ assert.equal((await (await redeem(a,temporaryCode,`${RP}/a`,basicAuth(a.clientId,rotated.clientSecret))).json()).error,'invalid_grant');
+ const expired=(await (await r.call('/api/auth/launcher',{cookie:temporary.cookie})).json()).apps.find(tile=>tile.id===a.id);assert.equal(expired.state,'expired');assert.equal(expired.launch,null);
+ r.tick=()=>{r.now=Date.now();};
  // An ID token is not a UserInfo credential.
  const issued=await (await redeem(a,(await code(a,`${RP}/a`)).get('code'),`${RP}/a`,basicAuth(a.clientId,rotated.clientSecret))).json();
  assert.equal((await r.call('/oidc/userinfo',{headers:{authorization:'Bearer '+issued.id_token}})).status,401);
