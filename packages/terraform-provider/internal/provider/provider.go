@@ -57,6 +57,9 @@ func group() *schema.Resource {
 		if err != nil {
 			return missing(d, err)
 		}
+		if data["rule"] != nil {
+			return diag.Errorf("group has rules outside this provider's supported static profile")
+		}
 		return set(d, map[string]any{"name": data["name"], "etag": tag})
 	}
 	return resource(map[string]*schema.Schema{"name": text(true, true)}, read,

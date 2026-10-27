@@ -691,7 +691,7 @@
       "executable": false
     },
     "packages/terraform-provider/internal/provider/provider.go": {
-      "sha256": "bb0b6575511e59a76ace9622cabf0853d593af7c7f3c2c01bafde5561ca4390f",
+      "sha256": "5849c63f6990e6691203149c441b4fad0a4f122f7014f08de4b8b9a02ad862a9",
       "executable": false
     },
     "packages/terraform-provider/main.go": {
@@ -699,7 +699,7 @@
       "executable": false
     },
     "packages/terraform-provider/README.md": {
-      "sha256": "212ce92703dc6df58b1765ee6671fb9900d8a398bd29c40747d409b2a5b21042",
+      "sha256": "27212bdc7184fe75e2adf9232f836b1fe6422d45510a8973d6fe61dca0584d35",
       "executable": false
     },
     "packaging.json": {
@@ -3435,7 +3435,7 @@
       "executable": false
     },
     "tests/auth/terraform-provider.test.mjs": {
-      "sha256": "49156fd57d24f8a0d89030797f54b561bb01659edda5d9ff6f9ac53a6829263d",
+      "sha256": "7bd6b49e87618620c62b31589cf860c4e7f9e8911df019a3d3eda1afc485af3d",
       "executable": false
     },
     "tests/auth/upstream-helpers.mjs": {
