@@ -3,7 +3,7 @@ import {effectiveRole} from '../reviews/reductions.mjs';
 // app role. A direct assignment's role wins over a group's.
 import {one,all} from '../core.mjs';
 
-const ASSIGNED=`SELECT a.role,0 AS rank FROM auth_app_assignments a WHERE a.app_id=? AND a.principal_type='person' AND a.principal_id=?
+const ASSIGNED=`SELECT a.role,0 AS rank FROM auth_app_assignments a WHERE a.app_id=? AND a.principal_type='person' AND a.principal_id=? AND NOT EXISTS(SELECT 1 FROM auth_access_requests r WHERE r.app_id=a.app_id AND r.person_id=a.principal_id AND r.decided_by=a.created_by AND r.decided_at=a.created_at AND r.role IS a.role AND r.expires_at<=? AND r.state IN ('approved','revocation_pending','expired_verified'))
  UNION ALL SELECT a.role,1 FROM auth_app_assignments a JOIN auth_group_members m ON m.group_id=a.principal_id WHERE a.app_id=? AND a.principal_type='group' AND m.person_id=?
  ORDER BY rank LIMIT 1`;
 
@@ -12,7 +12,7 @@ export async function assignment(ctx,appId,personId) {
  const person=await one(ctx,"SELECT id FROM oa_operators WHERE id=? AND status='active'",personId);
  const app=await one(ctx,'SELECT id FROM auth_apps WHERE id=? AND disabled_at IS NULL',appId);
  if(!person||!app||await one(ctx,'SELECT 1 FROM auth_app_denials WHERE app_id=? AND person_id=?',appId,personId))return null;
- return effectiveRole(ctx,appId,personId,await one(ctx,ASSIGNED,appId,personId,appId,personId));
+ return effectiveRole(ctx,appId,personId,await one(ctx,ASSIGNED,appId,personId,ctx.now(),appId,personId));
 }
 
 export const groupNames=async(ctx,personId)=>(await all(ctx,'SELECT g.name FROM auth_group_members m JOIN auth_groups g ON g.id=m.group_id WHERE m.person_id=? ORDER BY g.name',personId)).map(r=>r.name);
@@ -25,12 +25,4 @@ export async function appSubjects(ctx,appId) {
   UNION SELECT subject_id FROM auth_scim_accounts WHERE app_id=? AND subject_type='person'`,appId,appId,appId)).map(r=>r.id);
 }
 
-// Apps a person can open now, for the launcher.
-export async function launcher(ctx,personId) {
- const apps=await all(ctx,`SELECT DISTINCT p.id,p.name,p.idp_initiated,p.launch_url FROM auth_apps p JOIN auth_app_assignments a ON a.app_id=p.id
-  LEFT JOIN auth_group_members m ON a.principal_type='group' AND m.group_id=a.principal_id
-  JOIN oa_operators o ON o.id=? AND o.status='active'
-  WHERE p.disabled_at IS NULL AND NOT EXISTS(SELECT 1 FROM auth_app_denials d WHERE d.app_id=p.id AND d.person_id=o.id) AND ((a.principal_type='person' AND a.principal_id=?) OR m.person_id=?) ORDER BY p.name`,personId,personId,personId);
- const allowed=[];for(const a of apps)if(await assignment(ctx,a.id,personId))allowed.push(a);
- return allowed.map(a=>({id:a.id,name:a.name,launch:a.idp_initiated?`/saml/launch/${encodeURIComponent(a.id)}`:a.launch_url}));
-}
+export {launcher} from '../launcher/index.mjs';

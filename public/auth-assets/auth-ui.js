@@ -560,6 +560,22 @@
     window.setInterval(update, 60000)
   }
 
+  const launcher = document.querySelector('[data-launcher]')
+  if (launcher) {
+    const search = launcher.querySelector('[data-launcher-search]'), filter = launcher.querySelector('[data-launcher-filter]')
+    const update = () => {
+      const tiles = [...launcher.querySelectorAll('[data-launcher-tile]')]
+      for (const tile of tiles) tile.hidden = !tile.dataset.name.includes(search.value.trim().toLowerCase()) || (filter.value === 'favorites' && tile.dataset.favorite !== 'true') || (filter.value === 'recent' && !Number(tile.dataset.recent))
+      if (filter.value === 'recent') for (const tile of tiles.sort((a,b) => Number(b.dataset.recent)-Number(a.dataset.recent))) tile.parentNode.append(tile)
+      launcher.querySelector('[data-launcher-empty]').hidden = tiles.some(tile => !tile.hidden)
+    }
+    search.addEventListener('input', update)
+    filter.addEventListener('change', update)
+    launcher.addEventListener('click', event => {
+      const link = event.target.closest('[data-launcher-request]')
+      if (link) { const select = document.querySelector('[data-access-request-create] select[name="appId"]'); if (select) {select.value=link.dataset.launcherRequest; select.dispatchEvent(new Event('change',{bubbles:true}))} }
+    })
+  }
   const search = document.querySelector('[data-people-search]')
   if (search) {
     const rows = Array.from(document.querySelectorAll('[data-person-row]'))

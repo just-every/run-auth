@@ -25,3 +25,15 @@ On **My account**, **Sign out everywhere** ends all of your Auth sessions and si
 Auth shares each person's email and name with the apps they use, and nothing else. Each app sees its own identifier for a person, so apps cannot match people up between themselves.
 
 For how linking works underneath, see [How app linking works](/docs/linking).
+
+## Your company apps
+
+On **My account**, search **Your apps** by name, save favorites, or choose **Recently used** for links you opened from the dashboard. Preferences belong to the signed-in person and employer. Saving a favorite never grants access.
+
+A tile shows its assigned role or explains denied access, expired temporary access, an account waiting for provisioning, or a connector that needs administrator attention. Where an administrator configured requests, **Request access** selects the app in the existing temporary-access form. Its passkey approval and classification rules still apply.
+
+When adding a native app, administrators can set its **App sign-in URL**. SAML apps can instead permit Auth-initiated sign-in. The launcher rechecks access before opening either address.
+
+Administrators add **Group bookmarks** on **Company apps**, choosing a name, URL, icon and group. Only current group members see these links. They carry no Auth credential or protocol assertion. Removing membership hides the tile and refuses its saved launch address. Bookmarks do not control access to the external website itself.
+
+Native SAML and OpenID Connect sign-in recheck the current assignment, including temporary-grant expiry, before issuing an assertion, code or token. A provisioning explanation describes the connector's observed state; it does not replace the app's own authorization checks. Password extension support, RER local linking and vendor qualification remain pending.

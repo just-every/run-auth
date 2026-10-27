@@ -62,7 +62,7 @@ async function relyingParty(t,authOrigin) {
 
 test('company apps journey: the owner adds a SAML app from its metadata, an OpenID Connect app, a group and assignments; an employee signs in through Auth, and loses both when removed, at desktop/mobile in both themes',async t=>{
  const edge=await hookServer(t),app=await openApp({outboundService:edge.fetch});t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic','--no-sandbox'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
@@ -98,6 +98,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  await page.goto(app.origin+'/app/apps');
  const create=page.locator('form[action="/api/auth/company-apps/create"]');
  await create.getByLabel('Name',{exact:true}).fill('Expenses');await create.getByLabel('Service provider metadata').fill(sp.metadata);await create.getByLabel('Sign',{exact:true}).selectOption('both');await create.getByLabel(/^Attributes/).fill('email=email\nrole=role');
+ await create.getByLabel('Let people open it from Auth').check();
  await create.getByRole('button',{name:'Add app'}).click();
  await expect(page.getByRole('heading',{name:'Expenses'})).toBeVisible();
  await page.getByLabel('Group name').fill('Finance');await page.getByRole('button',{name:'Create group'}).click();
@@ -107,6 +108,13 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  const assign=page.locator('form[data-assign]').first();
  await assign.getByLabel('Give access to').selectOption({label:'Group: Finance'});await assign.getByLabel('App role (optional)').fill('approver');await assign.getByRole('button',{name:'Assign'}).click();
  await expect(page.locator('.data-row',{hasText:'role approver'})).toBeVisible();
+ // A bookmark is configured through the administrator form and carries no SSO.
+ const bookmarkForm=page.locator('form[action="/api/auth/bookmarks/create"]');
+ await bookmarkForm.getByLabel('Bookmark name',{exact:true}).fill('Team handbook');
+ await bookmarkForm.getByLabel('Bookmark URL',{exact:true}).fill('https://handbook.example.com/start');
+ await bookmarkForm.getByLabel('Bookmark group',{exact:true}).selectOption({label:'Finance'});
+ await bookmarkForm.getByRole('button',{name:'Add bookmark'}).click();
+ await expect(page.locator('section[aria-labelledby="bookmarks-heading"]')).toContainText('Team handbook');
  // Preview and save computed mappings in the existing app setup panel.
  const expenses=page.locator('section[aria-labelledby^="company-app-"]',{has:page.getByRole('heading',{name:'Expenses',exact:true})});
  await expenses.locator('[data-mapping] summary').click();
@@ -149,7 +157,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  // An OpenID Connect app registered on the same page; its secret is shown once.
  const rp=await relyingParty(t,app.origin);
  const register=page.locator('form[action="/api/auth/oidc-apps/create"]');
- await register.getByLabel('App name').fill('Wiki');await register.getByLabel('Redirect URIs (one per line)').fill(rp.origin+'/cb');
+ await register.getByLabel('App name').fill('Wiki');await register.getByLabel('Redirect URIs (one per line)').fill(rp.origin+'/cb');await register.getByLabel('App sign-in URL (optional)').fill(rp.origin+'/start');
  await register.getByRole('button',{name:'Add app'}).click();
  const shown=page.locator('[data-auth-status]');await expect(shown).toContainText('Client secret, shown once');
  [,rp.clientId,rp.secret]=(await shown.textContent()).match(/Client ID (\S+)\. Client secret, shown once: (\S+)/);
@@ -159,13 +167,40 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  await expect(page.locator('section',{has:page.getByRole('heading',{name:'Wiki'})}).locator('.data-row',{hasText:'Finance'})).toBeVisible();
  await employeePage.goto(rp.origin+'/start');
  await expect(employeePage.getByRole('heading',{name:'Authorization code received from Auth'})).toBeVisible();
+ const archiveResponse=await context.request.post(app.origin+'/api/auth/company-apps/create',{data:{name:'Archive',entityId:'https://archive.example.com',acsUrl:'https://archive.example.com/acs'},headers:{origin:app.origin}});assert.equal(archiveResponse.status(),201);
+ const archive=await archiveResponse.json(),ownerModel=await (await context.request.get(app.origin+'/api/auth/me')).json();
+ assert.equal((await context.request.post(app.origin+'/api/auth/requests/policy',{data:{appId:archive.id,deciderId:ownerModel.user.id,maxDurationMs:60000},headers:{origin:app.origin}})).status(),200);
  await employeePage.goto(app.origin+'/app/account');await expect(employeePage.getByRole('heading',{name:'Your apps'})).toBeVisible();
+ const tiles=employeePage.locator('[data-launcher-tile]'),handbook=tiles.filter({hasText:'Team handbook'}),expenseTile=tiles.filter({hasText:'Expenses'});
+ await expect(tiles).toHaveCount(4);await expect(handbook).toContainText('No credentials');
+ await employeePage.getByLabel('Search your apps').fill('HANDBOOK');await expect(employeePage.locator('[data-launcher-tile]:visible')).toHaveCount(1);
+ await employeePage.getByLabel('Search your apps').fill('missing');await expect(employeePage.locator('[data-launcher-empty]')).toBeVisible();
+ await employeePage.getByLabel('Search your apps').fill('');
+ await handbook.getByRole('button',{name:'Add favorite',exact:true}).click();await expect(handbook.getByRole('button',{name:'Remove favorite'})).toBeVisible();
+ await employeePage.getByLabel('Show apps').selectOption('favorites');await expect(employeePage.locator('[data-launcher-tile]:visible')).toHaveCount(1);
+ const bookmarkURL=await handbook.getByRole('link',{name:'Open',exact:true}).getAttribute('href');
+ const bookmarkOpened=await employee.request.get(app.origin+bookmarkURL,{maxRedirects:0});assert.equal(bookmarkOpened.status(),303);assert.equal(bookmarkOpened.headers().location,'https://handbook.example.com/start');assert.equal(bookmarkOpened.headers()['set-cookie'],undefined);
+ await employeePage.reload();await employeePage.getByLabel('Show apps').selectOption('recent');await expect(employeePage.locator('[data-launcher-tile]:visible')).toHaveCount(1);await expect(handbook).toContainText('Recently opened');
+ await employeePage.getByLabel('Show apps').selectOption('all');
+ await expenseTile.getByRole('button',{name:'Add favorite',exact:true}).click();await expect(expenseTile.getByRole('button',{name:'Remove favorite'})).toBeVisible();
+ await expenseTile.getByRole('link',{name:'Open',exact:true}).click();await expect(employeePage.getByRole('heading',{name:`Signed in as ${EMPLOYEE} (approver)`})).toBeVisible();
+ await employeePage.goto(app.origin+'/app/account');
+ await employeePage.locator('[data-launcher-tile]',{hasText:'Wiki'}).getByRole('link',{name:'Open',exact:true}).click();await expect(employeePage.getByRole('heading',{name:'Authorization code received from Auth'})).toBeVisible();
+ await employeePage.goto(app.origin+'/app/account');
+ const ownerLauncher=await context.request.get(app.origin+'/api/auth/launcher');assert.equal((await ownerLauncher.json()).apps.some(a=>a.name==='Team handbook'),false);
+ const requestTile=tiles.filter({hasText:'Archive'});await expect(requestTile.getByRole('link',{name:'Open',exact:true})).toHaveCount(0);
+ await requestTile.getByRole('link',{name:'Request access',exact:true}).click();
+ await expect(employeePage.locator('[data-access-request-create] select[name="appId"]')).toHaveValue(archive.id);
+ await expect(employeePage.getByRole('button',{name:'Request temporary access with passkey'})).toBeVisible();
+ const theme=employeePage.getByRole('button',{name:'Toggle color theme'});await theme.focus();await expect(employeePage.getByRole('tooltip')).toHaveText('Color theme');await theme.blur();
  await shoot(employeePage,'launcher');
 
  // Removed from the group: Auth refuses the next sign-in to the app.
  await page.goto(app.origin+'/app/apps');
  await groupRow().getByRole('button',{name:`Remove ${EMPLOYEE}`}).click();
  await expect(groupRow().getByText('No members')).toBeVisible();
+ await employeePage.goto(app.origin+'/app/account');await expect(employeePage.locator('[data-launcher-tile]')).toHaveCount(1);await expect(employeePage.locator('[data-launcher-tile]')).toContainText('Archive');
+ assert.equal((await employee.request.get(app.origin+bookmarkURL,{maxRedirects:0})).status(),403);
  await employeePage.goto(sp.origin+'/login');
  await expect(employeePage.getByRole('heading',{name:'You are not assigned to this app'})).toBeVisible();
  await employeePage.goto(rp.origin+'/start');await expect(employeePage.getByRole('heading',{name:'Refused: access_denied'})).toBeVisible();
