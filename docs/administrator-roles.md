@@ -33,7 +33,7 @@ resource sets as custom roles; their definitions are fixed.
 | `group-owner` | 0 | `roles.view`, `people.view`, `groups.view`, `groups.edit`, `groups.rules.edit` |
 | `manager` | 0 | `roles.view`, `people.view`, `groups.view` |
 | `app-owner` | 0 | `roles.view`, `apps.view`, `apps.assign` |
-| `help-desk` | 20 | `roles.view`, `people.view`, `people.factors.reset`, `groups.view`, `cases.view`, `cases.open`, `cases.verify`, `recovery.approve`, `people.suspend`, `people.restore` |
+| `help-desk` | 20 | `roles.view`, `people.view`, `people.sessions.end`, `people.factors.reset`, `groups.view`, `cases.view`, `cases.open`, `cases.verify`, `recovery.approve`, `people.suspend`, `people.restore` |
 | `auditor` | 10 | `roles.view`, `people.view`, `people.export`, `groups.view`, `apps.view`, `cases.view`, `audit.view`, `audit.export` |
 | `employee` | 0 | No administration permissions; ordinary employee profile doors continue to apply |
 
@@ -141,6 +141,8 @@ its ordinary bounded input before calling `roleAction`.
 | `GET /api/auth/roles/export` | JSON attachment of scoped people; independently requires `people.export` and records export activity |
 | `POST /roles/preview` | One change below; returns `previewId`, exact `plan`, `epoch`, ten-minute `expiresAt` |
 | `POST /roles/apply` | `{ "previewId": "..." }`; commits the unchanged preview once, bound to its actor **and session** |
+| `POST /roles/end-sessions` | `{ "personId": "...", "reason": "..." }`; `people.sessions.end`, current edit resources and a strictly lower account rank |
+| `GET /api/auth/session-control?personId=...` | Latest 20 session-control operations for an editable lower-ranked person; hardware passkey and `people.sessions.end` |
 | `POST /roles/reset-factors` | `{ "personId": "...", "reason": "...", "caseId": "optional" }` |
 | `POST /roles/profile` | `{ "personId": "...", "fields": { "title": "..." } }`; typed manual-source directory edits; null clears the manual value |
 | `POST /roles/group` | `{ "groupId": "...", "personId": "...", "action": "add" }` or `remove`; rule removals create exclusions |
@@ -272,3 +274,39 @@ machine calls; its own epoch changes cannot leave a partially applied plan.
 The ordinary employee's own profile and self-session controls remain separate
 self-service actions. Recovery of an equal/higher administrator follows the
 existing delay or emergency mechanism; a lower administrator cannot approve it.
+
+## End all sessions
+
+People provides a Sessions dialog on each eligible person. Scoped help desk
+uses Session control under People in your scope on Roles. The published
+`people.sessions.end` permission is separate from factor reset, suspension,
+app administration and directory viewing. Built-in help desk and identity
+administrator roles include it. Custom roles must include it explicitly.
+
+The action needs a recorded single-line reason, hardware passkey and local
+email confirmation in the last ten minutes. Auth rechecks session methods,
+version, active status, expiry, email proof and the role authority epoch when
+claiming the transaction. The person must be strictly lower-ranked and all of
+their current groups must fit one held grant's edit scope. The actor cannot
+end their own sessions through this administration door; self-service sign
+out remains available separately.
+
+The same transaction records the actor and reason, revokes every native Auth
+session and refresh family, and queues supported linked-app and general OIDC
+back-channel deliveries. It changes no account status, identity version,
+passkey, group membership or app assignment. Old browser authority, pending
+codes tied to ended sessions and refresh credentials stop at their next
+request. A retained passkey can establish a new session normally.
+
+The receipt records Auth session and refresh grant counts. Back-channel
+counts distinguish pending, delivered, failed and unavailable. Delivered
+means the endpoint accepted the signed logout; it never establishes remote
+session completion. Restart resumes durable delivery queues under the
+existing retry policy. A refusal or exhausted delivery remains failed, and
+an unavailable endpoint cannot be reported delivered. Only current holders
+of the same session-management authority can read a person's receipts.
+
+This native action does not qualify vendor session-revocation APIs, vendor
+readback, desktop or mobile clients, downstream timing, unsupported manual
+resolution, password reset, factor-review policy or notification delivery.
+Those remain explicit AUTH-LOGOUT-002 obligations.
