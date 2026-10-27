@@ -41,7 +41,8 @@ export async function auditPage(ctx,s,request) {
  let cursor;
  if(params.has('cursor')) {
   cursor=await decode(ctx,params.get('cursor'));
-  if(JSON.stringify(cursor.binding)!==JSON.stringify(binding)||cursor.expiresAt<=ctx.now())fail('audit_cursor_authority_changed',409);
+  if(JSON.stringify(cursor.binding)!==JSON.stringify(binding))fail('audit_cursor_authority_changed',409);
+  if(cursor.expiresAt<=ctx.now())fail('audit_cursor_expired',410);
   integer(cursor.max,0,Number.MAX_SAFE_INTEGER);integer(cursor.before,0,Number.MAX_SAFE_INTEGER);
  } else {
   const max=(await one(ctx,'SELECT COALESCE(MAX(id),0) AS id FROM auth_activity')).id;
@@ -61,6 +62,23 @@ export async function auditPage(ctx,s,request) {
  if(!state.legacy) {
   where.push('(a.subject_id IN (SELECT value FROM json_each(?)) OR (a.subject_id IS NULL AND a.actor_id IN (SELECT value FROM json_each(?))))');
   const scope=JSON.stringify([...visible]);args.push(scope,scope);
+  // Apply related-resource exclusions before either counting or paging. Names
+  // in older native details are accepted only when they resolve unambiguously.
+  const groups=state.dir.groups,groupNames=groups.filter(g=>groups.filter(other=>other.name===g.name).length===1&&visible.has(g.id)).map(g=>g.name);
+  const references={person:[...state.dir.people.values()].filter(p=>visible.has(p.id)).flatMap(p=>[p.id,p.email]),group:[...groups.filter(g=>visible.has(g.id)).map(g=>g.id),...groupNames],app:state.apps.filter(a=>visible.has(a.id)).map(a=>a.id),case:state.cases.filter(c=>visible.has(c.id)).map(c=>c.id)};
+  const fields={person:['person','personId','person_id'],group:['group','groupId','group_id'],app:['app','appId','app_id'],case:['caseId','case_id']};
+  const conditions=[];
+  for(const [kind,keys] of Object.entries(fields)) {
+   const plural=kind==='person'?'people':kind==='case'?'cases':kind+'s';
+   conditions.push(`((j.key IN (${keys.map(()=>'?').join(',')}) OR parent.key=? OR j.path LIKE ? OR j.path LIKE ?) AND (j.type!='text' OR j.value NOT IN (SELECT value FROM json_each(?))))`);
+   args.push(...keys,plural,'%.'+plural+'.%','%.'+plural+'[%',JSON.stringify(references[kind]));
+  }
+  where.push(`NOT EXISTS(SELECT 1 FROM auth_activity_details related, json_tree(CASE WHEN json_valid(related.detail) THEN related.detail ELSE '{}' END) j LEFT JOIN json_tree(CASE WHEN json_valid(related.detail) THEN related.detail ELSE '{}' END) parent ON parent.id=j.parent WHERE related.activity_id=a.id AND j.type NOT IN ('null','object','array') AND (${conditions.join(' OR ')}))`);
+  where.push(`(a.event NOT IN ('app_assigned','app_unassigned','group_member_added','group_member_removed') OR EXISTS(SELECT 1 FROM auth_activity_details related WHERE related.activity_id=a.id AND json_valid(related.detail) AND (json_type(related.detail,'$.person')='text' OR json_type(related.detail,'$.group')='text')))`);
+  // The companion native event records all assignment targets; the generic
+  // command receipt does not and cannot safely qualify a scoped read.
+  where.push("a.event!='roles.command'");
+
  }
  const predicate=where.join(' AND ');
  const {total}=await one(ctx,`SELECT COUNT(*) AS total FROM auth_activity a WHERE ${predicate}`,...args);
