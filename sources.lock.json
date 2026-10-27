@@ -3339,7 +3339,7 @@
       "executable": false
     },
     "tests/auth/link/runtime.mjs": {
-      "sha256": "2770e469b2c0598a9666088e46b5563968baf67cc3ac8d254582d4237f37035d",
+      "sha256": "b380ea22f0529094d884d55349f94089b877b588609a78d7d77a2ad85cae9f3e",
       "executable": false
     },
     "tests/auth/link/schema.mjs": {
