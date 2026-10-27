@@ -128,10 +128,11 @@ export function createBrowserApp({origin, organizations, sessionLifetimeMs = 360
   app.get('/documents/budget', async (context, next) => {
     const session = resolve(context), org = configured.get(session?.active);
     if (!org) return context.json({error: 'sign_in_required'}, 401);
+    context.set('authOrganization', org.id);
     return requirePermission({session: () => session.memberships.get(org.id)?.client, ...permission(org)})(context, async () => {
-      if (!alive(session)) { context.res = context.json({error: 'sign_in_required'}, 401); return; }
+      if (!alive(session) || session.active !== org.id) { context.res = context.json({error: 'sign_in_required'}, 401); return; }
       await next();
     });
-  }, context => context.json({document: 'Budget', organization: resolve(context)?.active, subject: context.get('authPrincipal').id}));
+  }, context => context.json({document: 'Budget', organization: context.get('authOrganization'), subject: context.get('authPrincipal').id}));
   return app;
 }
