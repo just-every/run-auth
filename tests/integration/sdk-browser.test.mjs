@@ -95,10 +95,29 @@ test('installed Hono browser quickstart enrolls independent employer memberships
   assert.equal((await employee.request.get(app.origin + prefix + '/api/auth/me')).status(),401,'root email and passkey do not create employer B proof');
   const begin = async id => {await page.goto(origin); await page.getByRole('button',{name:'Sign in to Employer ' + id.toUpperCase(),exact:true}).click(); await expect(page.getByRole('button',{name:'Allow offline access'})).toBeVisible();};
   const finish = async () => {await page.getByRole('button',{name:'Allow offline access'}).click(); await expect.poll(()=>new URL(page.url()).pathname).toBe('/');};
+  // Hold a genuine, unconsumed Auth consent callback before the installed app sees it.
+  const consentCallback = async id => {
+    const login = await appPost('/login', {organization:id}); assert.equal(login.status(),303);
+    const tab = await employee.newPage();
+    try {
+      let callback;
+      await tab.route(origin + '/callback/' + id + '?*', async route => {
+        callback = route.request().url();
+        await route.fulfill({status:200,contentType:'text/html',body:'<h1>Callback held for delivery</h1>'});
+      });
+      await tab.goto(login.headers().location);
+      await tab.getByRole('button',{name:'Allow offline access',exact:true}).click();
+      await expect(tab.getByRole('heading',{name:'Callback held for delivery'})).toBeVisible();
+      assert.ok(new URL(callback).searchParams.get('code'),'Auth issued a real consent code');
+      return callback;
+    } finally { await tab.close(); }
+  };
+  const applicationCookie = async () => {
+    const value = (await employee.cookies(origin)).find(cookie => cookie.name === 'auth_quickstart');
+    assert.ok(value); return value.name + '=' + value.value;
+  };
   // Observe only the browser's own application traffic: tokens and private keys never enter it.
   const exposed = [];
-  let lastCallback;
-  page.on('request', request => {if(request.url().startsWith(origin + '/callback/')) lastCallback = request.url();});
   page.on('response', response => {if(response.url().startsWith(origin + '/') && ['application/json','text/html'].some(type=>response.headers()['content-type']?.includes(type))) exposed.push(response.text().catch(()=>''));});
   await begin('a'); await shoot('consent');
   // Respect Auth's public signing-key publication deadline on a fresh installation.
@@ -126,6 +145,24 @@ test('installed Hono browser quickstart enrolls independent employer memberships
   await page.getByRole('button',{name:'Switch to Employer B',exact:true}).click(); await expect(page.locator('strong')).toHaveText('Employer B');
   await page.getByRole('button',{name:'Rotate session',exact:true}).click(); await expect(page).toHaveURL(origin + '/'); assert.equal((await json(await api())).subject,second.subject);
   await shoot('switched');
+  const callbacks = [await consentCallback('a'), await consentCallback('b')];
+  const beforeCallbacks = await applicationCookie();
+  const concurrent = await Promise.all(callbacks.map(url => fetch(url,{headers:{cookie:beforeCallbacks},redirect:'manual'})));
+  assert.deepEqual(concurrent.map(response=>response.status).sort(),[303,409],'one arriving callback exclusively owns session rotation');
+  const winner = concurrent.findIndex(response=>response.status===303), loser = 1-winner;
+  assert.equal((await concurrent[loser].json()).error,'callback_in_progress');
+  assert.deepEqual(concurrent[loser].headers.getSetCookie(),[],'the delayed refusal cannot overwrite the successful cookie');
+  const issued = concurrent[winner].headers.getSetCookie(); assert.equal(issued.length,1);
+  const winnerCookie = issued[0].split(';')[0]; assert.notEqual(winnerCookie,beforeCallbacks);
+  const winnerDocument = await fetch(origin + '/documents/budget',{headers:{cookie:winnerCookie}});
+  assert.equal(winnerDocument.status,200,'the successful callback remains authenticated after both responses');
+  assert.equal((await winnerDocument.json()).organization,['a','b'][winner]);
+  assert.equal((await fetch(origin + '/documents/budget',{headers:{cookie:beforeCallbacks}})).status,401,'rotation still invalidates the old cookie');
+  await employee.addCookies([{name:'auth_quickstart',value:winnerCookie.slice('auth_quickstart='.length),url:origin,httpOnly:true,sameSite:'Lax'}]);
+  assert.equal((await employee.request.get(callbacks[loser],{maxRedirects:0})).status(),303,'the rejected callback retains its valid, unconsumed code for a sequential retry');
+  assert.equal((await json(await api())).organization,['a','b'][loser]);
+  assert.equal((await employee.request.get(callbacks[winner],{maxRedirects:0})).status(),400,'the successful callback cannot replay');
+  assert.equal((await appPost('/switch',{organization:'b'})).status(),303);
   await app.pause(); await app.resume();
   assert.equal((await json(await api())).subject,second.subject,'Auth restart preserves separately proved server-held authority');
   // Revocation is performed at Auth's employee door and is visible to the next API request.
@@ -136,7 +173,9 @@ test('installed Hono browser quickstart enrolls independent employer memberships
   assert.equal((await json(await api())).subject,first.subject,'B revocation preserves independent A authority');
   const refusedSwitch = await appPost('/switch',{organization:'b'}); assert.notEqual(refusedSwitch.status(),303);
   await begin('b'); await finish();
-  const endedCookie = (await employee.cookies(origin)).find(cookie => cookie.name === 'auth_quickstart'), endedCallback = lastCallback;
+  const endedCallback = await consentCallback('a');
+  const endedCookie = (await employee.cookies(origin)).find(cookie => cookie.name === 'auth_quickstart');
+  await page.goto(origin);
   await page.getByRole('button',{name:'Sign out of application and Auth',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Sign out of Auth?',exact:true})).toBeVisible(); await shoot('logout-confirmation');
   await page.getByRole('button',{name:'Sign out',exact:true}).click(); await expect(page.getByRole('heading',{name:'You are signed out',exact:true})).toBeVisible(); await shoot('signed-out');
@@ -147,11 +186,11 @@ test('installed Hono browser quickstart enrolls independent employer memberships
   assert.equal((await fetch(origin + '/documents/budget',{headers:{cookie:oldCookie.name + '=' + oldCookie.value}})).status,401);
   // A process restart cannot restore authority from an otherwise live opaque cookie.
   await begin('a'); await finish(); assert.equal((await api()).status(),200);
-  const pendingLogin = new URL((await appPost('/login',{organization:'a'})).headers().location);
-  const pendingCallback = new URL(origin + '/callback/a');
-  pendingCallback.search = new URLSearchParams({state:pendingLogin.searchParams.get('state'),iss:configurations[0].issuer,code:'synthetic-auth-105'}).toString();
+  const pendingCallback = await consentCallback('a'), pendingCookie = await applicationCookie();
   await stop(); await start(); assert.equal((await api()).status(),401);
-  assert.equal((await employee.request.get(pendingCallback.href)).status(),400);
+  const restartCallback = await fetch(pendingCallback,{headers:{cookie:pendingCookie},redirect:'manual'});
+  assert.equal(restartCallback.status,400);
+  assert.equal((await restartCallback.json()).error,'invalid_state','restart discards pending authority even for a genuine, unconsumed Auth code');
   await page.goto(origin); await expect(page.locator('strong')).toHaveText('None');
   assert.equal((await appPost('/switch',{organization:'a'})).status(),403);
   assert.ok(exposed.length > 0);
