@@ -212,7 +212,18 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  assert.equal(granted.effects.length,1);assert.equal(granted.effects[0].personId,'helper');assert.equal(granted.effects[0].email,'helper@example.com');
  assert.deepEqual(granted.effects[0].lost,[]);
  assert.deepEqual(ordered(granted.effects[0].gained),ordered([action('roles.view'),action('roles.grant'),action('people.view','ada'),action('people.view','bob'),action('people.factors.reset','ada'),action('groups.view',a.id,'groups'),action('groups.view',b.id,'groups')]),'preview names the exact recipient, permissions and resources gained');
- const command=async(data)=>r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{reason:'Employee requested a verified factor reset',...data}});
+ // Recovery now needs a live manager attestation and an exact case grant in
+ // addition to the original people scope whose boundaries this test asserts.
+ await admin(r,'directory/edit',{personId:'ada',set:{manager:'owner'}});
+ const cases=[];
+ for(let i=0;i<2;i++){
+  const opened=await admin(r,'roles/recovery-case',{action:'open',personId:'ada',reason:'Employee lost every factor'},201);
+  await admin(r,'recovery/case-attest',{caseId:opened.caseId});cases.push(opened.caseId);
+ }
+ const verificationRole=await plan({kind:'role',role:{name:'Case verification only',rank:1,permissions:['cases.view','cases.verify','recovery.approve']}});
+ const verificationGrant=await plan({kind:'grant',personId:'helper',roleId:verificationRole.role.id,resources:{view:{cases},edit:{cases}}});
+ let currentCase=cases[0];
+ const command=async(data)=>r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{reason:'Employee requested a verified factor reset',caseId:currentCase,...data}});
  const visible=await (await r.call('/api/auth/roles/people',{cookie:helper.cookie})).json();assert.deepEqual(visible.people.map(p=>p.id).sort(),['ada','bob']);
  assert.equal((await r.call('/api/auth/roles/people?personId=bob',{cookie:helper.cookie})).status,200,'view B succeeds');
  assert.equal((await command({personId:'bob'})).status,403);assert.equal((await r.call('/api/auth/roles/export',{cookie:helper.cookie})).status,403);
@@ -221,7 +232,12 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  assert.equal((await r.call('/api/auth/roles/preview',{method:'POST',cookie:helper.cookie,data:{kind:'grant',personId:'bob',roleId:'help-desk',resources:{view:{groups:['*']},edit:{groups:['*']}}}})).status,403,'cannot delegate a wider resource set');
  assert.equal((await command({personId:'ada'})).status,200);assert.equal((await r.call('/api/auth/me',{cookie:ada.cookie})).status,401);
  // A fresh factor for Ada, followed by membership change, affects the next decision.
- const adaAgain=await register(r,await emailSession(r,'ada@example.com'));
+ const adaEmail=await emailSession(r,'ada@example.com');
+ const notice=(await r.mails()).findLast(m=>m.subject==='Auth recovery enrollment link');
+ const link=new URL(notice.text.match(/https:\/\/\S+$/)[0]);
+ const enrollment=await r.call('/api/auth/recovery/enroll',{method:'POST',cookie:adaEmail,data:Object.fromEntries(new URLSearchParams(link.hash.slice(1)))});
+ assert.equal(enrollment.status,200,await enrollment.clone().text());
+ const adaAgain=await register(r,adaEmail);currentCase=cases[1];
  await admin(r,'groups/add',{groupId:b.id,personId:'ada'});
  assert.equal((await command({personId:'ada'})).status,403,'membership outside edit scope refuses even when still in A');
  await admin(r,'groups/remove',{groupId:b.id,personId:'ada'});
@@ -233,6 +249,7 @@ test('scoped help desk separates view and edit, refuses privileged and out-of-gr
  const trail=await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json();assert.ok(trail.some(e=>e.event==='roles.factors.reset'));
  const noEmail=await r.call('/api/auth/roles/reset-factors',{method:'POST',cookie:helper.cookie,data:{personId:'bob',reason:'Still refused'}});assert.equal(noEmail.status,403);
  // Revocation is live, rather than a session-embedded permission.
+ await plan({kind:'revoke',grantId:verificationGrant.id});
  const revoked=await plan({kind:'revoke',grantId:granted.id});assert.equal((await r.call('/api/auth/roles/people',{cookie:helper.cookie})).status,403);
  assert.equal(revoked.effects.length,1);assert.equal(revoked.effects[0].personId,'helper');assert.equal(revoked.effects[0].email,'helper@example.com');assert.deepEqual(revoked.effects[0].gained,[]);
  assert.deepEqual(ordered(revoked.effects[0].lost),ordered([action('roles.view'),action('roles.grant'),action('people.view','bob'),action('people.view','senior'),action('groups.view',a.id,'groups'),action('groups.view',b.id,'groups')]),'revocation preview names current actions lost after live membership changed');

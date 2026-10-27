@@ -123,8 +123,15 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const post=async(path,data,status=200,client=context)=>{const response=await client.request.post(app.origin+path,{data,headers:{origin:app.origin}});assert.equal(response.status(),status,path+' '+await response.text());return response.json();};
  const signIn=async(target,email,prefix='',setup=false)=>{
   await target.goto(app.origin+prefix+'/signin?returnTo='+encodeURIComponent(setup?'/setup':'/app/methods'));
-  await target.getByLabel('Email address',{exact:true}).fill(email);await target.getByRole('button',{name:'Email me a sign-in link'}).click();
-  await target.goto((await app.link(prefix)).href);await target.getByRole('button',{name:'Continue to Auth'}).click();
+  // Uniform email requests deliver asynchronously. Wait for this request's
+  // new outbox link rather than racing the previous person's message.
+  const previous=await app.link(prefix).then(link=>link.href).catch(()=>null);
+  await target.getByLabel('Email address',{exact:true}).fill(email);
+  const requested=target.waitForResponse(r=>r.url().endsWith('/auth/identity/email/request'));
+  await target.getByRole('button',{name:'Email me a sign-in link'}).click();assert.equal((await requested).status(),202);
+  let proofLink;
+  await expect.poll(async()=>{try{const link=await app.link(prefix);if(link.href===previous)return false;proofLink=link;return true;}catch{return false;}},{timeout:10000}).toBe(true);
+  await target.goto(proofLink.href);await target.getByRole('button',{name:'Continue to Auth'}).click();
   if(setup){await target.getByRole('checkbox').check();await target.getByRole('button',{name:'Finish setup'}).click();await target.goto(app.origin+'/app/methods');}
   await target.waitForURL(app.origin+prefix+'/app/methods');await target.waitForLoadState('load');
   const response=target.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify')),reloaded=target.waitForEvent('load');await target.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await response).status(),200);await reloaded;

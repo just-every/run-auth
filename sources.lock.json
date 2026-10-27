@@ -3271,7 +3271,7 @@
       "executable": false
     },
     "tests/auth/directory.test.mjs": {
-      "sha256": "290df01f916a77f5f65cab3920d3e079710eaf46e20ade25bbb5dccb997a7aef",
+      "sha256": "40b679beaf10b785d06aa69929c30a74e402770695c66bc1f584eb5e2ea34d49",
       "executable": false
     },
     "tests/auth/domain-helpers.mjs": {
@@ -3655,7 +3655,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "e3df8472fc5beb0bf0a0890660c102b5c6d190444c8f33326e4078002f18d2ed",
+      "sha256": "1340c1383e55c9037c0855c17d3e26d4a0fc8327421270cd952a2169b54c6808",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
