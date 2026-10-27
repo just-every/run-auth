@@ -24,7 +24,7 @@ test('interactive audit finds twelve-month sign-ins and reconciles a frozen auth
  }
  const base='/api/auth/audit?person=worker&event=person_invited&limit=100&from='+(now-2000)+'&to='+now;
  let page=await read(r,base,owner.cookie);assert.equal(page.total,1105);assert.equal(page.events.length,100);
- r.now+=15*60000;assert.equal((await r.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,409);
+ r.now+=15*60000;assert.equal((await r.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,410);
  assert.equal((await read(r,base,owner.cookie)).total,1105,'a new read needs current authority without fresh email write proof');r.now=now;
  const rolePage=await read(r,base.replace('/api/auth/audit','/api/auth/roles/audit'),owner.cookie);
  assert.equal(rolePage.total,1105);assert.deepEqual(rolePage.events,page.events);assert.ok(rolePage.nextCursor);
