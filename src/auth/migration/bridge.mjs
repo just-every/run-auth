@@ -40,7 +40,7 @@ const eligible=(ctx,bridgeId,subject)=>one(ctx,`SELECT m.*,b.url,b.sealed_creden
 export async function legacyLogin(ctx,request,data) {
  exact(data,['bridgeId','sourceSubject','password']);
  if(typeof data.bridgeId!=='string'||data.bridgeId.length>100||typeof data.sourceSubject!=='string'||data.sourceSubject.length>256||typeof data.password!=='string'||!data.password||data.password.length>4096)fail('invalid_legacy_credentials',403);
- if(!await limit(ctx,'legacy-login-ip:'+(request.headers.get('cf-connecting-ip')??''),30,60000)||!await limit(ctx,'legacy-login-subject:'+await hash(data.bridgeId+':'+data.sourceSubject),5,60000))fail('rate_limited',429);
+ if(!await limit(ctx,'legacy-login-ip:'+(ctx.abuseSource??'unavailable'),30,60000)||!await limit(ctx,'legacy-login-subject:'+await hash(data.bridgeId+':'+data.sourceSubject),5,60000))fail('rate_limited',429);
  const mapping=await eligible(ctx,data.bridgeId,data.sourceSubject)||fail('invalid_legacy_credentials',403);
  if(mapping.completed_at!==null)return json({state:'already-migrated',next:'/signin',oldPasswordAuthority:false},202);
  // The inherited password-import hook receives only the reviewed person and

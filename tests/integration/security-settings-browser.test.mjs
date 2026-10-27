@@ -233,3 +233,63 @@ test('mail delivery diagnostics distinguish private outbox and signed provider o
  }
  await app.pause();await deliveryBrowser(t,browser,directory);
 });
+
+test('attack protection settings persist, explain refusal and preserve proved recovery at desktop and mobile',async t=>{
+ const app=await openApp();t.after(()=>app.close());await app.claim();
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),cdp=await context.newCDPSession(page);
+ await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+ const directory=process.env.AUTH_SCREENSHOTS||join(tmpdir(),'auth-abuse-journey');await mkdir(directory,{recursive:true});
+ await ownerSetup(app,page);
+ const panel=()=>page.getByRole('region',{name:'Attack protection'});
+ await panel().getByLabel('Attempts per source',{exact:true}).fill('2');
+ await panel().getByLabel('Combined attempts',{exact:true}).fill('4');
+ await panel().getByLabel('Cooldown seconds',{exact:true}).fill('30');
+ await expect(panel().getByRole('status')).toHaveText('Changes saved.');
+ await page.reload();
+ await expect(panel().getByLabel('Attempts per source',{exact:true})).toHaveValue('2');
+ await expect(panel().getByLabel('Combined attempts',{exact:true})).toHaveValue('4');
+ await expect(panel().getByLabel('Cooldown seconds',{exact:true})).toHaveValue('30');
+ const snapshot=async state=>{
+  for(const width of [1440,390]) {
+   await page.setViewportSize({width,height:1000});
+   if(width===1440)assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),state+' fits '+width);
+   await page.screenshot({path:join(directory,`abuse-${state}-${width}.png`),fullPage:true});
+   if(state==='configured'&&width===390)for(const control of await page.locator('[data-tooltip]:visible').all()) {
+    const name=(await control.getAttribute('data-tooltip')).toLowerCase().replace(/\W+/g,'-');
+    await control.hover();await page.waitForTimeout(350);
+    await page.screenshot({path:join(directory,`abuse-${width}-${name}-hover.png`),fullPage:true});
+    await page.mouse.move(0,0);await control.focus();
+    await page.screenshot({path:join(directory,`abuse-${width}-${name}-focus.png`),fullPage:true});
+    await page.keyboard.press('Escape');await page.locator('h1').click();
+   }
+  }
+  await page.setViewportSize({width:1440,height:1000});
+ };
+ await snapshot('configured');
+ const refused=page.waitForResponse(answer=>answer.url().endsWith('/auth/identity/passkeys/register/options'));
+ await page.getByRole('button',{name:'Register a passkey'}).click();
+ assert.equal((await refused).status(),429,'the configured source budget is enforced by the emitted Worker');
+ await expect(page.locator('[data-auth-status][role="alert"]')).toContainText('Too many attempts');
+ await snapshot('refused');
+ await page.reload();await panel().getByText('Recent attack refusals',{exact:true}).click();
+ await expect(panel()).toContainText('source_limit');
+ await tooltipAudit(page,directory,'attack-protection',1440);
+ // Anonymous traffic cannot exhaust the authenticated recovery session.
+ const outsider=await browser.newContext();t.after(()=>outsider.close());
+ for(let i=0;i<5;i++)await outsider.request.post(app.origin+'/api/auth/recovery/start',{headers:{origin:app.origin},data:{}});
+ await page.goto(app.origin+'/app/account');page.once('dialog',dialog=>dialog.accept());
+ await successfulAction(page,'/api/auth/recovery/start',page.getByRole('button',{name:'Request passkey recovery'}),201);
+ await expect(page.getByText('Your recovery request',{exact:true})).toBeVisible();
+ await snapshot('proved-recovery');
+ await successfulAction(page,'/api/auth/recovery/cancel',page.getByRole('button',{name:'Cancel request'}));
+ await expect(page.getByText('No passkey recovery requests are pending.',{exact:true})).toBeVisible();
+ await snapshot('recovery-cancelled');
+ await page.goto(app.origin+'/app/methods');
+ const ended=await context.request.post(app.origin+'/api/auth/signout',{headers:{origin:app.origin},data:{}});assert.equal(ended.status(),200);
+ const unsaved=page.waitForResponse(answer=>answer.url().endsWith('/api/auth/abuse/configure'));
+ await panel().getByLabel('Attempts per source',{exact:true}).fill('3');
+ assert.equal((await unsaved).status(),401,'autosave preserves the session authority check');
+ await expect(panel().getByRole('status')).toContainText('Changes have not been saved.');
+ await snapshot('unsaved');
+});

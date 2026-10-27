@@ -291,6 +291,7 @@ export interface AuthPageModel {
   localEmailConfirmed?: boolean
   people?: AuthPerson[]
   domains?: AuthDomain[]
+  abuse?: {policy:{sourceLimit:number;aggregateLimit:number;cooldownSeconds:number};refusals:Array<{created_at:number;detail:string}>}
   delivery?: import('./pages/delivery.js').DeliveryModel
   notifications?: import('./pages/notifications.js').NotificationsModel
   domainOwnership?: { id: string; domain: string; label: string; value: string; expiresAt: number; status: string; people: { id: string; email: string; role: string }[] }[]

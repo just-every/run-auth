@@ -102,7 +102,9 @@ test('a preparer key opens only the preparer API: it cannot approve, mint, revok
  const key=await mint(r,owner.cookie),keyId=(await r.db.prepare('SELECT id FROM auth_agent_keys').first()).id;
  const proposalId=await file(r,key,{kind:'suspend_person',target:'ada@example.com',reason:'Left on 10 October'});
  const asKey={authorization:'Preparer '+key};
- const before=await everyRow(r),sessions=(await table(r,'auth_sessions')).length;
+ const limitsBefore=new Map((await table(r,'auth_limits')).filter(row=>row.bucket.startsWith('abuse:')).map(row=>[row.bucket,row.count]));
+ const authorityRows=text=>JSON.stringify(JSON.parse(text).map(rows=>rows.filter(row=>!row.bucket?.startsWith('abuse:')))).replace(/"last_used_at":\d+/g,'');
+ const before=authorityRows(await everyRow(r)),sessions=(await table(r,'auth_sessions')).length;
  const status=async(path,options={})=>{const response=await r.call(path,{...options,headers:{...asKey,...options.headers}});assert.equal(sessionCookie(response),undefined,`${path} sets no session`);return response.status;};
 
  for(const path of ['/api/auth/me','/api/auth/people','/api/auth/agents','/api/auth/activity','/api/auth/apps','/api/auth/move-in','/api/auth/methods','/api/auth/notices','/api/auth/move-in/subjects.csv?batch=x'])assert.equal(await status(path),401,path);
@@ -123,7 +125,15 @@ test('a preparer key opens only the preparer API: it cannot approve, mint, revok
   const refused=await r.call('/api/auth/preparer',{headers});assert.equal(refused.status,401,JSON.stringify(Object.keys(headers)));
   assert.equal((await r.call('/api/auth/preparer',{method:'POST',data:{kind:'suspend_person',target:'ada',reason:'x'},headers})).status,401);
  }
- assert.equal(await everyRow(r).then(after=>after.replace(/"last_used_at":\d+/g,'')),before.replace(/"last_used_at":\d+/g,''),'nothing changed except the key\'s last use');
+ const {hash}=await import('../../src/auth/core.mjs');
+ const expected=[];
+ for(const [kind,identity,count] of [['recovery','anonymous',1],['webauthn','public',2],['email-confirm','public',1],['token','policy-app',1]]) {
+  const scope=await hash(JSON.stringify([kind,identity]));
+  for(const bucket of [`abuse:aggregate:${scope}`,`abuse:source:${scope}:${await hash('unavailable')}`])expected.push([bucket,count]);
+ }
+ const spent=(await table(r,'auth_limits')).filter(row=>row.bucket.startsWith('abuse:')).map(row=>[row.bucket,row.count-(limitsBefore.get(row.bucket)||0)]).filter(([,count])=>count);
+ assert.deepEqual(spent.sort(),expected.sort(),'refused authentication attempts spend only their exact attack budgets');
+ assert.equal(authorityRows(await everyRow(r)),before,'all authority and other rows are unchanged except the key last use and the asserted attack budgets');
  assert.equal((await table(r,'auth_sessions')).length,sessions);
  assert.equal((await proposal(r,proposalId)).status,'pending');
  // The administrator still can, which shows the refusals were the key's.

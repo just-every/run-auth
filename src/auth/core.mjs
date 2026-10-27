@@ -44,7 +44,7 @@ export async function limit(ctx, key, maximum, duration) {
 export async function limitState(ctx, key, maximum, duration) {
  const now = ctx.now();
  const row = await one(ctx, 'INSERT INTO auth_limits(bucket,count,expires_at) VALUES(?,1,?) ON CONFLICT(bucket) DO UPDATE SET count=CASE WHEN expires_at<=? THEN 1 ELSE count+1 END, expires_at=CASE WHEN expires_at<=? THEN excluded.expires_at ELSE expires_at END RETURNING count,expires_at',key,now+duration,now,now);
- return {allowed:row.count<=maximum,retryAfter:Math.max(1,Math.ceil((row.expires_at-now)/1000))};
+ return {count:row.count,allowed:row.count<=maximum,retryAfter:Math.max(1,Math.ceil((row.expires_at-now)/1000))};
 }
 export async function session(ctx, request) {
  const raw = cookies(request)[cookieName(ctx)]; if (!raw) return null;

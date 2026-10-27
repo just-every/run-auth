@@ -36,6 +36,18 @@ export async function legacyBridgeFlow(t) {
  const bridge=await json(await registration([source(legacy),source(interrupted),source(cutover)]),201);assert.equal(bridge.passwordHashes,'reset-required');assert.equal(bridge.factors,'reenrollment-required');assert.ok(!JSON.stringify(bridge).includes(credential));
  const hook=await json(await command('hooks/register',{point:'password_import',url:'https://hooks.example.com/password-gate',allowedFields:[]}),201);edge.responses.set('/password-gate',{body:{allow:true}});
  const login=(subject,attempt=password)=>command('migration/bridge/login',{bridgeId:bridge.id,sourceSubject:subject,password:attempt},undefined);
+ // A distributed invalid-subject burst consumes the configured bridge budget
+ // before any external password verification or enrollment write.
+ await json(await r.call('/api/auth/abuse/configure',post({sourceLimit:2,aggregateLimit:4,cooldownSeconds:30},owner.cookie)));
+ const attempts=source=>r.call('/api/auth/migration/bridge/login',{...post({bridgeId:bridge.id,sourceSubject:'synthetic-auth-unknown',password},undefined),sourceIdentity:source});
+ const callsBefore=edge.received.length;
+ for(let i=0;i<4;i++)assert.equal((await attempts('synthetic-auth-source-'+i)).status,403);
+ await r.restart();
+ const limited=await attempts('synthetic-auth-source-5');assert.equal(limited.status,429);assert.equal(limited.headers.get('retry-after'),'30');
+ assert.equal(edge.received.length,callsBefore,'throttled bridge traffic never reaches the verifier');
+ assert.equal((await r.db.prepare('SELECT completed_at FROM auth_migration_subjects WHERE person_id=?').bind(legacy.id).first()).completed_at,null);
+ r.now+=30000;
+ await json(await r.call('/api/auth/abuse/configure',post({sourceLimit:60,aggregateLimit:300,cooldownSeconds:60},owner.cookie)));
  const denied=await login('synthetic-auth-81','synthetic-auth-wrong');assert.equal(denied.status,403);assert.equal((await r.db.prepare('SELECT completed_at FROM auth_migration_subjects WHERE person_id=?').bind(legacy.id).first()).completed_at,null);
  assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_sessions WHERE person_id=?').bind(legacy.id).first()).n,0,'wrong password creates no authority');
  edge.responses.set('/password-gate',{body:{allow:false}});assert.equal((await login('synthetic-auth-81')).status,403,'inherited password hook can refuse before verification');edge.responses.set('/password-gate',{body:{allow:true}});
