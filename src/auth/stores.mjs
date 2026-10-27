@@ -25,6 +25,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
+  'auth_automation_runs', 'auth_automation_steps',
   'auth_mail_suppressions',
   'auth_notification_policy',
   'auth_domain_claims',
@@ -40,6 +41,7 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
+  'auth_automation_connections', 'auth_automations', 'auth_automation_versions',
   'auth_recovery_enrollments',
   'auth_directory_sources','auth_directory_resources','auth_directory_source_groups','auth_federation_setups',
   'auth_campaigns','auth_campaign_people',

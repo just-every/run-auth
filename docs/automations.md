@@ -1,0 +1,15 @@
+# Group automations
+
+Open Apps, then Automation settings. An administrator holding `automations.manage` grants a connection to their own account for one group and two exact HTTP POST paths. Delegated administrators also need edit scope over the group and each chosen person. Granting a connection does not approve any run.
+
+The connection stores an OAuth client ID, client secret, scope and request-signing secret encrypted under the installation key. Configure the same signing secret at the receiving service. The token endpoint must share the service origin. Hosted destinations require HTTPS, public DNS answers in both address families and no redirects. Local installations can use loopback HTTP for development. All responses have a ten-second deadline and a 16 KiB body limit.
+
+Publish the automation with its two allowed paths and a response field. Publishing retains an immutable version. A native group-member-added event prepares a person-bound run. You can also prepare one explicitly for a current member. Each run needs its exact run ID typed by the named approver. Approval binds the current version, connection grant, person, authenticated session and authority epoch. Auth checks those again at execution and before each HTTP step. No recurring approval is created.
+
+Dry run displays the chosen person, destinations and intended response use without DNS, token acquisition or any outbound call. Live execution obtains a bearer token with OAuth client credentials, then sends `{personId}` to the first path. Its selected top-level response field must be a nonempty string of at most 256 characters. Only that value reaches the second path, in `{personId,responseId}`. Raw responses are never saved. A value containing the connection's credentials or token is refused.
+
+Each step carries `idempotency-key` and `auth-automation-id` equal to `run ID:step number`, `auth-automation-timestamp` in Unix seconds, and `auth-automation-signature`. Verify the signature as HMAC-SHA256, encoded as unpadded URL-safe base64, over `ID.TIMESTAMP.POST.ABSOLUTE_URL.BODY` with the configured signing secret. Verify the timestamp and deduplicate the ID at the receiver. OAuth tokens remain server-only and are not persisted.
+
+Run and step records survive restart. An approved run can resume before any effect starts. A running claim that expires is uncertain and never automatically replayed. Failed, uncertain or invalidated work remains a person-linked follow-up obligation. Review the remote state before preparing and approving new work; this slice supplies no automatic retry or completion override.
+
+Archives exclude connection credentials, definitions, approval authority and run execution state. Reconnect and explicitly grant authority at a destination. Diagnostics retain only fixed error codes and successful HTTP status codes. This slice does not qualify live Google Workspace or Microsoft 365 templates, other trigger families, waits, branches, connector actions, notification steps, other authentication modes, or complete lifecycle plans.

@@ -25,7 +25,11 @@ for(const id of selected) {
 }
 const count=status=>rows.filter(r=>r.status===status).length;
 const claims='# Auth implementation claims\n\nGenerated from CONTRACT.md. Acceptance journeys remain in ACCEPTANCE.md.\n\n'+`Done: ${count('done')}; partial: ${count('partial')}; missing: ${count('missing')}; total: ${rows.length}.\n\n`+'| Clause | Title | Status |\n| --- | --- | --- |\n'+rows.map(r=>`| ${r.id} | ${r.title} | ${r.status} |`).join('\n')+'\n';
-for(const [path,text] of [['ACCEPTANCE.md',result],['docs/CLAIMS.md',claims]]) {
+const summary=contract.replace(/^\| (Published|Target and push further|All) \| \d+ \| \d+ \| \d+ \| \d+ \|$/gm,(_,label)=>{
+ const selected=rows.filter(row=>label==='All'||(label==='Published'?row.kind==='published':row.kind!=='published'));
+ return '| '+label+' | '+['done','partial','missing'].map(status=>selected.filter(row=>row.status===status).length).join(' | ')+' | '+selected.length+' |';
+});
+for(const [path,text] of [['CONTRACT.md',summary],['ACCEPTANCE.md',result],['docs/CLAIMS.md',claims]]) {
  if(mode==='write')await writeFile(path,text);
  else if(await readFile(path,'utf8').catch(()=>null)!==text)throw new Error('Stale generated document '+path);
 }

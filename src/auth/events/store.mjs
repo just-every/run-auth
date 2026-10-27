@@ -1,3 +1,4 @@
+import {automationEvent} from '../automations/engine.mjs';
 // Versioned lifecycle events. Each is recorded after the change it reports has
 // committed, gets a stable ID and an ordering number (the cursor), and is queued
 // for every active subscriber whose types include it.
@@ -13,6 +14,7 @@ export async function emit(ctx,type,subject,data={}) {
  if(!TYPES.includes(type))throw new Error('unknown event type '+type);
  const id='evt_'+[...crypto.getRandomValues(new Uint8Array(16))].map(b=>b.toString(16).padStart(2,'0')).join(''),now=ctx.now();
  const event=await one(ctx,'INSERT INTO auth_events(id,type,version,subject,data,occurred_at) VALUES(?,?,?,?,?,?) RETURNING seq',id,type,VERSION,JSON.stringify(subject),JSON.stringify(data),now);
+ await automationEvent(ctx,type,subject,data,id);
  const subscribers=(await all(ctx,'SELECT id,types FROM auth_event_subscriptions WHERE disabled_at IS NULL')).filter(s=>matches(JSON.parse(s.types),type));
  if(!subscribers.length)return id;
  await ctx.db.batch(subscribers.map(s=>ctx.db.prepare("INSERT INTO auth_event_deliveries(subscription_id,seq,next_attempt_at,state) VALUES(?,?,?,'pending')").bind(s.id,event.seq,now)));

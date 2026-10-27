@@ -262,6 +262,7 @@ export interface FollowupModel {
 }
 
 export interface AuthPageModel {
+  automations?: import('./pages/automations.js').AutomationsModel
   retention?: RetentionModel
   requests?: AccessRequestsModel
   decisions?: AccessDecisionsModel
