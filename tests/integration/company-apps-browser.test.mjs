@@ -1,3 +1,4 @@
+import {terraformJourney} from './helpers/terraform-journey.mjs';
 import {hookServer} from '../auth/hooks-server.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -86,6 +87,8 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  await page.goto(app.origin+'/app/methods');
  const registered=page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
  await page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await registered).status(),200);await page.waitForTimeout(500);
+
+ await terraformJourney({app,context,page,t,shoot});
 
  // An employee, invited and signed in from their own browser.
  assert.equal((await context.request.post(app.origin+'/api/auth/people/invite',{data:{email:EMPLOYEE,name:'Erin Example'},headers:{origin:app.origin}})).status(),201);

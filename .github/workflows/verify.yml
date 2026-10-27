@@ -103,6 +103,21 @@ jobs:
           node-version: 22.20.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@v5
+        if: matrix.shard == 'workforce'
+        with:
+          go-version: '1.25.1'
+          cache-dependency-path: packages/terraform-provider/go.sum
+      - name: Install provider journey CLIs
+        if: matrix.shard == 'workforce'
+        run: |
+          python3 scripts/install-terraform-tools.py "$RUNNER_TEMP/auth-iac"
+          echo "$RUNNER_TEMP/auth-iac" >> "$GITHUB_PATH"
+      - name: Check provider and actual Terraform and OpenTofu journeys
+        if: matrix.shard == 'workforce'
+        run: |
+          go -C packages/terraform-provider test ./...
+          pnpm run test:terraform
       - if: matrix.shard == 'app'
         run: pnpm exec rer check --profile first-party
       - if: matrix.shard != 'protocol'
@@ -143,6 +158,16 @@ jobs:
           node-version: 22.20.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@v5
+        if: matrix.suite == 'workforce'
+        with:
+          go-version: '1.25.1'
+          cache-dependency-path: packages/terraform-provider/go.sum
+      - name: Install Terraform for UI drift journey
+        if: matrix.suite == 'workforce'
+        run: |
+          python3 scripts/install-terraform-tools.py "$RUNNER_TEMP/auth-iac"
+          echo "$RUNNER_TEMP/auth-iac" >> "$GITHUB_PATH"
       - run: pnpm run build
       - run: pnpm run test:browser:${{ matrix.suite }}
   cli:

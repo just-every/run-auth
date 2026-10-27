@@ -76,10 +76,12 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
  const mailBefore=await outbox();
  await shoot('review',async width=>{if(width===390)for(const cell of await page.locator('[data-move-in-row] td').all()){const box=await cell.boundingBox();assert.ok(box&&box.x>=0&&box.x+box.width<=width,'every review field stays in the mobile viewport');}});
 
- await page.getByRole('button',{name:'Admit selected'}).click();act('Admit selected');
+ const admittedLoad=page.waitForEvent('load');await page.getByRole('button',{name:'Admit selected'}).click();await admittedLoad;act('Admit selected');
  await expect(review.locator('[data-row-status=admitted]')).toHaveCount(22);
  assert.equal(await outbox(),mailBefore,'admission sends no mail');
+ const invitedResponse=page.waitForResponse(response=>response.url().endsWith('/api/auth/move-in/invite')),invitedLoad=page.waitForEvent('load');
  await page.getByRole('button',{name:'Send invitations'}).click();act('Send invitations');
+ const sent=await invitedResponse;assert.equal(sent.status(),200,await sent.text());assert.deepEqual(await sent.json(),{invited:22,failed:[]});await invitedLoad;
  await expect(review.locator('[data-row-status=invited]')).toHaveCount(22);
  assert.equal(await outbox(),mailBefore+22,'one ordinary invitation per admitted person');
  const people=await(await context.request.get(app.origin+'/api/auth/people')).json();
