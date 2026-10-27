@@ -119,7 +119,7 @@
       "executable": false
     },
     ".github/workflows/verify.yml": {
-      "sha256": "32f7cd3de3551986947e83a411f66eeef591908ac3e6968b502ad4fabdbe8a49",
+      "sha256": "3c941c50eec051e3a139b65e66498c0c5e80e97ab2dc766ff8d049f36569bc5a",
       "executable": false
     },
     ".gitignore": {
@@ -623,7 +623,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "d1ad7acb2ee614aa3f354120fb44149738b8b13b37e25e31ddebe52a684bab2d",
+      "sha256": "670468f49c7aee0321ad39d97b8cc113cf73b8e5bda961c3f7917dd64332f6fe",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
