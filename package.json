@@ -45,7 +45,8 @@
     "test:browser:docs": "rer build --site --non-interactive && node --test --test-name-pattern=^docs tests/integration/browser.test.mjs",
     "delivery:spec": "node scripts/build-deployment-spec.mjs",
     "check:deployment-spec": "node scripts/build-deployment-spec.mjs --check",
-    "check:sources": "node scripts/edition-authoring/cli.mjs check && node scripts/edition-authoring/cli.mjs verify-base --offline"
+    "check:sources": "node scripts/edition-authoring/cli.mjs check && node scripts/edition-authoring/cli.mjs verify-base --offline",
+    "test:terraform": "node --test tests/auth/terraform-provider.test.mjs"
   },
   "dependencies": {
     "@simplewebauthn/server": "13.3.3",

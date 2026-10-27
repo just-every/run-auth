@@ -137,6 +137,10 @@ export async function workforceCommand(ctx,actor,path,data) {
  }
  if(path==='/company-apps/update') {
   const current=await app(data.id),settings=appSettings(ctx,data);if(current.protocol!=='saml')fail('not_a_saml_app',409);
+  if(actor.kind==='service') {
+   if(!data.metadata&&!Object.hasOwn(data,'signingCertificate'))settings.signingCertificates=current.spCertificates;
+   if(!data.metadata&&!Object.hasOwn(data,'encryptionCertificate'))settings.encryptionCertificate=current.encryption_certificate;
+  }
   if(await one(ctx,'SELECT 1 FROM auth_apps WHERE entity_id=? AND id!=?',settings.entityId,current.id))fail('entity_id_in_use',409);
   if(!await held(await run(ctx,`UPDATE auth_apps SET ${SETTINGS_SQL.split(',').map(c=>`${c}=?`).join(',')},version=version+1,updated_at=? WHERE id=? AND version=? AND disabled_at IS NULL AND ${g}`,...settingsColumns(settings),ctx.now(),current.id,Number(data.version??current.version),...ga)))fail('app_changed',409);
   await log('company_app_updated',current.id,{entityId:settings.entityId});
