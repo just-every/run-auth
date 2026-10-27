@@ -225,6 +225,12 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const hold=page.locator('[data-erasure-hold]');await hold.locator('[name=target]').selectOption(worker.id);await hold.getByLabel('Reason').fill('Awaiting employment records authorization');await saved(()=>hold.getByRole('button',{name:'Place legal hold'}).click());await shoot('legal-hold');await saved(()=>page.getByRole('button',{name:'Release hold'}).click());
  const erase=page.locator('[data-erasure-preview]:not([data-erasure-kind])');await erase.locator('[name=target]').selectOption(worker.id);await erase.getByRole('button',{name:'Preview erasure'}).click();await expect(erase.locator('[data-erasure-confirm]')).toBeVisible();await shoot('erasure-preview');await erase.getByLabel('Type the confirmation phrase').fill('ERASE');await erase.locator('[name=destinations]').check();await saved(()=>erase.getByRole('button',{name:'Confirm erasure'}).click());
  await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();await page.getByText('Per-store completion and remote removal').click();await shoot('erasure-receipt');
+ const receipt=(await (await context.request.get(app.origin+'/api/auth/erasure/receipts')).json()).receipts.find(r=>r.kind==='person');
+ await page.goto(app.origin+'/app/activity?event=person_onboarded');
+ await expect(page.locator('.activity-row',{hasText:receipt.reference})).toBeVisible();
+ const erasedActivity=await page.locator('.activity-table').innerText();assert.ok(!erasedActivity.includes('Erin Park'));assert.ok(!erasedActivity.includes('erin@northwind.example.com'));
+ await auditScreens('erased-subject',page);
+ await page.goto(app.origin+'/app/erasure');
  const retry=page.locator('[data-erasure-retry]');await retry.locator('[name=destinations]').check();await saved(()=>retry.getByRole('button',{name:'Retry remote removal'}).click());await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();
  const subsidiaryApp=await post(prefix+'/api/auth/company-apps/create',{name:'Subsidiary records',entityId:'https://subsidiary-records.example.com',acsUrl:'https://subsidiary-records.example.com/acs'},201);assert.ok(subsidiaryApp.id);
  await post(prefix+'/api/auth/erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});

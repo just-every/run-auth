@@ -1,6 +1,6 @@
 // Machine reads use explicit projections; interactive administration models also
 // contain authority and credential state and must never be serialized here.
-import {all,json,fail} from '../core.mjs';
+import {all,one,json,fail} from '../core.mjs';
 import {definitions,valuesByPerson,effective} from '../workforce/people/fields.mjs';
 import {configuredProvider} from '../domain-policy.mjs';
 import {SCOPES} from './credentials/config.mjs';
@@ -90,13 +90,25 @@ function requestAudit(row,p) {
 async function logs(ctx,p) {
  const events=[...eventKinds.keys(),...requestEvents];
  const rows=await all(ctx,`SELECT a.id,a.event,a.subject_id,a.created_at,d.detail FROM auth_activity a LEFT JOIN auth_activity_details d ON d.activity_id=a.id WHERE a.event IN (${events.map(()=>'?').join(',')}) ORDER BY a.id DESC`,...events);
- return rows.flatMap(row=>{
+ const projected=[];
+ for(const row of rows) {
   const kind=eventKinds.get(row.event);let request;
-  if(kind&&!['people','groups','apps'].includes(kind)&&!p.globalRead)return [];
-  if(kind&&['people','groups','apps'].includes(kind)&&!p.permits(kind,row.subject_id))return [];
-  if(!kind){request=requestAudit(row,p);if(!request)return [];}
-  return [{id:row.id,event:row.event,subject:request?.subject??row.subject_id,time:row.created_at,...(request?{detail:request.detail}:{})}];
- });
+  if(kind&&!['people','groups','apps'].includes(kind)&&!p.globalRead)continue;
+  if(kind&&['people','groups','apps'].includes(kind)&&!p.permits(kind,row.subject_id))continue;
+  if(!kind){request=requestAudit(row,p);if(!request)continue;}
+  if(['app_assigned','app_unassigned','group_member_added','group_member_removed'].includes(row.event)) {
+   let detail;try{detail=JSON.parse(row.detail);}catch{continue;}
+   if(detail.person) {
+    const person=await one(ctx,'SELECT id FROM oa_operators WHERE email=?',detail.person);
+    if(!person||!p.permits('people',person.id))continue;
+   } else if(detail.group) {
+    const groups=await all(ctx,'SELECT id FROM auth_groups WHERE name=?',detail.group);
+    if(groups.length!==1||!p.permits('groups',groups[0].id))continue;
+   } else continue;
+  }
+  projected.push({id:row.id,event:row.event,subject:request?.subject??row.subject_id,time:row.created_at,...(request?{detail:request.detail}:{})});
+ }
+ return projected;
 }
 
 // Called only for GET by the REST router. Unknown routes remain the router's 404.

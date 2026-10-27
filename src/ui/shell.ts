@@ -50,13 +50,13 @@ export const renderShell = (model: AuthPageModel, page: AuthPage, content: strin
   const copy = pageCopy[page]
   const currentName = user ? fullName(user) : 'Signed out'
   const host = escape(hostLabel(model.issuer))
-  const nav = navItems.filter(item => !item.admin || model.isAdmin).map(item =>
+  const nav = navItems.filter(item => !item.admin || model.isAdmin || item.page === 'activity' && (model.canReadAudit || model.roles?.ownGrants.some(grant => grant.permissions.includes('audit.view')))).map(item =>
     `<a href="${item.href}"${item.page === page || (page === 'move-in' && item.page === 'people') ? ' class="active" aria-current="page"' : ''}>${icon(item.symbol)}<span>${item.label}</span></a>`
   ).join('')
   const accountBadge = user
     ? `<a class="initials account-initials" data-tooltip="My account" href="/app/account" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
     : ''
-  const pageContent = model.isAdmin || !['people', 'move-in', 'agents', 'apps', 'activity'].includes(page)
+  const pageContent = model.isAdmin || page === 'activity' && model.canReadAudit || !['people', 'move-in', 'agents', 'apps', 'activity'].includes(page)
     ? content
     : '<section class="availability"><strong>Administrator access required.</strong><p>Sign in with a passkey on an administrator account to view this page.</p></section>'
   return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav><section class="issuer" aria-label="Issuer host"><div><p>Issuer host</p><span class="issuer-host">${host}</span></div><img class="issuer-door" src="/brand/door-small.webp" alt="" width="38" height="56"></section></aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}<span class="tenant" title="Active organization">${escape(model.organizations?.current.name ?? host)}</span>${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${pageContent}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`

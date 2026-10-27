@@ -66,6 +66,8 @@ export interface AuthPasskey {
 }
 
 export interface AuthActivity {
+  eventId?: string
+  actor_id?: string | null
   service_name?: string | null
   service_owner_email?: string | null
   id?: string | number
@@ -302,6 +304,8 @@ export interface AuthPageModel {
   pendingApps?: AuthApp[]
   methods?: AuthPasskey[]
   passkeys?: AuthPasskey[]
+  canReadAudit?: boolean
+  activityPage?: {events: AuthActivity[];total: number;asOf: number;limit: number;nextCursor: string | null;filters: {from: number;to: number;person: string;event: string}}
   activity?: AuthActivity[]
   notices?: AuthNotice[]
   recoveries?: AuthRecovery[]
