@@ -651,7 +651,7 @@
       "executable": false
     },
     "packages/hono-sdk/examples/browser.mjs": {
-      "sha256": "474b28da21c7c5e86ffe81f065804fd2d112962baa6f170002351bc6adb7065d",
+      "sha256": "ba30cd162d0887010d9c0551f8f0b0ee5b694a66be8362e5d7bd40a1cd59e86f",
       "executable": false
     },
     "packages/hono-sdk/examples/protected.mjs": {
