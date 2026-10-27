@@ -1,3 +1,4 @@
+import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
 import {DIRECTORY_SOURCES,isDirectorySourceAction,directorySourceRead,directorySourceAction,directorySourceScim} from './directory-sources/routes.mjs';
 import {FEDERATION_READ,isFederationAction,federationRead,federationAction,federationSetupRoute} from './federation/setup.mjs';
 import {sendDelivery} from './delivery/send.mjs';
@@ -72,6 +73,7 @@ function scopedRuntime(options) {
   if(!path.startsWith('/auth/identity/')&&!path.startsWith('/auth/passkeys/')&&!path.startsWith('/api/auth/')&&!path.startsWith('/oidc/')&&path!=='/.well-known/openid-configuration'&&!LINK_PATHS.includes(path)&&!isSamlPath(path))return null;
   try {
    if(url.origin!==ctx.origin)fail('wrong_issuer',400);
+   const limited=await enforceAbuse(ctx,request,path);if(limited)return limited;
    if(path==='/api/auth/delivery/sendgrid')return await sendgridEvents(ctx,request);
    if(path===NOTIFICATION_REPORT)return await notificationReport(ctx,request);
    if(path==='/oidc/userinfo')return await userinfo(ctx,request);
@@ -85,6 +87,7 @@ function scopedRuntime(options) {
    if(path.startsWith('/api/auth/admin/v1'))return await adminApi(ctx,request);
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
+    if(path==='/api/auth/abuse')return await abuseRead(ctx,request);
     if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);
     if(path===FEDERATION_READ)return await federationRead(ctx,request);
     if(path===CAMPAIGNS||path===CAMPAIGNS+'/export.csv')return await campaignRead(ctx,request);
@@ -137,6 +140,7 @@ function scopedRuntime(options) {
     }
     if(['/receipt','/receipt-key','/receipt-revoke'].some(suffix=>path===PAIRS_PREFIX+suffix)&&url.search)fail('receipt_body_required',400);
     const data=await input(ctx,request);
+    if(path==='/api/auth/abuse/configure')return await configureAbuse(ctx,request,data);
     if(isDirectorySourceAction(path.slice('/api/auth'.length)))return await directorySourceAction(ctx,request,path.slice('/api/auth'.length),data);
     if(isFederationAction(path.slice('/api/auth'.length)))return await federationAction(ctx,request,path.slice('/api/auth'.length),data);
     if(path.startsWith(CAMPAIGNS+'/'))return await campaignAction(ctx,request,path,data);
@@ -208,7 +212,7 @@ export function createAuthRuntime(options) {
  if(options.mail)root.mail=(message,store)=>sendDelivery({...root,db:store?.db??root.db},message,prepared=>options.mail(prepared,store));
  const select=async request=>{
   const selected=organizationRequest(request),id=options.organizationId??selected.id;
-  return {request:selected.request,ctx:await organizationContext(root,id)};
+  return {request:selected.request,ctx:{...await organizationContext(root,id),abuseSource:trustedSource(root,request)}};
  };
  return {context:root,
   async upstreamProviders(){return scopedRuntime(await organizationContext(root,options.organizationId??'root')).upstreamProviders();},

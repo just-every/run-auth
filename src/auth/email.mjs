@@ -42,7 +42,7 @@ async function startProof(ctx, request, data, address, bound, report = false) {
 }
 export async function requestEmail(ctx, request, data) {
  const address=email(data.email), raw=random(), bound=await hash(raw);
- const ip=request.headers.get('cf-connecting-ip') || 'unknown';
+ const ip=ctx.abuseSource??'unavailable';
  const current=await session(ctx,request),ownAddress=current&&address===current.email;
  const ipLimit=await limitState(ctx,`mail-ip:${await hash(ip)}`,20,3600000);
  const addressLimit=await limitState(ctx,`mail-address:${await hash(address || '')}`,5,3600000);

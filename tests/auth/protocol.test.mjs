@@ -75,3 +75,15 @@ test('production clients refuse HTTP and all 127/8; dev serves loopback clients 
  const dev=await fixture(t,{local:true}),reply=await dev.redeem(await dev.authorize()),body=await reply.json();assert.equal(reply.status,200);const claims=(await jwtVerify(body.id_token,createLocalJWKSet(await(await dev.call('/oidc/jwks')).json()),{currentDate:new Date(dev.now)})).payload;assert.deepEqual(claims.amr,['dev']);
  await dev.db.prepare("UPDATE auth_clients SET origin='https://remote.example.com' WHERE id='app'").run();assert.equal((await dev.authorize()).response.status,400);
 });
+
+test('token attack budgets isolate registered clients, survive restart and release the original valid grant after cooldown',async t=>{
+ const r=await fixture(t),owner=await register(r,r.cookie);
+ const settings=await r.call('/api/auth/abuse/configure',{method:'POST',cookie:owner.cookie,data:{sourceLimit:2,aggregateLimit:3,cooldownSeconds:30}});assert.equal(settings.status,200);
+ await r.db.prepare("INSERT INTO auth_clients(id,name,origin,sector_id,redirect_uris,jwks,owner_person_id,source,created_at) SELECT 'other-app',name,'https://other-app.example.com','install-B',redirect_uris,jwks,owner_person_id,source,created_at FROM auth_clients WHERE id='app'").run();
+ const grant=await r.authorize();assert.ok(grant.code);
+ const bad=source=>r.call('/oidc/token',{method:'POST',sourceIdentity:source,form:{grant_type:'authorization_code',client_id:'app',client_assertion:'synthetic-auth-invalid'}});
+ for(let i=0;i<3;i++)assert.equal((await bad('synthetic-auth-'+i)).status,401);
+ await r.restart();assert.equal((await r.redeem(grant)).status,429);
+ const other=await r.call('/oidc/token',{method:'POST',form:{grant_type:'authorization_code',client_id:'other-app'}});assert.equal(other.status,401,'another client keeps its budget');
+ r.now+=30000;assert.equal((await r.redeem(grant)).status,200,'throttling did not consume the valid authorization code');
+});
