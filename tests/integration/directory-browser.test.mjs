@@ -212,7 +212,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  await post('/auth/identity/email/confirm',{token:(await app.link()).searchParams.get('token')},200,workerContext);
  await workerPage.goto(href);await expect(workerPage.getByLabel('Recovery case',{exact:true})).toHaveValue(recovery.caseId);
  await proof('employee-link',workerPage);
- await workerPage.getByRole('button',{name:'Use enrollment link',exact:true}).click();await expect(workerPage).toHaveURL(app.origin+'/app/methods');
+ await workerPage.getByRole('button',{name:'Use enrollment link',exact:true}).click();await expect(workerPage).toHaveURL(app.origin+'/app/methods');await workerPage.waitForLoadState('load');
  const enrolled=workerPage.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await saved(()=>workerPage.getByRole('button',{name:'Register a passkey',exact:true}).click(),workerPage);assert.equal((await enrolled).status(),200);
  assert.ok(Date.now()-openedAt<3600000,'opening through new passkey finishes within one hour');
  await proof('passkey-enrolled',workerPage);
