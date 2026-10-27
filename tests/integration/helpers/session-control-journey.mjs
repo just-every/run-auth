@@ -6,7 +6,7 @@ import AxeBuilder from '@axe-core/playwright';
 // Extends the existing authority journey before recovery destroys the passkey.
 export async function sessionControlJourney({app,page,context,helperPage,helperContext,workerPage,workerContext,worker,helper,group,appConfig,post,saved,directory}) {
  const action='/api/auth/roles/end-sessions';
- const reason='Employee reported a lost signed-in device';
+ const reason='Employee reported a lost signed-in device. Case synthetic-auth-12345678901234567890123456789012345678901234567890';
  const ownerId=(await(await context.request.get(app.origin+'/api/auth/me')).json()).user.id;
  const read=async(client,path)=>{const response=await client.request.get(app.origin+path);assert.equal(response.status(),200);return response.json();};
  const capture=async(name,target)=>{
@@ -95,6 +95,9 @@ export async function sessionControlJourney({app,page,context,helperPage,helperC
  assert.equal((await workerContext.request.get(app.origin+'/api/auth/me')).status(),401,'old employee session is revoked');
  await panel.locator(':scope > summary').click();
  const receipt=panel.locator(`[data-session-operation="${result.operationId}"]`);
+ const actor=(await read(helperContext,'/api/auth/me')).user;
+ assert.equal(actor.id,helper.id);
+ await expect(receipt).toContainText(actor.email);
  await expect(receipt).toContainText(reason);
  await expect(receipt).toContainText(`${result.nativeSessionsEnded} Auth sessions and ${result.refreshGrantsEnded} refresh grants`);
  const operations=await read(helperContext,'/api/auth/session-control?personId='+worker.id);

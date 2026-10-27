@@ -5,8 +5,10 @@ type Person = NonNullable<AuthPageModel['rolePeople']>[number]
 
 const operationReceipt = (operation: SessionControlOperation, model: AuthPageModel): string => {
   const actor = model.rolePeople?.find(person => person.id === operation.actorId)
+  const current = model.user ?? model.me
+  const actorLabel = current?.id === operation.actorId ? current.email : actor?.email || operation.actorId
   const delivery = operation.logout
-  return `<article data-session-operation="${escape(operation.id)}"><h3>Auth sessions ended</h3><p>${timeElement(operation.createdAt)} · ${escape(actor?.email || operation.actorId)}</p><p>Reason: ${escape(operation.reason)}</p><p>${operation.nativeSessionsEnded} Auth sessions and ${operation.refreshGrantsEnded} refresh grants ended. Account, passkeys and assignments retained.</p><details><summary>Back-channel delivery</summary><p>${delivery.delivered} delivered · ${delivery.pending} pending · ${delivery.failed} failed · ${delivery.unavailable} unavailable</p><p>These counts describe supported back-channel delivery. Delivery does not confirm that an app ended its remote session. Unsupported app sessions may remain active.</p></details></article>`
+  return `<article data-session-operation="${escape(operation.id)}"><h3>Auth sessions ended</h3><p class="issuer-host">${timeElement(operation.createdAt)} · ${escape(actorLabel)}</p><p class="issuer-host">Reason: ${escape(operation.reason)}</p><p>${operation.nativeSessionsEnded} Auth sessions and ${operation.refreshGrantsEnded} refresh grants ended. Account, passkeys and assignments retained.</p><details><summary>Back-channel delivery</summary><p>${delivery.delivered} delivered · ${delivery.pending} pending · ${delivery.failed} failed · ${delivery.unavailable} unavailable</p><p>These counts describe supported back-channel delivery. Delivery does not confirm that an app ended its remote session. Unsupported app sessions may remain active.</p></details></article>`
 }
 
 // Keep this action inside the selected person's details on both administrator doors.

@@ -3327,7 +3327,7 @@
       "executable": false
     },
     "src/ui/pages/session-control.ts": {
-      "sha256": "a627d8884ece5a9147dbeb4b159e8c8687077032f7d02ba4d36dfd47d1b75d2c",
+      "sha256": "ccfb04d457bc341ba6ab446093449af59632b0ef71ecf6c4c5293d3f912cfc41",
       "executable": false
     },
     "src/ui/pages/signin.ts": {
@@ -3911,7 +3911,7 @@
       "executable": false
     },
     "tests/integration/helpers/session-control-journey.mjs": {
-      "sha256": "3e6adbe422c3bef91f3ecb4b99f8eb2313d0799ebebd798dacc2cab129439235",
+      "sha256": "54081e98d178f34fe150490f0c9060b80c89151370f27b1efc5707186054b612",
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
