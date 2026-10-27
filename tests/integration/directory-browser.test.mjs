@@ -1,3 +1,4 @@
+import {sessionControlJourney} from './helpers/session-control-journey.mjs';
 import {hrFileJourney} from './helpers/hr-file-journey.mjs';
 import {identityPairsJourney} from './helpers/identity-pairs-journey.mjs';
 import {test} from 'node:test';
@@ -182,6 +183,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const localExpiry=await helperPage.evaluate(()=>{const expiry=new Date(Date.now()+86400000);return new Date(expiry.getTime()-expiry.getTimezoneOffset()*60000).toISOString().slice(0,16);});await credential.getByLabel('Expires (your local time)',{exact:true}).fill(localExpiry);
  const createdCredential=helperPage.waitForResponse(response=>response.url().endsWith('/api/auth/admin-service-apps/create'));await saved(()=>credential.getByRole('button',{name:'Create service app',exact:true}).click(),helperPage);assert.equal((await createdCredential).status(),201);await expect(helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true})).toBeVisible();await shoot('scoped-credential',helperPage);
  const revokedCredential=helperPage.waitForResponse(response=>response.url().endsWith('/api/auth/admin-service-apps/revoke'));await saved(()=>helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true}).click(),helperPage);assert.equal((await revokedCredential).status(),200);await expect(helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true})).toHaveCount(0);await shoot('scoped-credential-revoked',helperPage);
+ await sessionControlJourney({app,page,context,helperPage,helperContext,workerPage,workerContext,worker,helper,group,appConfig,post,saved,directory});
  // Recover this same employee through an exact case, the manager's real
  // session, fresh employee email proof and native WebAuthn enrollment.
  const openedAt=Date.now(),ownerId=(await (await context.request.get(app.origin+'/api/auth/me')).json()).user.id;

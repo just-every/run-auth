@@ -1,3 +1,4 @@
+import {endPersonSessions} from '../session-control/index.mjs';
 import {json,fail,requireSession,one} from '../core.mjs';
 import {roleState} from './state.mjs';
 import {PERMISSIONS,BUILTINS} from './permissions.mjs';
@@ -16,7 +17,7 @@ import {requireRolePermission} from './policy.mjs';
 export {requireRolePermission} from './policy.mjs';
 
 export const ROLE_READS=['/api/auth/roles','/api/auth/roles/people','/api/auth/roles/export','/api/auth/roles/audit','/api/auth/roles/audit/export'];
-const ACTIONS=['/roles/preview','/roles/apply','/roles/reset-factors','/roles/profile','/roles/recovery-case','/roles/app','/roles/group','/roles/command','/roles/admin-service'];
+const ACTIONS=['/roles/end-sessions','/roles/preview','/roles/apply','/roles/reset-factors','/roles/profile','/roles/recovery-case','/roles/app','/roles/group','/roles/command','/roles/admin-service'];
 export const isRoleAction=path=>ACTIONS.includes(path);
 
 export async function roleModel(ctx,s) {
@@ -47,6 +48,7 @@ function visiblePerson(state,p,permission) {
  const fields=state.dir.values(p);
  return {id:p.id,email:p.email,name:p.name,status:p.status,role:p.role,rank:state.rankOf(p.id),fields,
   groups:[...(state.memberships.get(p.id)??[])].filter(groupId=>permitted(state,'groups.view',{groupId})),
+  canEndSessions:permitted(state,'people.sessions.end',{personId:p.id,write:true}),
   canResetFactors:p.role==='member'&&state.rankOf(p.id)===0&&permitted(state,'people.factors.reset',{personId:p.id,write:true}),
   canEditProfile:permitted(state,'people.profile.edit',{personId:p.id,write:true})};
 }
@@ -81,6 +83,7 @@ export async function roleAction(ctx,request,path,data) {
   if(!isAdminServiceAction(data.action))fail('role_command_excluded',403);
   return adminServiceAction(ctx,request,data.action,data.params??{});
  }
+ if(path==='/roles/end-sessions')return endPersonSessions(ctx,s,data);
  if(path==='/roles/command')return roleCommand(ctx,s,data);
  if(path==='/roles/preview')return preview(ctx,s,data);
  if(path==='/roles/apply')return apply(ctx,s,data);

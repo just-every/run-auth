@@ -13,6 +13,7 @@ export const PERMISSIONS=Object.freeze({
  'people.view':'View people within view resources',
  'people.export':'Export lower-ranked people within edit resources',
  'people.profile.edit':'Edit directory profile fields within edit resources',
+ 'people.sessions.end':'End all native sessions and refresh grants for a lower-ranked person within edit resources',
  'people.factors.reset':'Reset non-administrator passkeys and revoke all sessions',
  'people.suspend':'Suspend a lower non-owner person within edit resources',
  'people.restore':'Restore a lower non-owner person within edit resources',
@@ -41,13 +42,13 @@ export const BUILTINS=Object.freeze([
  role('group-owner','Group owner',['roles.view','people.view','groups.view','groups.edit','groups.rules.edit']),
  role('manager','Manager',['roles.view','people.view','groups.view']),
  role('app-owner','App owner',['roles.view','apps.view','apps.assign']),
- role('help-desk','Help desk',['roles.view','people.view','people.factors.reset','groups.view','cases.view','cases.open','cases.verify','recovery.approve','people.suspend','people.restore']),
+ role('help-desk','Help desk',['roles.view','people.view','people.sessions.end','people.factors.reset','groups.view','cases.view','cases.open','cases.verify','recovery.approve','people.suspend','people.restore']),
  role('auditor','Auditor',['roles.view','people.view','people.export','groups.view','apps.view','cases.view','audit.view','audit.export','reviews.view','reviews.export']),
  role('employee','Employee',[]),
 ]);
 export const RESOURCE_KINDS=['people','groups','apps','cases'];
 export const ALL_RESOURCES=Object.freeze(Object.fromEntries(['view','edit'].map(mode=>[mode,Object.fromEntries(RESOURCE_KINDS.map(k=>[k,['*']]))])));
-export const writePermission=p=>['reviews.manage','reviews.export','followup.manage','roles.edit','roles.grant','people.profile.edit','people.factors.reset','groups.edit','apps.edit','cases.open','cases.verify','people.suspend','people.restore','recovery.approve','groups.rules.edit','apps.assign','policy.manage','identity-providers.manage','admin-api.manage','audit.export'].includes(p);
+export const writePermission=p=>['reviews.manage','reviews.export','followup.manage','roles.edit','roles.grant','people.profile.edit','people.sessions.end','people.factors.reset','groups.edit','apps.edit','cases.open','cases.verify','people.suspend','people.restore','recovery.approve','groups.rules.edit','apps.assign','policy.manage','identity-providers.manage','admin-api.manage','audit.export'].includes(p);
 export const permissionKind=p=>p==='recovery.approve'?'cases':p.startsWith('people.')?'people':p.startsWith('groups.')?'groups':p.startsWith('apps.')?'apps':p.startsWith('cases.')?'cases':null;
 export const contains=(ids,id)=>ids.includes('*')||ids.includes(id);
 export const subset=(small,large)=>large.includes('*')||small.every(id=>large.includes(id));
