@@ -24,6 +24,7 @@ test('interactive audit finds twelve-month sign-ins and reconciles a frozen auth
  }
  const base='/api/auth/audit?person=worker&event=person_invited&limit=100&from='+(now-2000)+'&to='+now;
  let page=await read(r,base,owner.cookie);assert.equal(page.total,1105);assert.equal(page.events.length,100);
+ r.now+=15*60000;assert.equal((await r.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,409);r.now=now;
  const first=page.events[0].eventId,ids=page.events.map(e=>e.id),eventIds=page.events.map(e=>e.eventId);
  await r.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) VALUES('owner','person_invited','worker',?)").bind(now-1000).run();
  await r.restart();
