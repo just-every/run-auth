@@ -3091,7 +3091,7 @@
       "executable": false
     },
     "src/ui/pages/activity.ts": {
-      "sha256": "cdaedd8019bb2fb39dd3a6d429210d3ff166128d2e1a3070e42952a92ac76124",
+      "sha256": "bc2a508d5c4c3e0ec9ef376fc899d9fa718c7885b04d12c7ed4a1615ebff52aa",
       "executable": false
     },
     "src/ui/pages/admin-services.ts": {
@@ -3235,7 +3235,7 @@
       "executable": false
     },
     "tests/auth/audit.test.mjs": {
-      "sha256": "ed7f9fd4574acd0b26a8c08b0f459e216e6aa10eacef903036acd18412e14695",
+      "sha256": "0a395114c3eb00432408c3eb804875a12684c6e6d2505e68470be01bfa32aacc",
       "executable": false
     },
     "tests/auth/authorization-policy.test.mjs": {
@@ -3663,7 +3663,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "fcc5e550d8c8444053ce5a8d95322e9e10bf69b88798c8815ce0d9392e1e75b5",
+      "sha256": "4e2635a82fb75cc71802cd10cfe473a8622c32c55fd4c2ed83479204d8f4a6c7",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {

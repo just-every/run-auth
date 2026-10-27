@@ -215,9 +215,10 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const auditScreens=async(name,target)=>{
   for(const width of [1440,390])for(const theme of ['light','dark']) {
    await target.setViewportSize({width,height:1000});await target.emulateMedia({colorScheme:theme});
+   await target.evaluate(async()=>{document.body.getBoundingClientRect();await Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));});
    if(width===1440) {
     assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits');
-    const axe=await new AxeBuilder({page:target}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+    const axe=await new AxeBuilder({page:target}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))})),[]);
     for(const control of await target.locator('[data-tooltip]:visible').all()) {
      await target.mouse.move(0,0);await control.blur();await control.hover();await target.waitForTimeout(150);await expect(target.getByRole('tooltip')).toBeHidden();await target.waitForTimeout(200);await expect(target.getByRole('tooltip')).toBeVisible();await target.mouse.move(0,0);await control.focus();assert.equal(await target.getByRole('tooltip').isVisible(),true);await target.keyboard.press('Escape');await control.blur();
     }

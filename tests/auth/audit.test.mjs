@@ -24,7 +24,10 @@ test('interactive audit finds twelve-month sign-ins and reconciles a frozen auth
  }
  const base='/api/auth/audit?person=worker&event=person_invited&limit=100&from='+(now-2000)+'&to='+now;
  let page=await read(r,base,owner.cookie);assert.equal(page.total,1105);assert.equal(page.events.length,100);
- r.now+=15*60000;assert.equal((await r.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,409);r.now=now;
+ r.now+=15*60000;assert.equal((await r.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,409);
+ assert.equal((await read(r,base,owner.cookie)).total,1105,'a new read needs current authority without fresh email write proof');r.now=now;
+ const rolePage=await read(r,base.replace('/api/auth/audit','/api/auth/roles/audit'),owner.cookie);
+ assert.equal(rolePage.total,1105);assert.deepEqual(rolePage.events,page.events);assert.ok(rolePage.nextCursor);
  const first=page.events[0].eventId,ids=page.events.map(e=>e.id),eventIds=page.events.map(e=>e.eventId);
  await r.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) VALUES('owner','person_invited','worker',?)").bind(now-1000).run();
  await r.restart();
@@ -52,6 +55,7 @@ test('interactive audit rechecks employer, person scope and revoked auditor auth
  const base='/api/auth/audit?event=person_invited&limit=1',page=await read(r,base,auditor.cookie);
  assert.equal(page.total,2);assert.deepEqual(page.events.map(e=>e.subject_id),['inside']);assert.equal(page.events[0].detail,undefined);assert.equal(page.events[0].actor_email,undefined);
  assert.equal((await r.call(base)).status,401);
+ const emailOnly=await emailSession(r,'synthetic-auth-2@example.com');assert.equal((await r.call(base,{cookie:emailOnly})).status,403,'interactive audit still requires hardware proof');
  assert.equal((await r.call('/api/auth/audit?person=outside',{cookie:auditor.cookie})).status,403);
  assert.equal((await r.call('/api/auth/activity',{cookie:auditor.cookie})).status,403,'legacy full-detail feed stays administrator only');
  assert.equal((await r.call('/api/auth/directory/edit',post({personId:'inside',set:{name:'Unauthorized'}},auditor.cookie))).status,403);
