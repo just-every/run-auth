@@ -6,6 +6,7 @@ export function endSessionStatements(ctx,personId,operationId,g,q) {
  const now=ctx.now(),prefix=operationId+':';
  return [
   q(`UPDATE auth_role_operations SET detail=json_set(detail,
+   '$.logoutOutcomes',json_object('delivered',0,'failed',0),
    '$.nativeSessionsEnded',(SELECT count(*) FROM auth_sessions WHERE person_id=? AND revoked_at IS NULL),
    '$.refreshGrantsEnded',(SELECT count(*) FROM auth_refresh_families WHERE person_id=? AND revoked_at IS NULL),
    '$.unavailable',(SELECT count(*) FROM auth_grants g JOIN auth_clients c ON c.id=g.client_id WHERE g.person_id=? AND c.disabled_at IS NULL AND c.logout_uri IS NULL)

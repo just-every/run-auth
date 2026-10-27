@@ -268,7 +268,7 @@ export interface SessionControlOperation {
   createdAt: number | string
   nativeSessionsEnded: number
   refreshGrantsEnded: number
-  logout: { pending: number; delivered: number; failed: number; unavailable: number }
+  logout: { pending: number; delivered: number; failed: number; unavailable: number; evidenceExpired?: boolean }
 }
 
 export interface AuthPageModel {

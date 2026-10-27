@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 import {expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
@@ -121,4 +123,21 @@ export async function sessionControlJourney({app,page,context,helperPage,helperC
  await expect(adminReceipt).toContainText(reason);
  await adminReceipt.getByText('Back-channel delivery',{exact:true}).click();
  await capture('people-outcome',page);
+
+ // A historical receipt predates terminal counters. Model that stored record,
+ // then load both real administrator pages to prove the evidence warning.
+ await app.pause();
+ try {
+  const root=fileURLToPath(new URL('../../../',import.meta.url));
+  execFileSync(process.execPath,[join(root,'node_modules/wrangler/bin/wrangler.js'),'d1','execute','DB','--local','--persist-to',join(app.directory,'.wrangler/state'),'--config',join(root,'dist/server/wrangler.json'),'--command',`UPDATE auth_role_operations SET detail=json_remove(detail,'$.logoutOutcomes') WHERE id='${result.operationId}'`],{stdio:'ignore',env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',X_LOCAL_EXPLORER:'false'}});
+ } finally {await app.resume();}
+ for(const [target,name] of [[page,'people'],[helperPage,'scoped']]) {
+  await target.reload();
+  if(name==='people')await target.locator(`[data-open-dialog="sessions-${worker.id}"]`).click();
+  else await target.locator(`[data-session-control="${worker.id}"] > summary`).click();
+  const legacy=target.locator(`[data-session-operation="${result.operationId}"]`);
+  await legacy.getByText('Back-channel delivery',{exact:true}).click();
+  await expect(legacy).toContainText('Historical delivery evidence expired or was not retained.');
+  await capture(name+'-historical-evidence',target);
+ }
 }

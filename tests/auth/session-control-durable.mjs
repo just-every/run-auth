@@ -4,6 +4,7 @@ import {createLocalJWKSet,jwtVerify,decodeJwt} from 'jose';
 import {samlInstall} from './saml-helpers.mjs';
 import {command,operations,credentialsState,identityState} from './session-control-helpers.mjs';
 import {client} from './session-control-clients.mjs';
+import {signInAgain} from './agents-helpers.mjs';
 
 export async function durableSessionControl(t) {
  const r=await samlInstall(t),received=[];let retryStatus=503;
@@ -50,10 +51,10 @@ export async function durableSessionControl(t) {
  const receipt=(await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId);
  assert.equal(receipt.actorId,'owner');assert.equal(receipt.reason,reason);
  assert.equal(receipt.refreshGrantsEnded,result.refreshGrantsEnded);assert.equal(receipt.nativeSessionsEnded,result.nativeSessionsEnded);
- assert.ok(receipt.logout.pending>0,'5xx deliveries remain pending for retry');
- assert.ok(receipt.logout.failed>0,'a permanent remote refusal remains failed');
- assert.ok(receipt.logout.delivered>0,'a successful remote acknowledgment is reported as delivered');
- assert.ok(receipt.logout.unavailable>0,'an app without a logout endpoint is explicit');
+ assert.equal(receipt.logout.pending,3,'each retrying device and client remains pending');
+ assert.equal(receipt.logout.failed,1,'a permanent remote refusal remains failed');
+ assert.equal(receipt.logout.delivered,1,'a successful remote acknowledgment is reported as delivered');
+ assert.equal(receipt.logout.unavailable,1,'an app without a logout endpoint is explicit');
  const keys=createLocalJWKSet(await (await r.call('/oidc/jwks')).json());
  for(const {token,path} of received) {
   const {payload,protectedHeader}=await jwtVerify(token,keys,{issuer:r.origin,currentDate:new Date(r.now)});
@@ -68,9 +69,28 @@ export async function durableSessionControl(t) {
  assert.equal((await r.call('/api/auth/me',{cookie:r.ada})).status,401);
  const pendingCount=receipt.logout.pending,retryJtis=new Set(retryTokens.map(token=>token.jti));
  retryStatus=200;r.now+=61000;
- assert.equal((await r.call('/',{action:'maintain'})).status,200);
+ for(const response of await Promise.all([r.call('/',{action:'maintain'}),r.call('/',{action:'maintain'})]))assert.equal(response.status,200);
  const retried=(await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId);
  assert.equal(retried.logout.pending,0);assert.equal(retried.logout.delivered,receipt.logout.delivered+pendingCount);
  assert.equal(retried.logout.failed,receipt.logout.failed);assert.equal(retried.logout.unavailable,receipt.logout.unavailable);
  for(const item of received.filter(item=>item.path==='/retry').slice(retryTokens.length))assert.ok(retryJtis.has(decodeJwt(item.token).jti),'durable retries keep each delivery identity');
+
+ // Authentication queue history can expire before the accountable receipt.
+ // Exercise actual consent, preview and scheduled cleanup with separate periods.
+ const DAY=86400000,classes=Object.fromEntries(['profiles','sourceSnapshots','authentication','decisions','provisioning','audit','modelTraces','erasureReceipts'].map(name=>[name,{unit:'days',value:name==='authentication'?90:2555}]));
+ await command(r,r.owner.cookie,'/api/auth/retention/settings',{confirm:true,classes});
+ await r.db.prepare('UPDATE auth_oidc_logouts SET finished_at=? WHERE finished_at IS NOT NULL').bind(r.now-120*DAY).run();
+ const queued=await command(r,r.owner.cookie,'/api/auth/retention/preview',{});
+ assert.ok(queued.run);
+ r.now+=8*DAY;await r.restart();
+ assert.equal((await r.call('/',{action:'maintain'})).status,200);
+ r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ assert.equal((await r.db.prepare('SELECT count(*) AS n FROM auth_oidc_logouts WHERE id LIKE ?').bind(result.operationId+':%').first()).n,0,'the real retention job expired the delivery rows');
+ const retained=(await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId);
+ assert.deepEqual(retained.logout,retried.logout,'retained receipts keep failed and successful outcomes after queue expiry');
+ await r.restart();await r.call('/',{action:'maintain'});
+ assert.deepEqual((await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId).logout,retried.logout,'restart and repeated cleanup cannot reset or double-count retained outcomes');
+ // A legacy receipt with no retained counters must disclose its evidence gap.
+ await r.db.prepare("UPDATE auth_role_operations SET detail=json_remove(detail,'$.logoutOutcomes') WHERE id=?").bind(result.operationId).run();
+ assert.equal((await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId).logout.evidenceExpired,true);
 }

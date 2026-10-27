@@ -7,17 +7,23 @@ import {deliverGenericLogouts} from '../oidc-apps/session.mjs';
 import {endSessionStatements} from './statements.mjs';
 
 const PERMISSION='people.sessions.end';
-async function deliverySummary(ctx,operationId,unavailable=0) {
+async function deliverySummary(ctx,operationId,detail) {
  const prefix=operationId+':%',rows=await all(ctx,`SELECT finished_at,outcome FROM auth_logout_deliveries WHERE id LIKE ? UNION ALL SELECT finished_at,outcome FROM auth_oidc_logouts WHERE id LIKE ?`,prefix,prefix);
- const summary={pending:0,delivered:0,failed:0,unavailable};
- for(const row of rows)summary[row.finished_at===null?'pending':row.outcome==='delivered'?'delivered':'failed']++;
+ const summary={pending:0,delivered:detail.logoutOutcomes?.delivered??0,failed:detail.logoutOutcomes?.failed??0,unavailable:detail.unavailable};
+ for(const row of rows) {
+  if(row.finished_at===null)summary.pending++;
+  else if(!detail.logoutOutcomes)summary[row.outcome==='delivered'?'delivered':'failed']++;
+ }
+ // Receipts created before terminal counters existed cannot prove that their
+ // remaining queue rows are complete. Mark that boundary rather than imply zero.
+ if(!detail.logoutOutcomes)summary.evidenceExpired=true;
  return summary;
 }
 async function operationView(ctx,row) {
  const detail=JSON.parse(row.detail);
  return {id:row.id,actorId:row.actor_id,reason:detail.reason,createdAt:row.created_at,
   nativeSessionsEnded:detail.nativeSessionsEnded,refreshGrantsEnded:detail.refreshGrantsEnded,
-  logout:await deliverySummary(ctx,row.id,detail.unavailable)};
+  logout:await deliverySummary(ctx,row.id,detail)};
 }
 async function assertRead(ctx,s,state) {
  if(!await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1

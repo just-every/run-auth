@@ -1,3 +1,4 @@
+import {recordLogoutAttempt} from '../session-control/outcomes.mjs';
 import {maintainFamilies} from '../tokens/lifecycle.mjs';
 // Back-channel logout and identity fences for linked apps. Each delivery is a
 // signed logout+jwt with one stable jti, posted to the app's registered logout
@@ -58,7 +59,7 @@ export async function deliverLogouts(ctx,ids=null) {
  for(const d of due) {
   const result=await attempt(ctx,d),attempts=d.attempts+1,next=now+(RETRY[Math.min(attempts-1,RETRY.length-1)]);
   const expired=!result.finished&&next>d.created_at+HORIZON;
-  await run(ctx,'UPDATE auth_logout_deliveries SET attempts=?,next_attempt_at=?,finished_at=?,outcome=? WHERE id=? AND finished_at IS NULL',attempts,next,result.finished||expired?ctx.now():null,expired?'abandoned_after_24h':result.outcome,d.id);
+  await recordLogoutAttempt(ctx,'auth_logout_deliveries',d,{attempts,next,finishedAt:result.finished||expired?ctx.now():null,outcome:expired?'abandoned_after_24h':result.outcome});
  }
 }
 
