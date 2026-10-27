@@ -24,7 +24,7 @@ test('interactive audit finds twelve-month sign-ins and reconciles a frozen auth
  }
  const base='/api/auth/audit?person=worker&event=person_invited&limit=100&from='+(now-2000)+'&to='+now;
  let page=await read(r,base,owner.cookie);assert.equal(page.total,1105);assert.equal(page.events.length,100);
- r.now+=15*60000;assert.equal((await r.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,409);r.now=now;
+ r.now+=15*60000;assert.equal((await r.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,410);r.now=now;
  const first=page.events[0].eventId,ids=page.events.map(e=>e.id),eventIds=page.events.map(e=>e.eventId);
  await r.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) VALUES('owner','person_invited','worker',?)").bind(now-1000).run();
  await r.restart();
@@ -46,9 +46,24 @@ test('interactive audit rechecks employer, person scope and revoked auditor auth
  const {r,owner}=await ownerInstall(t);
  const auditor=await passkeyPerson(r,'auditor','synthetic-auth-2@example.com','member');
  await r.person('inside','synthetic-auth-3@example.com');await r.person('outside','synthetic-auth-4@example.com');
- const resources={view:{people:['inside']},edit:{}};
+ const groupResponse=await r.call('/api/auth/groups/create',post({name:'Audit scope'},owner.cookie));assert.equal(groupResponse.status,201);const group=await groupResponse.json();
+ const appResponse=await r.call('/api/auth/company-apps/create',post({name:'Audit app',entityId:'https://audit.example.com',acsUrl:'https://audit.example.com/acs'},owner.cookie));assert.equal(appResponse.status,201);const app=await appResponse.json();
+ const resources={view:{people:['inside'],groups:[group.id],apps:[app.id]},edit:{}};
  const granted=await plan(r,owner.cookie,{kind:'grant',personId:'auditor',roleId:'auditor',resources});
  for(const subject of ['inside','outside','inside'])await r.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) VALUES('owner','person_invited',?,?)").bind(subject,r.now).run();
+ for(const personId of ['inside','outside']) {
+  for(const action of ['assign','unassign'])assert.equal((await r.call('/api/auth/company-apps/'+action,post({appId:app.id,principalType:'person',principalId:personId},owner.cookie))).status,200);
+  for(const action of ['add','remove'])assert.equal((await r.call('/api/auth/groups/'+action,post({groupId:group.id,personId},owner.cookie))).status,200);
+ }
+ const excludedGroup=await (await r.call('/api/auth/groups/create',post({name:'Excluded audit group'},owner.cookie))).json();
+ for(const groupId of [group.id,excludedGroup.id])for(const action of ['assign','unassign'])assert.equal((await r.call('/api/auth/company-apps/'+action,post({appId:app.id,principalType:'group',principalId:groupId},owner.cookie))).status,200);
+ for(const personId of ['inside','outside'])for(const action of ['add','remove'])assert.equal((await r.call('/api/auth/roles/group',post({groupId:group.id,personId,action},owner.cookie))).status,200);
+ for(const event of ['app_assigned','app_unassigned','group_member_added','group_member_removed','roles.group.add','roles.group.remove'])for(const door of ['/api/auth/audit','/api/auth/roles/audit']) {
+  const result=await read(r,door+'?event='+event+'&limit=1',auditor.cookie);
+  const expected=event.startsWith('app_')?2:1;
+  assert.equal(result.total,expected,event+' excludes related resources from the count');assert.equal(result.events.length,1);
+  if(expected===2){assert.ok(result.nextCursor);const next=await read(r,door+'?event='+event+'&limit=1&cursor='+encodeURIComponent(result.nextCursor),auditor.cookie);assert.equal(next.total,2);assert.equal(next.events.length,1);assert.notEqual(next.events[0].id,result.events[0].id);assert.equal(next.nextCursor,null);}else assert.equal(result.nextCursor,null);
+ }
  const base='/api/auth/audit?event=person_invited&limit=1',page=await read(r,base,auditor.cookie);
  assert.equal(page.total,2);assert.deepEqual(page.events.map(e=>e.subject_id),['inside']);assert.equal(page.events[0].detail,undefined);assert.equal(page.events[0].actor_email,undefined);
  assert.equal((await r.call(base)).status,401);
