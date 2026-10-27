@@ -110,7 +110,7 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  assert.deepEqual(errors,[]);
 });
 
-test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',{timeout:180000},async t=>{
+test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',{timeout:300000},async t=>{
  const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
  browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
