@@ -58,19 +58,17 @@ export async function auditPage(ctx,s,request) {
  const where=['a.id<=?','a.created_at>=?','a.created_at<=?'],args=[cursor.max,filters.from,Math.min(filters.to,cursor.asOf)];
  if(filters.event){where.push('a.event=?');args.push(filters.event);}
  if(filters.person){where.push('(a.actor_id=? OR a.subject_id=? OR a.subject_id=?)');args.push(filters.person,filters.person,person?.email??filters.person);}
- let before=cursor.max+1,total=0;const events=[];
- while(true) {
-  const rows=await all(ctx,`SELECT a.id,a.actor_id,a.event,a.subject_id,a.created_at,p.email AS actor_email,service.name AS service_name,custodian.email AS service_owner_email,d.detail FROM auth_activity a LEFT JOIN oa_operators p ON p.id=a.actor_id LEFT JOIN auth_admin_service_apps service ON a.actor_id='admin-service:'||service.id LEFT JOIN oa_operators custodian ON custodian.id=service.owner_id LEFT JOIN auth_activity_details d ON d.activity_id=a.id WHERE ${where.join(' AND ')} AND a.id<? ORDER BY a.id DESC LIMIT 250`,...args,before);
-  for(const row of rows) {
-   if(!state.legacy&&!visible.has(row.subject_id)&&!(row.subject_id===null&&visible.has(row.actor_id)))continue;
-   total++;
-   if(row.id>=cursor.before||events.length>=limit+1)continue;
-   const eventId=`${ctx.organizationId??'root'}:activity:${row.id}`;
-   events.push(state.legacy?{...row,eventId}:{id:row.id,eventId,event:row.event,actor_id:row.actor_id,subject_id:state.dir.people.get(row.subject_id)?.id??[...state.dir.people.values()].find(p=>p.email===row.subject_id)?.id??row.subject_id,created_at:row.created_at});
-  }
-  if(rows.length<250)break;
-  before=rows.at(-1).id;
+ if(!state.legacy) {
+  where.push('(a.subject_id IN (SELECT value FROM json_each(?)) OR (a.subject_id IS NULL AND a.actor_id IN (SELECT value FROM json_each(?))))');
+  const scope=JSON.stringify([...visible]);args.push(scope,scope);
  }
+ const predicate=where.join(' AND ');
+ const {total}=await one(ctx,`SELECT COUNT(*) AS total FROM auth_activity a WHERE ${predicate}`,...args);
+ const rows=await all(ctx,`SELECT a.id,a.actor_id,a.event,a.subject_id,a.created_at,p.email AS actor_email,service.name AS service_name,custodian.email AS service_owner_email,d.detail FROM auth_activity a LEFT JOIN oa_operators p ON p.id=a.actor_id LEFT JOIN auth_admin_service_apps service ON a.actor_id='admin-service:'||service.id LEFT JOIN oa_operators custodian ON custodian.id=service.owner_id LEFT JOIN auth_activity_details d ON d.activity_id=a.id WHERE ${predicate} AND a.id<? ORDER BY a.id DESC LIMIT ?`,...args,cursor.before,limit+1);
+ const events=rows.map(row=>{
+  const eventId=`${ctx.organizationId??'root'}:activity:${row.id}`;
+  return state.legacy?{...row,eventId}:{id:row.id,eventId,event:row.event,actor_id:row.actor_id,subject_id:state.dir.people.get(row.subject_id)?.id??[...state.dir.people.values()].find(p=>p.email===row.subject_id)?.id??row.subject_id,created_at:row.created_at};
+ });
  const held=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),state.epoch);
  if(!held)fail('role_authority_changed',409);
  const more=events.length>limit;events.length=Math.min(events.length,limit);
