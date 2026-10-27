@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "5c16af3f90e2e0f9acc5763bca4c98964dd847e17de890523c3e352f4a9f506c",
+      "sha256": "7d7d1332ebbf9ef7099ec79a63cfe28ff194f563e5709b95ca103e5b9127fa51",
       "executable": false
     },
     "AGENTS.md": {
@@ -3663,7 +3663,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "9ea10b759ec065be41bd2dff203e062b62e9752ce8e630b34b7b894fe6f12a6f",
+      "sha256": "fcc5e550d8c8444053ce5a8d95322e9e10bf69b88798c8815ce0d9392e1e75b5",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
