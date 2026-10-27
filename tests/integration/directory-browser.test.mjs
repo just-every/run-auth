@@ -12,7 +12,7 @@ const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 
 test('directory journey: an administrator onboards a worker, edits and bulk-moves people with a preview, sets a group rule, terminates and rehires, at desktop/mobile in both themes',{timeout:180000},async t=>{
  const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
- browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
+ browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),primary=page;
  page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
@@ -112,7 +112,7 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
 
 test('organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile',{timeout:180000},async t=>{
  const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
- browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
+ browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
  page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
@@ -166,7 +166,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const appConfig=await post('/api/auth/company-apps/create',{name:'Engineering documents',entityId:'https://documents.example.com',acsUrl:'https://documents.example.com/acs'},201);
  await page.goto(app.origin+'/app/roles');
  const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');await definition.getByText('Choose permissions',{exact:true}).click();
- for(const id of ['roles.view','people.view','people.factors.reset','groups.view','apps.view','apps.assign','admin-api.manage'])await definition.locator(`input[value="${id}"]`).check();
+ for(const id of ['roles.view','people.view','people.factors.reset','groups.view','apps.view','apps.assign','admin-api.manage','audit.view'])await definition.locator(`input[value="${id}"]`).check();
  await definition.getByRole('button',{name:'Preview role'}).click();await expect(definition.locator('[data-role-apply]')).toBeVisible();await shoot('role-preview');await saved(()=>definition.locator('[data-role-apply]').click());
  const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.locator('[name=roleId]').selectOption({label:'Engineering support'});
  await grant.locator('[name="view.groups"]').selectOption(group.id);await grant.locator('[name="edit.groups"]').selectOption(group.id);
@@ -180,6 +180,29 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const createdCredential=helperPage.waitForResponse(response=>response.url().endsWith('/api/auth/admin-service-apps/create'));await saved(()=>credential.getByRole('button',{name:'Create service app',exact:true}).click(),helperPage);assert.equal((await createdCredential).status(),201);await expect(helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true})).toBeVisible();await shoot('scoped-credential',helperPage);
  const revokedCredential=helperPage.waitForResponse(response=>response.url().endsWith('/api/auth/admin-service-apps/revoke'));await saved(()=>helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true}).click(),helperPage);assert.equal((await revokedCredential).status(),200);await expect(helperPage.getByRole('button',{name:'Revoke Engineering assignment service',exact:true})).toHaveCount(0);await shoot('scoped-credential-revoked',helperPage);
  await helperPage.getByLabel('Verification and reason',{exact:true}).fill('Employee confirmed the request with the support desk');await saved(()=>helperPage.getByRole('button',{name:'Reset factors'}).click(),helperPage);assert.equal((await workerContext.request.get(app.origin+'/api/auth/me')).status(),401);
+ // Audit history uses the delegated scope and loses authority between pages.
+ const auditScreens=async(name,target)=>{
+  for(const width of [1440,390])for(const theme of ['light','dark']) {
+   await target.setViewportSize({width,height:1000});await target.emulateMedia({colorScheme:theme});
+   if(width===1440) {
+    assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' fits');
+    const axe=await new AxeBuilder({page:target}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+    for(const control of await target.locator('[data-tooltip]:visible').all()) {
+     await target.mouse.move(0,0);await control.blur();await control.hover();await target.waitForTimeout(150);await expect(target.getByRole('tooltip')).toBeHidden();await target.waitForTimeout(200);await expect(target.getByRole('tooltip')).toBeVisible();await target.mouse.move(0,0);await control.focus();assert.equal(await target.getByRole('tooltip').isVisible(),true);await target.keyboard.press('Escape');await control.blur();
+    }
+   }
+   await target.screenshot({path:join(directory,`audit-${name}-${width}-${theme}.png`),fullPage:true});
+  }
+  await target.setViewportSize({width:1440,height:1000});await target.emulateMedia({colorScheme:'light'});
+ };
+ await helperPage.goto(app.origin+'/app/activity?limit=1&person='+worker.id);
+ await expect(helperPage.locator('.activity-row')).toHaveCount(1);await expect(helperPage.getByRole('link',{name:'Older events'})).toBeVisible();
+ const auditRow=await helperPage.locator('.activity-row').innerText(),older=await helperPage.getByRole('link',{name:'Older events'}).getAttribute('href');
+ await auditScreens('scoped-first-page',helperPage);
+ await helperPage.getByRole('link',{name:'Older events'}).click();await expect(helperPage.locator('.activity-row')).toHaveCount(1);assert.notEqual(await helperPage.locator('.activity-row').innerText(),auditRow);
+ const roleInventory=await (await context.request.get(app.origin+'/api/auth/roles')).json(),supportGrant=roleInventory.grants.find(g=>g.person_id===helper.id);
+ const revoke=await post('/api/auth/roles/preview',{kind:'revoke',grantId:supportGrant.id});await post('/api/auth/roles/apply',{previewId:revoke.previewId});
+ await helperPage.goto(app.origin+older);await expect(helperPage.getByText('Administrator access required.',{exact:true})).toBeVisible();await expect(helperPage.locator('.activity-row')).toHaveCount(0);await auditScreens('authority-ended',helperPage);
  await page.goto(app.origin+'/app/permissions');
  const apiForm=page.locator('[data-resource-form=register]');await apiForm.getByLabel('Company app').selectOption(appConfig.id);await apiForm.getByLabel('API name').fill('Documents API');await apiForm.getByLabel('Audience').fill('https://documents.example.com/api');await apiForm.getByLabel('Resource ID',{exact:true}).fill('document:budget');await saved(()=>apiForm.getByRole('button',{name:'Register API'}).click());
  const assignment=page.locator('[data-resource-form=assign]');await assignment.getByLabel('Group').selectOption(group.id);await saved(()=>assignment.getByRole('button',{name:'Assign role to group'}).click());
@@ -194,6 +217,12 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const hold=page.locator('[data-erasure-hold]');await hold.locator('[name=target]').selectOption(worker.id);await hold.getByLabel('Reason').fill('Awaiting employment records authorization');await saved(()=>hold.getByRole('button',{name:'Place legal hold'}).click());await shoot('legal-hold');await saved(()=>page.getByRole('button',{name:'Release hold'}).click());
  const erase=page.locator('[data-erasure-preview]:not([data-erasure-kind])');await erase.locator('[name=target]').selectOption(worker.id);await erase.getByRole('button',{name:'Preview erasure'}).click();await expect(erase.locator('[data-erasure-confirm]')).toBeVisible();await shoot('erasure-preview');await erase.getByLabel('Type the confirmation phrase').fill('ERASE');await erase.locator('[name=destinations]').check();await saved(()=>erase.getByRole('button',{name:'Confirm erasure'}).click());
  await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();await page.getByText('Per-store completion and remote removal').click();await shoot('erasure-receipt');
+ const receipt=(await (await context.request.get(app.origin+'/api/auth/erasure/receipts')).json()).receipts.find(r=>r.kind==='person');
+ await page.goto(app.origin+'/app/activity?event=person_onboarded');
+ await expect(page.locator('.activity-row',{hasText:receipt.reference})).toBeVisible();
+ const erasedActivity=await page.locator('.activity-table').innerText();assert.ok(!erasedActivity.includes('Erin Park'));assert.ok(!erasedActivity.includes('erin@northwind.example.com'));
+ await auditScreens('erased-subject',page);
+ await page.goto(app.origin+'/app/erasure');
  const retry=page.locator('[data-erasure-retry]');await retry.locator('[name=destinations]').check();await saved(()=>retry.getByRole('button',{name:'Retry remote removal'}).click());await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();
  const subsidiaryApp=await post(prefix+'/api/auth/company-apps/create',{name:'Subsidiary records',entityId:'https://subsidiary-records.example.com',acsUrl:'https://subsidiary-records.example.com/acs'},201);assert.ok(subsidiaryApp.id);
  await post(prefix+'/api/auth/erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});

@@ -1,4 +1,5 @@
 import {abuseModel} from './abuse/index.mjs';
+import {auditPage} from './audit/query.mjs';
 import {deliveryModel} from './delivery/routes.mjs';
 import {notificationsModel,notifySecurity} from './notifications/index.mjs';
 import {ownershipModel,requireVerifiedDomain} from './domains/ownership.mjs';
@@ -66,7 +67,11 @@ export async function model(ctx,request,page='account') {
   if(page==='activity')result.followup=await (await followupRead(ctx,request)).json();
   if(page==='apps'){result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }
- if(page==='account'||page==='activity'){result.decisions=await decisionsModel(ctx,s);result.reviews=await reviewsModel(ctx,s);result.requests={...await (await requestsRead(ctx,request)).json(),canManage:isAdmin,meId:s.person_id,people:isAdmin?result.people:[],adminApps:isAdmin?await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL'):[]};}
+ if(page==='activity') {
+  try {result.activityPage=await auditPage(ctx,s,request);result.activity=result.activityPage.events;result.canReadAudit=true;}
+  catch(error){if(!(error instanceof AuthError)||error.status!==403)throw error;result.activity=[];result.auditError=error.message;}
+ }
+ if(page==='account'||page==='activity'&&isAdmin){result.decisions=await decisionsModel(ctx,s);result.reviews=await reviewsModel(ctx,s);result.requests={...await (await requestsRead(ctx,request)).json(),canManage:isAdmin,meId:s.person_id,people:isAdmin?result.people:[],adminApps:isAdmin?await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL'):[]};}
  if(page==='activity'&&isAdmin)result.retention=await (await retentionRead(ctx,request,'/api/auth/retention')).json();
  if(page==='methods'&&result.isAdmin){result.delivery=await deliveryModel(ctx);result.abuse=await abuseModel(ctx);}
  if(page==='account'||page==='activity')result.notifications=await notificationsModel(ctx,request);
