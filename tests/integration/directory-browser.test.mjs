@@ -158,6 +158,9 @@ test('organization and authority journey: switch employers, delegate a scoped re
  await expect(isolatedPage.locator('[data-role-form=grant]')).toBeVisible();
  await shoot('isolated-administrator-roles',isolatedPage);await isolatedAdmin.close();
  await page.getByRole('button',{name:'Switch to Installation'}).click();await expect(page).toHaveURL(app.origin+'/app/account');
+ await post('/api/auth/people/invite',{email:'synthetic-auth-30@example.com',name:'Historical Invitation'},201);
+ const historicalPerson=(await (await context.request.get(app.origin+'/api/auth/people')).json()).find(p=>p.email==='synthetic-auth-30@example.com');assert.ok(historicalPerson);
+ for(const email of ['synthetic-auth-31@example.com','synthetic-auth-32@example.com'])await post('/api/auth/directory/edit',{personId:historicalPerson.id,email});
  const worker=await post('/api/auth/directory/onboard',{name:'Erin Park',email:'erin@northwind.example.com',kind:'employee',set:{department:'Engineering',location:'US'}},201);
  const helper=await post('/api/auth/directory/onboard',{name:'Sam Rivera',email:'sam@northwind.example.com',kind:'employee',set:{department:'Support',location:'US'}},201);
  const workerContext=await browser.newContext(),workerPage=await workerContext.newPage();await hardware(workerContext,workerPage);await signIn(workerPage,'erin@northwind.example.com');
@@ -227,6 +230,11 @@ test('organization and authority journey: switch employers, delegate a scoped re
   }
   await target.setViewportSize({width:1440,height:1000});await target.emulateMedia({colorScheme:'light'});
  };
+ const outside=await post('/api/auth/directory/onboard',{name:'Outside Audit Scope',email:'synthetic-auth-33@example.com',kind:'employee'},201);
+ await post('/api/auth/groups/add',{groupId:group.id,personId:outside.id});await post('/api/auth/groups/remove',{groupId:group.id,personId:outside.id});
+ const scopedMembership=await (await helperContext.request.get(app.origin+'/api/auth/audit?event=group_member_added')).json();assert.equal(scopedMembership.total,1);assert.equal(scopedMembership.events.length,1);
+ await helperPage.goto(app.origin+'/app/activity?event=group_member_added');await expect(helperPage.locator('.activity-row')).toHaveCount(1);await expect(helperPage.locator('.table-footer')).toContainText('1 of 1 events');
+ await auditScreens('related-target-excluded',helperPage);
  await helperPage.goto(app.origin+'/app/activity?limit=1&person='+worker.id);
  await expect(helperPage.locator('.activity-row')).toHaveCount(1);await expect(helperPage.getByRole('link',{name:'Older events'})).toBeVisible();
  const auditRow=await helperPage.locator('.activity-row').innerText(),older=await helperPage.getByRole('link',{name:'Older events'}).getAttribute('href');
@@ -254,6 +262,14 @@ test('organization and authority journey: switch employers, delegate a scoped re
  await expect(page.locator('.activity-row',{hasText:receipt.reference})).toBeVisible();
  const erasedActivity=await page.locator('.activity-table').innerText();assert.ok(!erasedActivity.includes('Erin Park'));assert.ok(!erasedActivity.includes('erin@northwind.example.com'));
  await auditScreens('erased-subject',page);
+ const historicalPreview=await post('/api/auth/erasure/preview',{kind:'person',target:historicalPerson.id});
+ const historicalReceipt=await post('/api/auth/erasure/confirm',{previewId:historicalPreview.id,confirmation:'ERASE',destinations:[]});
+ await app.pause();await app.resume();
+ const historicalAudit=await (await context.request.get(app.origin+'/api/auth/audit?event=person_invited')).json();assert.equal(historicalAudit.total,1);assert.equal(historicalAudit.events[0].subject_id,historicalReceipt.reference);
+ for(const personal of ['Historical Invitation','synthetic-auth-30@example.com','synthetic-auth-31@example.com','synthetic-auth-32@example.com',historicalPerson.id])assert.ok(!JSON.stringify(historicalAudit).includes(personal));
+ await page.goto(app.origin+'/app/activity?event=person_invited');await expect(page.locator('.activity-row')).toHaveCount(1);await expect(page.locator('.activity-row')).toContainText(historicalReceipt.reference);
+ await auditScreens('erased-historical-invitation',page);
+
  await page.goto(app.origin+'/app/erasure');
  const retry=page.locator('[data-erasure-retry]');await retry.locator('[name=destinations]').check();await saved(()=>retry.getByRole('button',{name:'Retry remote removal'}).click());await expect(page.getByRole('heading',{name:'person erasure · remote_unfinished'})).toBeVisible();
  const subsidiaryApp=await post(prefix+'/api/auth/company-apps/create',{name:'Subsidiary records',entityId:'https://subsidiary-records.example.com',acsUrl:'https://subsidiary-records.example.com/acs'},201);assert.ok(subsidiaryApp.id);

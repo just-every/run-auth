@@ -49,9 +49,32 @@ test('interactive audit rechecks employer, person scope and revoked auditor auth
  const {r,owner}=await ownerInstall(t);
  const auditor=await passkeyPerson(r,'auditor','synthetic-auth-2@example.com','member');
  await r.person('inside','synthetic-auth-3@example.com');await r.person('outside','synthetic-auth-4@example.com');
- const resources={view:{people:['inside']},edit:{}};
+ const groupResponse=await r.call('/api/auth/groups/create',post({name:'Audit scope'},owner.cookie));assert.equal(groupResponse.status,201);const group=await groupResponse.json();
+ const appResponse=await r.call('/api/auth/company-apps/create',post({name:'Audit app',entityId:'https://audit.example.com',acsUrl:'https://audit.example.com/acs'},owner.cookie));assert.equal(appResponse.status,201);const app=await appResponse.json();
+ const resources={view:{people:['inside'],groups:[group.id],apps:[app.id]},edit:{}};
  const granted=await plan(r,owner.cookie,{kind:'grant',personId:'auditor',roleId:'auditor',resources});
  for(const subject of ['inside','outside','inside'])await r.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) VALUES('owner','person_invited',?,?)").bind(subject,r.now).run();
+ for(const personId of ['inside','outside']) {
+  for(const action of ['assign','unassign'])assert.equal((await r.call('/api/auth/company-apps/'+action,post({appId:app.id,principalType:'person',principalId:personId},owner.cookie))).status,200);
+  for(const action of ['add','remove'])assert.equal((await r.call('/api/auth/groups/'+action,post({groupId:group.id,personId},owner.cookie))).status,200);
+ }
+ const excludedGroup=await (await r.call('/api/auth/groups/create',post({name:'Excluded audit group'},owner.cookie))).json();
+ for(const groupId of [group.id,excludedGroup.id])for(const action of ['assign','unassign'])assert.equal((await r.call('/api/auth/company-apps/'+action,post({appId:app.id,principalType:'group',principalId:groupId},owner.cookie))).status,200);
+ for(const personId of ['inside','outside'])for(const action of ['add','remove'])assert.equal((await r.call('/api/auth/roles/group',post({groupId:group.id,personId,action},owner.cookie))).status,200);
+ for(const event of ['app_assigned','app_unassigned','group_member_added','group_member_removed','roles.group.add','roles.group.remove']) {
+  const unscoped=await read(r,'/api/auth/audit?event='+event,owner.cookie);
+  const allowed=unscoped.events.filter(e=>{const detail=JSON.parse(e.detail);return detail.person==='synthetic-auth-3@example.com'||detail.personId==='inside'||detail.group==='Audit scope';}).map(e=>e.id);
+  assert.equal(allowed.length,event.startsWith('app_')?2:1,'supported related targets exist');
+  for(const door of ['/api/auth/audit','/api/auth/roles/audit']) {
+   let result=await read(r,door+'?event='+event+'&limit=1',auditor.cookie),ids=[];
+   do {
+    assert.equal(result.total,allowed.length,event+' excludes related resources from the count');assert.equal(result.events.length,1);ids.push(result.events[0].id);
+    if(!result.nextCursor)break;
+    result=await read(r,door+'?event='+event+'&limit=1&cursor='+encodeURIComponent(result.nextCursor),auditor.cookie);
+   }while(true);
+   assert.deepEqual(ids,allowed,event+' returns only the explicitly supported target set');
+  }
+ }
  const base='/api/auth/audit?event=person_invited&limit=1',page=await read(r,base,auditor.cookie);
  assert.equal(page.total,2);assert.deepEqual(page.events.map(e=>e.subject_id),['inside']);assert.equal(page.events[0].detail,undefined);assert.equal(page.events[0].actor_email,undefined);
  assert.equal((await r.call(base)).status,401);
@@ -81,11 +104,32 @@ test('interactive audit preserves stable event IDs and opaque projections after 
  const response=await r.call('/api/auth/directory/onboard',post({email:'synthetic-auth-6@example.com',name:'Morgan Synthetic',kind:'employee'},owner.cookie));assert.equal(response.status,201);const worker=await response.json();
  const before=await read(r,'/api/auth/audit?person='+worker.id,owner.cookie);assert.ok(before.events.some(e=>e.event==='person_onboarded'));
  const original=before.events.find(e=>e.event==='person_onboarded');
+ const invited=await r.call('/api/auth/people/invite',post({email:'synthetic-auth-7@example.com',name:'Taylor Historical'},owner.cookie));assert.equal(invited.status,201);
+ const invitationPerson=(await read(r,'/api/auth/people',owner.cookie)).find(p=>p.email==='synthetic-auth-7@example.com');assert.ok(invitationPerson);
+ const invitation=(await read(r,'/api/auth/audit?event=person_invited',owner.cookie)).events.find(e=>e.subject_id==='synthetic-auth-7@example.com');assert.ok(invitation);
+ for(const email of ['synthetic-auth-8@example.com','synthetic-auth-9@example.com']) {
+  const edited=await r.call('/api/auth/directory/edit',post({personId:invitationPerson.id,email},owner.cookie));assert.equal(edited.status,200,await edited.clone().text());
+ }
+ const replacement=await r.call('/api/auth/directory/onboard',post({email:'synthetic-auth-7@example.com',name:'Independent New Holder',kind:'employee'},owner.cookie));assert.equal(replacement.status,201);const replacementPerson=await replacement.json();
  await r.call('/api/auth/erasure/policy',post({confirm:true,automaticDeletion:false,honorLegalHolds:true},owner.cookie));
  const preview=await r.call('/api/auth/erasure/preview',post({kind:'person',target:worker.id},owner.cookie));assert.equal(preview.status,200);const proposal=await preview.json();
  const erased=await r.call('/api/auth/erasure/confirm',post({previewId:proposal.id,confirmation:'ERASE',destinations:[]},owner.cookie));assert.equal(erased.status,200,await erased.clone().text());const receipt=await erased.json();
+ const invitationPreview=await r.call('/api/auth/erasure/preview',post({kind:'person',target:invitationPerson.id},owner.cookie));assert.equal(invitationPreview.status,200);
+ const invitationErased=await r.call('/api/auth/erasure/confirm',post({previewId:(await invitationPreview.json()).id,confirmation:'ERASE',destinations:[]},owner.cookie));assert.equal(invitationErased.status,200,await invitationErased.clone().text());const invitationReceipt=await invitationErased.json();
  await r.restart();
  const after=await read(r,'/api/auth/audit?event=person_onboarded',owner.cookie),row=after.events.find(e=>e.eventId===original.eventId);assert.ok(row);assert.equal(row.subject_id,receipt.reference);
  for(const personal of ['Morgan Synthetic','synthetic-auth-6@example.com',worker.id])assert.ok(!JSON.stringify(after).includes(personal));
  assert.equal(row.eventId,original.eventId);assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM oa_operators WHERE id=?').bind(worker.id).first()).n,0);
+ for(const door of ['/api/auth/audit','/api/auth/roles/audit','/api/auth/activity']) {
+  const result=await read(r,door,owner.cookie),events=Array.isArray(result)?result:result.events;
+  const retained=events.find(e=>e.id===invitation.id);assert.ok(retained,door+' retains the invitation');assert.equal(retained.subject_id,invitationReceipt.reference,door+' anonymizes the historical invitation');
+  for(const personal of ['Taylor Historical','synthetic-auth-7@example.com','synthetic-auth-8@example.com','synthetic-auth-9@example.com',invitationPerson.id])assert.ok(!JSON.stringify(result).includes(personal),door+' removes historical personal data');
+ }
+ const stored=(await r.db.prepare('SELECT * FROM auth_activity ORDER BY id').all()).results;
+ assert.equal(stored.find(e=>e.id===invitation.id).subject_id,invitationReceipt.reference,'native persistent evidence is redacted, not merely the projection');
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM oa_operators WHERE id=?').bind(invitationPerson.id).first()).n,0);
+
+ const replacementRow=await r.db.prepare('SELECT email,display_name FROM oa_operators WHERE id=?').bind(replacementPerson.id).first();assert.deepEqual(replacementRow,{email:'synthetic-auth-7@example.com',display_name:'Independent New Holder'});
+ assert.ok(await emailSession(r,'synthetic-auth-7@example.com'),'the new holder of a historical address can still sign in');
+
 });

@@ -26,10 +26,27 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  if(kind==='person'&&!person)fail('person_not_found',404);
  if(kind==='app'&&!app)fail('app_not_found',404);
  if(person?.role==='owner'&&person.status==='active'&&people.filter(p=>p.role==='owner'&&p.status==='active').length<=1)fail('last_owner_requires_reset_or_transfer',409);
- const identifiers=new Set(reset?people.flatMap(p=>[p.id,p.email]):[target]);
+ const identifiers=new Set(reset?people.flatMap(p=>[p.id,p.email]):[target]),historicalAddresses=new Set();
  const names=new Set(reset?people.map(p=>p.display_name).filter(text):[]);
  if(person){identifiers.add(person.email);names.add(person.display_name);}
  if(app){for(const v of [app.client_id,app.sector_id,app.origin])if(text(v))identifiers.add(v);names.add(app.name);}
+ // Historical addresses must be recovered from records explicitly bound to
+ // this person, never from a shared actor or an unrelated audit detail.
+ if(person) {
+  for(const row of values(stores,'auth_events')) {
+   let subject,data;try{subject=JSON.parse(row.subject);data=JSON.parse(row.data);}catch{continue;}
+   if(subject?.type==='person'&&subject.id===target) {
+    if(text(subject.email))historicalAddresses.add(subject.email);
+    if(row.type==='person.invited'&&text(data?.name))names.add(data.name);
+   }
+  }
+  const changes=new Set(values(stores,'auth_activity').filter(row=>row.subject_id===target&&row.event==='directory_person_updated').map(row=>row.id));
+  for(const row of values(stores,'auth_activity_details'))if(changes.has(row.activity_id)) {
+   let detail;try{detail=JSON.parse(row.detail);}catch{continue;}
+   for(const address of [detail?.email?.from,detail?.email?.to])if(text(address))historicalAddresses.add(address);
+  }
+ }
+
  for(const name of ['auth_person_sources','auth_former_subjects','oa_external_identities'])for(const row of values(stores,name))if(reset||row.person_id===target||row.operator_id===target)for(const field of ['source_id','subject'])if(text(row[field]))identifiers.add(row[field]);
  // Session/factor/grant identifiers can occur in copies without the person's ID.
  for(const name of ['auth_sessions','oa_sessions','auth_passkeys','auth_agent_keys','auth_admin_service_apps'])for(const row of values(stores,name))if(reset||row.person_id===target||row.operator_id===target||row.owner_id===target)for(const field of ['id','client_id'])if(text(row[field]))identifiers.add(row[field]);
@@ -40,10 +57,13 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
  followupReferences(stores,identifiers,reset);
  const holds=values(stores,'auth_erasure_holds').filter(h=>!h.released_at&&(reset||h.kind==='installation'||h.kind==='organization'&&h.target===organizationOf(ctx)||h.kind===kind&&identifiers.has(h.target)));
  const policy=values(stores,'auth_erasure_policy')[0];
+ // Old addresses can have a new holder. They redact retained evidence only;
+ // they must never select another person's account or credentials for deletion.
+ const evidenceIdentifiers=new Set([...identifiers,...historicalAddresses]);
  const removed=new Set(),updates=new Map(),decisions=[];
  // Role/state/type labels are values, never person identifiers. In particular,
  // erasing a creator whose id is 'owner' must not select every owner role.
- const canMatch=(name,row)=>contains(Object.fromEntries(Object.entries(row).filter(([column])=>!['role','state','status','kind','event','type'].includes(column))),identifiers);
+ const canMatch=(name,row,matching=identifiers)=>contains(Object.fromEntries(Object.entries(row).filter(([column])=>!['role','state','status','kind','event','type'].includes(column))),matching);
  const steward=people.find(p=>p.id!==target&&p.role==='owner'&&p.status==='active')?.id;
  for(const table of stores.values())for(const [index,row] of table.rows.entries()) {
   const key=rowId(table.name,index),name=table.name;
@@ -55,15 +75,15 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   }
   const followup=followupErasure(table,row,{stores,identifiers,reset,reference});
   if(followup) {if(followup.remove)removed.add(key);else updates.set(key,followup.update);continue;}
-  const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&canMatch('auth_activity',a));
-  const matched=relatedActivity||canMatch(name,row),discardMap=name==='auth_grant_maps',discardStage=staging.has(name);
+  const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&canMatch('auth_activity',a,evidenceIdentifiers));
+  const matched=relatedActivity||canMatch(name,row,isEvidence(name)?evidenceIdentifiers:identifiers),discardMap=name==='auth_grant_maps',discardStage=staging.has(name);
   if(isEvidence(name)) {
    if(reset||matched) {
     const changed={};
     for(const [column,value] of Object.entries(row)) {
-     if(referenceColumns.has(column)&&text(value)&&(reset||contains(value,identifiers)))changed[column]=reference;
-     else if(serialized.has(column)&&text(value))changed[column]=column==='subject'&&value.startsWith('{')?JSON.stringify({type:'erased',id:reference}):column==='detail'||column==='data'||['params','effect','target_state','outcome'].includes(column)?JSON.stringify({erasure:reference}):anonymous(value,new Set([...identifiers,...names].filter(text)),reference);
-     else if((column==='target'||column==='value')&&text(value)&&(reset||contains(value,identifiers)))changed[column]=reference;
+     if(referenceColumns.has(column)&&text(value)&&(reset||contains(value,evidenceIdentifiers)))changed[column]=reference;
+     else if(serialized.has(column)&&text(value))changed[column]=column==='subject'&&value.startsWith('{')?JSON.stringify({type:'erased',id:reference}):column==='detail'||column==='data'||['params','effect','target_state','outcome'].includes(column)?JSON.stringify({erasure:reference}):anonymous(value,new Set([...evidenceIdentifiers,...names].filter(text)),reference);
+     else if((column==='target'||column==='value')&&text(value)&&(reset||contains(value,evidenceIdentifiers)))changed[column]=reference;
     }
     // An erased key's proposal cannot retain its foreign-key dependency. Keep
     // its decision, event time and kind in the receipt before removing it.

@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "7d7d1332ebbf9ef7099ec79a63cfe28ff194f563e5709b95ca103e5b9127fa51",
+      "sha256": "8b3ffbd52ad7f30f756eb1756d794112f5eda655f9104346876dc440d30e5789",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "cafbfceb824d1dd5846a15b8a3ad7ab9f2d05c0d6c13f3285c77d8ef11b6e6f6",
+      "sha256": "1bc7eef508b88dc0c073b6db76d9403d5ee7635ed98e9ce8c59d85d25b755f66",
       "executable": false
     },
     "deploy-site.json": {
@@ -187,7 +187,7 @@
       "executable": false
     },
     "docs/activity.md": {
-      "sha256": "d1799494a6d66d073cc90be0bf076ecedc21e75b2c70ee800ba5ced88354fe3c",
+      "sha256": "2c31562a3b18d74561d6d3b23ae063c75fa4034d9649dc88f3d604fadf779a54",
       "executable": false
     },
     "docs/admin-api.md": {
@@ -1263,7 +1263,7 @@
       "executable": false
     },
     "src/auth/audit/query.mjs": {
-      "sha256": "2baef896fc4786a503e396066f58ccd97e6fce4ff58262dc7ea45029a98a72ae",
+      "sha256": "27481451493df87b41a4b23f9d226cccda0c6e9f29c3273cc59a8f5383e81aa6",
       "executable": false
     },
     "src/auth/authorization-login.mjs": {
@@ -1431,7 +1431,7 @@
       "executable": false
     },
     "src/auth/erasure/plan.mjs": {
-      "sha256": "ca187036042ef5adedd5039e5ed9b20c9bbe18610ced2f2f05d68cfd15455a18",
+      "sha256": "435f5108b94eab3d0c5369ba0698a0310147128410451221bbf94b1a998552b3",
       "executable": false
     },
     "src/auth/erasure/portability.mjs": {
@@ -3235,7 +3235,7 @@
       "executable": false
     },
     "tests/auth/audit.test.mjs": {
-      "sha256": "0a395114c3eb00432408c3eb804875a12684c6e6d2505e68470be01bfa32aacc",
+      "sha256": "43fd849ad436327c6ba3a18273c38dcbf289d814d5b8fb7c3f70178457e645c0",
       "executable": false
     },
     "tests/auth/authorization-policy.test.mjs": {
@@ -3663,7 +3663,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "4e2635a82fb75cc71802cd10cfe473a8622c32c55fd4c2ed83479204d8f4a6c7",
+      "sha256": "d2c09600af8416dc3dd6e05d6c9dd0b1d05ec329e534fab7e3744f3cf1231bcb",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {

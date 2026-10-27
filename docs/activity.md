@@ -24,6 +24,9 @@ appends, including backdated appends, cannot enter that traversal or alter its
 authorized total. Erasure, retention deletion or an authority change are outside
 that append-only snapshot guarantee. Erasure uses the existing opaque evidence
 projection; erased personal data is never reconstructed by joining old profiles.
+Historical invitation addresses and address changes bound to the person are
+redacted in persistent audit evidence as well. A historical address never selects
+a different current holder for account or credential deletion.
 Scoped readers receive summaries without free-form details or directory names.
 Related targets outside the role scope are excluded, even for the reader's own
 actions. Native machine log reads remain a separate business-event projection;
