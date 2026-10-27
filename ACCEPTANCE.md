@@ -367,7 +367,9 @@ Existing evidence: `tests/auth/security.test.mjs` ("scheduled continuity drill e
 
 **AUTH-RECOVERY-003 — Same-day help-desk recovery for employees (partial).** As help desk scoped to the employee's group, restore a non-admin employee with no recovery code through manager attestation, and another through a Persona check in an authorized test account, each from case opening to a newly enrolled passkey in under 1 hour. Refuse the path for an administrator, for an employee outside scope, without a recorded verification, and on reuse or after an hour of the enrollment link; see the revoked sessions and every notice.
 
-Existing evidence and limits: src/auth/recovery.mjs; tests/auth/security.test.mjs — another administrator can approve any person's pending recovery the same day, after which the person completes it with email proof; the scoped help-desk role, recorded verification step, admin refusal and one-hour enrollment link are missing.
+<!-- contract-status:AUTH-RECOVERY-003 -->
+Existing evidence and limits: `tests/auth/security.test.mjs` ("recovery waits 72 hours, notifies every session, supports cancellation and distinct admin approval", including `tests/auth/recovery-cases-flow.mjs`); `tests/integration/directory-browser.test.mjs` ("organization and authority journey") — Manager-session attestation, scoped reset, native session and passkey revocation, digest-only case-bound single-use enrollment, employee and manager email notices, and the native passkey journey are implemented. Persona or CLEAR qualification requires an authorized test account and consenting subject; remaining push or TOTP verification, temporary access pass and desktop PIN alternatives, real-device revocation, every enrolled-channel notification and live delivery remain unproved.
+<!-- /contract-status -->
 
 ### Privacy, custody and Base replacements
 

@@ -28,3 +28,7 @@ An agent may prepare Auth administration; a person decides. An administrator min
 
 `scripts/preparer-example.mjs` is this sequence as a script. A preparer key cannot approve, mint, renew or revoke keys, read sessions, passkeys, keys or tokens, open any page, sign in, change settings, or reach the OIDC endpoints; it is not an access token and nothing else accepts it. A person's session cookie is not a preparer key. Approval re-checks the approver's authority and the target's state when it runs, runs once, and records the key, the approver and the result in Activity. Whether Auth should ever issue delegated tokens to agents is a separate protocol decision (AUTH-PROTOCOL-001 stays as it is).
 
+
+## Lander-Regenerate
+
+CONTRACT.md owns status, evidence and gaps. After changing a clause's metadata, run `node ./scripts/contract-docs.mjs write CLAUSE-ID` and `node ./scripts/contract-docs.mjs check CLAUSE-ID`. This preserves legacy acceptance journeys and untouched evidence, updates the selected generated metadata, and regenerates docs/CLAIMS.md. Run `node ./scripts/edition-authoring/cli.mjs lock` last, then `pnpm check:sources`.

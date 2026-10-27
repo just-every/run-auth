@@ -1,3 +1,4 @@
+import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {DIRECTORY_SOURCES,isDirectorySourceAction,directorySourceRead,directorySourceAction,directorySourceScim} from './directory-sources/routes.mjs';
 import {FEDERATION_READ,isFederationAction,federationRead,federationAction,federationSetupRoute} from './federation/setup.mjs';
 import {sendDelivery} from './delivery/send.mjs';
@@ -171,6 +172,9 @@ function scopedRuntime(options) {
      if(isTenancyAction(action)){const response=await tenancyAction(ctx,request,action,data);if(['/organizations/invite','/organizations/cancel-invitation'].includes(action))await syncObligations(ctx);return response;}
      if(['/recovery/start','/recovery/request'].includes(action))return await startRecovery(ctx,request);
      if(['/recovery/cancel','/recovery/approve','/recovery/complete'].includes(action))return await changeRecovery(ctx,request,data,action.split('/').at(-1));
+     if(action==='/recovery/case-attest')return await attestCase(ctx,request,data);
+     if(action==='/recovery/case-cancel')return await cancelCase(ctx,request,data);
+     if(action==='/recovery/enroll')return await redeemEnrollment(ctx,request,data);
      if(action==='/recovery/token')return await redeemRecoveryToken(ctx,request,data);
      if(action.startsWith('/move-in/'))return await moveInAction(ctx,request,action,data);
      if(action.startsWith('/agents/'))return await agentsAction(ctx,request,action,data);
