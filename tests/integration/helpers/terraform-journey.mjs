@@ -18,7 +18,7 @@ export async function terraformJourney({app,context,page,t,shoot}) {
   const timer=setTimeout(()=>child.kill('SIGTERM'),180000);
   try{return await new Promise((resolve,reject)=>{child.on('error',reject);child.on('close',code=>resolve({code,output}));});}finally{clearTimeout(timer);}
  }
- const build=await run('go',['-C',join(root,'packages/terraform-provider'),'build','-o',join(destination,'terraform-provider-auth_v0.1.0'),'.']);assert.equal(build.code,0,build.output);
+ const build=await run('go',['-C',join(root,'packages/terraform-provider'),'build','-buildvcs=false','-o',join(destination,'terraform-provider-auth_v0.1.0'),'.']);assert.equal(build.code,0,build.output);
  const key=await generateKeyPair('ES256',{extractable:true});
  const me=await(await context.request.get(app.origin+'/api/auth/me')).json();
  const serviceResponse=await context.request.post(app.origin+'/api/auth/admin-service-apps/create',{headers:{origin:app.origin},data:{name:'Terraform browser journey',purpose:'Reconcile a scoped app and detect UI drift',ownerId:me.user.id,expiresAt:Date.now()+3600000,scopes:['groups.manage','apps.manage','assignments.manage'],resources:{people:['*'],groups:['*'],apps:['*']},jwks:{keys:[{...await exportJWK(key.publicKey),kid:'synthetic-auth-202',alg:'ES256'}]}}});assert.equal(serviceResponse.status(),201,await serviceResponse.text());const service=await serviceResponse.json();

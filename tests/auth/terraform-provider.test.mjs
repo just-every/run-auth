@@ -26,7 +26,7 @@ for(const cli of ['terraform','tofu'])test(`${cli} installs the Auth provider an
  const host=cli==='terraform'?'registry.terraform.io':'registry.opentofu.org';
  const platform=process.platform==='darwin'?'darwin':process.platform,arch=process.arch==='arm64'?'arm64':'amd64';
  const binaryDir=join(mirror,host,'runeditrun','auth','0.1.0',`${platform}_${arch}`);await mkdir(binaryDir,{recursive:true});
- const built=await run('go',['build','-o',join(binaryDir,'terraform-provider-auth_v0.1.0'),'.'],{cwd:join(root,'packages/terraform-provider')});assert.equal(built.code,0,built.output);
+ const built=await run('go',['build','-buildvcs=false','-o',join(binaryDir,'terraform-provider-auth_v0.1.0'),'.'],{cwd:join(root,'packages/terraform-provider')});assert.equal(built.code,0,built.output);
  const configFile=join(dir,'cli.tfrc');await writeFile(configFile,`provider_installation { filesystem_mirror { path = ${JSON.stringify(mirror)} } }`);
  const r=await openRuntime();t.after(()=>r.close());const requests=[],tokens=[];
  const server=createServer(async(req,res)=>{

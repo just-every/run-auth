@@ -3435,7 +3435,7 @@
       "executable": false
     },
     "tests/auth/terraform-provider.test.mjs": {
-      "sha256": "6d9f8782804211339826f291b6aa80d75e605c898ff5faddb7c7ebea3442adb5",
+      "sha256": "49156fd57d24f8a0d89030797f54b561bb01659edda5d9ff6f9ac53a6829263d",
       "executable": false
     },
     "tests/auth/upstream-helpers.mjs": {
@@ -3667,7 +3667,7 @@
       "executable": false
     },
     "tests/integration/helpers/terraform-journey.mjs": {
-      "sha256": "fe8d002a4d6e3060e884f58b30a2b5237ef04486fc60dcda01115d3b07813180",
+      "sha256": "67238ecd78676bfc4aba8af7808da8343c59b12f6b668c310135b3aa4b19ea2a",
       "executable": false
     },
     "tests/integration/http.test.mjs": {
