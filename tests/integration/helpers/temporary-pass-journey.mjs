@@ -31,8 +31,6 @@ export async function temporaryPassJourney({app,browser,page,directory}) {
  await post('/api/auth/directory/edit',{personId:hire.personId,set:{manager:me.user.id}});
  const helper=await post('/api/auth/directory/onboard',{name:'Synthetic scoped helper',email:'synthetic-auth-helper@example.com',kind:'employee',set:{}},owner,201);
  const group=await post('/api/auth/groups/create',{name:'Day-one onboarding'},owner,201);await post('/api/auth/groups/add',{groupId:group.id,personId:hire.personId});
- const scope={view:{groups:[group.id]},edit:{groups:[group.id]}};
- const preview=await post('/api/auth/roles/preview',{kind:'grant',personId:helper.id,roleId:'help-desk',resources:scope});await post('/api/auth/roles/apply',{previewId:preview.previewId});
  const helperContext=await browser.newContext(),helperPage=await helperContext.newPage(),hireContext=await browser.newContext(),hirePage=await hireContext.newPage();
  try {
   await hardware(helperContext,helperPage);await helperPage.goto(app.origin+'/signin');
@@ -40,6 +38,8 @@ export async function temporaryPassJourney({app,browser,page,directory}) {
   await expect(helperPage.locator('[data-auth-status]')).toContainText('link has been sent');
   await helperPage.goto((await app.link()).href);await helperPage.getByRole('button',{name:'Continue to Auth'}).click();
   await helperPage.goto(app.origin+'/app/methods');const helperEnrolled=helperPage.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await helperPage.getByRole('button',{name:'Register a passkey',exact:true}).click();assert.equal((await helperEnrolled).status(),200);
+  const scope={view:{groups:[group.id]},edit:{groups:[group.id]}};
+  const preview=await post('/api/auth/roles/preview',{kind:'grant',personId:helper.id,roleId:'help-desk',resources:scope});await post('/api/auth/roles/apply',{previewId:preview.previewId});
   await page.goto(app.origin+'/app/account#temporary-passes');const managerPanel=page.locator('#temporary-passes');
   await managerPanel.getByLabel('Manager verification').fill('Verified the new hire in person against the employer record');
   const requested=page.waitForResponse(r=>r.url().endsWith('/temporary-passes/request'));await managerPanel.getByRole('button',{name:'Verify and request pass'}).click();assert.equal((await requested).status(),201);
