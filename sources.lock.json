@@ -611,7 +611,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "3a95134f923d05ffa0e062a274fbd899024bed671bd1f895fc29db86445a4d8c",
+      "sha256": "d432d1c59ee3f9077195e9e754266cec84e197a46ca16cc604e3e96903e1b3dd",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -642,8 +642,16 @@
       "sha256": "98222537104e8ad386a6215c8f7a5cf24d3be8c806dd86df544f5f5dda4c8587",
       "executable": false
     },
+    "packages/hono-sdk/examples/browser.mjs": {
+      "sha256": "474b28da21c7c5e86ffe81f065804fd2d112962baa6f170002351bc6adb7065d",
+      "executable": false
+    },
     "packages/hono-sdk/examples/protected.mjs": {
       "sha256": "13f59cf76bc1dc34caf7aef1c10b3198a8ce1bdb402787e57119fef02568e540",
+      "executable": false
+    },
+    "packages/hono-sdk/examples/server.mjs": {
+      "sha256": "5d56fb8cf6cf1c3e4f6880a0f2f35fffd35c0c0614e4f464515701a971f6b9cd",
       "executable": false
     },
     "packages/hono-sdk/index.mjs": {
@@ -655,7 +663,7 @@
       "executable": false
     },
     "packages/hono-sdk/README.md": {
-      "sha256": "6cec876ead8ed0268d2e8770a9c0252e4ceda18333626a9a2b7f06961e6bfa4d",
+      "sha256": "d4e03ee7b7af5d8582a98d9caefd4299b678f3dca483f376b206be4cfc367f17",
       "executable": false
     },
     "packages/session-sdk/admin.mjs": {
@@ -675,7 +683,7 @@
       "executable": false
     },
     "packages/session-sdk/README.md": {
-      "sha256": "791fac93857c3a7058f7d56a83d314818ea6021dde63974301686959cfb36999",
+      "sha256": "5670de0764e706f997ff43b998c263284675bcd47db631030964c05adec6ea70",
       "executable": false
     },
     "packages/terraform-provider/go.mod": {
@@ -1607,7 +1615,7 @@
       "executable": false
     },
     "src/auth/links/end-session.mjs": {
-      "sha256": "7eaffb50bff7d8fbdd086bf770045ec5e5eaad5bbc52aadee528c66b5e031ee4",
+      "sha256": "84fe1c811efc05941ecac116789eb1ca9c9b34ef79418e4fdfb23cb8375164e7",
       "executable": false
     },
     "src/auth/links/grant-map.mjs": {
@@ -3704,6 +3712,10 @@
     },
     "tests/integration/runtime.mjs": {
       "sha256": "3202297aab14a7c069b339ce2b6fd98e88cfdfadc1c364619ae24eb4398af6f9",
+      "executable": false
+    },
+    "tests/integration/sdk-browser.test.mjs": {
+      "sha256": "e5c1b17f1a3426d185df707dcf03ac48b6bfb4b5c5f66355a7c4a563a104a9c2",
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {
