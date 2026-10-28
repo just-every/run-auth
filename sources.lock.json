@@ -3495,7 +3495,7 @@
       "executable": false
     },
     "tests/auth/link/runtime.mjs": {
-      "sha256": "08fa5958f97a2f0501e783cb9d55577ee72c4c4baa4158fbdc195717d4dc8991",
+      "sha256": "d8b292e9b552a7808f8f2272a49674cec846632fc2e986bdf1612adf4fcda761",
       "executable": false
     },
     "tests/auth/link/schema.mjs": {
@@ -3895,7 +3895,7 @@
       "executable": false
     },
     "tests/integration/helpers/temporary-pass-journey.mjs": {
-      "sha256": "16ce1751d5153fe718e065b3db9a0addc73f69968cf2b556a1a210466ee095d8",
+      "sha256": "a38151773a997281780ac2562690a896f762b2fb28d1300e5742cfd1ecf68535",
       "executable": false
     },
     "tests/integration/helpers/terraform-journey.mjs": {
