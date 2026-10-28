@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "34c0a16da4799ea945ee3a81a965135ceb71f95fc7f0584d5283ee7f61e83e96",
+      "sha256": "bcea6123a688a60b8c4019e97175b58892a243d107975ebe28256bfe51f050f6",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "ad45a171f61eb9a908f1c9e97cbca431755fe7225d992d62e27e78b9f528ca6c",
+      "sha256": "4422f552e407825c2bbe0b875eabdb9fce1831fdb9122bbe776e68de9f413662",
       "executable": false
     },
     "deploy-site.json": {
@@ -291,7 +291,7 @@
       "executable": false
     },
     "docs/security-notifications.md": {
-      "sha256": "730bc87193246243f01eccabde3529ef02c0b1cb2e0cd576f804c61b30dc4f5f",
+      "sha256": "7d0cf7dbf8d68ad617cff567c0517047c84dc0424b7d502fdc02c1b420a471a6",
       "executable": false
     },
     "docs/sign-in.md": {
@@ -638,6 +638,10 @@
       "sha256": "8b85831cdad62a5b17ae436a0e51050a2719ca5f548bf982f20110151b023285",
       "executable": false
     },
+    "migrations/core/0077_auth_role_notice_intents.sql": {
+      "sha256": "bf4ce6f71fc936e41f5623726e52c81d9ced2243a715d90b5df9548c8f3af014",
+      "executable": false
+    },
     "MOVE-IN.md": {
       "sha256": "6ae7c746b82f539f41885e5b2e61dc95928931b7985a21cf3b6d45a3de5b54af",
       "executable": false
@@ -931,7 +935,7 @@
       "executable": false
     },
     "scripts/contract-docs.mjs": {
-      "sha256": "13d9ae26234da0d604acfff59c78cd6334998939b79b1f8a19c571147bc3ce70",
+      "sha256": "13d5e7d8cf6fd765a981c42e0c9c8e08109f917009427e2247311204007d13ea",
       "executable": false
     },
     "scripts/delivery/base/artifact.mjs": {
@@ -1807,15 +1811,19 @@
       "executable": false
     },
     "src/auth/notifications/delivery.mjs": {
-      "sha256": "9f0619e9b8b994279da60c2728af7befefe0ce8cb11f9f503baea90040ab36fd",
+      "sha256": "b0ef9aa05d72ceb78a5c61050d555d16dd531702683f342403d0431e91b5f9b7",
       "executable": false
     },
     "src/auth/notifications/followup.mjs": {
-      "sha256": "b10ca51f9cee13de4622afae6151454f70582a53bad0b423ed98b6ba12e8f422",
+      "sha256": "0e1c3c4f7368bb7ad5b7e85e68935bafe38a7616e693c2575e1f84923d997140",
       "executable": false
     },
     "src/auth/notifications/index.mjs": {
       "sha256": "a210942e31fe68448f4e869e35c9ebe2c2557e6188d3d1e4ce52622167e3f912",
+      "executable": false
+    },
+    "src/auth/notifications/intents.mjs": {
+      "sha256": "9c9ceb3166a20a4d527de54dfcdd67d162acc867b4a98aca0292b106c00cd566",
       "executable": false
     },
     "src/auth/notifications/messages.mjs": {
@@ -1827,7 +1835,7 @@
       "executable": false
     },
     "src/auth/notifications/routes.mjs": {
-      "sha256": "7cb3c8291bb59e75739185feb69a084ecf433629c62e15cf5f6644c57b663419",
+      "sha256": "1fe61e78b7f3647ad901fac2c3736801d42d21fa26201ab5a4851687ef9d303f",
       "executable": false
     },
     "src/auth/notifications/service.mjs": {
@@ -2087,7 +2095,7 @@
       "executable": false
     },
     "src/auth/roles/plans.mjs": {
-      "sha256": "7e119a6d543246ad987a330e3c155d1166bb8485bcff3df9753033c2dbaa4861",
+      "sha256": "34f668763dc08ad689d8b83eac71c8e8076ca8b1b41c739f6a2e34505e4957f8",
       "executable": false
     },
     "src/auth/roles/policy.mjs": {
@@ -2147,7 +2155,7 @@
       "executable": false
     },
     "src/auth/stores.mjs": {
-      "sha256": "e0692563adcb3fe5ec3548917ab4fd002b77b84403d0865d7863f64e560dca55",
+      "sha256": "465e51bbc6e6ba23e6961a158e28f31455fd7e2595b73971a4d43da8b9234dfb",
       "executable": false
     },
     "src/auth/temporary-passes/authority.mjs": {
@@ -3255,7 +3263,7 @@
       "executable": false
     },
     "src/ui/pages/followup.ts": {
-      "sha256": "dbc5a9a3f7c9361bd0a538a01869a6f2f036048bc6cc4d24af41988994f0206e",
+      "sha256": "de2365bc0fe47f9efc0252f214e5b03303c29363ab32a17cfe7daaebe77e48f0",
       "executable": false
     },
     "src/ui/pages/inline-hooks.ts": {
@@ -3451,7 +3459,7 @@
       "executable": false
     },
     "tests/auth/fresh-proof.test.mjs": {
-      "sha256": "d73bedb2e2405c846e2b397e3d0bad8f219efecae770d2c100f2dc20b60b9037",
+      "sha256": "1247397473cecbd9bc837026d0ff7f8f8f2367c2d3470c81b26990fd5716d609",
       "executable": false
     },
     "tests/auth/hooks-server.mjs": {
@@ -3523,7 +3531,7 @@
       "executable": false
     },
     "tests/auth/notifications-flow.mjs": {
-      "sha256": "fabac17c44ca83a69fa80087bc9c0bfc1c60358ef771d08536ef1b4353b0193b",
+      "sha256": "cf3f243510b1504455ee940f381f623fd34c178e9322278367177aff858657a3",
       "executable": false
     },
     "tests/auth/notifications.test.mjs": {
@@ -3603,7 +3611,7 @@
       "executable": false
     },
     "tests/auth/runtime.mjs": {
-      "sha256": "ee7ccfd952e7d8281ad29e7a2b5810a31d5da3df14fc178d348dfa5b4107315c",
+      "sha256": "258e21d0eb8ea7355ee5856f216b08514aa3dfd6f69b2c841483dfa453202f4b",
       "executable": false
     },
     "tests/auth/saml-helpers.mjs": {
@@ -3659,7 +3667,7 @@
       "executable": false
     },
     "tests/auth/worker.mjs": {
-      "sha256": "b1b2e573d30602dd5145ca80444387f3c9bc00caf803b9f055881b4c20e543f5",
+      "sha256": "93d30f644ab97c2a6582070fbcdffa5cf470e38df5fb8519275a2d2ef42da65d",
       "executable": false
     },
     "tests/conformance/auth-fixture.mjs": {
@@ -3811,7 +3819,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "3a28e285b4356666c33e41feb3488f2889055066903c2a0aeff05f2f024c9547",
+      "sha256": "2fcf68e7e38d2f211e8f621ec0ac27bad5c05379e695571f18c2445aecb72d7b",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {

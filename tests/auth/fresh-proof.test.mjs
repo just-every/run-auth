@@ -20,7 +20,7 @@ async function enroll(r,cookie) {
 test('every sensitive action refuses a stale local email proof without change and succeeds after a fresh confirmation',async t=>{
  const r=await openRuntime();t.after(()=>r.close());
  r.upstreamProviders=[{id:'company',preset:'google',clientId:'test-client',tokenAuthMethod:'client_secret_basic',clientSecret:'test-edge-only'}];
- for(const [id,role] of [['owner','owner'],['admin','admin'],['helper','admin'],['member','member'],['target','member'],['newcomer','member'],['leaver','member'],['factor-worker','member'],['role-worker','member'],['erase-worker','member']])await r.person(id,`${id}@example.com`,role);
+ for(const [id,role] of [['owner','owner'],['admin','admin'],['helper','admin'],['member','member'],['target','member'],['newcomer','member'],['leaver','member'],['factor-worker','member'],['role-worker','member'],['notice-worker','member'],['erase-worker','member']])await r.person(id,`${id}@example.com`,role);
  await r.call('/.well-known/openid-configuration');
  const owner=await register(r,await emailSession(r,'owner@example.com')),admin=await register(r,await emailSession(r,'admin@example.com'));
  await verifyDomains(t,r,owner.cookie,['allowed.example','alias.example','company.example']);
@@ -45,7 +45,7 @@ test('every sensitive action refuses a stale local email proof without change an
  const hardware=async(address,cookie,client=r)=>{const confirmed=await finishProof(client,await requestProof(client,address,cookie));assert.equal(confirmed.status,200);return cookieOf(confirmed);};
  const fresh={owner:await hardware('owner@example.com',owner.cookie),admin:await hardware('admin@example.com',admin.cookie),member:await emailSession(r,'member@example.com'),ownerEmail:await emailSession(r,'owner@example.com'),newcomer:await emailSession(r,'newcomer@example.com'),employerOwner:await hardware('owner@example.com',employerOwner.cookie,employer),employerOwnerEmail:await emailSession(employer,'owner@example.com')};
  const key=()=>value(r,'SELECT kid AS v FROM auth_signing_keys ORDER BY published_at DESC,kid LIMIT 1');
- let rolePreview,hold,erasurePreview,erased,resetPreview;
+ let rolePreview,roleGrantPreview,hold,erasurePreview,erased,resetPreview;
  const capture=async(response,save)=>{if(response.ok)save(await response.clone().json());return response;};
  // Rank/custody fences require the owner for an administrator target and for
  // moving or revoking a credential after it is assigned to that owner.
@@ -78,6 +78,8 @@ test('every sensitive action refuses a stale local email proof without change an
   ['agent key revocation','admin',cookie=>r.call('/api/auth/agents/revoke',post({keyId},cookie)),()=>value(r,'SELECT revoked_at AS v FROM auth_agent_keys WHERE id=?',keyId)],
   ['roles preview','owner',cookie=>r.call('/api/auth/roles/preview',post({kind:'role',role:{name:'Proof-controlled viewer',rank:30,permissions:['apps.view']}},cookie)).then(response=>capture(response,data=>{rolePreview=data;})),()=>value(r,'SELECT count(*) AS v FROM auth_role_previews'),'ownerEmail'],
   ['roles apply','owner',cookie=>r.call('/api/auth/roles/apply',post({previewId:rolePreview.previewId},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_roles'),'ownerEmail'],
+  ['scoped role grant preview','owner',cookie=>r.call('/api/auth/roles/preview',post({kind:'grant',personId:'notice-worker',roleId:'app-administrator',resources:{view:{apps:['*']},edit:{apps:['*']}}},cookie)).then(response=>capture(response,data=>{roleGrantPreview=data;})),()=>value(r,'SELECT count(*) AS v FROM auth_role_previews'),'ownerEmail'],
+  ['scoped role grant apply','owner',cookie=>r.call('/api/auth/roles/apply',post({previewId:roleGrantPreview.previewId},cookie)),async()=>[await value(r,'SELECT count(*) AS v FROM auth_role_grants'),await value(r,'SELECT count(*) AS v FROM auth_security_notice_intents')],'ownerEmail'],
   ['roles factor reset','owner',cookie=>r.call('/api/auth/roles/reset-factors',post({personId:'factor-worker',reason:'Verified employee factor replacement'},cookie)),()=>passkeys(r,'factor-worker'),'ownerEmail'],
   ['roles profile','owner',cookie=>r.call('/api/auth/roles/profile',post({personId:'role-worker',fields:{department:'Engineering'}},cookie)),()=>value(r,"SELECT count(*) AS v FROM auth_person_fields WHERE person_id='role-worker'"),'ownerEmail'],
   ['roles recovery case','owner',cookie=>r.call('/api/auth/roles/recovery-case',post({action:'open',personId:'role-worker',reason:'Employee recovery review'},cookie)),()=>value(r,'SELECT count(*) AS v FROM auth_role_cases'),'ownerEmail'],
