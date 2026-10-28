@@ -94,7 +94,7 @@ Auth checkout, run `npm pack ./packages/session-sdk --pack-destination /tmp`.
 In the empty app run `npm init -y`, then
 `npm install /tmp/runeditrun-auth-sdk-0.1.0.tgz`. Registry publication is not
 claimed. Import `createSessionClient` from `@runeditrun/auth-sdk` for the
-explicit public-client OAuth/DPoP profile documented above.
+explicit public-client OAuth and DPoP profile documented above.
 
 The server-only `@runeditrun/auth-sdk/admin` export provides
 `createAdminClient({issuer,clientId,privateKey,kid,algorithm='ES256',scopes})`.
@@ -130,7 +130,7 @@ the cached token and returns the refusal without retry. Errors expose only the
 stable code, status and numeric retry-after, never provider bodies, keys,
 assertions or tokens. This client does not verify external JWTs or cache JWKS.
 For issuer signing-key rotation Auth verifies against its current local keys.
-To replace a service signing key, register a replacement service/key through
+To replace a service signing key, register a replacement service with its signing key through
 the authorized human door, deploy a new client instance and revoke the old
 service; the SDK cannot mutate its own key custody.
 
@@ -145,4 +145,9 @@ bypassed by editing SDK internals. The Node administration slice adds no web
 session or cross-employer authority. The Python administration package is in
 `./packages/admin-python/README.md`; the Hono authorization adapter is in
 `./packages/hono-sdk/README.md`. Next.js and React, embedded components and
-complete fresh-install employee web journeys remain DEVELOPER-001 work.
+other framework employee web journeys remain DEVELOPER-001 work. The installed
+Hono and Node browser quickstart in `./packages/hono-sdk/README.md` holds each
+employer session on the server, requires independent employer consent, and ends
+local application authority before Auth logout confirmation. Its in-memory
+sessions deliberately require new sign-in after restart; it does not establish
+durable session continuity or embedded component support.
