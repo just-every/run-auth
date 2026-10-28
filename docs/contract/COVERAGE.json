@@ -2249,10 +2249,7 @@
       "line": 505,
       "cell": "gap",
       "text": "None. The named organization journey additionally registers encrypted employer-local Google clients and proves identical issuer/subject/email produce independent people and no callback, session or root trust transfer. `docs/employer-providers.md` documents the bounded owner-only registration door.",
-      "to": "gap",
-      "ids": [
-        "AUTH-TENANCY-002"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2426,20 +2423,14 @@
       "line": 525,
       "cell": "gap",
       "text": "Limits: attributes use fixed directory sources or versioned expressions (AUTH-MAPPING-001); metadata is pasted, not fetched by URL; RequestedAuthnContext is not interpreted.",
-      "to": "gap",
-      "ids": [
-        "AUTH-SAML-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
       "line": 526,
       "cell": "gap",
       "text": "Limit: a fresh install signs only with keys published five minutes earlier.",
-      "to": "gap",
-      "ids": [
-        "AUTH-OIDC-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2476,10 +2467,7 @@
       "line": 531,
       "cell": "gap",
       "text": "Limit: an email change travels the same update path (AUTH-DIRECTORY-001 edit door).",
-      "to": "gap",
-      "ids": [
-        "AUTH-SCIM-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2496,10 +2484,7 @@
       "line": 534,
       "cell": "gap",
       "text": "None for the approved per-file profile. Unapproved recurring changes never apply. Remote provisioning and outbound consent remain separate obligations.",
-      "to": "gap",
-      "ids": [
-        "AUTH-HRIS-002"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2711,10 +2696,7 @@
       "line": 556,
       "cell": "gap",
       "text": "None for the documented constrained verifier profile. Standalone exact-candidate bound receipt: `sx-auth-c12-final-targets`. Unsupported hashes/factors require reset/reenrollment; old-password verification never supplies Auth proof or administrator authority.",
-      "to": "gap",
-      "ids": [
-        "AUTH-MIGRATION-002"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2884,10 +2866,7 @@
       "line": 577,
       "cell": "gap",
       "text": "No acceptance gap remains. Unsupported repair or probe profiles remain explicitly unverified; uncertain diagnoses have a next diagnostic action and cannot be approved.",
-      "to": "gap",
-      "ids": [
-        "AUTH-AGENT-002"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2904,11 +2883,7 @@
       "line": 579,
       "cell": "gap",
       "text": "External and MCP profiles are separately registered under AUTH-AGENT-006; native assignment credentials retain their original target restrictions.",
-      "to": "gap",
-      "ids": [
-        "AUTH-AGENT-004",
-        "AUTH-AGENT-007"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2925,10 +2900,7 @@
       "line": 581,
       "cell": "gap",
       "text": "None for the bounded registered POST profile. A resource must perform authenticated live one-use redemption before its exact effect; a release receipt leaves the remote outcome unknown.",
-      "to": "gap",
-      "ids": [
-        "AUTH-AGENT-006"
-      ]
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
