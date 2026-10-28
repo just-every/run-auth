@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "8cd8282971839b7267500bc4041728ea6d9c5dc4285f840d58d33043caf7cf8e",
+      "sha256": "7ebc94d85eb2106105a444acc027f7ab1c26fd087e593b0dfed21bc737e85f6d",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "9fdef79849e70048b2b7b01b51287dbf168567453509448750e6de18c2d44df3",
+      "sha256": "e11f637747c1a25551d05e06908123e236ae792a7efed481c184944bbfc65315",
       "executable": false
     },
     "deploy-site.json": {
@@ -303,7 +303,7 @@
       "executable": false
     },
     "docs/upstream-campaigns.md": {
-      "sha256": "f04d950b1e359d36f39681fcc8615babca4a8b49bb3eae11e37973a9de0fca72",
+      "sha256": "addac1740a734fa3c2f5d627e54f672f930279034c8426bbe79c0d5a33e136d3",
       "executable": false
     },
     "docs/verified-domains.md": {
@@ -3443,7 +3443,7 @@
       "executable": false
     },
     "tests/auth/federation-flow.mjs": {
-      "sha256": "5b3b2df65b29f90f93bd89a4c995152fe52f9c10d16e6f636ca7bbd6d56084af",
+      "sha256": "b9d7b57e235c74626d423c888713e608b0ed0e7eef9158340cd9469e8d7c20b3",
       "executable": false
     },
     "tests/auth/followup-decisions-flow.mjs": {
@@ -3891,7 +3891,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "c0fe25ca73a954c68d76c933f29a72f1d535b3532b9fcf345941cbc1424f6677",
+      "sha256": "11400eff5e5d4759c215930aceb564b0ccd52437e716e45c3fe8b32e42692a6b",
       "executable": false
     },
     "tests/integration/helpers/temporary-pass-journey.mjs": {
