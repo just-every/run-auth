@@ -1,3 +1,4 @@
+import {logoutBinding,approvedBinding} from '../lifecycle/binding.mjs';
 import {appAccess} from '../onboarding/gate.mjs';
 // What a general OIDC app gets after sign-in: UserInfo while the person, the
 // session and the app assignment all still hold, and front- and back-channel
@@ -33,8 +34,10 @@ export async function endGenericSessions(ctx,s) {
 async function attempt(ctx,d) {
  const client=await one(ctx,'SELECT * FROM auth_oidc_clients WHERE client_id=?',d.client_id);
  if(!client?.backchannel_logout_uri)return {finished:true,outcome:'app_removed'};
+ if(!await approvedBinding(ctx,d.id,await logoutBinding(client,true)))return {finished:true,outcome:'approved_app_changed'};
  const token=await signToken(ctx,{aud:client.client_id,sub:await subjectFor(ctx,client,d.person_id),sid:d.sid,jti:d.jti,events:{'http://schemas.openid.net/event/backchannel-logout':{}}},{alg:client.id_token_alg,typ:'logout+jwt',expiresAt:Math.floor(ctx.now()/1000)+120});
  let status;
+ await run(ctx,'UPDATE auth_oidc_logouts SET dispatched_at=COALESCE(dispatched_at,?) WHERE id=?',ctx.now(),d.id);
  try {
   const response=await (ctx.connectorFetch||fetch)(client.backchannel_logout_uri,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(10000),headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({logout_token:token}).toString()});
   status=response.status;await response.body?.cancel();
@@ -46,8 +49,10 @@ async function attempt(ctx,d) {
 export async function deliverGenericLogouts(ctx,ids=null) {
  const due=ids?await all(ctx,`SELECT * FROM auth_oidc_logouts WHERE finished_at IS NULL AND id IN (${ids.map(()=>'?').join(',')})`,...ids)
   :await all(ctx,'SELECT * FROM auth_oidc_logouts WHERE finished_at IS NULL AND next_attempt_at<=? ORDER BY next_attempt_at LIMIT 50',ctx.now());
- for(const d of due) {
+ for(const row of due) {
+  const d=await one(ctx,'UPDATE auth_oidc_logouts SET claimed_until=? WHERE id=? AND finished_at IS NULL AND next_attempt_at<=? AND (claimed_until IS NULL OR claimed_until<=?) RETURNING *',ctx.now()+120000,row.id,ctx.now(),ctx.now());
+  if(!d)continue;
   const result=await attempt(ctx,d),attempts=d.attempts+1,next=ctx.now()+RETRY[Math.min(attempts-1,RETRY.length-1)],expired=!result.finished&&next>d.created_at+HORIZON;
-  await run(ctx,'UPDATE auth_oidc_logouts SET attempts=?,next_attempt_at=?,finished_at=?,outcome=? WHERE id=? AND finished_at IS NULL',attempts,next,result.finished||expired?ctx.now():null,expired?'abandoned_after_24h':result.outcome,d.id);
+  await run(ctx,'UPDATE auth_oidc_logouts SET claimed_until=NULL,attempts=?,next_attempt_at=?,finished_at=?,outcome=? WHERE id=? AND finished_at IS NULL',attempts,next,result.finished||expired?ctx.now():null,expired?'abandoned_after_24h':result.outcome,d.id);
  }
 }

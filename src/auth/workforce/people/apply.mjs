@@ -1,3 +1,8 @@
+import {deliverGenericLogouts} from '../../oidc-apps/session.mjs';
+import {prepareLeaver} from '../../lifecycle/plan.mjs';
+import {reconcileLeavers} from '../../lifecycle/history.mjs';
+import {deliverLogouts} from '../../links/logout.mjs';
+import {dispatch} from '../../provisioning/obligations.mjs';
 // Doing a plan: every statement of a person's edit commits together, each under
 // the administrator's live authority, then the effects follow (sign-out fence,
 // events, provisioning, group provisioning) once the change has committed.
@@ -14,18 +19,18 @@ import {emit,personSubject} from '../../events/store.mjs';
 const EVENTS={suspend:'person.suspended',terminate:'person.terminated',restore:'person.restored',rehire:'person.restored'};
 const REASONS={suspend:'person_suspended',terminate:'person_terminated',restore:'person_restored',rehire:'person_restored'};
 
-function stateStatements(ctx,g,id,change) {
+function stateStatements(ctx,g,id,change,at) {
  const claim=`id=? AND role!='owner'`;
  if(change.kind==='suspend')return [ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE ${claim} AND status='active' AND ${g.clause}`).bind(id,...g.args)];
  if(change.kind==='terminate')return [
-  ctx.db.prepare(`INSERT INTO auth_people(person_id,terminated_at) SELECT ?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM oa_operators WHERE ${claim} AND status IN ('active','inactive')) ON CONFLICT(person_id) DO UPDATE SET terminated_at=excluded.terminated_at`).bind(id,ctx.now(),...g.args,id),
+  ctx.db.prepare(`INSERT INTO auth_people(person_id,terminated_at) SELECT ?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM oa_operators WHERE ${claim} AND status IN ('active','inactive')) ON CONFLICT(person_id) DO UPDATE SET terminated_at=excluded.terminated_at`).bind(id,at,...g.args,id),
   ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE ${claim} AND status IN ('active','inactive') AND ${g.clause}`).bind(id,...g.args),
  ];
  return [ctx.db.prepare(`UPDATE oa_operators SET status='active' WHERE id=? AND status='inactive' AND ${g.clause}`).bind(id,...g.args)];
 }
 
 // The statements of one planned entry; `stateAt` is the index of the status change, whose row count proves it applied.
-function entryStatements(ctx,g,actorId,dir,e) {
+function entryStatements(ctx,g,actorId,dir,e,at=ctx.now()) {
  const statements=[];let stateAt=-1;
  for(const w of e.writes)statements.push(w.value===null?clearStatement(ctx,g,e.personId,w.field,w.source):setStatement(ctx,g,e.personId,w.field,w.source,w.value,actorId));
  if(e.nameChange)statements.push(ctx.db.prepare(`UPDATE oa_operators SET display_name=? WHERE id=? AND ${g.clause}`).bind(e.nameChange.to,e.personId,...g.args));
@@ -33,7 +38,7 @@ function entryStatements(ctx,g,actorId,dir,e) {
   ctx.db.prepare(`DELETE FROM auth_emails WHERE person_id=? AND ${g.clause}`).bind(e.personId,...g.args),
   ctx.db.prepare(`UPDATE oa_operators SET email=?,version=version+1 WHERE id=? AND ${g.clause}`).bind(e.emailChange.to,e.personId,...g.args));
  if(e.bind&&!dir.sourceIds.has(`${e.bind.source}:${e.personId}`))statements.push(ctx.db.prepare(`INSERT INTO auth_person_sources(source,source_id,person_id,bound_by,bound_at) SELECT ?,?,?,?,? WHERE ${g.clause}`).bind(e.bind.source,e.bind.sourceId,e.personId,actorId,ctx.now(),...g.args));
- if(e.state){const s=stateStatements(ctx,g,e.personId,e.state);stateAt=statements.length+s.length-1;statements.push(...s);}
+ if(e.state){const s=stateStatements(ctx,g,e.personId,e.state,at);stateAt=statements.length+s.length-1;statements.push(...s);}
  for(const gr of e.groups.added)statements.push(addRuleMember(ctx,g,gr.id,e.personId,actorId));
  for(const gr of e.groups.removed)statements.push(dropRuleMember(ctx,g,gr.id,e.personId));
  return {statements,stateAt};
@@ -41,17 +46,18 @@ function entryStatements(ctx,g,actorId,dir,e) {
 const touched=e=>e.writes.length||e.state||e.emailChange||e.nameChange||e.bind||e.groups.added.length||e.groups.removed.length;
 
 // Effects that follow a committed change. Identity fences go out for anything that ends sessions.
-async function afterwards(ctx,actorId,e,bulk) {
+async function afterwards(ctx,actorId,e,bulk,leaver) {
  const id=e.personId,subject=await personSubject(ctx,id);
  if(e.state){
-  if(e.state.kind==='suspend'||e.state.kind==='terminate')await fencePerson(ctx,id);
-  await emit(ctx,EVENTS[e.state.kind],subject,{});await personChanged(ctx,id,REASONS[e.state.kind]);
+  if(!leaver&&(e.state.kind==='suspend'||e.state.kind==='terminate'))await fencePerson(ctx,id);
+  await emit(ctx,EVENTS[e.state.kind],subject,{});if(!leaver)await personChanged(ctx,id,REASONS[e.state.kind]);
  }
- if(e.emailChange){await fencePerson(ctx,id);await personChanged(ctx,id,'person_email_changed');}
+ if(e.emailChange&&!leaver){await fencePerson(ctx,id);await personChanged(ctx,id,'person_email_changed');}
  else if(e.nameChange&&!e.state)await personChanged(ctx,id,'person_name_changed');
  if(e.writes.length||e.nameChange||e.emailChange)await emit(ctx,'person.updated',subject,{fields:[...new Set([...e.writes.map(w=>w.field),...(e.nameChange?['name']:[]),...(e.emailChange?['email']:[])])],source:e.source});
  for(const [list,type,reason] of [[e.groups.added,'group.member_added','group_member_added'],[e.groups.removed,'group.member_removed','group_member_removed']])
-  for(const gr of list){await emit(ctx,type,subject,{group:gr.id,via:'rule'});await groupChanged(ctx,gr.id,[id],reason);}
+  for(const gr of list){await emit(ctx,type,subject,{group:gr.id,via:'rule'});if(!leaver)await groupChanged(ctx,gr.id,[id],reason);}
+ if(leaver){const work=(async()=>{await deliverLogouts(ctx);await deliverGenericLogouts(ctx);await dispatch(ctx);await reconcileLeavers(ctx);})();if(ctx.waitUntil)ctx.waitUntil(work);else await work;}
  await auditDetail(ctx,actorId,e.state?`person_${e.state.kind==='terminate'?'terminated':e.state.kind==='suspend'?'suspended':e.state.kind==='rehire'?'rehired':'restored'}`:'directory_person_updated',id,{source:e.source,bulk,changes:e.changes,state:e.state,email:e.emailChange,groups:{added:e.groups.added.map(g=>g.name),removed:e.groups.removed.map(g=>g.name)},apps:e.apps});
 }
 
@@ -62,8 +68,10 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
  const results=[];
  for(const e of planned.entries) {
   if(!touched(e)){results.push({personId:e.personId,changed:false});continue;}
-  const build=g=>[...entryStatements(ctx,g,actor.actorId,dir,e).statements,...(actor.receiptStatements?.(g,e.personId)??[])];
-  const {stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e),statements=build(guard);
+  const leaver=prepareLeaver(ctx,e,planned.digest,actor.actorId,dir.people.get(e.personId).version);
+  const build=g=>{const held=leaver?{clause:`(${g.clause}) AND (${leaver.held.clause})`,args:[...g.args,...leaver.held.args]}:g;return [...(leaver?.statements(g)??[]),...entryStatements(ctx,held,actor.actorId,dir,e,leaver?.at).statements,...(actor.receiptStatements?.(held,e.personId)??[])];};
+  const prefix=leaver?.statements(guard).length??0;
+  const stateAt=entryStatements(ctx,guard,actor.actorId,dir,e).stateAt+prefix,statements=build(guard);
   let done;
   try {
    const accountEdit=(e.writes.length||e.state||e.emailChange||e.nameChange)&&!(e.source==='self'&&e.personId===actor.actorId);
@@ -76,8 +84,8 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
   }
   await actor.assertAuthority();
   if(stateAt>=0&&!done[stateAt].meta.changes)fail('person_changed',409);
-  await afterwards(ctx,actor.actorId,e,bulk);
-  results.push({personId:e.personId,changed:true});
+  await afterwards(ctx,actor.actorId,e,bulk,leaver);
+  results.push({personId:e.personId,changed:true,...(leaver?{planId:leaver.id}:{})});
  }
  return results;
 }

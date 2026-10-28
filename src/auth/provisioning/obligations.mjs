@@ -1,3 +1,4 @@
+import {scimBinding,approvedBinding,leaverWorkGuard} from '../lifecycle/binding.mjs';
 import {maintainFamilies} from '../tokens/lifecycle.mjs';
 import {syncObligations} from '../obligations/sources.mjs';
 import {computedValues,scimValues} from '../mapping/program.mjs';
@@ -19,10 +20,19 @@ const kick=(ctx,appId)=>{const work=dispatch(ctx,appId);if(ctx.waitUntil)ctx.wai
 export async function queue(ctx,appId,subjects,reason) {
  if(!subjects.length||!await connectorOf(ctx,appId))return;
  const now=ctx.now();
- await ctx.db.batch(subjects.flatMap(([type,id])=>[
-  ctx.db.prepare("UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type=? AND subject_id=? AND state IN ('pending','failed','blocked')").bind(appId,type,id),
-  ctx.db.prepare("INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) VALUES(?,?,?,?,?,?,'pending',?)").bind(random(),appId,type,id,reason,now,now),
- ]));
+ await ctx.db.batch(subjects.flatMap(([type,id])=>{
+  const held=leaverWorkGuard(appId,type,id),bound=leaverWorkGuard(appId,type,id,'auth_provisioning.id');
+  // A newly observed drift reopens the same verified work under its original
+  // connection binding; it cannot mint a replacement with weaker authority.
+  const drift=reason==='reconcile'?[
+   ctx.db.prepare(`UPDATE auth_lifecycle_steps SET state='unknown',outcome='remote_drift_observed',verified_at=NULL WHERE work_id IN (SELECT id FROM auth_provisioning WHERE app_id=? AND subject_type=? AND subject_id=? AND state='verified' AND ${bound.clause})`).bind(appId,type,id,...bound.args),
+   ctx.db.prepare(`UPDATE auth_provisioning SET state='pending',verified_at=NULL,next_attempt_at=? WHERE app_id=? AND subject_type=? AND subject_id=? AND state='verified' AND ${bound.clause}`).bind(now,appId,type,id,...bound.args),
+  ]:[];
+  return [...drift,
+   ctx.db.prepare(`UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type=? AND subject_id=? AND state IN ('pending','failed','blocked') AND NOT ${held.clause}`).bind(appId,type,id,...held.args),
+   ctx.db.prepare(`INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) SELECT ?,?,?,?,?,?,'pending',? WHERE NOT ${held.clause}`).bind(random(),appId,type,id,reason,now,now,...held.args),
+  ];
+ }));
  await syncObligations(ctx);
  await kick(ctx,appId);
 }
@@ -96,6 +106,10 @@ async function applyPerson(ctx,connector,ob,wrote) {
  }
  if(!held||held.state==='deleted')return {verified:true,operation:'none'};
  const path=userPath(held.remote_id);
+ const current=await scim(ctx,connector,'GET',path);
+ if(current.status===404){await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:connector.deprovision==='delete'?'delete':'deactivate'};}
+ if(!ok(current))return retryable(current)?{retry:current}:{fail:current};
+ if(connector.deprovision!=='delete'&&current.body?.active===false){await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'inactive');return {verified:true,operation:'deactivate'};}
  if(connector.deprovision==='delete') {
   wrote();const removed=await scim(ctx,connector,'DELETE',path);
   if(!ok(removed)&&removed.status!==404)return retryable(removed)?{retry:removed}:{fail:removed};
@@ -131,6 +145,9 @@ async function applyGroup(ctx,connector,ob,wrote) {
   if(!ok(created)||!created.body?.id)return retryable(created)?{retry:created}:{fail:created};
   remote=created.body.id;operation='create';await saveAccount(ctx,appId,'group',group.id,remote,'active');
  } else {
+  const current=await scim(ctx,connector,'GET',groupPath(remote));
+  if(!ok(current))return retryable(current)?{retry:current}:{fail:current};
+  if(current.body?.displayName===group.name&&(current.body.members??[]).map(m=>m.value).sort().join()===members.join())return {verified:true,operation:'update'};
   wrote();const patched=await scim(ctx,connector,'PATCH',groupPath(remote),{schemas:[PATCH],Operations:[{op:'replace',value:{displayName:group.name,members:members.map(value=>({value}))}}]});
   if(!ok(patched))return retryable(patched)?{retry:patched}:{fail:patched};
  }
@@ -144,10 +161,11 @@ const delay=(ob,response)=>{const after=Number(response?.retryAfter);return Numb
 export async function dispatch(ctx,appId=null) {
  const due=await all(ctx,`SELECT * FROM auth_provisioning WHERE state='pending' AND next_attempt_at<=? AND (claimed_until IS NULL OR claimed_until<=?)${appId?' AND app_id=?':''} ORDER BY CASE subject_type WHEN 'person' THEN 0 ELSE 1 END,event_at LIMIT ${BATCH}`,ctx.now(),ctx.now(),...(appId?[appId]:[]));
  for(const row of due) {
-  const ob=await one(ctx,"UPDATE auth_provisioning SET claimed_until=? WHERE id=? AND state='pending' AND (claimed_until IS NULL OR claimed_until<=?) RETURNING *",ctx.now()+CLAIM,row.id,ctx.now());
+  const ob=await one(ctx,"UPDATE auth_provisioning SET claimed_until=? WHERE id=? AND state='pending' AND next_attempt_at<=? AND (claimed_until IS NULL OR claimed_until<=?) RETURNING *",ctx.now()+CLAIM,row.id,ctx.now(),ctx.now());
   if(!ob)continue;
   const connector=await connectorOf(ctx,ob.app_id);
   if(!connector){await run(ctx,"UPDATE auth_provisioning SET state='failed',last_error='connector_removed',claimed_until=NULL WHERE id=?",ob.id);continue;}
+  if(!await approvedBinding(ctx,ob.id,await scimBinding(connector))){await run(ctx,"UPDATE auth_provisioning SET state='blocked',last_error='approved_connector_changed',claimed_until=NULL WHERE id=?",ob.id);continue;}
   let wroteAt=ob.dispatched_at;const wrote=()=>{wroteAt??=ctx.now();};
   const outcome=await (ob.subject_type==='person'?applyPerson:applyGroup)(ctx,connector,ob,wrote).catch(error=>({retry:{status:0},error:String(error?.message||'error').slice(0,120)}));
   const now=ctx.now(),status=(outcome.retry??outcome.fail)?.status??null,error=outcome.error??outcome.block??(outcome.fail||outcome.retry?`http_${status}`:null);
@@ -164,9 +182,10 @@ export async function dispatch(ctx,appId=null) {
 }
 async function requeueGroup(ctx,appId,groupId) {
  if(await one(ctx,"SELECT 1 FROM auth_provisioning WHERE app_id=? AND subject_type='group' AND subject_id=? AND state='pending' AND dispatched_at IS NULL",appId,groupId))return;
+ const held=leaverWorkGuard(appId,'group',groupId);
  await ctx.db.batch([
-  ctx.db.prepare("UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type='group' AND subject_id=? AND state IN ('pending','failed','blocked')").bind(appId,groupId),
-  ctx.db.prepare("INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) VALUES(?,?,'group',?,'member_provisioned',?,'pending',?)").bind(random(),appId,groupId,ctx.now(),ctx.now()),
+  ctx.db.prepare(`UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type='group' AND subject_id=? AND state IN ('pending','failed','blocked') AND NOT ${held.clause}`).bind(appId,groupId,...held.args),
+  ctx.db.prepare(`INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) SELECT ?,?,'group',?,'member_provisioned',?,'pending',? WHERE NOT ${held.clause}`).bind(random(),appId,groupId,ctx.now(),ctx.now(),...held.args),
  ]);
 }
 

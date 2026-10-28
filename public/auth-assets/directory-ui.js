@@ -32,7 +32,7 @@
 
   // Edit dialog: filled from the row, sends only what the administrator changed.
   const editDialog = document.getElementById('edit-dialog')
-  const initial = { current: null }
+  const initial = { current: null }; let leaverApproval = null
   document.addEventListener('click', event => {
     const button = event.target.closest('[data-edit-person]')
     if (!button || !editDialog) return
@@ -40,6 +40,9 @@
     const form = editDialog.querySelector('form')
     initial.current = { name: person.name, email: person.email, state: person.state === 'invited' ? '' : person.state }
     form.reset()
+    leaverApproval = null
+    editDialog.querySelector('[data-leaver-preview]').hidden = true
+    editDialog.querySelector('[data-confirm-leaver]').hidden = true
     form.elements.personId.value = person.id
     form.elements.name.value = person.name
     form.elements.email.value = person.email
@@ -65,6 +68,14 @@
     if (!Object.keys(set).length && !body.email && !body.state) { editDialog.close(); return }
     event.submitter && (event.submitter.disabled = true)
     try {
+      if (body.state === 'terminated') {
+        const { plan } = await post('/api/auth/directory/preview', { edits: [body] })
+        render(editDialog.querySelector('[data-leaver-preview]'), plan)
+        leaverApproval = plan.ok ? { edits: [body], digest: plan.digest } : null
+        editDialog.querySelector('[data-confirm-leaver]').hidden = !leaverApproval
+        event.submitter && (event.submitter.disabled = false)
+        return
+      }
       await post(form.action, body)
       status('Saved. Refreshing current data…', 'success')
       window.setTimeout(() => window.location.reload(), 350)
@@ -74,6 +85,26 @@
       event.submitter && (event.submitter.disabled = false)
     }
   })
+
+  editDialog?.querySelector('form').addEventListener('input', () => {
+    leaverApproval = null
+    editDialog.querySelector('[data-confirm-leaver]').hidden = true
+    editDialog.querySelector('[data-leaver-preview]').hidden = true
+  })
+  editDialog?.querySelector('[data-confirm-leaver]').addEventListener('click', async event => {
+    if (!leaverApproval) return
+    event.target.disabled = true
+    try {
+      await post('/api/auth/directory/apply', leaverApproval)
+      status('Approved. Refreshing plan history…', 'success')
+      window.location.reload()
+    } catch (error) {
+      leaverApproval = null; event.target.hidden = true; event.target.disabled = false
+      status(error.message, 'error')
+    }
+  })
+
+  const lifecycleActions = { deny_sessions_and_tokens: 'End Auth access', deactivate: 'Deactivate remote account', delete: 'Delete remote account', remove_membership: 'Remove group membership', identity_fence: 'Fence linked sessions', end_app_session: 'End app sessions', remote_sessions_unverified: 'Verify remote sessions', remote_account_unknown: 'Verify remote account', removed_app_unverified: 'Resolve removed application' }
 
   // A plan, as the rows an administrator reads before applying it.
   const render = (target, plan) => {
@@ -94,6 +125,7 @@
         ...(e.apps?.gained.length ? [`gains ${names(e.apps.gained)}`] : []),
         ...(e.apps?.lost.length ? [`loses ${names(e.apps.lost)}`] : []),
         ...(e.conflicts ?? []).filter(c => c.introduced).map(c => `source conflict on ${c.field}`),
+        ...(e.lifecycle ? ['Plan custodian: approving administrator', ...e.lifecycle.credentialActions, ...e.lifecycle.steps.map(step => `${step.app}: ${lifecycleActions[step.operation] || 'Verify remote access'}${step.kind === 'unsupported' ? ' (unverified)' : ''}${step.within ? `; deadline ${step.within / 1000} seconds after approval` : ''}`)] : []),
         ...e.refusals.map(r => `refused: ${r}`),
       ]
       item.append(text('span', lines.length ? lines.join('; ') : 'no change', 'data-meta'))

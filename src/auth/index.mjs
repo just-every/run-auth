@@ -1,3 +1,4 @@
+import {leaverRead} from './lifecycle/history.mjs';
 import {factorsRead,factorsAction} from './factors/routes.mjs';
 import {requestPass,issuePass,revokePass,redeemPass,temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction,activationPage,activationError,activate} from './onboarding/index.mjs';
@@ -129,6 +130,7 @@ function scopedRuntime(options) {
     if(WORKFORCE_READS.includes(path))return await workforceRead(ctx,request,path);
     if(path===HR_FEEDS)return await hrFeedRead(ctx,request);
     if(path===REPORTS||path.startsWith(REPORTS+'/'))return await reportsRead(ctx,request,path);
+    if(path==='/api/auth/lifecycle/plans')return await leaverRead(ctx,request);
     if(DIRECTORY_READS.includes(path))return await directoryRead(ctx,request,path);
     if(PROFILE_READS.includes(path))return await profileRead(ctx,request);
     // The event cursor reads its own read key, never a cookie.

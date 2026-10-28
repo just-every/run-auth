@@ -1,3 +1,4 @@
+import {leaverErasure} from '../lifecycle/erasure.mjs';
 import {privatePairStore} from './pair-erasure.mjs';
 import {followupReferences,followupErasure} from '../obligations/erasure.mjs';
 import {fail,hash,random} from '../core.mjs';
@@ -73,6 +74,8 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   if(['auth_delegated_tasks','auth_external_tasks'].includes(name)&&(reset||identifiers.has(row.id)||contains(row,identifiers))) {
    removed.add(key);decisions.push({kind:name==='auth_external_tasks'?'delegated_external_task':'delegated_assignment',status:row.state,createdAt:row.created_at,decidedAt:row.completed_at??row.revoked_at??row.approved_at??row.consented_at,reference});continue;
   }
+  const leaver=leaverErasure(table,row,{kind,target,identifiers:evidenceIdentifiers,names,reference});
+  if(leaver){if(Object.keys(leaver.update).length)updates.set(key,leaver.update);continue;}
   const followup=followupErasure(table,row,{stores,identifiers,reset,reference});
   if(followup) {if(followup.remove)removed.add(key);else updates.set(key,followup.update);continue;}
   const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&(canMatch('auth_activity',a)||contains(a.subject_id,historicalAddresses)));

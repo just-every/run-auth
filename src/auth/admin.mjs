@@ -1,3 +1,4 @@
+import {leaverHistory} from './lifecycle/history.mjs';
 import {factorsModel} from './factors/routes.mjs';
 import {temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction} from './onboarding/index.mjs';
@@ -68,7 +69,7 @@ export async function model(ctx,request,page='account') {
   result.domainRules=result.domainRules.map(rule=>({...rule,available:Boolean(configuredProvider(ctx,rule.provider_id))}));
   if(page==='move-in')Object.assign(result,await moveInModel(ctx,request));
   if(page==='agents'){Object.assign(result,await agentsModel(ctx,request));result.adminServices=await adminServicesModel(ctx);}
-  if(page==='people'){result.directory=await directoryModel(ctx);result.onboarding=await onboardingModel(ctx);}
+  if(page==='people'){result.directory=await directoryModel(ctx);result.onboarding=await onboardingModel(ctx);result.lifecycle=await leaverHistory(ctx,s);}
   if(page==='activity')result.followup=await (await followupRead(ctx,request)).json();
   if(page==='apps'){result.automations=await automationsModel(ctx,s);result.workforce=await workforceModel(ctx);result.events=await eventsModel(ctx);result.inlineHooks=await hookModel(ctx);}
  }

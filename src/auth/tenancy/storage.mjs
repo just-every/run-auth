@@ -114,8 +114,24 @@ async function createSchema(db, schema) {
  }
 }
 
+// Existing namespaces keep their original tables; CREATE TABLE IF NOT EXISTS
+// cannot add the logout worker's new claim and dispatch fields to those tables.
+async function upgradeLogoutTables(db,namespace,schema) {
+ for(const table of ['auth_logout_deliveries','auth_oidc_logouts']) {
+  if(!schema.tableNames.has(table))continue;
+  const physical=quoted(namespace+table);
+  const columns=async()=>new Set((await db.prepare(`PRAGMA table_info(${physical})`).all()).results.map(c=>c.name));
+  const present=await columns();
+  for(const column of ['claimed_until','dispatched_at'])if(!present.has(column)) {
+   try {await db.prepare(`ALTER TABLE ${physical} ADD COLUMN ${column} INTEGER`).run();}
+   catch(error) {if(!(await columns()).has(column))throw error;}
+  }
+ }
+}
+
 function singletonSeeds(db, organization, schema) {
  const seeds = [
+  ['auth_lifecycle_epoch', '(id,epoch) VALUES(1,1) ON CONFLICT(id) DO NOTHING'],
   ['auth_admin_api_epoch', '(id,version) VALUES(1,1) ON CONFLICT(id) DO NOTHING'],
   ['auth_role_epoch', '(id,epoch) VALUES(1,1) ON CONFLICT(id) DO NOTHING'],
   ['auth_erasure_policy', `(singleton,configured,policy,updated_by,updated_at) VALUES(1,0,'{"mode":"explicit-owner-confirmation","automaticDeletion":false,"heldData":"refuse-erasure","audit":"anonymized","remote":"separate-until-verified"}',NULL,0) ON CONFLICT(singleton) DO NOTHING`],
@@ -193,6 +209,7 @@ export async function organizationDatabase(db, id) {
  if (organization.namespace !== namespaceFor(id)) throw new Error('invalid_organization_namespace');
  const schema = await currentSchema(db, organization.namespace);
  await createSchema(db, schema);
+ await upgradeLogoutTables(db, organization.namespace, schema);
  const seed = singletonSeeds(db, organization, schema);
  if (seed.length) await db.batch(seed);
  schemas.set(organization, schema);

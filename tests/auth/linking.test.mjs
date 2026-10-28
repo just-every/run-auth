@@ -48,6 +48,26 @@ test('an app links with a one-use token, signs a person in through Auth, and Sig
  assert.equal(session.status,200);
  assert.equal((await session.json()).operator.email,'owner@example.com');
 
+ // An explicitly approved directory leaver also ends a real linked app session.
+ assert.equal((await r.send(APP_ORIGIN+'/auth/settings/identity',{method:'POST',json:{idpSignIn:true}})).status,200);
+ await r.person('lifecycle-worker',['synthetic-auth-410','example.com'].join('@'));
+ const invitedWorker=await r.send(APP_ORIGIN+'/auth/invite',{method:'POST',json:{email:['synthetic-auth-410','example.com'].join('@'),displayName:'Lifecycle worker',role:'member'}});assert.equal(invitedWorker.status,202,await invitedWorker.clone().text());
+ const workerCookie=await emailSession(r,['synthetic-auth-410','example.com'].join('@'));
+ r.jar[APP_ORIGIN].clear();r.jar[AUTH_ORIGIN].clear();r.jar[AUTH_ORIGIN].set(...workerCookie.split('='));
+ const admittedWorker=await r.follow(APP_ORIGIN+'/auth/oidc/auth/start',{method:'POST',json:{returnTo:'/'}});assert.ok(admittedWorker.status<400,await admittedWorker.clone().text());
+ assert.equal((await r.send(APP_ORIGIN+'/auth/session')).status,200);
+ const edits=[{personId:'lifecycle-worker',state:'terminated'}];
+ const previewResponse=await r.call('/api/auth/directory/preview',{method:'POST',data:{edits},cookie:owner.cookie});assert.equal(previewResponse.status,200);
+ const {plan}=await previewResponse.json();
+ const terminated=await r.call('/api/auth/directory/apply',{method:'POST',data:{edits,digest:plan.digest},cookie:owner.cookie});assert.equal(terminated.status,200,await terminated.clone().text());
+ assert.equal((await r.send(APP_ORIGIN+'/auth/session')).status,401);
+ assert.equal((await r.call('/api/auth/me',{cookie:workerCookie})).status,401);
+ const retained=await (await r.call('/api/auth/lifecycle/plans?personId=lifecycle-worker',{cookie:owner.cookie})).json();
+ assert.equal(retained.plans[0].digest,plan.digest);assert.equal(retained.plans[0].fullyOffboarded,false);
+ assert.ok(retained.plans[0].steps.some(step=>step.kind==='logout'&&step.outcome==='accepted_remote_unverified'));
+ r.jar[APP_ORIGIN].clear();r.jar[AUTH_ORIGIN].clear();r.jar[AUTH_ORIGIN].set(...owner.cookie.split('='));
+ assert.ok((await r.follow(APP_ORIGIN+'/auth/oidc/auth/start',{method:'POST',json:{returnTo:'/'}})).status<400);
+
  const everywhere=await r.call('/api/auth/signout-everywhere',{method:'POST',data:{},cookie:owner.cookie});
  assert.equal(everywhere.status,200);
  assert.equal((await everywhere.json()).apps,1);

@@ -118,6 +118,15 @@ export async function refreshLifecycle(t) {
  assert.notEqual((await rawRefresh(finalTokens.refresh_token)).status,200,'next refresh after erasure refuses the previously live credential');
  const refreshAudit=(await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json()).find(row=>row.event==='erasure_credentials_revoked'&&row.subject_id===erasureResult.reference);
  assert.ok(refreshAudit);assert.ok(JSON.parse(refreshAudit.detail).counts.refreshTokens>0,'erasure counts the removed live refresh authority');
+ // Directory termination revokes the exact currently working offline credentials.
+ const leaver=await connect({deviceName:'Native leaver tablet'});assert.equal((await check(leaver.tokens.access_token)).status,200);
+ const edits=[{personId:'ada',state:'terminated'}],approved=(await command('directory/preview',{edits})).plan;
+ await command('directory/apply',{edits,digest:approved.digest});
+ assert.equal((await rawRefresh(leaver.tokens.refresh_token)).status,400);assert.equal((await check(leaver.tokens.access_token)).status,401);
+ assert.ok(delivered.some(claim=>claim.sid===leaver.tokens.grant_id));
+ const retained=(await (await r.call('/api/auth/lifecycle/plans?personId=ada',{cookie:r.owner.cookie})).json()).plans[0];assert.equal(retained.digest,approved.digest);assert.equal(retained.fullyOffboarded,false);
+ await command('directory/edit',{personId:'ada',state:'active'});r.ada=await (await import('./runtime.mjs')).emailSession(r,(await r.db.prepare("SELECT email FROM oa_operators WHERE id='ada'").first()).email);
+ assert.equal((await rawRefresh(leaver.tokens.refresh_token)).status,400);assert.equal((await check(leaver.tokens.access_token)).status,401,'rehire cannot revive the earlier offline grant');
  const suspended=await connect({deviceName:'Suspended worker tablet'});await command('people/suspend',{personId:'ada'});assert.equal((await rawRefresh(suspended.tokens.refresh_token)).status,400);assert.equal((await check(suspended.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===suspended.tokens.grant_id));
  // A second active worker proves app removal independently of suspension.
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'bob',role:'reader'});
