@@ -815,7 +815,7 @@ The primary journey: Connect the employer’s directory and apps, onboard a work
 4. Recurring snapshots and overdue records are durable.
 5. Explicit app-role reduction, consented decider reminders, absence escalation, scoped published review permissions and optional native administrator-grant inventory are supported.
 6. Native role revocation uses the existing rank/scope evaluator and refuses owner removal.
-7. Default ADOPTED pending ct: scheduling, delegation and export require their published scoped permission, hardware and fresh email.
+7. Under RL-107, scheduling, delegation and export require their published scoped permission, hardware and fresh email.
 8. Campaign creation, delegated review authority and export require current published scoped permission and administrator proof. Ordinary certify, reduce and revoke follows AUTH-DECISIONS-001 unless privileged authority is implicated. Delegation never enlarges the delegator’s app/person scope or persistent caps; changed or unknown hierarchy invalidates stale authority and refuses widening. Completion preserves immutable decisions and unresolved remote-removal failures.
 
 #### AUTH-DECISIONS-001 — Proof levels for administration and everyday decisions
