@@ -3,13 +3,23 @@ import {openRuntime,emailSession} from './runtime.mjs';
 import {authenticator,register,authenticate} from './webauthn.mjs';
 import {finishProof,requestProof} from './policy-helpers.mjs';
 import {cookieOf} from './runtime.mjs';
+import {authenticatorCode} from './factors-flow.mjs';
 const address=id=>'synthetic-auth-'+id+'@'+'example.test';
 export async function helpdeskRecoveryFlow(t) {
  const r=await openRuntime();t.after(()=>r.close());
  for(const [id,role] of [['owner','owner'],['manager','member'],['helper','member'],['employee','member'],['outsider','member'],['privileged','member'],['app-holder','member']])await r.person(id,address(id),role);
  let owner=await register(r,await emailSession(r,address('owner'))),manager=await register(r,await emailSession(r,address('manager'))),helper=await register(r,await emailSession(r,address('helper')));
  const old=await register(r,await emailSession(r,address('employee')));
+ const enrolledTotp=await r.call('/api/auth/factors/totp/begin',{method:'POST',cookie:old.cookie,data:{}});assert.equal(enrolledTotp.status,200);
+ const totp=await enrolledTotp.json();
+ assert.equal((await r.call('/api/auth/factors/totp/confirm',{method:'POST',cookie:old.cookie,data:{id:totp.id,code:authenticatorCode(totp.secret,r.now)}})).status,200);
+ const issuedCodes=await r.call('/api/auth/factors/recovery/rotate',{method:'POST',cookie:old.cookie,data:{}});assert.equal(issuedCodes.status,200);
+ const codes=(await issuedCodes.json()).codes;
+ old.cookie=cookieOf(await finishProof(r,await requestProof(r,address('employee'),cookieOf((await authenticate(r,old.key)).response))));
  const otherOldSession=await emailSession(r,address('employee'));
+ r.now+=30000;
+ assert.equal((await r.call('/api/auth/factors/totp/verify',{method:'POST',cookie:otherOldSession,data:{code:authenticatorCode(totp.secret,r.now)}})).status,200);
+ const privilegedPasskey=await register(r,await emailSession(r,address('app-holder')));
  const call=async(path,data,cookie=owner.cookie,status=200)=>{const result=await r.call('/api/auth'+path,{method:'POST',data,cookie});assert.equal(result.status,status,path+' '+await result.clone().text());return result.json();};
  await call('/directory/edit',{personId:'employee',set:{manager:'manager'}});
  const group=await call('/groups/create',{name:'Recovery employees'},owner.cookie,201);await call('/groups/add',{groupId:group.id,personId:'employee'});
@@ -29,6 +39,9 @@ export async function helpdeskRecoveryFlow(t) {
  const app=await call('/company-apps/create',{name:'Recovery privilege boundary',entityId:'https://synthetic-auth.example.com',acsUrl:'https://synthetic-auth.example.com/acs'},owner.cookie,201);
  await call('/company-apps/assign',{appId:app.id,principalType:'person',principalId:'app-holder',role:'administrator'});
  await call('/roles/recovery-case',{action:'open',personId:'app-holder',reason:'Privileged application assignment'},helper.cookie,403);
+ await call('/roles/reset-factors',{personId:'app-holder',reason:'No direct administrator bypass'},owner.cookie,403);
+ assert.equal((await authenticate(r,privilegedPasskey.key)).response.status,200,'refused reset preserves the privileged employee passkey');
+
  await call('/decisions/privilege',{kind:'app_role',targetId:app.id,role:'administrator',privileged:false});
  const ordinaryCase=await call('/roles/recovery-case',{action:'open',personId:'app-holder',reason:'Explicitly ordinary application role'},helper.cookie,201);
  await call('/decisions/privilege',{kind:'app_role',targetId:app.id,role:'administrator',privileged:true});
@@ -54,6 +67,11 @@ export async function helpdeskRecoveryFlow(t) {
  let link=await issue();assert.equal((await r.call('/api/auth/me',{cookie:otherOldSession})).status,401);assert.equal((await r.call('/api/auth/me',{cookie:old.cookie})).status,401);assert.equal((await authenticate(r,old.key)).response.status,400);
  const stored=await r.db.prepare('SELECT * FROM auth_recovery_enrollments WHERE case_id=?').bind(link.caseId).first();assert.ok(stored.token_hash&&!JSON.stringify(stored).includes(link.token));assert.equal(stored.expires_at-stored.created_at,3600000);
  let email=await emailSession(r,address('employee'));
+ await call('/factors/totp/verify',{code:authenticatorCode(totp.secret,r.now)},email,403);
+ await call('/factors/recovery/redeem',{code:codes[0]},email,403);
+ const inventory=await (await r.call('/api/auth/factors',{cookie:email})).json();
+ assert.deepEqual(inventory.totp,[]);assert.equal(inventory.recoveryCodes,0,'reset removes all native factor and recovery-code authority');
+
  assert.equal((await r.call('/auth/passkeys/register/options',{method:'POST',data:{},cookie:email})).status,403,'fresh email alone cannot bypass the case link');
  await call('/recovery/enroll',{...link,token:'synthetic-auth-forged'},email,403);
  await call('/recovery/enroll',link,await emailSession(r,address('outsider')),403);
