@@ -271,7 +271,7 @@
       "executable": false
     },
     "docs/lifecycle-plans.md": {
-      "sha256": "0d98ed8531941d777fd829f3e2c06878ac58b7ca89151aa11d06f2663c7428d6",
+      "sha256": "998deaa586511a4fd6c291bd090d1a3ed147d9cf2922c2e77d35231b8aeec081",
       "executable": false
     },
     "docs/mail-delivery.md": {
@@ -343,7 +343,7 @@
       "executable": false
     },
     "management/integration/deployment-spec.json": {
-      "sha256": "8c08c09c96684256f4f68305d8ee6a3578bf65a1e54bd64ee9b0f0626958006f",
+      "sha256": "a6f9371a2ff2fd68e2c388c0929396ffa627a8a6ef3caaea948c251f5153daab",
       "executable": false
     },
     "migrations/core/0001_owner.sql": {
@@ -651,7 +651,7 @@
       "executable": false
     },
     "migrations/core/0078_auth_lifecycle.sql": {
-      "sha256": "266db50d2713318cbed49e8697327a0d5a8849ff2b4498a82ea528657e5c613f",
+      "sha256": "18437e6e405d7092e84c16192539cd52caa2959c151371f1697d89da521fcb20",
       "executable": false
     },
     "MOVE-IN.md": {
@@ -791,7 +791,7 @@
       "executable": false
     },
     "public/auth-assets/directory-ui.js": {
-      "sha256": "cbed749726f4fd0ee67fe58540802cb55c8b65a8fe0f0352d8ae1ebe3b5c72a0",
+      "sha256": "677fa939a64b2c6d7dff40dec23f21bcb660880a4b29f3f105495d3d99cf2b8d",
       "executable": false
     },
     "public/auth-assets/erasure-ui.js": {
@@ -1731,11 +1731,11 @@
       "executable": false
     },
     "src/auth/lifecycle/history.mjs": {
-      "sha256": "59379e0f0d62b4c45aa2642ef8ef2db2516edbb3f5989565b9690bca1e28125b",
+      "sha256": "077dcf5886f178554a805faf0805a2b05973de09312e680b001990ee5aeff68c",
       "executable": false
     },
     "src/auth/lifecycle/plan.mjs": {
-      "sha256": "48b18654abbafacbe12914ca406566ef9950a9842de44d0f88b3e08a1ccdb498",
+      "sha256": "cc3393bed407127ffbe6d4ecf47527706f158943029ea1719e667b6eac9dc13c",
       "executable": false
     },
     "src/auth/links/app.mjs": {
@@ -1755,7 +1755,7 @@
       "executable": false
     },
     "src/auth/links/logout.mjs": {
-      "sha256": "1b3d6cced0e39e7b48508c40d3822ab0d9fb825cb47bff4579cac263f3d5e3c0",
+      "sha256": "cf8a7fb9921bf91dee6914e137cd33fc3b91b7fbe64e0787c8c5b6d0a5e166bd",
       "executable": false
     },
     "src/auth/links/rer-approval.mjs": {
@@ -1947,7 +1947,7 @@
       "executable": false
     },
     "src/auth/oidc-apps/session.mjs": {
-      "sha256": "17c04615a9ca34c3c06665d27db48d4f62560a3e37513a828cba9f8c481fcfd8",
+      "sha256": "059b2f1d8021d635e69a08818218a101ed81f638ee2d8ac9f2eff7f8bc554757",
       "executable": false
     },
     "src/auth/onboarding/dispatch.mjs": {
@@ -2271,7 +2271,7 @@
       "executable": false
     },
     "src/auth/workforce/people/apply.mjs": {
-      "sha256": "ac91b96b0a089054fb92c3cf82d0fc488fb16001dec7febee185a6c55e3fd8c0",
+      "sha256": "8321fb4aea6da72b4a24628b83a1e18eb95cdba256c8ba52ad079952c58af6a2",
       "executable": false
     },
     "src/auth/workforce/people/evaluate.mjs": {
@@ -3215,7 +3215,7 @@
       "executable": false
     },
     "src/ui/model.d.ts": {
-      "sha256": "6405be30c7bb423bdfa638940f62a0399d50676c5325f71a504f2143c44d8aa1",
+      "sha256": "57f0d006a59600318678105b3f44149e6384508a4a08f1a766af526d0a372076",
       "executable": false
     },
     "src/ui/pages/access-decisions.ts": {
@@ -3299,7 +3299,7 @@
       "executable": false
     },
     "src/ui/pages/lifecycle.ts": {
-      "sha256": "9fdcb4fb69298cbce8a3eaccc48bb67f93ffdeebea630a4c45672b1cff83415c",
+      "sha256": "4ca2e1bcf9b9d7909cb61e16710199bbc1fa96251d2a421ded93f62849692028",
       "executable": false
     },
     "src/ui/pages/mapping.ts": {
@@ -3519,7 +3519,7 @@
       "executable": false
     },
     "tests/auth/lifecycle.test.mjs": {
-      "sha256": "51daae8cf45294477d048cf4755283e8609778405766b7f64e57525e1a622563",
+      "sha256": "4696edbe3556628eb1924e946709e782d49a8e66c09edd5f766e6a9b37f5ff02",
       "executable": false
     },
     "tests/auth/link/app-worker.mjs": {
@@ -3859,7 +3859,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "5dc934355f03190bea8a751e43882e140d642374ccda820b876a639903d82c4e",
+      "sha256": "8dcd740e2eb154260bafd74620fa3b0eb0b5291f335525a9a6302d48b73dbb19",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {

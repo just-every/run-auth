@@ -19,18 +19,18 @@ import {emit,personSubject} from '../../events/store.mjs';
 const EVENTS={suspend:'person.suspended',terminate:'person.terminated',restore:'person.restored',rehire:'person.restored'};
 const REASONS={suspend:'person_suspended',terminate:'person_terminated',restore:'person_restored',rehire:'person_restored'};
 
-function stateStatements(ctx,g,id,change) {
+function stateStatements(ctx,g,id,change,at) {
  const claim=`id=? AND role!='owner'`;
  if(change.kind==='suspend')return [ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE ${claim} AND status='active' AND ${g.clause}`).bind(id,...g.args)];
  if(change.kind==='terminate')return [
-  ctx.db.prepare(`INSERT INTO auth_people(person_id,terminated_at) SELECT ?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM oa_operators WHERE ${claim} AND status IN ('active','inactive')) ON CONFLICT(person_id) DO UPDATE SET terminated_at=excluded.terminated_at`).bind(id,ctx.now(),...g.args,id),
+  ctx.db.prepare(`INSERT INTO auth_people(person_id,terminated_at) SELECT ?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM oa_operators WHERE ${claim} AND status IN ('active','inactive')) ON CONFLICT(person_id) DO UPDATE SET terminated_at=excluded.terminated_at`).bind(id,at,...g.args,id),
   ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE ${claim} AND status IN ('active','inactive') AND ${g.clause}`).bind(id,...g.args),
  ];
  return [ctx.db.prepare(`UPDATE oa_operators SET status='active' WHERE id=? AND status='inactive' AND ${g.clause}`).bind(id,...g.args)];
 }
 
 // The statements of one planned entry; `stateAt` is the index of the status change, whose row count proves it applied.
-function entryStatements(ctx,g,actorId,dir,e) {
+function entryStatements(ctx,g,actorId,dir,e,at=ctx.now()) {
  const statements=[];let stateAt=-1;
  for(const w of e.writes)statements.push(w.value===null?clearStatement(ctx,g,e.personId,w.field,w.source):setStatement(ctx,g,e.personId,w.field,w.source,w.value,actorId));
  if(e.nameChange)statements.push(ctx.db.prepare(`UPDATE oa_operators SET display_name=? WHERE id=? AND ${g.clause}`).bind(e.nameChange.to,e.personId,...g.args));
@@ -38,7 +38,7 @@ function entryStatements(ctx,g,actorId,dir,e) {
   ctx.db.prepare(`DELETE FROM auth_emails WHERE person_id=? AND ${g.clause}`).bind(e.personId,...g.args),
   ctx.db.prepare(`UPDATE oa_operators SET email=?,version=version+1 WHERE id=? AND ${g.clause}`).bind(e.emailChange.to,e.personId,...g.args));
  if(e.bind&&!dir.sourceIds.has(`${e.bind.source}:${e.personId}`))statements.push(ctx.db.prepare(`INSERT INTO auth_person_sources(source,source_id,person_id,bound_by,bound_at) SELECT ?,?,?,?,? WHERE ${g.clause}`).bind(e.bind.source,e.bind.sourceId,e.personId,actorId,ctx.now(),...g.args));
- if(e.state){const s=stateStatements(ctx,g,e.personId,e.state);stateAt=statements.length+s.length-1;statements.push(...s);}
+ if(e.state){const s=stateStatements(ctx,g,e.personId,e.state,at);stateAt=statements.length+s.length-1;statements.push(...s);}
  for(const gr of e.groups.added)statements.push(addRuleMember(ctx,g,gr.id,e.personId,actorId));
  for(const gr of e.groups.removed)statements.push(dropRuleMember(ctx,g,gr.id,e.personId));
  return {statements,stateAt};
@@ -69,7 +69,7 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
  for(const e of planned.entries) {
   if(!touched(e)){results.push({personId:e.personId,changed:false});continue;}
   const leaver=prepareLeaver(ctx,e,planned.digest,actor.actorId,dir.people.get(e.personId).version);
-  const build=g=>{const held=leaver?{clause:`(${g.clause}) AND (${leaver.held.clause})`,args:[...g.args,...leaver.held.args]}:g;return [...(leaver?.statements(g)??[]),...entryStatements(ctx,held,actor.actorId,dir,e).statements,...(actor.receiptStatements?.(held,e.personId)??[])];};
+  const build=g=>{const held=leaver?{clause:`(${g.clause}) AND (${leaver.held.clause})`,args:[...g.args,...leaver.held.args]}:g;return [...(leaver?.statements(g)??[]),...entryStatements(ctx,held,actor.actorId,dir,e,leaver?.at).statements,...(actor.receiptStatements?.(held,e.personId)??[])];};
   const prefix=leaver?.statements(guard).length??0;
   const stateAt=entryStatements(ctx,guard,actor.actorId,dir,e).stateAt+prefix,statements=build(guard);
   let done;

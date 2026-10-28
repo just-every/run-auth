@@ -104,6 +104,8 @@
     }
   })
 
+  const lifecycleActions = { deny_sessions_and_tokens: 'End Auth access', deactivate: 'Deactivate remote account', delete: 'Delete remote account', remove_membership: 'Remove group membership', identity_fence: 'Fence linked sessions', end_app_session: 'End app sessions', remote_sessions_unverified: 'Verify remote sessions', remote_account_unknown: 'Verify remote account', removed_app_unverified: 'Resolve removed application' }
+
   // A plan, as the rows an administrator reads before applying it.
   const render = (target, plan) => {
     target.replaceChildren()
@@ -123,7 +125,7 @@
         ...(e.apps?.gained.length ? [`gains ${names(e.apps.gained)}`] : []),
         ...(e.apps?.lost.length ? [`loses ${names(e.apps.lost)}`] : []),
         ...(e.conflicts ?? []).filter(c => c.introduced).map(c => `source conflict on ${c.field}`),
-        ...(e.lifecycle ? ['Plan custodian: approving administrator', ...e.lifecycle.credentialActions, ...e.lifecycle.steps.map(step => `${step.app}: ${step.operation}${step.kind === 'unsupported' ? ' (unverified)' : ''}${step.within ? `; deadline ${step.within / 1000} seconds after approval` : ''}`)] : []),
+        ...(e.lifecycle ? ['Plan custodian: approving administrator', ...e.lifecycle.credentialActions, ...e.lifecycle.steps.map(step => `${step.app}: ${lifecycleActions[step.operation] || 'Verify remote access'}${step.kind === 'unsupported' ? ' (unverified)' : ''}${step.within ? `; deadline ${step.within / 1000} seconds after approval` : ''}`)] : []),
         ...e.refusals.map(r => `refused: ${r}`),
       ]
       item.append(text('span', lines.length ? lines.join('; ') : 'no change', 'data-meta'))

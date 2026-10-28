@@ -11,7 +11,7 @@ CREATE INDEX auth_lifecycle_person ON auth_lifecycle_plans(person_id,created_at)
 CREATE TABLE auth_lifecycle_steps (
  id TEXT PRIMARY KEY, plan_id TEXT NOT NULL REFERENCES auth_lifecycle_plans(id) ON DELETE CASCADE,
  person_id TEXT NOT NULL, app_id TEXT, app_label TEXT NOT NULL, kind TEXT NOT NULL,
- work_id TEXT, binding TEXT, operation TEXT, deadline_at INTEGER, escalate_at INTEGER,
+ work_id TEXT, binding TEXT, operation TEXT, deadline_at INTEGER, escalate_at INTEGER, retry_until INTEGER,
  state TEXT NOT NULL DEFAULT 'unstarted', outcome TEXT, dispatched_at INTEGER, verified_at INTEGER
 );
 CREATE INDEX auth_lifecycle_work ON auth_lifecycle_steps(kind,work_id);
@@ -152,3 +152,5 @@ END;
 CREATE TRIGGER lifecycle_auth_saml_sessions_delete AFTER DELETE ON auth_saml_sessions BEGIN
  INSERT INTO auth_lifecycle_person_epoch(person_id,epoch) SELECT person_id,1 FROM auth_sessions WHERE id=OLD.session_id ON CONFLICT(person_id) DO UPDATE SET epoch=epoch+1;
 END;
+ALTER TABLE auth_logout_deliveries ADD COLUMN dispatched_at INTEGER;
+ALTER TABLE auth_oidc_logouts ADD COLUMN dispatched_at INTEGER;
