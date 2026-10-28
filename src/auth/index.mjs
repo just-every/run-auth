@@ -2,6 +2,7 @@ import {factorsRead,factorsAction} from './factors/routes.mjs';
 import {requestPass,issuePass,revokePass,redeemPass,temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction,activationPage,activationError,activate} from './onboarding/index.mjs';
 import {AUTOMATIONS_READ,isAutomationAction,automationsRead,automationAction} from './automations/routes.mjs';
+import {sessionControlRead} from './session-control/index.mjs';
 import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -96,6 +97,7 @@ function scopedRuntime(options) {
     if(path==='/api/auth/temporary-passes')return json(await temporaryPassesModel(ctx,await requireSession(ctx,request)));
     if(path==='/api/auth/onboarding'){await requireSession(ctx,request,true);return json(await onboardingModel(ctx));}
     if(path===AUTOMATIONS_READ)return await automationsRead(ctx,request);
+    if(path==='/api/auth/session-control')return await sessionControlRead(ctx,request);
     if(path==='/api/auth/abuse')return await abuseRead(ctx,request);
     if(path==='/api/auth/audit')return json(await auditPage(ctx,await requireSession(ctx,request),request));
     if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);

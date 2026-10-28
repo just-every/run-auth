@@ -2,11 +2,11 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPair,exportJWK,SignJWT,calculateJwkThumbprint} from 'jose';
 import {openLink} from './link/runtime.mjs';
-import {AUTH_ORIGIN,APP_ORIGIN} from './link/origins.mjs';
+import {AUTH_ORIGIN,APP_ORIGIN,APP_SETUP_TOKEN} from './link/origins.mjs';
 import {emailSession} from './runtime.mjs';
 import {register} from './webauthn.mjs';
 
-const INTERFACE='oidc-provider@1',APP_SETUP='app-setup-token-0123456789abcdef';
+const INTERFACE='oidc-provider@1',APP_SETUP=APP_SETUP_TOKEN;
 async function rerKey() {
  const {publicKey,privateKey}=await generateKeyPair('ES256',{extractable:true});
  const jwk=await exportJWK(publicKey),kid=await calculateJwkThumbprint(jwk);
