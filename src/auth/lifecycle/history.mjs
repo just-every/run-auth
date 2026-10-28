@@ -30,17 +30,17 @@ export async function leaverHistory(ctx,s,personId=null) {
  const state=await roleState(ctx,s);
  assertPermission(state,'people.view',personId?{personId,write:false}:{write:false});
  await reconcileLeavers(ctx);
- const rows=await all(ctx,`SELECT * FROM auth_lifecycle_plans${personId?' WHERE person_id=?':''} ORDER BY created_at DESC,id DESC LIMIT 100`,...(personId?[personId]:[])),plans=[];
+ const rows=await all(ctx,`SELECT * FROM auth_lifecycle_plans${personId?' WHERE person_id=?':''} ORDER BY created_at DESC,rowid DESC LIMIT 100`,...(personId?[personId]:[])),plans=[];
  const canName=id=>state.dir.people.get(id)&&permitted(state,'people.view',{personId:id,write:false});
  for(const row of rows) {
   if(!canName(row.person_id))continue;
   const entry=JSON.parse(row.plan),steps=await all(ctx,'SELECT * FROM auth_lifecycle_steps WHERE plan_id=? ORDER BY rowid',row.id);
   const visible=step=>!step.app_id||state.legacy||permitted(state,'apps.view',{appId:step.app_id});
-  const shown=steps.filter(visible),hidden=steps.length-shown.length;
+  const shown=steps.filter(visible),hidden=steps.length-shown.length,missing=Math.max(0,entry.lifecycle.steps.length-steps.length);
   const name=id=>canName(id)?state.dir.people.get(id).name||state.dir.people.get(id).email:'Restricted administrator';
   plans.push({id:row.id,personId:row.person_id,person:name(row.person_id),actor:name(row.actor_id),custodian:name(row.custodian_id),createdAt:row.created_at,denialAt:row.denial_at,digest:row.preview_digest,
    preview:{source:entry.source,state:entry.state,changes:entry.changes,groups:{added:entry.groups.added.filter(g=>state.legacy||permitted(state,'groups.view',{groupId:g.id})),removed:entry.groups.removed.filter(g=>state.legacy||permitted(state,'groups.view',{groupId:g.id}))},credentialActions:entry.lifecycle.credentialActions},
-   state:hidden||steps.some(s=>s.state!=='verified')?'unresolved':'verified',fullyOffboarded:false,hiddenSteps:hidden,
+   state:hidden||missing||steps.some(s=>s.state!=='verified')?'unresolved':'verified',fullyOffboarded:false,hiddenSteps:hidden,missingSteps:missing,
    steps:shown.map(step=>({id:step.id,app:step.app_label,kind:step.kind,operation:step.operation,workId:step.work_id,state:step.state,outcome:step.outcome,deadlineAt:step.deadline_at,escalateAt:step.escalate_at,dispatchedAt:step.dispatched_at,verifiedAt:step.verified_at}))});
  }
  // Scope and proof are checked again after reading the complete projection.

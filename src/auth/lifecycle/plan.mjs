@@ -39,7 +39,7 @@ export async function leaverPreview(ctx,personId,actorId) {
 // guarded directory transaction. Restart only resumes these original queues.
 export function prepareLeaver(ctx,entry,digest,actorId,version) {
  if(entry.state?.kind!=='terminate'||!entry.lifecycle)return null;
- const id=random(),now=ctx.now(),steps=entry.lifecycle.steps.map(s=>({...s,id:random(),workId:['scim','scim_group','logout','oidc_logout'].includes(s.kind)?random():null}));
+ const id=random(),now=ctx.now(),steps=entry.lifecycle.steps.map(s=>({...s,id:random(),workId:['scim','scim_group','logout','oidc_logout'].includes(s.kind)?'leaver:'+random():null}));
  const held={clause:'EXISTS(SELECT 1 FROM auth_lifecycle_plans WHERE id=?)',args:[id]};
  return {id,held,statements(g) {
   const q=(sql,...args)=>ctx.db.prepare(sql).bind(...args),statements=[q(`INSERT INTO auth_lifecycle_plans(id,person_id,actor_id,custodian_id,preview_digest,plan,created_at,denial_at)
