@@ -38,4 +38,4 @@ export async function credentialsState(r,personId) {
  return Promise.all(tables.map(async name=>(await r.db.prepare(`SELECT * FROM ${name} WHERE person_id=? ORDER BY id`).bind(personId).all()).results));
 }
 
-export const fixtureEmail=n=>[`synthetic-auth-${n}`,'example.test'].join('@');
+export const fixtureEmail=n=>[`synthetic-auth-${n}`,'example.com'].join('@');

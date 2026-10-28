@@ -3559,11 +3559,11 @@
       "executable": false
     },
     "tests/auth/session-control-helpers.mjs": {
-      "sha256": "f95388dcdcc319b678945b5415f3177481230de978b0e8aa359f9c9037e99ea5",
+      "sha256": "0235fa82a082ef9321cfe8cdfdf4a6c01a36b643264bb10d08af435cedc36748",
       "executable": false
     },
     "tests/auth/session-control-native.mjs": {
-      "sha256": "d09cc6f0a8181d3d50b5b5bbf95b83fce0829885bb82ed34c21b648a267a6605",
+      "sha256": "531649429e3918791c0eec5da87b40130a1d5894ca43ed306463577b558836bd",
       "executable": false
     },
     "tests/auth/session-control.test.mjs": {

@@ -8,7 +8,7 @@ import {fixtureEmail,command,grant,people,operations,identityState} from './sess
 
 export async function nativeSessionControl(t) {
  const r=await openLink();t.after(()=>r.close());
- const owner=await passkeyPerson(r,'owner',fixtureEmail(1),'owner');
+ const owner=await passkeyPerson(r,'owner',['owner','example.com'].join('@'),'owner');
  const employee=await passkeyPerson(r,'employee',fixtureEmail(2));
  const second=await emailSession(r,fixtureEmail(2));
  const desk=await passkeyPerson(r,'desk',fixtureEmail(3));
