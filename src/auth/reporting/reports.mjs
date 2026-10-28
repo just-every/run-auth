@@ -71,6 +71,8 @@ export async function reportsRead(ctx, request, path) {
   const asOf = period?.asOf??ctx.now();
   const inScope = person => permitted(state, permission, {personId: person.id, write: false});
   const visibleApp = id => permitted(state, permission, {appId: id, write: false});
+  const visibleTimingApp=(id,channel)=>visibleApp(id)&&(!channel.startsWith('scim-group:')||
+    permitted(state,permission,{groupId:channel.slice('scim-group:'.length),write:false}));
   const people = [...state.dir.people.values()].filter(person => {
     const fields = state.dir.values(person);
     return inScope(person) && (!group || state.memberships.get(person.id)?.has(group)) &&
@@ -110,13 +112,13 @@ export async function reportsRead(ctx, request, path) {
     if(name==='terminated-people'){
       rows=terminated.map(person=>{
         const episode=episodes.find(row=>row.person_id===person.id&&row.ended_at===null&&row.event_at===person.terminatedAt);
-        return episode?{...common(person),terminationEffectiveAt:iso(episode.event_at),...episodeProjection(episode,inventory,visibleApp,asOf)}:legacy(person);
+        return episode?{...common(person),terminationEffectiveAt:iso(episode.event_at),...episodeProjection(episode,inventory,visibleTimingApp,asOf)}:legacy(person);
       });
     }else{
       const inPeriod=at=>at>=period.start&&at<period.end;
       rows=episodes.filter(row=>inPeriod(row.event_at)&&people.some(person=>person.id===row.person_id)).map(episode=>{
         const person=people.find(person=>person.id===episode.person_id);
-        return {...common(person),terminationEffectiveAt:iso(episode.event_at),...episodeProjection(episode,inventory,visibleApp,asOf)};
+        return {...common(person),terminationEffectiveAt:iso(episode.event_at),...episodeProjection(episode,inventory,visibleTimingApp,asOf)};
       });
       rows.push(...terminated.filter(person=>inPeriod(person.terminatedAt)&&!episodes.some(row=>row.person_id===person.id&&row.event_at===person.terminatedAt)).map(legacy));
       summary=timingSummary(rows,period);

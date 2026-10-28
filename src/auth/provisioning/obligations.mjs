@@ -123,7 +123,9 @@ async function applyGroup(ctx,connector,ob,wrote) {
   if(!held||held.state==='deleted')return {verified:true,operation:'none'};
   wrote();const removed=await scim(ctx,connector,'DELETE',groupPath(held.remote_id));
   if(!ok(removed)&&removed.status!==404)return retryable(removed)?{retry:removed}:{fail:removed};
-  await saveAccount(ctx,appId,'group',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:'delete'};
+  const read=await scim(ctx,connector,'GET',groupPath(held.remote_id));
+  if(read.status!==404)return retryable(read)||ok(read)?{retry:read,error:'remote_group_still_present'}:{fail:read};
+  await saveAccount(ctx,appId,'group',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:'delete',readback:true,members:[]};
  }
  const members=(await all(ctx,"SELECT s.remote_id FROM auth_group_members m JOIN auth_scim_accounts s ON s.app_id=? AND s.subject_type='person' AND s.subject_id=m.person_id AND s.state='active' JOIN oa_operators o ON o.id=m.person_id AND o.status='active' WHERE m.group_id=? ORDER BY s.remote_id",appId,group.id)).map(m=>m.remote_id);
  let remote=held&&held.state!=='deleted'?held.remote_id:null,operation='update';
@@ -139,7 +141,7 @@ async function applyGroup(ctx,connector,ob,wrote) {
  const read=await scim(ctx,connector,'GET',groupPath(remote));
  if(!ok(read))return retryable(read)?{retry:read}:{fail:read};
  const got=(read.body?.members??[]).map(m=>m.value).sort().join();
- return got===members.join()&&read.body?.displayName===group.name?{verified:true,operation}:{retry:read,error:'remote_state_differs'};
+ return got===members.join()&&read.body?.displayName===group.name?{verified:true,operation,readback:true,members}:{retry:read,error:'remote_state_differs'};
 }
 
 const delay=(ob,response)=>{const after=Number(response?.retryAfter);return Number.isFinite(after)&&after>0?Math.min(after*1000,3600000):BACKOFF[Math.min(ob.attempts,BACKOFF.length-1)];};
@@ -156,7 +158,7 @@ export async function dispatch(ctx,appId=null) {
   const now=ctx.now(),status=(outcome.retry??outcome.fail)?.status??null,error=outcome.error??outcome.block??(outcome.fail||outcome.retry?`http_${status}`:null);
   if(outcome.verified)await run(ctx,"UPDATE auth_provisioning SET state='verified',operation=?,dispatched_at=COALESCE(?,dispatched_at,?),verified_at=?,attempts=attempts+1,last_status=NULL,last_error=NULL,claimed_until=NULL WHERE id=?",outcome.operation,wroteAt,now,now,ob.id);
   else await run(ctx,"UPDATE auth_provisioning SET state=?,dispatched_at=?,attempts=attempts+1,next_attempt_at=?,last_status=?,last_error=?,claimed_until=NULL WHERE id=?",outcome.retry?'pending':outcome.block?'blocked':'failed',wroteAt,now+delay(ob,outcome.retry),status,error,ob.id);
-  await observeProvisioning(ctx,ob,{dispatchedAt:wroteAt,verifiedAt:outcome.verified&&outcome.readback?now:null,operation:outcome.operation});
+  await observeProvisioning(ctx,ob,{dispatchedAt:wroteAt,verifiedAt:outcome.verified&&outcome.readback?now:null,operation:outcome.operation,members:outcome.members});
   await run(ctx,`UPDATE auth_scim_connectors SET ${outcome.verified?'last_success_at=?,last_error=NULL':'last_error=?'} WHERE app_id=?`,outcome.verified?now:error,ob.app_id);
   // A person's new account may complete a pushed group's membership.
   if(outcome.verified&&ob.subject_type==='person'&&connector.push_groups&&outcome.operation!=='none')for(const g of await all(ctx,"SELECT a.principal_id AS id FROM auth_app_assignments a JOIN auth_group_members m ON m.group_id=a.principal_id WHERE a.app_id=? AND a.principal_type='group' AND m.person_id=?",ob.app_id,ob.subject_id))await requeueGroup(ctx,ob.app_id,g.id);

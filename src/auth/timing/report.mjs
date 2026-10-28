@@ -16,14 +16,14 @@ export function timingPeriod(query,now) {
 }
 
 export function episodeProjection(episode,inventory,visibleApp,asOf) {
- const all=inventory.filter(row=>row.episode_id===episode.id),hidden=all.some(row=>!visibleApp(row.app_id));
- const visible=all.filter(row=>visibleApp(row.app_id));
- const facts=visible.map(row=>({appId:row.app_id,app:row.app_name,channel:row.channel,
+ const all=inventory.filter(row=>row.episode_id===episode.id),hidden=all.some(row=>!visibleApp(row.app_id,row.channel));
+ const visible=all.filter(row=>visibleApp(row.app_id,row.channel));
+ const facts=visible.map(row=>({appId:row.app_id,app:row.app_name,channel:row.channel.startsWith('scim-group:')?'scim-group':row.channel,
   eventAt:iso(episode.event_at),localDenialAt:iso(episode.local_denial_at),
   dispatchedAt:iso(observed(row.dispatched_at,asOf)),acceptedAt:iso(observed(row.accepted_at,asOf)),
   remoteVerifiedAt:iso(observed(row.verified_at,asOf)),
-  observation:observed(row.verified_at,asOf)!==null?'remote readback':row.channel==='backchannel'&&observed(row.accepted_at,asOf)!==null?'back-channel accepted; remote state unknown':'unverified'}));
- const complete=episode.inventory_complete===1&&!hidden&&all.length>0&&all.every(row=>row.channel==='scim'&&observed(row.verified_at,asOf)!==null);
+  observation:observed(row.verified_at,asOf)!==null?'remote readback':row.connector_retired?'connector removed; unverified':row.channel==='backchannel'&&observed(row.accepted_at,asOf)!==null?'back-channel accepted; remote state unknown':'unverified'}));
+ const complete=episode.inventory_complete===1&&!hidden&&all.length>0&&all.every(row=>(row.channel==='scim'||row.channel.startsWith('scim-group:'))&&observed(row.verified_at,asOf)!==null);
  const completedAt=complete?Math.max(episode.local_denial_at,...all.map(row=>row.verified_at)):null;
  return {episodeId:episode.id,leaverEventAt:iso(episode.event_at),localDenialAt:iso(episode.local_denial_at),
   dispatchedAt:!hidden&&all.length&&all.every(row=>observed(row.dispatched_at,asOf)!==null)?iso(Math.max(...all.map(row=>row.dispatched_at))):unknown,

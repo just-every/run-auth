@@ -79,10 +79,14 @@ dispatch time and remote verification time. The native denial timestamp records
 the guarded directory commit; it is not an observation of extension, device or
 network enforcement. Back-channel HTTP acceptance has its own `acceptedAt` and
 never becomes remote readback. SCIM verification requires an actual inactive or
-absent readback of the captured managed account. A queue with no known account,
+absent readback of the captured managed account. Captured pushed groups also
+require readback showing that account absent from their membership; unresolved
+group work keeps the app outside completed counts. A queue with no known account,
 a provider write acknowledgment, a removed connector or an unsupported app
 remains unverified. Unresolved names survive subsequent profile edits and
-connector removal. Rehire ends correlation to the old episode; a later leaver
+connector removal. Removing a connector freezes its unverified observations;
+a new connection cannot silently backfill that earlier missing evidence.
+Rehire ends correlation to the old episode; a later leaver
 creates a separate episode and cannot close the old missing evidence.
 
 The Activity audit records `lifecycle_timing_committed` atomically with the

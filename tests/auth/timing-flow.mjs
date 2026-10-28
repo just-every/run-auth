@@ -137,5 +137,41 @@ export async function timingFlow(t) {
  await r.restart();await r.call('/',{action:'maintain'});
  assert.ok(!(await report()).rows.some(row=>row.personId===held));
  assert.equal((await r.db.prepare('SELECT count(*) AS n FROM auth_timing_episodes WHERE person_id=?').bind(held).first()).n,0);
+ // Existing pushed-group revocation remains durable work. A successful
+ // account deactivation cannot conceal an unverified membership removal.
+ const grouped='synthetic-auth-213';await r.person(grouped,address(grouped));
+ const group=await write('groups/create',{name:'Measured group members'},201);
+ await write('groups/add',{groupId:group.id,personId:grouped});
+ const groupApp=await write('company-apps/create',{name:'Group lifecycle app',entityId:'https://group-timing.example.com',acsUrl:'https://group-timing.example.com/acs'},201);
+ await write('company-apps/assign',{appId:groupApp.id,principalType:'group',principalId:group.id});
+ await write('provisioning/connect',{appId:groupApp.id,baseUrl:'https://scim.example.com/scim/v2',token:edge.token,pushGroups:true},201);
+ await write('provisioning/sync',{appId:groupApp.id});
+ const remoteUser=[...edge.users.values()].find(user=>user.externalId===grouped),remoteGroup=[...edge.groups.values()].find(value=>value.externalId===group.id);
+ assert.ok(remoteGroup.members.some(member=>member.value===remoteUser.id));
+ edge.beforeRequest=({method,path})=>{if(method==='GET'&&path.endsWith('/Groups/'+remoteGroup.id))remoteGroup.members=[{value:remoteUser.id}];};
+ await terminate(grouped);
+ let groupRow=(await report()).rows.find(row=>row.personId===grouped);
+ assert.notEqual(groupRow.apps.find(app=>app.channel==='scim').remoteVerifiedAt,'unknown');
+ assert.equal(groupRow.apps.find(app=>app.channel==='scim-group').remoteVerifiedAt,'unknown');assert.equal(groupRow.observedDeprovisionAt,'unknown');
+ await r.restart();edge.beforeRequest=null;
+ await write('directory/edit',{personId:grouped,source:'hr',set:{name:'Revised group leaver'}});
+ await Promise.all([r.call('/',{action:'maintain'}),r.call('/',{action:'maintain'})]);
+ groupRow=(await report()).rows.find(row=>row.personId===grouped);
+ assert.ok(groupRow.apps.every(app=>app.remoteVerifiedAt!=='unknown'));assert.notEqual(groupRow.observedDeprovisionAt,'unknown');
+ assert.ok(!remoteGroup.members.some(member=>member.value===remoteUser.id));
+ const groupReaderId='synthetic-auth-215',groupReader=await passkeyPerson(r,groupReaderId,address(groupReaderId),'member');
+ await change({kind:'grant',personId:groupReaderId,roleId:role.plan.role.id,resources:{view:{people:[grouped],apps:[groupApp.id],groups:[],cases:[]},edit:{}}});
+ const hiddenGroup=await read('',groupReader.cookie),hiddenGroupRow=hiddenGroup.rows.find(row=>row.personId===grouped);
+ assert.equal(hiddenGroupRow.unresolvedOutsideScope,'unknown');assert.equal(hiddenGroupRow.observedDeprovisionAt,'unknown');assert.equal(hiddenGroup.summary.nativeObservedComplete,0);
+ assert.ok(!JSON.stringify(hiddenGroup).includes(group.id));assert.ok(!hiddenGroupRow.apps.some(app=>app.channel==='scim-group'));
+ const removedConnectorPerson='synthetic-auth-214';await r.person(removedConnectorPerson,address(removedConnectorPerson));
+ await write('groups/add',{groupId:group.id,personId:removedConnectorPerson});
+ edge.fail(10,503);await terminate(removedConnectorPerson);
+ assert.equal((await report()).rows.find(row=>row.personId===removedConnectorPerson).remoteVerifiedAt,'unknown');
+ await write('provisioning/disconnect',{appId:groupApp.id});edge.faults.length=0;
+ await write('provisioning/connect',{appId:groupApp.id,baseUrl:'https://scim.example.com/scim/v2',token:edge.token,pushGroups:true},201);
+ await write('provisioning/sync',{appId:groupApp.id});
+ const retired=(await report()).rows.find(row=>row.personId===removedConnectorPerson);
+ assert.equal(retired.observedDeprovisionAt,'unknown');assert.ok(retired.apps.every(app=>app.remoteVerifiedAt==='unknown'&&app.observation==='connector removed; unverified'),'reconnecting cannot backfill unobserved facts under the removed connection');
  assert.ok(!JSON.stringify(await report()).includes(edge.token));
 }
