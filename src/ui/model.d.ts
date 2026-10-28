@@ -288,7 +288,7 @@ export interface AuthPageModel {
   adminServices?: AdminService[];
   adminServiceCustody?: {scopes:string[]};
   profile?: ProfileModel
-  lifecycle?: {plans:Array<{id:string;personId:string;person:string;actor:string;custodian:string;createdAt:number;denialAt:number;digest:string;state:string;fullyOffboarded:boolean;hiddenSteps:number;preview:{source:string;state:{from:string;to:string};credentialActions:string[]};steps:Array<{id:string;app:string;kind:string;operation:string;workId:string|null;state:string;outcome:string|null;deadlineAt:number|null;escalateAt:number|null;dispatchedAt:number|null;verifiedAt:number|null}>}>}
+  lifecycle?: {plans:Array<{id:string;personId:string;person:string;actor:string;custodian:string;createdAt:number;denialAt:number;digest:string;state:string;fullyOffboarded:boolean;hiddenSteps:number;missingSteps:number;preview:{source:string;state:{from:string;to:string};credentialActions:string[]};steps:Array<{id:string;app:string;kind:string;operation:string;workId:string|null;state:string;outcome:string|null;deadlineAt:number|null;escalateAt:number|null;dispatchedAt:number|null;verifiedAt:number|null}>}>}
   directory?: DirectoryModel
   page: AuthPage | string
   issuer?: string
