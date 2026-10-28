@@ -12,7 +12,7 @@ import {genericClient} from '../oidc-apps/clients.mjs';
 import {endGenericSessions} from '../oidc-apps/session.mjs';
 
 export const END_SESSION='/oidc/logout';
-const headers={'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'no-referrer','content-security-policy':`default-src 'none'; ${FRAME_SOURCES}; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`};
+const headers={'content-type':'text/html; charset=utf-8','cache-control':'no-store','referrer-policy':'same-origin','content-security-policy':`default-src 'none'; ${FRAME_SOURCES}; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`};
 const escape=v=>String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const page=(title,body,status=200,extra={})=>new Response(framedPage(title,`<h1>${title}</h1>${body}`),{status,headers:{...headers,...extra}});
 
