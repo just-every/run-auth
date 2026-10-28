@@ -38,7 +38,7 @@
     "test:browser": "pnpm run test:browser:ui && pnpm run test:browser:workforce && pnpm run test:browser:offline && pnpm run test:browser:docs && pnpm run test:browser:cli",
     "test:browser:ui": "node --test --test-concurrency=1 --test-skip-pattern=^docs tests/auth/browser.test.mjs tests/integration/browser.test.mjs tests/integration/move-in-browser.test.mjs tests/integration/security-settings-browser.test.mjs",
     "test:browser:workforce": "pnpm run test:browser:workforce-agents && pnpm run test:browser:workforce-apps",
-    "test:browser:cli": "node --test tests/integration/dev.test.mjs",
+    "test:browser:cli": "node --test tests/integration/dev.test.mjs && node --test tests/integration/sdk-browser.test.mjs",
     "test:site": "node --test tests/site/run-site.test.mjs",
     "drill:continuity": "node --test --test-concurrency=1 --test-name-pattern=\"scheduled continuity|scheduled installation continuity|a provider answering\" tests/auth/security.test.mjs tests/auth/provisioning.test.mjs tests/integration/http.test.mjs",
     "test:browser:offline": "node --test tests/integration/refresh-browser.test.mjs",
@@ -48,7 +48,7 @@
     "check:sources": "node scripts/edition-authoring/cli.mjs check && node scripts/edition-authoring/cli.mjs verify-base --offline",
     "test:terraform": "node --test tests/auth/terraform-provider.test.mjs",
     "test:browser:workforce-agents": "node --test --test-concurrency=1 tests/integration/agents-browser.test.mjs",
-    "test:browser:workforce-apps": "node --test --test-concurrency=1 tests/integration/company-apps-browser.test.mjs tests/integration/directory-browser.test.mjs tests/integration/automations-browser.test.mjs tests/integration/sdk-browser.test.mjs",
+    "test:browser:workforce-apps": "node --test --test-concurrency=1 tests/integration/company-apps-browser.test.mjs tests/integration/directory-browser.test.mjs tests/integration/automations-browser.test.mjs",
     "test:browser:static": "pnpm run test:browser:offline && pnpm run test:browser:docs"
   },
   "dependencies": {
