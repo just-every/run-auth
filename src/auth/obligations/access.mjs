@@ -13,5 +13,5 @@ export async function followupAccess(ctx,s) {
   // its current scoped holder or the explicitly assigned follow-up owner.
   if(!ob.case_id&&['enrollment','recovery'].includes(ob.kind)&&ob.person_id===s.person_id||await holdsObligation(ctx,s,ob))ids.push(ob.id);
  }
- return {state,canManage,filter:canManage?{clause:"(source_id NOT LIKE 'identity-release:%' OR ?=1)",args:[Number(s.role==='owner')]} :{clause:`id IN (SELECT value FROM json_each(?))`,args:[JSON.stringify(ids)]}};
+ return {state,canManage,filter:canManage?{clause:"(source_id NOT LIKE 'identity-release:%' OR ?=1) AND (source_id NOT LIKE 'directory-source:%' OR ?=1)",args:[Number(s.role==='owner'),Number(['owner','admin'].includes(s.role))]} :{clause:`id IN (SELECT value FROM json_each(?))`,args:[JSON.stringify(ids)]}};
 }

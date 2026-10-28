@@ -62,6 +62,7 @@ const groups = {
  ],
  transient: [
   'auth_factor_proofs','auth_factor_operations','auth_passkey_session_proofs',
+  'auth_directory_source_obligations',
   'auth_directory_snapshots','auth_directory_source_steps','auth_federation_transactions','auth_federation_replays','auth_federation_test_providers','auth_federation_test_health',
   'auth_campaign_obligations',
   'auth_mail_deliveries','auth_mail_events',

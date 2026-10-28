@@ -1,3 +1,4 @@
+import {isDirectoryObligation,directoryBinding} from '../directory-sources/followup.mjs';
 import {decisionKind} from './decision-sources.mjs';
 import {releaseSource} from '../erasure/pair-erasure.mjs';
 import {caseProjection} from './records.mjs';
@@ -21,11 +22,11 @@ export async function followupRead(ctx,request) {
   obligationPage(ctx,request,{table:'auth_obligations',columns:`id,kind,source_id,${caseProjection},owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,delivery_error,created_at,stopped_at,reminders_stopped_at`,prefix:'obligation',defaultLimit:200,filter}),
   obligationPage(ctx,request,{table:'auth_obligation_history',prefix:'history',defaultLimit:100,filter:{clause:`obligation_id IN (SELECT id FROM auth_obligations WHERE ${filter.clause})`,args:filter.args}}),
  ]);
- for(const ob of obligations.items){ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);if(releaseSource(ob))ob.kind='identity_release';const kind=decisionKind(ob);if(kind)ob.kind=kind;if(await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id)){ob.kind='hr_file_feed';ob.canSend=ob.canSend&&(await policy(ctx)).recipients.includes('source_owner');}}
+ for(const ob of obligations.items){if(isDirectoryObligation(ob)){const binding=await directoryBinding(ctx,ob);ob.kind='directory_source';ob.sourceLink=binding?(ctx.basePath??'')+'/app/move-in#directory-source-'+encodeURIComponent(binding.source_id):null;ob.canSend=false;continue;}ob.canSend=ob.state==='open'&&!ob.reminders_stopped_at&&await holdsObligation(ctx,s,ob);if(releaseSource(ob))ob.kind='identity_release';const kind=decisionKind(ob);if(kind)ob.kind=kind;if(await one(ctx,'SELECT obligation_id FROM auth_hr_feed_obligations WHERE obligation_id=?',ob.id)){ob.kind='hr_file_feed';ob.canSend=ob.canSend&&(await policy(ctx)).recipients.includes('source_owner');}}
  const live=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),access.state.epoch);
  if(!live)fail('role_authority_changed',409);
  const saved=await policy(ctx),visiblePolicy=access.canManage?saved:{enabled:saved.enabled,calendar:saved.calendar,reminderBusinessDays:saved.reminderBusinessDays,deadlineBusinessDays:saved.deadlineBusinessDays,escalation:saved.escalation,recipients:[],escalationRecipients:[]};
- return json({canManage:access.canManage,eligibleAdmins:access.canManage?await all(ctx,"SELECT id,email,display_name AS name FROM oa_operators WHERE status='active' AND role IN ('owner','admin')"):[],policy:visiblePolicy,obligations:obligations.items,obligationsPage:obligations.page,history:history.items,historyPage:history.page,limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Requests and review items use their current decider. Stale HR feeds send only after explicit HR source-owner reminder consent; other directory sources inherit this engine when their source doors ship.','Interrupted dispatch stays recorded as dispatching and is not retried for the same recipient and scheduled occurrence; transport acknowledgment is not proof of access state.']});
+ return json({canManage:access.canManage,eligibleAdmins:access.canManage?await all(ctx,"SELECT id,email,display_name AS name FROM oa_operators WHERE status='active' AND role IN ('owner','admin')"):[],policy:visiblePolicy,obligations:obligations.items,obligationsPage:obligations.page,history:history.items,historyPage:history.page,limitations:['Calendar changes apply to new obligations; existing records keep their calendar until explicitly rescheduled.','Email reminders only; Slack, Teams, Oncall and chat decisions are not implemented.','Requests and review items use their current decider. Stale HR feeds send only after explicit HR source-owner reminder consent; Generic SCIM pull freshness is visible only and never inherits reminder consent.','Interrupted dispatch stays recorded as dispatching and is not retried for the same recipient and scheduled occurrence; transport acknowledgment is not proof of access state.']});
 }
 export async function followupAction(ctx,request,path,data) {
  const s=await requireSession(ctx,request);
@@ -41,6 +42,7 @@ export async function followupAction(ctx,request,path,data) {
  }
  await syncObligations(ctx);
  const ob=await one(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE id=? AND state='open'`,String(data.id??''));if(!ob)fail('followup_unavailable',404);
+ if(isDirectoryObligation(ob))fail('directory_source_schedule_owned_by_source',403);
  if(releaseSource(ob)&&s.role!=='owner')fail('owner_required',403);
  const owner=await one(ctx,"SELECT id,role FROM oa_operators WHERE id=? AND status='active'",String(data.ownerId??''));if(!owner||!['owner','admin'].includes(owner.role)&&!(ob.case_id&&await holdsCase(ctx,owner.id,ob.case_id)))fail('followup_owner_requires_admin');
  if(releaseSource(ob)&&owner.role!=='owner')fail('owner_required',403);
