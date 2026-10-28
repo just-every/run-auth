@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "34c0a16da4799ea945ee3a81a965135ceb71f95fc7f0584d5283ee7f61e83e96",
+      "sha256": "592f142e8fd6c605a8d10923f2408e9b29c2f4209f8476cbcfefaf1bcf95271d",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "ad45a171f61eb9a908f1c9e97cbca431755fe7225d992d62e27e78b9f528ca6c",
+      "sha256": "ae4f1813d12c306bd170b0669c7be38195cd78f5e99fc540cebd464c182760fe",
       "executable": false
     },
     "deploy-site.json": {
@@ -1970,8 +1970,12 @@
       "sha256": "bcf82ff8b5ac43d974bd4dfa3488568b93e8506d3fe735bb0add7fc6a14fa941",
       "executable": false
     },
+    "src/auth/recovery-cases/eligibility.mjs": {
+      "sha256": "235a6feea60f936786964126bd7139f9a9b7f62c4c39eb198f03599e607da7d9",
+      "executable": false
+    },
     "src/auth/recovery-cases/index.mjs": {
-      "sha256": "973e0ce9dd01fd5814cc72454dc280c16773c35b4be7ec8af86f47453872dce2",
+      "sha256": "539e75074e019770b8aeff15674b9d5aec5058a7a9840115fadf907e89b56563",
       "executable": false
     },
     "src/auth/recovery-notices.mjs": {
@@ -2011,7 +2015,7 @@
       "executable": false
     },
     "src/auth/retention/maintenance.mjs": {
-      "sha256": "b8d6ffeb3e32cdb3bd2da4fe4c1cb4c36cfdfa420f021c500be5028512041de5",
+      "sha256": "af526f1d2bd04530572586ae953111f408a840aa4ef4364002f6aa922530ec67",
       "executable": false
     },
     "src/auth/retention/plan.mjs": {
@@ -2071,7 +2075,7 @@
       "executable": false
     },
     "src/auth/roles/factors.mjs": {
-      "sha256": "29e46bae84a92e5645f05446f7d7798c8fb015a98894991a10efd52efcb3354d",
+      "sha256": "f5da1a61d56b51b1d271e8f8a0151753895ddf8f5eeadd28ddd83b41530cf2af",
       "executable": false
     },
     "src/auth/roles/index.mjs": {
@@ -2099,7 +2103,7 @@
       "executable": false
     },
     "src/auth/roles/resources.mjs": {
-      "sha256": "b7ed206c930b9f01f113eb89b87805427d8d7ed65cd27f91145ffd83108b09b8",
+      "sha256": "8df1b93d78ad64aefbd4e8d8c5828fe4f1238d4a3ef32f2acda4b18293cc1d51",
       "executable": false
     },
     "src/auth/roles/state.mjs": {
@@ -3559,7 +3563,7 @@
       "executable": false
     },
     "tests/auth/recovery-cases-flow.mjs": {
-      "sha256": "950611a71260de8565ca415413911faf13a33a2f88bf14b2a197af857f78fd7b",
+      "sha256": "10920ed248ee678306464305a806f33c8497e99e3c727538eb52c6c7917f926d",
       "executable": false
     },
     "tests/auth/recovery-cli.test.mjs": {
@@ -3583,7 +3587,7 @@
       "executable": false
     },
     "tests/auth/retention-flow.mjs": {
-      "sha256": "8b0bb5bb4617aa6dc2b5fc7f2a6d51856e5843ea02293080ae255f2b05ddc3ce",
+      "sha256": "e4456dd0999a91b80566bbed329408636e4d0446776b6daa6d57804aa74aacb6",
       "executable": false
     },
     "tests/auth/retention-integrity-flow.mjs": {
