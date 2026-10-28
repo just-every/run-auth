@@ -113,5 +113,6 @@ export async function authResponse(request: Request, original: Bindings, executi
  if (setup) return setup
  if (path === '/') return redirect('/app/account')
  if (['people', 'move-in', 'agents', 'apps', 'activity', 'permissions', 'erasure'].includes(page) && !model.isAdmin && !(page === 'activity' && model.canReadAudit)) return new Response(renderAuthPage({ ...model, page: 'account', notice: 'Sign in with your passkey to administer Auth.' }), { status: 403, headers: html('', 'GET').headers })
- return html(renderAuthPage(model), request.method)
+ const response = html(renderAuthPage(model), request.method)
+ return model.activityError ? new Response(response.body, { status: model.activityError.status, headers: response.headers }) : response
 }

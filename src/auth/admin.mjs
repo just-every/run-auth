@@ -73,7 +73,15 @@ export async function model(ctx,request,page='account') {
  }
  if(page==='activity') {
   try {result.activityPage=await auditPage(ctx,s,request);result.activity=result.activityPage.events;result.canReadAudit=true;}
-  catch(error){if(!(error instanceof AuthError)||error.status!==403)throw error;result.activity=[];result.auditError=error.message;}
+  catch(error){
+   if(!(error instanceof AuthError))throw error;
+   if(['invalid_audit_filter','invalid_audit_cursor','audit_cursor_expired','audit_cursor_authority_changed'].includes(error.message)) {
+    const params=new URL(request.url).searchParams;
+    result.canReadAudit=true;result.activity=[];
+    result.activityError={status:error.status,message:error.message,filters:Object.fromEntries(['from','to','person','event','limit'].map(key=>[key,params.get(key)??'']))};
+   } else if(error.status===403){result.activity=[];result.auditError=error.message;}
+   else throw error;
+  }
  }
  if(page==='account'||page==='activity'&&isAdmin){result.decisions=await decisionsModel(ctx,s);result.reviews=await reviewsModel(ctx,s);result.requests={...await (await requestsRead(ctx,request)).json(),canManage:isAdmin,meId:s.person_id,people:isAdmin?result.people:[],adminApps:isAdmin?await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL'):[]};}
  if(page==='activity'&&isAdmin)result.retention=await (await retentionRead(ctx,request,'/api/auth/retention')).json();

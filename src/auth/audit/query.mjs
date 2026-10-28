@@ -41,7 +41,8 @@ export async function auditPage(ctx,s,request) {
  let cursor;
  if(params.has('cursor')) {
   cursor=await decode(ctx,params.get('cursor'));
-  if(JSON.stringify(cursor.binding)!==JSON.stringify(binding)||cursor.expiresAt<=ctx.now())fail('audit_cursor_authority_changed',409);
+  if(JSON.stringify(cursor.binding)!==JSON.stringify(binding))fail('audit_cursor_authority_changed',409);
+  if(cursor.expiresAt<=ctx.now())fail('audit_cursor_expired',410);
   integer(cursor.max,0,Number.MAX_SAFE_INTEGER);integer(cursor.before,0,Number.MAX_SAFE_INTEGER);
  } else {
   const max=(await one(ctx,'SELECT COALESCE(MAX(id),0) AS id FROM auth_activity')).id;
