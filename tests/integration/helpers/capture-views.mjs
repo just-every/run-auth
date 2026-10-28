@@ -8,7 +8,9 @@ export async function captureViews({page,views,errors,prepare=async()=>{},captur
    const [width,theme]=views[index];
    await target.setViewportSize({width,height:1000});
    await target.emulateMedia({colorScheme:theme});
-   if(target===page)await target.reload();else await target.goto(url);
+   if(index===offset) {
+    if(target===page)await target.reload();else await target.goto(url);
+   }
    await prepare(target);
    await capture(target,width,theme);
   }

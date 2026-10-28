@@ -119,7 +119,7 @@
       "executable": false
     },
     ".github/workflows/verify.yml": {
-      "sha256": "32f7cd3de3551986947e83a411f66eeef591908ac3e6968b502ad4fabdbe8a49",
+      "sha256": "41abdaa99353b41fc8935af23165787c6eca075c09a1fad39c9e21499ed46e6b",
       "executable": false
     },
     ".gitignore": {
@@ -647,7 +647,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "87d0681b3ae278c778d7c8361cc47f4c7348d9731978191bcb66761f3b8bcc4a",
+      "sha256": "eb71a4c523e32af33b674c77ccc8df62f38753d5011a932b6e402cb410c25b9a",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -3788,6 +3788,10 @@
     },
     "tests/integration/helpers/campaign-journey.mjs": {
       "sha256": "331614051151fe7ed4128bfd574e4cbaa728bbcd2db2a8d9c4d0bb36dffb3487",
+      "executable": false
+    },
+    "tests/integration/helpers/capture-views.mjs": {
+      "sha256": "4022dcd45f57fe38dff68fe6996d9d8b761bcda01de7339de13cc958f88b2867",
       "executable": false
     },
     "tests/integration/helpers/delegation-journey.mjs": {

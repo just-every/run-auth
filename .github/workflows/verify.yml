@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [ui, workforce, offline, docs]
+        suite: [ui, workforce-agents, workforce-apps, static]
     permissions:
       contents: read
     env:
@@ -159,12 +159,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: actions/setup-go@v5
-        if: matrix.suite == 'workforce'
+        if: matrix.suite == 'workforce-apps'
         with:
           go-version: '1.25.1'
           cache-dependency-path: packages/terraform-provider/go.sum
       - name: Install Terraform for UI drift journey
-        if: matrix.suite == 'workforce'
+        if: matrix.suite == 'workforce-apps'
         run: |
           python3 scripts/install-terraform-tools.py "$RUNNER_TEMP/auth-iac"
           echo "$RUNNER_TEMP/auth-iac" >> "$GITHUB_PATH"
