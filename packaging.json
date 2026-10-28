@@ -39,10 +39,10 @@
         "MAIL_FROM",
         "MAIL_RELAY_URL",
         "MAIL_ACCOUNT_ID",
-        "OWNER_EMAIL",
         "MAIL_SENDGRID_WEBHOOK_KEY"
       ],
       "secretNames": [
+        "OWNER_EMAIL",
         "SESSION_SECRET",
         "SETUP_TOKEN",
         "AUTH_ENCRYPTION_KEY",

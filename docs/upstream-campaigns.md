@@ -14,6 +14,14 @@ Generic SAML uses `preset: "saml"`, with either `metadataUrl`, `metadataXml`, or
 
 Choose a reviewed **Representative immutable subject**, then **Test representative sign-in**. Complete the real provider sign-in in the same browser. Auth checks the provider proof and the initiating owner session, records the tested subject, and returns to the mapping preview. Review the exact people and trust, confirm, then **Activate upstream**. Tests, drafts and a matching email cannot activate trust. Disabling an upstream destroys its sealed private configuration and ends its provider evidence; local Auth proof and administrator requirements remain independent.
 
+## Rotate SAML upstream certificates
+
+Prepare the reviewed SAML configuration with both the current and replacement certificates in the explicit certificate list. Test the representative using each signing key, review the unchanged immutable subject associations and approve the exact setup. Ordinary employees still need their existing local email proof and app assignment. Certificate overlap grants no administrator authority.
+
+To retire the old key, disable that setup, then prepare a replacement under the same provider id with only the replacement certificate and the exact reviewed subject map. Complete a new representative test, review the new trust and explicitly activate it with the owner's hardware passkey and fresh email confirmation. A previous preview cannot approve this replacement. Disablement destroys the previous private configuration; allow for a sign-in interruption while the replacement is reviewed. Existing recovery policy is unchanged.
+
+Auth checks certificate validity at response verification and accepts only currently valid certificates in the approved list. A fresh response signed by an expired, unapproved or retired certificate is refused. Unfinished callbacks and verified responses from disabled or replaced trust cannot become employee sessions. Representative tests create no employee session, authenticated membership or downstream grant. The native independently signed protocol journey proves this rotation and downstream launch after persistent-store restart; it establishes no named-provider or live tenant qualification.
+
 ## Run a passkey enrollment campaign
 
 Use a dedicated campaign provider with the reviewed immutable subjects. Its discovery must have been tested and pinned. Stage and admit an Okta or Entra export, then expand **Start an enrollment campaign** under that batch. Select the upstream and cohort, opening time, deadline and cutover time. A selected cohort manager must be an existing active person.

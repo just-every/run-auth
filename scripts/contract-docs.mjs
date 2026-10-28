@@ -24,6 +24,13 @@ for(const id of selected) {
   const updated=section.replace(old,generated).replace(/^Remaining gaps: [^\n]*\n?/m,'');
   result=result.slice(0,start)+updated+result.slice(next<0?result.length:next);
  }
+ // The selected Status row now owns its gap inside the generated block.
+ // Remove that clause's legacy duplicate without touching other journeys.
+ const legacyStart=result.indexOf('**'+id+' — '),legacyNext=result.indexOf('\n**',legacyStart+3);
+ if(legacyStart>=0) {
+  const section=result.slice(legacyStart,legacyNext<0?undefined:legacyNext).replace(/^Gap: [^\n]*\n?/m,'');
+  result=result.slice(0,legacyStart)+section+result.slice(legacyNext<0?result.length:legacyNext);
+ }
  const heading=new RegExp('(\\*\\*'+id+' — [^\\n]+?\\()(done|partial|missing)(\\)\\.\\*\\*)');
  result=result.replace(heading,(_,before,status,after)=>before+row.status+after);
 }

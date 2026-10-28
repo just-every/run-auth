@@ -16,11 +16,34 @@ const BACKOFF=[30000,60000,300000,900000,3600000],CLAIM=120000,BATCH=50;
 const USERS='/Users',GROUPS='/Groups',userPath=id=>`${USERS}/${encodeURIComponent(id)}`,groupPath=id=>`${GROUPS}/${encodeURIComponent(id)}`;
 export const ESCALATE_AFTER=900000;
 
+// Existing approved leaver work owns reconciliation for its current episode.
+// Replacing it would lose both its readback and its reviewed connection fence.
+async function approvedWork(ctx,appId,type,id) {
+ return all(ctx,`SELECT s.work_id FROM auth_lifecycle_steps s JOIN auth_lifecycle_plans p ON p.id=s.plan_id
+  JOIN oa_operators o ON o.id=p.person_id JOIN auth_people d ON d.person_id=p.person_id
+  WHERE s.app_id=? AND s.kind=? AND (s.kind='scim' OR NOT EXISTS(SELECT 1 FROM auth_provisioning work WHERE work.id=s.work_id AND work.state='verified'))
+  AND o.status='inactive' AND d.terminated_at=p.denial_at
+  AND NOT EXISTS(SELECT 1 FROM auth_lifecycle_plans newer WHERE newer.person_id=p.person_id AND newer.rowid>p.rowid)
+  AND (s.kind='scim' AND s.person_id=? OR s.kind='scim_group' AND EXISTS(
+   SELECT 1 FROM json_each(p.plan,'$.lifecycle.steps') step WHERE json_extract(step.value,'$.appId')=s.app_id
+   AND json_extract(step.value,'$.kind')='scim_group' AND json_extract(step.value,'$.subjectId')=?))`,appId,type==='person'?'scim':'scim_group',id,id);
+}
 const kick=(ctx,appId)=>{const work=dispatch(ctx,appId);if(ctx.waitUntil)ctx.waitUntil(work);else return work;};
 export async function queue(ctx,appId,subjects,reason) {
  if(!subjects.length||!await connectorOf(ctx,appId))return;
  const now=ctx.now();
- await ctx.db.batch(subjects.flatMap(([type,id])=>[
+ const fresh=[];
+ for(const [type,id] of subjects) {
+  const approved=await approvedWork(ctx,appId,type,id);
+  if(!approved.length){fresh.push([type,id]);continue;}
+  // Only a newly observed drift reopens verified work. Pending backoff, failed
+  // or blocked outcomes and missing queues remain attached to the original id.
+  if(reason==='reconcile')for(const step of approved)await ctx.db.batch([
+   ctx.db.prepare("UPDATE auth_lifecycle_steps SET state='unknown',outcome='remote_drift_observed',verified_at=NULL WHERE work_id=? AND EXISTS(SELECT 1 FROM auth_provisioning WHERE id=? AND state='verified')").bind(step.work_id,step.work_id),
+   ctx.db.prepare("UPDATE auth_provisioning SET state='pending',verified_at=NULL,next_attempt_at=? WHERE id=? AND state='verified'").bind(now,step.work_id),
+  ]);
+ }
+ if(fresh.length)await ctx.db.batch(fresh.flatMap(([type,id])=>[
   ctx.db.prepare("UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type=? AND subject_id=? AND state IN ('pending','failed','blocked')").bind(appId,type,id),
   ctx.db.prepare("INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) VALUES(?,?,?,?,?,?,'pending',?)").bind(random(),appId,type,id,reason,now,now),
  ]));
@@ -172,6 +195,7 @@ export async function dispatch(ctx,appId=null) {
  }
 }
 async function requeueGroup(ctx,appId,groupId) {
+ if((await approvedWork(ctx,appId,'group',groupId)).length)return;
  if(await one(ctx,"SELECT 1 FROM auth_provisioning WHERE app_id=? AND subject_type='group' AND subject_id=? AND state='pending' AND dispatched_at IS NULL",appId,groupId))return;
  await ctx.db.batch([
   ctx.db.prepare("UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type='group' AND subject_id=? AND state IN ('pending','failed','blocked')").bind(appId,groupId),

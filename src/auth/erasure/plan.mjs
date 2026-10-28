@@ -75,6 +75,15 @@ export async function planErasure(ctx,kind,target,reference='erased:'+random()) 
   }
   const followup=followupErasure(table,row,{stores,identifiers,reset,reference});
   if(followup) {if(followup.remove)removed.add(key);else updates.set(key,followup.update);continue;}
+  // A leaver capture belongs to its subject. Erasing an approver must redact
+  // their provenance without deleting another person's retained execution.
+  if(name==='auth_lifecycle_plans'&&kind==='person'&&row.person_id!==target) {
+   const changed={};
+   for(const column of ['actor_id','custodian_id'])if(identifiers.has(row[column]))changed[column]=reference;
+   if(contains(row.plan,evidenceIdentifiers))changed.plan=JSON.stringify(anonymous(JSON.parse(row.plan),new Set([...evidenceIdentifiers,...names].filter(text)),reference));
+   if(Object.keys(changed).length)updates.set(key,changed);
+   continue;
+  }
   const relatedActivity=name==='auth_activity_details'&&values(stores,'auth_activity').some(a=>a.id===row.activity_id&&(canMatch('auth_activity',a)||contains(a.subject_id,historicalAddresses)));
   const matched=relatedActivity||canMatch(name,row)||isEvidence(name)&&contains(row.subject_id,historicalAddresses),discardMap=name==='auth_grant_maps',discardStage=staging.has(name);
   if(isEvidence(name)) {

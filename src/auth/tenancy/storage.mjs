@@ -114,6 +114,26 @@ async function createSchema(db, schema) {
  }
 }
 
+// Existing employers have their own pre-upgrade tables. Creating missing
+// schema objects does not add columns to those tables. Upgrade logout queues
+// before workers open them, preserving every pending delivery and stable jti.
+async function upgradeLogoutQueues(db, organization, schema) {
+ for(const table of ['auth_logout_deliveries','auth_oidc_logouts']) {
+  if(!schema.tableNames.has(table)||schema.missing.some(row=>row.name===table))continue;
+  const physical=quoted(organization.namespace+table);
+  const columns=async()=>new Set((await db.prepare(`PRAGMA table_info(${physical})`).all()).results.map(row=>row.name));
+  const present=await columns();
+  for(const column of ['claimed_until','dispatched_at'])if(!present.has(column)) {
+   try {await db.prepare(`ALTER TABLE ${physical} ADD COLUMN ${quoted(column)} INTEGER`).run();}
+   catch(error) {
+    // Another opener can win the same additive upgrade. Accept only the
+    // installed column; a storage failure must not expose a partial schema.
+    if(!(await columns()).has(column))throw error;
+   }
+  }
+ }
+}
+
 function singletonSeeds(db, organization, schema) {
  const seeds = [
   ['auth_lifecycle_epoch', '(id,epoch) VALUES(1,1) ON CONFLICT(id) DO NOTHING'],
@@ -193,6 +213,7 @@ export async function organizationDatabase(db, id) {
  if (!organization) return null;
  if (organization.namespace !== namespaceFor(id)) throw new Error('invalid_organization_namespace');
  const schema = await currentSchema(db, organization.namespace);
+ await upgradeLogoutQueues(db, organization, schema);
  await createSchema(db, schema);
  const seed = singletonSeeds(db, organization, schema);
  if (seed.length) await db.batch(seed);

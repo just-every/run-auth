@@ -3,11 +3,12 @@
 // every client and person against the destination's own rules before restoring.
 // Runtime modules load lazily: this adapter must load before `rer install`.
 import { createRequire } from 'node:module';
-import { link, lstat, unlink } from 'node:fs/promises';
+import { link, lstat, readdir, unlink } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { localPortability } from '@runeditrun/rer/portability';
 import { fileRecords } from '@runeditrun/rer/modules/portability/files';
 import { readSettings } from '@runeditrun/rer/adapter-settings';
+import { selectLocalState } from '@runeditrun/rer/local/state';
 import { RerError } from '@runeditrun/rer/errors';
 import { portableTables, registeredOrganizations, resolveStore, StoreRegistryError } from '../../src/auth/stores.mjs';
 
@@ -59,6 +60,16 @@ async function withDatabase(root, work) {
  const { getPlatformProxy } = createRequire(join(root, 'package.json'))('wrangler');
  const proxy = await getPlatformProxy({ configPath: join(root, 'wrangler.jsonc'), persist: { path: join(root, '.wrangler/state/v3') }, remoteBindings: false });
  try { return await work(proxy.env.DB); } finally { await proxy.dispose(); }
+}
+async function destinationInventory(root) {
+ // A proxy creates a blank D1 file even for an inventory read. Leave a fresh
+ // restore destination absent so Base can migrate it after its empty preflight.
+ const state=await selectLocalState(root);
+ const files=await readdir(join(state,'v3/d1/miniflare-D1DatabaseObject')).catch(error=>{
+  if(error.code==='ENOENT')return [];
+  throw error;
+ });
+ return files.some(name=>name.endsWith('.sqlite')) ? withDatabase(root,inventory) : [];
 }
 const settings = async root => (await readSettings(root, { file: '.dev.vars' })).values;
 
@@ -122,7 +133,7 @@ async function importAuth(context) {
    const reason=refusal(store.name,item.row,local,validateClientOrigin);
    if(reason)throw new RerError('restore_refused',`Restore refused (auth_import): ${reason}.`,4);
   }
-  const destination=await withDatabase(context.root,inventory);installationArchiveAuthority(destination,'import');
+  const destination=await destinationInventory(context.root);installationArchiveAuthority(destination,'import');
  }catch(error){registryFailure(error);}
  return engineFor(organizations,'import').import(context);
 }
