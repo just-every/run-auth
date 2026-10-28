@@ -118,7 +118,7 @@ export interface EnrollmentCampaign {
 }
 
 export interface DirectorySourceModel {
- sources: Array<{id:string;name:string;kind:string;mode:string;organizationBinding:string;fields:string[];disabled:boolean;lastError:string|null;lastReadAt:number|null}>
+ sources: Array<{id:string;name:string;kind:string;mode:string;organizationBinding:string;fields:string[];disabled:boolean;lastError:string|null;lastReadAt:number|null;freshness?:{state:string;custodianId:string;custodianName:string;nextReadAt:number|null}|null}>
  snapshots: Array<{id:string;sourceId:string;state:string;reasons:string[];createdAt:number}>
  preview?: {sourceId:string;snapshotId:string;state:string;digest:string;held:boolean;reasons:string[];refusals:string[];changes:Array<{kind:string;name?:string;groupName?:string;personName?:string;row?:{name?:string;email?:string;active?:boolean;fields?:Record<string,string|null>}}>}
 }
@@ -257,7 +257,7 @@ export interface FollowupModel {
  canManage?:boolean;eligibleAdmins?:Array<{id:string;email:string;name:string}>
  obligationsPage?: {hasMore:boolean;nextCursor:string|null};historyPage?: {hasMore:boolean;nextCursor:string|null}
  policy: {enabled:boolean;calendar:{timezone:string;weekdays:number[];holidays:string[];at:string};reminderBusinessDays:number;deadlineBusinessDays:number;recipients:string[];escalationRecipients:string[];escalation:string}
- obligations: Array<{id:string;kind:string;source_id:string;case_id?:string|null;canSend?:boolean;person_id:string|null;owner_id:string|null;next_action:string;calendar:string;deadline_at:number;next_due_at:number;state:string;last_error:string|null;delivery_error:string|null;reminders_stopped_at:number|null}>
+ obligations: Array<{id:string;kind:string;source_id:string;case_id?:string|null;canSend?:boolean;sourceLink?:string|null;person_id:string|null;owner_id:string|null;next_action:string;calendar:string;deadline_at:number;next_due_at:number;state:string;last_error:string|null;delivery_error:string|null;reminders_stopped_at:number|null}>
  history: Array<{obligation_id:string;event:string;created_at:number;error:string|null}>
  limitations:string[]
 }

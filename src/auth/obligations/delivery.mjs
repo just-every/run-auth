@@ -19,6 +19,7 @@ export async function maintainObligations(ctx) {
  // before limiting the batch so they cannot starve other due obligations.
  for(const ob of await all(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE state='open' AND reminders_stopped_at IS NULL AND next_due_at<=? AND COALESCE(claimed_until,0)<=?
   AND (?=1 OR EXISTS(SELECT 1 FROM auth_campaign_obligations c WHERE c.obligation_id=auth_obligations.id))
+  AND source_id NOT LIKE 'directory-source:%'
   AND NOT(kind='app_setup' AND source_id LIKE 'review-item:%')
   AND (?=1 OR NOT EXISTS(SELECT 1 FROM auth_hr_feed_obligations WHERE obligation_id=auth_obligations.id))
   AND (?=1 OR deadline_at<=? OR kind!='app_setup' OR source_id NOT LIKE 'access-request:%')

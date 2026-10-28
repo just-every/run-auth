@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {expect} from '@playwright/test';
 import {join} from 'node:path';
 
-export async function sourceSetupJourney({app,providerEdge,owner,page,shoot,directory,accessible}) {
+export async function sourceSetupJourney({app,providerEdge,owner,page,shoot,directory,accessible,sourceEdge}) {
  const json=async(response,status=200)=>{if(response.status()!==status)assert.fail(await response.text());return response.json();};
  const post=(path,data)=>owner.request.post(app.origin+path,{data,headers:{origin:app.origin},maxRedirects:0});
  const challenge=await json(await post('/api/auth/domains/challenge',{domain:'example.com'}),201);
@@ -60,5 +60,45 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot,dire
  await page.locator(`[data-directory-source="${source.sourceId}"]`).getByText('Source settings',{exact:true}).click();
  await page.getByRole('button',{name:'Disable source',exact:true}).click();await expect(page.locator(`[data-directory-source="${source.sourceId}"]`)).toContainText('Disabled');await shoot('directory-source-disabled');
  const stopped=await owner.request.get(source.scimBase+'/Users',{headers});assert.equal(stopped.status(),401);
+ await directoryFreshnessJourney({app,owner,page,shoot,sourceEdge});
  await page.goto(app.origin+'/app/move-in?federation='+setup.id);await page.getByRole('button',{name:'Disable upstream',exact:true}).click();await expect(page.locator(`[data-federation-setup="${setup.id}"]`)).toContainText('disabled');await shoot('federation-disabled');
+}
+
+export function sourceFreshnessEdge(next) {
+ const state={failure:false,reads:0};
+ return {...state,get failure(){return state.failure;},set failure(value){state.failure=value;},async fetch(request) {
+  const url=new URL(request.url);
+  if(url.hostname==='cloudflare-dns.com'&&url.searchParams.get('name')==='freshness.example.com')return Response.json({Status:0,Answer:url.searchParams.get('type')==='A'?[{type:1,data:'93.184.216.34'}]:[]});
+  if(url.origin!=='https://freshness.example.com')return next(request);
+  state.reads++;
+  if(request.headers.get('authorization')!=='Bearer synthetic-auth-205')return Response.json({}, {status:401});
+  if(state.failure)return Response.json({}, {status:503});
+  const users=[{schemas:['urn:ietf:params:scim:schemas:core:2.0:User'],id:'synthetic-auth-206',userName:['synthetic-auth-206','example.com'].join('@'),displayName:'Synthetic freshness worker',active:true}];
+  const rows=url.pathname==='/scim/Users'?users:[];
+  return Response.json({schemas:['urn:ietf:params:scim:api:messages:2.0:ListResponse'],totalResults:rows.length,startIndex:1,itemsPerPage:rows.length,Resources:rows});
+ }};
+}
+async function directoryFreshnessJourney({app,owner,page,shoot,sourceEdge}) {
+ const post=(path,data)=>owner.request.post(app.origin+'/api/auth/'+path,{data,headers:{origin:app.origin}});
+ const response=await post('directory-sources/create',{kind:'scim',mode:'pull',name:'Freshness directory',baseUrl:'https://freshness.example.com/scim',organizationBinding:'https://freshness.example.com',credential:'synthetic-auth-205',fields:['name'],confirm:true});assert.equal(response.status(),201,await response.text());const source=await response.json();
+ sourceEdge.failure=true;
+ await page.goto(app.origin+'/app/move-in');
+ const card=()=>page.locator(`[data-directory-source="${source.sourceId}"]`);
+ await card().getByText('Source settings',{exact:true}).click();
+ let read=page.waitForResponse(response=>response.url().endsWith('/directory-sources/pull'));await card().getByRole('button',{name:'Read directory now'}).click();assert.equal((await read).status(),502);
+ await page.reload();await expect(card().locator('[data-source-freshness]')).toContainText('Directory read failed');
+ await shoot('directory-freshness-failed',async width=>{if(width===1440){await expect(card()).toContainText('Check the source credential and connection');await expect(card()).toContainText('Reminders are not authorized');}});
+ await page.goto(app.origin+'/app/activity');
+ const records=await(await owner.request.get(app.origin+'/api/auth/followup')).json();const obligation=records.obligations.find(row=>row.kind==='directory_source'&&row.sourceLink.endsWith(source.sourceId));assert.ok(obligation);assert.equal(obligation.canSend,false);
+ const followup=()=>page.locator(`[data-followup-id="${obligation.id}"]`);
+ await expect(followup().locator('[data-followup-state]')).toHaveText('open');await expect(followup().getByRole('button',{name:'Send reminder early'})).toHaveCount(0);
+ await app.pause();await app.resume();await page.reload();await expect(followup().locator('[data-followup-state]')).toHaveText('open');
+ await shoot('directory-freshness-obligation',async width=>{if(width===1440){await expect(followup()).toContainText('Directory source request refused');await expect(followup().getByRole('link',{name:'Open directory source'})).toHaveAttribute('href',new RegExp(source.sourceId));}});
+ await followup().getByRole('link',{name:'Open directory source'}).click();await expect(card()).toBeVisible();
+ sourceEdge.failure=false;await card().getByText('Source settings',{exact:true}).click();
+ read=page.waitForResponse(response=>response.url().endsWith('/directory-sources/pull'));await card().getByRole('button',{name:'Read directory now'}).click();const recovered=await read;assert.equal(recovered.status(),202);const result=await recovered.json();assert.equal(result.replayed,true);assert.equal(result.snapshotId,source.snapshotId);
+ await expect(card().locator('[data-source-freshness]')).toContainText('Observation current');await shoot('directory-freshness-recovered');
+ const people=await(await owner.request.get(app.origin+'/api/auth/people')).json();assert.equal(people.some(row=>row.email===['synthetic-auth-206','example.com'].join('@')),false,'recovery never approves staged people');
+ await page.goto(app.origin+'/app/activity');await expect(followup().locator('[data-followup-state]')).toHaveText('completed');await shoot('directory-freshness-history');
+ await post('directory-sources/disable',{sourceId:source.sourceId,confirm:true});
 }

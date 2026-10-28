@@ -351,4 +351,4 @@ import {retentionIntegrityFlow} from './retention-integrity-flow.mjs';
 test('scheduled retention expiry preserves erasure audit verification while altered expiry commitments fail',retentionIntegrityFlow);
 
 import {followupDecisionsFlow} from './followup-decisions-flow.mjs';
-test('request, review and stale HR obligations retain decider reminders and resolution history across DST and restart',followupDecisionsFlow);
+test('request, review and stale HR obligations retain decider reminders and resolution history across DST and restart',async t=>{await followupDecisionsFlow(t);const {directoryFreshnessFlow}=await import('./directory-source-flow.mjs');await directoryFreshnessFlow(t);});

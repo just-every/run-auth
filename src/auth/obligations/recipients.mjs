@@ -1,3 +1,4 @@
+import {isDirectoryObligation,directorySourceHolder} from '../directory-sources/followup.mjs';
 import {notificationRecipient} from '../notifications/index.mjs';
 import {decisionKind,decisionSource,decisionHolder} from './decision-sources.mjs';
 import {releaseSource} from '../erasure/pair-erasure.mjs';
@@ -55,6 +56,7 @@ export async function recipient(ctx,ob,id,selectors,{escalation=false}={}) {
 }
 export async function holdsObligation(ctx,s,ob) {
  ob=await withCase(ctx,ob);
+ if(isDirectoryObligation(ob))return directorySourceHolder(ctx,ob,s.person_id);
  if(decisionKind(ob))return decisionHolder(ctx,ob,s.person_id);
  if(releaseSource(ob))return s.role==='owner'&&ob.owner_id===s.person_id;
  if(!ob.case_id&&['enrollment','recovery'].includes(ob.kind)&&ob.person_id===s.person_id)return true;

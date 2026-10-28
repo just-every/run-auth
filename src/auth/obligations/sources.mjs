@@ -1,3 +1,4 @@
+import {directorySourceCandidates,directorySourceState} from '../directory-sources/followup.mjs';
 import {automationSource,automationCandidates} from '../automations/engine.mjs';
 import {notificationCandidates,notificationSource} from '../notifications/index.mjs';
 import {decisionCandidates,decisionSource,syncReviewHistory} from './decision-sources.mjs';
@@ -18,6 +19,7 @@ export async function sourceState(ctx,ob) {
  const campaign=await campaignSource(ctx,ob);if(campaign)return campaign;
  const security=await notificationSource(ctx,ob);if(security)return security;
  const decision=await decisionSource(ctx,ob);if(decision)return decision;
+ const directory=await directorySourceState(ctx,ob);if(directory)return directory;
  const hrSource=await hrFeedSource(ctx,ob);if(hrSource)return hrSource;
  if(releaseSource(ob))return releaseState(ctx,ob);
  if(['app_setup','app_link_proposal','app_link_token'].includes(ob.kind))return appSourceState(ctx,ob);
@@ -61,7 +63,7 @@ export async function syncObligations(ctx) {
  const now=ctx.now(),p=await policy(ctx),owner=await one(ctx,"SELECT id FROM oa_operators WHERE status='active' AND role='owner' ORDER BY created_at,id LIMIT 1");
  const candidates=[...await all(ctx,`SELECT 'enrollment' AS kind,id AS source_id,id AS person_id,NULL AS app_id,created_at FROM oa_operators WHERE status='invited'
   UNION ALL SELECT 'recovery',id,person_id,NULL,created_at FROM auth_recoveries WHERE cancelled_at IS NULL AND completed_at IS NULL
-  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await automationCandidates(ctx),...await campaignCandidates(ctx),...await notificationCandidates(ctx),...await decisionCandidates(ctx),...await hrFeedCandidates(ctx),...await releaseCandidates(ctx),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
+  UNION ALL SELECT 'provisioning',id,CASE WHEN subject_type='person' THEN subject_id ELSE NULL END,app_id,event_at FROM auth_provisioning WHERE state IN ('pending','failed','blocked')`),...await automationCandidates(ctx),...await campaignCandidates(ctx),...await notificationCandidates(ctx),...await decisionCandidates(ctx),...await hrFeedCandidates(ctx),...await directorySourceCandidates(ctx),...await releaseCandidates(ctx),...await appCandidates(ctx),...await taskCandidates(ctx),...await all(ctx,"SELECT 'recovery' AS kind,id AS source_id,id AS case_id,person_id,opened_by AS owner_id,created_at FROM auth_role_cases WHERE state!='closed'")];
  for(const c of candidates) {
   const existing=await one(ctx,'SELECT id,state FROM auth_obligations WHERE kind=? AND source_id=?',c.kind,c.source_id);
   if(existing) {
@@ -80,6 +82,7 @@ export async function syncObligations(ctx) {
   await ctx.db.batch([ctx.db.prepare(`INSERT OR IGNORE INTO auth_obligations(id,kind,source_id,owner_id,person_id,app_id,next_action,calendar,deadline_at,next_due_at,state,stop_rule,escalation_rule,last_error,created_at)
    VALUES(?,?,?,?,?,?,?,?,?,?,'open','source_satisfied_cancelled_or_authority_expired',?,?,?)`).bind(id,c.kind,c.source_id,c.owner_id??(c.kind==='recovery'?person?.id??owner?.id??null:owner?.id??null),person?.id??null,app?.id??null,source.action??'review_source',JSON.stringify(p.calendar),c.deadline_at??Math.min(source.deadlineAt??source.expiresAt??Infinity,businessDue(created,p.deadlineBusinessDays,p.calendar)),c.next_due_at??businessDue(created,p.reminderBusinessDays,p.calendar),c.campaign_id?'stop_at_deadline':p.escalation,source.error??null,created),
    ctx.db.prepare("INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,'opened',? WHERE changes()>0").bind(random(),id,now),
+   ...(c.directory_source_id?[ctx.db.prepare('INSERT OR IGNORE INTO auth_directory_source_obligations(obligation_id,source_id,episode) SELECT id,?,? FROM auth_obligations WHERE kind=? AND source_id=?').bind(c.directory_source_id,c.episode,c.kind,c.source_id)]:[]),
    ...(c.hr_feed_id?[ctx.db.prepare('INSERT OR IGNORE INTO auth_hr_feed_obligations(obligation_id,feed_id,episode) SELECT id,?,? FROM auth_obligations WHERE kind=? AND source_id=?').bind(c.hr_feed_id,c.episode,c.kind,c.source_id)]:[]),
    ...(c.campaign_id?[ctx.db.prepare('INSERT OR IGNORE INTO auth_campaign_obligations(obligation_id,campaign_id,person_id,duty) SELECT id,?,?,? FROM auth_obligations WHERE kind=? AND source_id=?').bind(c.campaign_id,c.person_id,c.duty,c.kind,c.source_id)]:[]),
    ...(c.case_id?[ctx.db.prepare('INSERT OR IGNORE INTO auth_followup_cases(obligation_id,case_id) SELECT id,? FROM auth_obligations WHERE kind=? AND source_id=?').bind(c.case_id,c.kind,c.source_id)]:[]),

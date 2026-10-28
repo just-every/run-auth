@@ -1,4 +1,4 @@
-import {sourceSetupJourney} from './helpers/source-setup-journey.mjs';
+import {sourceSetupJourney,sourceFreshnessEdge} from './helpers/source-setup-journey.mjs';
 import {campaignProviderEdge,campaignJourney} from './helpers/campaign-journey.mjs';
 import {hookServer} from '../auth/hooks-server.mjs';
 import {migrationJourney} from './helpers/migration-journey.mjs';
@@ -15,8 +15,8 @@ const exportFile=fileURLToPath(new URL('../fixtures/move-in/google-30.json',impo
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 
 test('move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes',async t=>{
- const edge=await hookServer(t),providerEdge=await campaignProviderEdge(edge.fetch),app=await openApp({upstreamProviders:[providerEdge.provider],outboundService:providerEdge.fetch});t.after(()=>app.close());await app.claim();
- const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const edge=await hookServer(t),providerEdge=await campaignProviderEdge(edge.fetch),sourceEdge=sourceFreshnessEdge(providerEdge.fetch),app=await openApp({upstreamProviders:[providerEdge.provider],outboundService:sourceEdge.fetch});t.after(()=>app.close());await app.claim();
+ const browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic','--no-sandbox'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();await page.clock.install({time:new Date()});
  const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
  await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
@@ -105,7 +105,7 @@ test('move-in journey: stage a 30-person Google export, review, admit, invite an
  await page.goto(app.origin+'/app/activity');await expect(page.locator('[data-activity-detail]').first()).toBeVisible();await shoot('activity');
  await confirmEmail();await migrationJourney({app,edge,browser,owner:context,page,shoot});
  await confirmEmail();await campaignJourney({app,providerEdge,browser,owner:context,page,shoot});
- await confirmEmail();await sourceSetupJourney({app,providerEdge,owner:context,page,shoot,directory,accessible});
+ await confirmEmail();await sourceSetupJourney({app,providerEdge,owner:context,page,shoot,directory,accessible,sourceEdge});
  assert.deepEqual(errors,[],'no browser runtime errors');
  const measured={owner_actions:actions,owner_action_count:actions.length,screens:[...screens],people_admitted:22,invitations_sent:22};
  await writeFile(join(directory,'move-in-measurement.json'),JSON.stringify(measured,null,1)+'\n');
