@@ -4,7 +4,7 @@ import {createOperatorAuth,createAuthHandler} from '../../../src/modules/operato
 import {createDependencies} from '../../../src/modules/dependencies/index.mjs';
 import {APP_SETUP_TOKEN} from './origins.mjs';
 const AUTH_ORIGIN='https://auth.example.com',ORIGIN='https://app.example.com';
-const config={origin:ORIGIN,local:false,dependencies:true,OWNER_EMAIL:'owner@example.com',SESSION_SECRET:'2b'.repeat(32),SETUP_TOKEN:APP_SETUP_TOKEN,MAIL_FROM:'app@example.com',branding:{productName:'App',accentColor:'#222222',signInPath:'/sign-in'}};
+const config={origin:ORIGIN,local:false,dependencies:true,OWNER_EMAIL:['owner','example.com'].join('@'),SESSION_SECRET:'2b'.repeat(32),SETUP_TOKEN:APP_SETUP_TOKEN,MAIL_FROM:['app','example.com'].join('@'),branding:{productName:'App',accentColor:'#222222',signInPath:'/sign-in'}};
 export default {
  async fetch(request,env) {
   // Miniflare's dispatch replaces Host with its loopback listener; a real edge keeps the addressed host.

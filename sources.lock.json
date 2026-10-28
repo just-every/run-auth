@@ -3395,7 +3395,7 @@
       "executable": false
     },
     "tests/auth/link/app-worker.mjs": {
-      "sha256": "e198a8cf473c220482ea4cb80d6ed74ea24dc2d593255215276c4fe9ac76fc3f",
+      "sha256": "05d145264141fdbfa6a0eeebf769348812ff62ce240cafcb954cfd8f17a1980b",
       "executable": false
     },
     "tests/auth/link/auth-worker.mjs": {
