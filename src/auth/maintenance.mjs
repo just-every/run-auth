@@ -1,3 +1,4 @@
+import {reconcileLeavers} from './lifecycle/history.mjs';
 import {maintainOnboarding} from './onboarding/index.mjs';
 import {maintainAutomations} from './automations/engine.mjs';
 import {maintainDirectorySources} from './directory-sources/maintenance.mjs';
@@ -53,6 +54,7 @@ export async function maintainAuth(ctx) {
  await maintainRequests(ctx);
  await maintainReviews(ctx);
  await maintainProvisioning(ctx);
+ await reconcileLeavers(ctx);
  await maintainNotifications(ctx);
  await maintainObligations(ctx);
  await maintainRetention(ctx);

@@ -116,6 +116,7 @@ async function createSchema(db, schema) {
 
 function singletonSeeds(db, organization, schema) {
  const seeds = [
+  ['auth_lifecycle_epoch', '(id,epoch) VALUES(1,1) ON CONFLICT(id) DO NOTHING'],
   ['auth_admin_api_epoch', '(id,version) VALUES(1,1) ON CONFLICT(id) DO NOTHING'],
   ['auth_role_epoch', '(id,epoch) VALUES(1,1) ON CONFLICT(id) DO NOTHING'],
   ['auth_erasure_policy', `(singleton,configured,policy,updated_by,updated_at) VALUES(1,0,'{"mode":"explicit-owner-confirmation","automaticDeletion":false,"heldData":"refuse-erasure","audit":"anonymized","remote":"separate-until-verified"}',NULL,0) ON CONFLICT(singleton) DO NOTHING`],

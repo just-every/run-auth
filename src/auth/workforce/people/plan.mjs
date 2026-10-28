@@ -1,3 +1,4 @@
+import {leaverPreview} from '../../lifecycle/plan.mjs';
 // What a set of directory edits would do, without doing it: the field changes
 // by source, state changes, email changes, groups gained and lost, apps gained
 // and lost, and what each refuses. Preview and apply share this, so a bulk edit
@@ -85,6 +86,7 @@ export async function planEdit(ctx,dir,edit,actorId,{self=false}={}) {
  const nameNow=after.name??person.name;
  const priorConflicts=new Set(conflicts(person.fields).map(c=>c.field));
  return {personId:person.id,email:person.email,name:person.name,source,state:state.change??null,emailChange:mail.change??null,
+  ...(state.change?.kind==='terminate'&&source==='manual'?{lifecycle:await leaverPreview(ctx,person.id,actorId)}:{}),
   nameChange:nameNow!==person.name?{from:person.name,to:nameNow}:null,writes:set.writes,changes,bind,
   conflicts:conflicts(set.fields).map(c=>({...c,introduced:!priorConflicts.has(c.field)})),groups,apps,refusals};
 }

@@ -1,3 +1,4 @@
+import {logoutBinding,approvedBinding} from '../lifecycle/binding.mjs';
 import {maintainFamilies} from '../tokens/lifecycle.mjs';
 // Back-channel logout and identity fences for linked apps. Each delivery is a
 // signed logout+jwt with one stable jti, posted to the app's registered logout
@@ -38,6 +39,7 @@ async function queue(ctx,targets,event,sid,atOnce=targets.length) {
 async function attempt(ctx,d) {
  const client=await one(ctx,'SELECT id,sector_id,logout_uri FROM auth_clients WHERE id=?',d.client_id);
  if(!client||!client.logout_uri)return {finished:true,outcome:'app_removed'};
+ if(!await approvedBinding(ctx,d.id,await logoutBinding(client)))return {finished:true,outcome:'approved_app_changed'};
  const claims={aud:client.id,sub:await pairwiseSubject(ctx,client.sector_id,d.person_id),jti:d.jti,events:{[d.event]:{}},...(d.sid?{sid:d.sid}:{})};
  const token=await signToken(ctx,claims,{typ:'logout+jwt',expiresAt:Math.floor(ctx.now()/1000)+120});
  let status;
@@ -55,10 +57,12 @@ export async function deliverLogouts(ctx,ids=null) {
  const now=ctx.now();
  const due=ids?await all(ctx,`SELECT * FROM auth_logout_deliveries WHERE finished_at IS NULL AND id IN (${ids.map(()=>'?').join(',')})`,...ids)
   :await all(ctx,'SELECT * FROM auth_logout_deliveries WHERE finished_at IS NULL AND next_attempt_at<=? ORDER BY next_attempt_at LIMIT 50',now);
- for(const d of due) {
+ for(const row of due) {
+  const d=await one(ctx,'UPDATE auth_logout_deliveries SET claimed_until=? WHERE id=? AND finished_at IS NULL AND next_attempt_at<=? AND (claimed_until IS NULL OR claimed_until<=?) RETURNING *',ctx.now()+120000,row.id,ctx.now(),ctx.now());
+  if(!d)continue;
   const result=await attempt(ctx,d),attempts=d.attempts+1,next=now+(RETRY[Math.min(attempts-1,RETRY.length-1)]);
   const expired=!result.finished&&next>d.created_at+HORIZON;
-  await run(ctx,'UPDATE auth_logout_deliveries SET attempts=?,next_attempt_at=?,finished_at=?,outcome=? WHERE id=? AND finished_at IS NULL',attempts,next,result.finished||expired?ctx.now():null,expired?'abandoned_after_24h':result.outcome,d.id);
+  await run(ctx,'UPDATE auth_logout_deliveries SET claimed_until=NULL,attempts=?,next_attempt_at=?,finished_at=?,outcome=? WHERE id=? AND finished_at IS NULL',attempts,next,result.finished||expired?ctx.now():null,expired?'abandoned_after_24h':result.outcome,d.id);
  }
 }
 

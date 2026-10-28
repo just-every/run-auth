@@ -1,3 +1,8 @@
+import {deliverGenericLogouts} from '../../oidc-apps/session.mjs';
+import {prepareLeaver} from '../../lifecycle/plan.mjs';
+import {reconcileLeavers} from '../../lifecycle/history.mjs';
+import {deliverLogouts} from '../../links/logout.mjs';
+import {dispatch} from '../../provisioning/obligations.mjs';
 // Doing a plan: every statement of a person's edit commits together, each under
 // the administrator's live authority, then the effects follow (sign-out fence,
 // events, provisioning, group provisioning) once the change has committed.
@@ -41,17 +46,18 @@ function entryStatements(ctx,g,actorId,dir,e) {
 const touched=e=>e.writes.length||e.state||e.emailChange||e.nameChange||e.bind||e.groups.added.length||e.groups.removed.length;
 
 // Effects that follow a committed change. Identity fences go out for anything that ends sessions.
-async function afterwards(ctx,actorId,e,bulk) {
+async function afterwards(ctx,actorId,e,bulk,leaver) {
  const id=e.personId,subject=await personSubject(ctx,id);
  if(e.state){
-  if(e.state.kind==='suspend'||e.state.kind==='terminate')await fencePerson(ctx,id);
-  await emit(ctx,EVENTS[e.state.kind],subject,{});await personChanged(ctx,id,REASONS[e.state.kind]);
+  if(!leaver&&(e.state.kind==='suspend'||e.state.kind==='terminate'))await fencePerson(ctx,id);
+  await emit(ctx,EVENTS[e.state.kind],subject,{});if(!leaver)await personChanged(ctx,id,REASONS[e.state.kind]);
  }
- if(e.emailChange){await fencePerson(ctx,id);await personChanged(ctx,id,'person_email_changed');}
+ if(e.emailChange&&!leaver){await fencePerson(ctx,id);await personChanged(ctx,id,'person_email_changed');}
  else if(e.nameChange&&!e.state)await personChanged(ctx,id,'person_name_changed');
  if(e.writes.length||e.nameChange||e.emailChange)await emit(ctx,'person.updated',subject,{fields:[...new Set([...e.writes.map(w=>w.field),...(e.nameChange?['name']:[]),...(e.emailChange?['email']:[])])],source:e.source});
  for(const [list,type,reason] of [[e.groups.added,'group.member_added','group_member_added'],[e.groups.removed,'group.member_removed','group_member_removed']])
-  for(const gr of list){await emit(ctx,type,subject,{group:gr.id,via:'rule'});await groupChanged(ctx,gr.id,[id],reason);}
+  for(const gr of list){await emit(ctx,type,subject,{group:gr.id,via:'rule'});if(!leaver)await groupChanged(ctx,gr.id,[id],reason);}
+ if(leaver){const work=(async()=>{await deliverLogouts(ctx);await deliverGenericLogouts(ctx);await dispatch(ctx);await reconcileLeavers(ctx);})();if(ctx.waitUntil)ctx.waitUntil(work);else await work;}
  await auditDetail(ctx,actorId,e.state?`person_${e.state.kind==='terminate'?'terminated':e.state.kind==='suspend'?'suspended':e.state.kind==='rehire'?'rehired':'restored'}`:'directory_person_updated',id,{source:e.source,bulk,changes:e.changes,state:e.state,email:e.emailChange,groups:{added:e.groups.added.map(g=>g.name),removed:e.groups.removed.map(g=>g.name)},apps:e.apps});
 }
 
@@ -62,8 +68,10 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
  const results=[];
  for(const e of planned.entries) {
   if(!touched(e)){results.push({personId:e.personId,changed:false});continue;}
-  const build=g=>[...entryStatements(ctx,g,actor.actorId,dir,e).statements,...(actor.receiptStatements?.(g,e.personId)??[])];
-  const {stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e),statements=build(guard);
+  const leaver=prepareLeaver(ctx,e,planned.digest,actor.actorId,dir.people.get(e.personId).version);
+  const build=g=>{const held=leaver?{clause:`(${g.clause}) AND (${leaver.held.clause})`,args:[...g.args,...leaver.held.args]}:g;return [...(leaver?.statements(g)??[]),...entryStatements(ctx,held,actor.actorId,dir,e).statements,...(actor.receiptStatements?.(held,e.personId)??[])];};
+  const prefix=leaver?.statements(guard).length??0;
+  const stateAt=entryStatements(ctx,guard,actor.actorId,dir,e).stateAt+prefix,statements=build(guard);
   let done;
   try {
    const accountEdit=(e.writes.length||e.state||e.emailChange||e.nameChange)&&!(e.source==='self'&&e.personId===actor.actorId);
@@ -76,8 +84,8 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
   }
   await actor.assertAuthority();
   if(stateAt>=0&&!done[stateAt].meta.changes)fail('person_changed',409);
-  await afterwards(ctx,actor.actorId,e,bulk);
-  results.push({personId:e.personId,changed:true});
+  await afterwards(ctx,actor.actorId,e,bulk,leaver);
+  results.push({personId:e.personId,changed:true,...(leaver?{planId:leaver.id}:{})});
  }
  return results;
 }

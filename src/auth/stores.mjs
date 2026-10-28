@@ -26,6 +26,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
+  'auth_lifecycle_plans','auth_lifecycle_steps','auth_lifecycle_epoch','auth_lifecycle_person_epoch',
   'auth_security_notice_intents',
   'auth_factor_policies',
   'auth_automation_runs', 'auth_automation_steps',
