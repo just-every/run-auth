@@ -7,8 +7,10 @@ import {commitAccountWrite} from '../../ranks.mjs';
 import {setStatement,clearStatement} from './fields.mjs';
 import {addRuleMember,dropRuleMember} from './groups.mjs';
 import {planEdit} from './plan.mjs';
-import {fencePerson} from '../../links/logout.mjs';
-import {personChanged,groupChanged} from '../../provisioning/obligations.mjs';
+import {fencePerson,deliverLogouts} from '../../links/logout.mjs';
+import {personChanged,groupChanged,dispatch} from '../../provisioning/obligations.mjs';
+import {maintainFamilies} from '../../tokens/lifecycle.mjs';
+import {terminationStatements,newEpisode,endEpisodes} from '../../timing/episodes.mjs';
 import {emit,personSubject} from '../../events/store.mjs';
 
 const EVENTS={suspend:'person.suspended',terminate:'person.terminated',restore:'person.restored',rehire:'person.restored'};
@@ -25,7 +27,7 @@ function stateStatements(ctx,g,id,change) {
 }
 
 // The statements of one planned entry; `stateAt` is the index of the status change, whose row count proves it applied.
-function entryStatements(ctx,g,actorId,dir,e) {
+function entryStatements(ctx,g,actorId,dir,e,episode) {
  const statements=[];let stateAt=-1;
  for(const w of e.writes)statements.push(w.value===null?clearStatement(ctx,g,e.personId,w.field,w.source):setStatement(ctx,g,e.personId,w.field,w.source,w.value,actorId));
  if(e.nameChange)statements.push(ctx.db.prepare(`UPDATE oa_operators SET display_name=? WHERE id=? AND ${g.clause}`).bind(e.nameChange.to,e.personId,...g.args));
@@ -33,7 +35,9 @@ function entryStatements(ctx,g,actorId,dir,e) {
   ctx.db.prepare(`DELETE FROM auth_emails WHERE person_id=? AND ${g.clause}`).bind(e.personId,...g.args),
   ctx.db.prepare(`UPDATE oa_operators SET email=?,version=version+1 WHERE id=? AND ${g.clause}`).bind(e.emailChange.to,e.personId,...g.args));
  if(e.bind&&!dir.sourceIds.has(`${e.bind.source}:${e.personId}`))statements.push(ctx.db.prepare(`INSERT INTO auth_person_sources(source,source_id,person_id,bound_by,bound_at) SELECT ?,?,?,?,? WHERE ${g.clause}`).bind(e.bind.source,e.bind.sourceId,e.personId,actorId,ctx.now(),...g.args));
+ if(episode)statements.push(...terminationStatements(ctx,g,e.personId,episode));
  if(e.state){const s=stateStatements(ctx,g,e.personId,e.state);stateAt=statements.length+s.length-1;statements.push(...s);}
+ if(e.state?.kind==='rehire')statements.push(endEpisodes(ctx,g,e.personId));
  for(const gr of e.groups.added)statements.push(addRuleMember(ctx,g,gr.id,e.personId,actorId));
  for(const gr of e.groups.removed)statements.push(dropRuleMember(ctx,g,gr.id,e.personId));
  return {statements,stateAt};
@@ -44,8 +48,11 @@ const touched=e=>e.writes.length||e.state||e.emailChange||e.nameChange||e.bind||
 async function afterwards(ctx,actorId,e,bulk) {
  const id=e.personId,subject=await personSubject(ctx,id);
  if(e.state){
-  if(e.state.kind==='suspend'||e.state.kind==='terminate')await fencePerson(ctx,id);
-  await emit(ctx,EVENTS[e.state.kind],subject,{});await personChanged(ctx,id,REASONS[e.state.kind]);
+  if(e.state.kind==='suspend')await fencePerson(ctx,id);
+  await emit(ctx,EVENTS[e.state.kind],subject,{});
+  if(e.state.kind==='terminate'){
+   await maintainFamilies(ctx);await deliverLogouts(ctx);await dispatch(ctx);
+  }else await personChanged(ctx,id,REASONS[e.state.kind]);
  }
  if(e.emailChange){await fencePerson(ctx,id);await personChanged(ctx,id,'person_email_changed');}
  else if(e.nameChange&&!e.state)await personChanged(ctx,id,'person_name_changed');
@@ -62,8 +69,9 @@ export async function applyAuthorizedPlan(ctx,actor,guard,dir,planned,{bulk=fals
  const results=[];
  for(const e of planned.entries) {
   if(!touched(e)){results.push({personId:e.personId,changed:false});continue;}
-  const build=g=>[...entryStatements(ctx,g,actor.actorId,dir,e).statements,...(actor.receiptStatements?.(g,e.personId)??[])];
-  const {stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e),statements=build(guard);
+  const episode=e.state?.kind==='terminate'?newEpisode(ctx):null;
+  const build=g=>[...entryStatements(ctx,g,actor.actorId,dir,e,episode).statements,...(actor.receiptStatements?.(g,e.personId)??[])];
+  const {stateAt}=entryStatements(ctx,guard,actor.actorId,dir,e,episode),statements=build(guard);
   let done;
   try {
    const accountEdit=(e.writes.length||e.state||e.emailChange||e.nameChange)&&!(e.source==='self'&&e.personId===actor.actorId);

@@ -300,7 +300,7 @@ test('scoped review coordinators schedule only editable resources and cannot hid
 test('native MFA reports reconcile every scoped directory row and keep no-factor workers noncompliant while separate export rights and audit gates apply',mfaReportFlow);
 test('the administrators report follows a live published custom role grant and its revocation',administratorsReportFlow);
 test('the dormant report distinguishes an aged successful sign-in from recent activity and explicit unknown history',dormantReportFlow);
-test('terminated reports retain held app names and verified remote outcomes while connector failures and unmeasured timing stay explicit',terminatedReportFlow);
+test('terminated reports reconcile durable native episodes while held apps, historical gaps and all-surface qualification stay explicit',async t=>{await terminatedReportFlow(t);const {timingFlow}=await import('./timing-flow.mjs');await timingFlow(t);});
 
 test('saved HR file mappings hold destructive, empty and malformed deliveries, preview current and future rows, and retain one stale-feed follow-up across restart',hrFilePreviewFlow);
 test('a real SFTP listener verifies the employer key, applies reviewed hires, moves and leavers, refuses traversal and shells, and ends ingress after disabling',sftpIngressFlow);

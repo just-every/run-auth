@@ -5,6 +5,7 @@ import {maintainFamilies} from '../tokens/lifecycle.mjs';
 import {random,one,all,run,json,requireSession,cookie,cookieName,audit} from '../core.mjs';
 import {signToken,pairwiseSubject} from '../keys.mjs';
 import {fetcherOf} from './app.mjs';
+import {observeLogout} from '../timing/episodes.mjs';
 
 export const LOGOUT_EVENT='http://schemas.openid.net/event/backchannel-logout';
 export const FENCE_EVENT='https://runeditrun.com/events/identity-fence';
@@ -40,11 +41,12 @@ async function attempt(ctx,d) {
  if(!client||!client.logout_uri)return {finished:true,outcome:'app_removed'};
  const claims={aud:client.id,sub:await pairwiseSubject(ctx,client.sector_id,d.person_id),jti:d.jti,events:{[d.event]:{}},...(d.sid?{sid:d.sid}:{})};
  const token=await signToken(ctx,claims,{typ:'logout+jwt',expiresAt:Math.floor(ctx.now()/1000)+120});
- let status;
+ let status;const dispatchedAt=ctx.now();
  try {
   const response=await fetcherOf(ctx)(client.logout_uri,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(10000),headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({logout_token:token}).toString()});
   status=response.status;await response.body?.cancel();
  } catch {status=0;}
+ await observeLogout(ctx,d,{dispatchedAt,acceptedAt:status>=200&&status<300||status===409?ctx.now():null});
  // 409 means the app already consumed this jti: an earlier attempt arrived.
  if(status>=200&&status<300||status===409)return {finished:true,outcome:'delivered'};
  if(status>=400&&status<500&&status!==408&&status!==429)return {finished:true,outcome:`refused_${status}`};

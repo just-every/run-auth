@@ -53,6 +53,7 @@ function roleNoticeFault(db,point) {
    batches++;
    if(point==='after_delivery'&&batches===3)throw new Error('synthetic_notice_outcome_interrupted');
    const result=await target.batch(statements);
+   if(point==='after_termination'&&batches===1)throw new Error('synthetic_termination_commit_interrupted');
    if(point==='after_grant'&&batches===1)throw new Error('synthetic_role_commit_interrupted');
    return result;
   };

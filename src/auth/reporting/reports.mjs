@@ -4,12 +4,13 @@ import {assertPermission, permitted, requireHardware, roleGuard} from '../roles/
 import {requireLocalEmail} from '../local-email.mjs';
 import {commit} from '../roles/commit.mjs';
 import {appsFor} from '../workforce/people/load.mjs';
+import {timingPeriod,episodeProjection,timingSummary} from '../timing/report.mjs';
 
 export const REPORTS = '/api/auth/reports';
 const COLUMNS = {
  'mfa-enrollment':['mfaCompliant','factorTypes','factors','passwordOnly','policy'],
- 'terminated-people':['terminationEffectiveAt','leaverEventAt','localDenialAt','fullDeprovisionAt','remoteVerifiedAt','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
- 'joiner-leaver-timeliness':['terminationEffectiveAt','leaverEventAt','localDenialAt','fullDeprovisionAt','remoteVerifiedAt','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
+ 'terminated-people':['episodeId','terminationEffectiveAt','leaverEventAt','localDenialAt','dispatchedAt','fullDeprovisionAt','observedDeprovisionAt','remoteVerifiedAt','apps','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
+ 'joiner-leaver-timeliness':['episodeId','terminationEffectiveAt','leaverEventAt','localDenialAt','dispatchedAt','fullDeprovisionAt','observedDeprovisionAt','remoteVerifiedAt','apps','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
  'administrators':['grants'],
  'dormant-accounts':['lastSignInAt','lastSignInDoor','dormantDays','observation','apps'],
  'connector-health':['appId','app','kind','lastSuccessfulSyncAt','lastReconciledAt','status','openFailures','observation'],
@@ -25,7 +26,7 @@ const csvCell = value => {
 };
 function csv(result) {
   const columns = result.columns;
-  return [columns.map(csvCell).join(','), ...result.rows.map(row => columns.map(key => csvCell(key === 'asOf' ? result.asOf : row[key])).join(','))].join('\r\n') + '\r\n';
+  return [columns.map(csvCell).join(','), ...result.rows.map(row => columns.map(key => csvCell(key === 'asOf' ? result.asOf : key === 'summary' ? result.summary : row[key])).join(','))].join('\r\n') + '\r\n';
 }
 async function assertRead(ctx, s, epoch) {
   const held = await one(ctx, `SELECT 1 FROM auth_sessions s JOIN oa_operators p ON p.id=s.person_id JOIN auth_role_epoch e ON e.id=1
@@ -36,10 +37,12 @@ async function assertRead(ctx, s, epoch) {
 export async function reportsRead(ctx, request, path) {
   const s = await requireSession(ctx, request); requireHardware(s);
   const query = new URL(request.url).searchParams;
-  if ([...query.keys()].some(key => !['report', 'format', 'export', 'group', 'workerType', 'department', 'dormantDays'].includes(key)) ||
+  if ([...query.keys()].some(key => !['report', 'format', 'export', 'group', 'workerType', 'department', 'dormantDays','start','end','asOf'].includes(key)) ||
       [...new Set(query.keys())].some(key => query.getAll(key).length !== 1)) fail('invalid_report_filter');
   const name = path === REPORTS ? query.get('report') : path.slice(REPORTS.length + 1);
   if (name !== null && !NAMES.includes(name)) fail('report_not_found', 404);
+  if(name!=='joiner-leaver-timeliness'&&['start','end','asOf'].some(key=>query.has(key)))fail('invalid_report_filter');
+  const period=name==='joiner-leaver-timeliness'?timingPeriod(query,ctx.now()):null;
   const format = query.get('format') ?? 'json'; if (!['json', 'csv'].includes(format)) fail('invalid_report_format');
   const exporting = format === 'csv' || query.get('export') === '1';
   const permission = exporting ? 'audit.export' : 'audit.view';
@@ -60,10 +63,12 @@ export async function reportsRead(ctx, request, path) {
     'SELECT c.app_id,a.name,c.last_success_at,c.last_error,c.last_reconciled_at FROM auth_scim_connectors c JOIN auth_apps a ON a.id=c.app_id',
     'SELECT app_id,role,privileged FROM auth_privileged_app_roles',
     "SELECT target_id AS app_id,privileged FROM auth_privileged_resources WHERE kind='app'",
+    'SELECT * FROM auth_timing_episodes ORDER BY event_at,id',
+    'SELECT * FROM auth_timing_apps ORDER BY episode_id,app_id,channel',
   ];
-  const [keys, sessions, provisioning, connectors, privilege, appPolicy] = (await ctx.db.batch(statements.map(sql => ctx.db.prepare(sql)))).map(result => result.results);
+  const [keys, sessions, provisioning, connectors, privilege, appPolicy,episodes,inventory] = (await ctx.db.batch(statements.map(sql => ctx.db.prepare(sql)))).map(result => result.results);
   await assertRead(ctx, s, state.epoch);
-  const asOf = ctx.now();
+  const asOf = period?.asOf??ctx.now();
   const inScope = person => permitted(state, permission, {personId: person.id, write: false});
   const visibleApp = id => permitted(state, permission, {appId: id, write: false});
   const people = [...state.dir.people.values()].filter(person => {
@@ -78,7 +83,7 @@ export async function reportsRead(ctx, request, path) {
   const resourceSet = resources => Object.fromEntries(Object.entries(resources).map(([mode, kinds]) => [mode, Object.fromEntries(Object.entries(kinds).map(([kind, ids]) => [kind,
     ids.filter(id => id === '*' ? state.entries.some(entry => entry.role.permissions.includes(permission) && entry.resources.view[kind]?.includes('*')) :
       permitted(state, permission, {[{people:'personId',groups:'groupId',apps:'appId',cases:'caseId'}[kind]]: id, write: false}))]))]));
-  let rows = [], directoryCount = people.length;
+  let rows = [], directoryCount = people.length,summary;
   const gaps = ['Password/push and configurable MFA-policy qualification, historical timing audit reconciliation, scheduled delivery and compliance/Evidence connectors are not complete.'];
   if (name === 'mfa-enrollment') rows = people.map(person => {
     const factors = keys.filter(key => key.person_id === person.id).map(key => ({type: 'passkey', enrolledAt: iso(key.created_at), lastUsedAt: iso(key.last_used_at)}));
@@ -87,8 +92,7 @@ export async function reportsRead(ctx, request, path) {
   });
   if (name === 'terminated-people' || name === 'joiner-leaver-timeliness') {
     const terminated = people.filter(person => person.state === 'terminated');
-    directoryCount = name === 'terminated-people' ? terminated.length : people.length;
-    rows = (name === 'terminated-people' ? terminated : people).map(person => {
+    const legacy=person=>{
       const byApp=new Map();
       for(const row of provisioning.filter(row=>row.subject_id===person.id&&row.event_at>=(person.terminatedAt??Infinity)&&row.state!=='superseded')){
         const prior=byApp.get(row.app_id);
@@ -98,11 +102,26 @@ export async function reportsRead(ctx, request, path) {
       const unresolved = work.filter(row => !['verified', 'superseded'].includes(row.state));
       const hidden = unresolved.some(row => !visibleApp(row.app_id));
       return {...common(person), terminationEffectiveAt: iso(person.terminatedAt), leaverEventAt: work.length ? iso(Math.min(...work.map(row => row.event_at))) : unknown,
-        localDenialAt: unknown, fullDeprovisionAt: unknown,
+        episodeId:unknown,localDenialAt: unknown, fullDeprovisionAt: unknown,dispatchedAt:unknown,observedDeprovisionAt:unknown,apps:[],
         remoteVerifiedAt: work.length && work.every(row=>row.state==='verified'&&row.verified_at!==null) ? iso(Math.max(...work.map(row => row.verified_at))) : unknown,
         unresolvedApps: [...new Set(unresolved.filter(row => visibleApp(row.app_id)).map(row => row.name))],
         unresolvedOutsideScope: hidden ? unknown : false, sourceObservedAt: unknown, timingQualification: 'unmeasured'};
-    });
+    };
+    if(name==='terminated-people'){
+      rows=terminated.map(person=>{
+        const episode=episodes.find(row=>row.person_id===person.id&&row.ended_at===null&&row.event_at===person.terminatedAt);
+        return episode?{...common(person),terminationEffectiveAt:iso(episode.event_at),...episodeProjection(episode,inventory,visibleApp,asOf)}:legacy(person);
+      });
+    }else{
+      const inPeriod=at=>at>=period.start&&at<period.end;
+      rows=episodes.filter(row=>inPeriod(row.event_at)&&people.some(person=>person.id===row.person_id)).map(episode=>{
+        const person=people.find(person=>person.id===episode.person_id);
+        return {...common(person),terminationEffectiveAt:iso(episode.event_at),...episodeProjection(episode,inventory,visibleApp,asOf)};
+      });
+      rows.push(...terminated.filter(person=>inPeriod(person.terminatedAt)&&!episodes.some(row=>row.person_id===person.id&&row.event_at===person.terminatedAt)).map(legacy));
+      summary=timingSummary(rows,period);
+    }
+    directoryCount=new Set(rows.map(row=>row.personId)).size;
   }
   if (name === 'administrators') {
     rows = people.flatMap(person => {
@@ -138,7 +157,8 @@ export async function reportsRead(ctx, request, path) {
     directoryCount = null;
   }
   const result = {report: name, asOf: iso(asOf), employer: ctx.organizationId ?? 'root', filters: {group, workerType, department},
-    rowCount: rows.length, directoryCount, columns:['asOf',...(name==='connector-health'?[]:PERSON_COLUMNS),...COLUMNS[name]], rows, gaps, epoch: state.epoch};
+    rowCount: rows.length, directoryCount, columns:['asOf',...(summary?['summary']:[]),...(name==='connector-health'?[]:PERSON_COLUMNS),...COLUMNS[name]], rows, gaps, epoch: state.epoch,...(summary?{summary}:{}),
+    ...(period?{scopeAsOf:iso(ctx.now()),scopeQualification:'Current authorized directory filters; historical membership and profile reconstruction unknown'}:{})};
   await assertRead(ctx, s, state.epoch);
   if (exporting) await commit(ctx, s, roleGuard(ctx, s, state), 'reports.export', null, {report: name, asOf, rowCount: rows.length, filters: result.filters});
   const headers = {'cache-control':'no-store', 'x-auth-report-count': String(rows.length), 'x-auth-report-as-of': iso(asOf)};

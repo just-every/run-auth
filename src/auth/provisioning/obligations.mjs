@@ -9,6 +9,7 @@ import {one,all,run,random,audit} from '../core.mjs';
 import {assignment,appSubjects} from '../workforce/directory.mjs';
 import {scim,ok,retryable,findOne,connectorOf,USER,GROUP,PATCH} from './scim.mjs';
 import {emit} from '../events/store.mjs';
+import {currentEpisode,observeProvisioning} from '../timing/episodes.mjs';
 
 const BACKOFF=[30000,60000,300000,900000,3600000],CLAIM=120000,BATCH=50;
 // SCIM resource endpoints (RFC 7644 section 3.2).
@@ -21,7 +22,7 @@ export async function queue(ctx,appId,subjects,reason) {
  const now=ctx.now();
  await ctx.db.batch(subjects.flatMap(([type,id])=>[
   ctx.db.prepare("UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type=? AND subject_id=? AND state IN ('pending','failed','blocked')").bind(appId,type,id),
-  ctx.db.prepare("INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) VALUES(?,?,?,?,?,?,'pending',?)").bind(random(),appId,type,id,reason,now,now),
+  ctx.db.prepare(`INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at,timing_episode_id) VALUES(?,?,?,?,?,?,'pending',?,${type==='person'?currentEpisode:'NULL'})`).bind(random(),appId,type,id,reason,now,now,...(type==='person'?[id]:[])),
  ]));
  await syncObligations(ctx);
  await kick(ctx,appId);
@@ -101,16 +102,16 @@ async function applyPerson(ctx,connector,ob,wrote) {
   if(!ok(removed)&&removed.status!==404)return retryable(removed)?{retry:removed}:{fail:removed};
   const read=await scim(ctx,connector,'GET',path);
   if(read.status!==404)return retryable(read)||ok(read)?{retry:read,error:'remote_account_still_present'}:{fail:read};
-  await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:'delete'};
+  await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:'delete',readback:true};
  }
  wrote();const patched=await scim(ctx,connector,'PATCH',path,{schemas:[PATCH],Operations:[{op:'replace',value:{active:false}}]});
  if(patched.status===404){await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:'deactivate'};}
  if(!ok(patched))return retryable(patched)?{retry:patched}:{fail:patched};
  const read=await scim(ctx,connector,'GET',path);
- if(read.status===404){await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:'deactivate'};}
+ if(read.status===404){await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:'deactivate',readback:true};}
  if(!ok(read))return retryable(read)?{retry:read}:{fail:read};
  if(read.body?.active!==false)return {retry:read,error:'remote_account_still_active'};
- await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'inactive');return {verified:true,operation:'deactivate'};
+ await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'inactive');return {verified:true,operation:'deactivate',readback:true};
 }
 
 async function applyGroup(ctx,connector,ob,wrote) {
@@ -153,6 +154,7 @@ export async function dispatch(ctx,appId=null) {
   const now=ctx.now(),status=(outcome.retry??outcome.fail)?.status??null,error=outcome.error??outcome.block??(outcome.fail||outcome.retry?`http_${status}`:null);
   if(outcome.verified)await run(ctx,"UPDATE auth_provisioning SET state='verified',operation=?,dispatched_at=COALESCE(?,dispatched_at,?),verified_at=?,attempts=attempts+1,last_status=NULL,last_error=NULL,claimed_until=NULL WHERE id=?",outcome.operation,wroteAt,now,now,ob.id);
   else await run(ctx,"UPDATE auth_provisioning SET state=?,dispatched_at=?,attempts=attempts+1,next_attempt_at=?,last_status=?,last_error=?,claimed_until=NULL WHERE id=?",outcome.retry?'pending':outcome.block?'blocked':'failed',wroteAt,now+delay(ob,outcome.retry),status,error,ob.id);
+  await observeProvisioning(ctx,ob,{dispatchedAt:wroteAt,verifiedAt:outcome.verified&&outcome.readback?now:null,operation:outcome.operation});
   await run(ctx,`UPDATE auth_scim_connectors SET ${outcome.verified?'last_success_at=?,last_error=NULL':'last_error=?'} WHERE app_id=?`,outcome.verified?now:error,ob.app_id);
   // A person's new account may complete a pushed group's membership.
   if(outcome.verified&&ob.subject_type==='person'&&connector.push_groups&&outcome.operation!=='none')for(const g of await all(ctx,"SELECT a.principal_id AS id FROM auth_app_assignments a JOIN auth_group_members m ON m.group_id=a.principal_id WHERE a.app_id=? AND a.principal_type='group' AND m.person_id=?",ob.app_id,ob.subject_id))await requeueGroup(ctx,ob.app_id,g.id);

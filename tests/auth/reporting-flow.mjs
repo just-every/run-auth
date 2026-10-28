@@ -79,7 +79,7 @@ export async function terminatedReportFlow(t) {
  assert.equal(report.rowCount,2);assert.equal(report.directoryCount,2);
  const held=report.rows.find(row=>row.personId==='held'),left=report.rows.find(row=>row.personId==='left');
  assert.deepEqual(held.unresolvedApps,['Unresolved payroll access']);assert.equal(held.fullDeprovisionAt,'unknown');
- assert.equal(held.localDenialAt,'unknown','unqualified timing is explicit, never fabricated from a queue');
+ assert.equal(held.localDenialAt,new Date(r.now).toISOString(),'native denial is retained by the guarded directory commit');
  assert.deepEqual(left.unresolvedApps,[]);assert.notEqual(left.remoteVerifiedAt,'unknown');
  const health=await result(await r.call('/api/auth/reports/connector-health',{cookie:owner.cookie}));
  assert.equal(health.rows[0].status,'unhealthy');assert.ok(health.rows[0].openFailures>0);
