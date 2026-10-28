@@ -119,7 +119,7 @@
       "executable": false
     },
     ".github/workflows/verify.yml": {
-      "sha256": "41abdaa99353b41fc8935af23165787c6eca075c09a1fad39c9e21499ed46e6b",
+      "sha256": "87f8430296ee478313e7d9b4bcc48f7597e3e0c99c8f0bec7c561a04d64061c3",
       "executable": false
     },
     ".gitignore": {
@@ -655,7 +655,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "670a82f42d4acb215e5e296c3fa63eb56035df4c9199a045afea2dd28979c33b",
+      "sha256": "27cb65e669230391d16c8548d2deedf4a5728f8b9e866d1ba21ac787af2359b1",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -3863,7 +3863,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "2c74d90f31bf6da590e118b0972714f1a0688a3b2e69a6f81a39454054a99f41",
+      "sha256": "bb4959a936531dc1fb05e6d73536f8b8e718ae087fd671f9a6699bed001fabbf",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
@@ -3967,7 +3967,7 @@
       "executable": false
     },
     "tests/integration/sdk-browser.test.mjs": {
-      "sha256": "01c8e6169f9e4bb1ed0500fc039dd5a0f80fcca64963d38822e0d16faf654703",
+      "sha256": "f09af40347f263f72d9723e24644bf0302d5f23ae6bd263fa390a14b326ea9d5",
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {

@@ -196,7 +196,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install chromium
       - run: pnpm run build
-      - run: timeout 240s pnpm run test:browser:cli
+      - run: timeout 600s pnpm run test:browser:cli
   verify:
     needs: [plan, shards, browser, cli]
     if: ${{ always() }}

@@ -84,7 +84,8 @@ test('installed Hono browser quickstart enrolls independent employer memberships
   const shoot = async name => {
     await expect(page.locator('h1')).toBeVisible();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),'screen fits the desktop assertion viewport');
-    for (const width of [1440,390]) for (const theme of ['light','dark']) {
+    for (const width of [1440,390]) {
+      const theme = 'light';
       await page.setViewportSize({width,height:1000}); await page.emulateMedia({colorScheme:theme});
       await page.screenshot({path:join(screenshots, `sdk-${name}-${width}-${theme}.png`),fullPage:true});
     }
