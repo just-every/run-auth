@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "8166f52b37b8bbb6a2d29c3543a41f135f5919ba8941e4861291139e009032d1",
+      "sha256": "a441c03e266d596f04a7efe1a8126c93c6c0c3cd882afec4faffef2bba8044b7",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "44d79aebbb4682cdf7b0b1051275e3410a6bf69b6e951b155ed4d24bfb274473",
+      "sha256": "6a89a4a12ce4820a217c67355e699e092c61b10adf8d2ad591c1a1b1f8198468",
       "executable": false
     },
     "deploy-site.json": {
@@ -2083,7 +2083,7 @@
       "executable": false
     },
     "src/auth/roles/factors.mjs": {
-      "sha256": "547537d14a7d1f2e15be65d5dfead2bc2cac898353b5102d68b943d2899fb9b9",
+      "sha256": "f5da1a61d56b51b1d271e8f8a0151753895ddf8f5eeadd28ddd83b41530cf2af",
       "executable": false
     },
     "src/auth/roles/index.mjs": {
@@ -3571,7 +3571,7 @@
       "executable": false
     },
     "tests/auth/recovery-cases-flow.mjs": {
-      "sha256": "95672ba318f5ad88bf26624133699da60701960d9d5fb8eb257c2207159ad112",
+      "sha256": "ddde631ff70e88ca33ad12c585e338547401478588b146cff8ff5d8a623f6a08",
       "executable": false
     },
     "tests/auth/recovery-cli.test.mjs": {

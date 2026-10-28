@@ -1,3 +1,4 @@
+import {requireRecoveryEmployee} from '../recovery-cases/eligibility.mjs';
 import {verificationGuard,HOUR} from '../recovery-cases/index.mjs';
 import {notifySecurity} from '../notifications/index.mjs';
 import {json,fail,random,hash} from '../core.mjs';
@@ -11,7 +12,7 @@ export async function resetFactors(ctx,s,data) {
  const {state}=guard,p=state.dir.people.get(personId);
  // Scoped factor reset is never an administrator recovery mechanism. Even a
  // strictly lower scoped administrator must use the existing recovery process.
- if(p.role!=='member'||state.rankOf(personId)>0)fail('administrator_recovery_required',403);
+ await requireRecoveryEmployee(ctx,state,personId);
  const reason=String(data.reason??'').trim();
  if(!reason||reason.length>500)fail('reset_reason_required');
  if(!data.caseId&&!state.legacy)fail('verified_recovery_case_required',403);
