@@ -3843,7 +3843,7 @@
       "executable": false
     },
     "tests/integration/helpers/capture-views.mjs": {
-      "sha256": "f3da578d0b1d1f58d158ecb55a3a7f8616315206b16cdd6bfa581564f0775669",
+      "sha256": "b707432cb9d4e549d67959a6920668bec5ce73769c5061d3674c220e91740ae9",
       "executable": false
     },
     "tests/integration/helpers/delegation-journey.mjs": {
@@ -3879,7 +3879,7 @@
       "executable": false
     },
     "tests/integration/helpers/identity-pairs-journey.mjs": {
-      "sha256": "3407f70f3fae13e14831c7bd31664252dab13446aeeacbe9ea24dd177e299a3f",
+      "sha256": "d0404e974fe6a43fd2616f071a61cf998c37744318dd745e5bd1505651e17cc2",
       "executable": false
     },
     "tests/integration/helpers/migration-journey.mjs": {

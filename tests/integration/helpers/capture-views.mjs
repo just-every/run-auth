@@ -12,6 +12,13 @@ export async function captureViews({page,views,errors,prepare=async()=>{},captur
   for(const [width,theme] of views) {
    await page.setViewportSize({width,height:1000});
    await page.emulateMedia({colorScheme:theme});
+   // Let media-query theme changes and their finite transitions finish before
+   // accessibility or screenshots inspect the new colors.
+   await page.evaluate(async()=>{
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    document.body.getBoundingClientRect();
+    await Promise.all(document.getAnimations().filter(animation=>animation.effect?.getTiming().iterations!==Infinity).map(animation=>animation.finished.catch(()=>{})));
+   });
    await prepare(page);
    await capture(page,width,theme);
   }
