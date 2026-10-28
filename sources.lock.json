@@ -2131,7 +2131,7 @@
       "executable": false
     },
     "src/auth/temporary-passes/index.mjs": {
-      "sha256": "3cdf01e8b8e41e5ce27d1e88d8f28bb7353f4b3f71ee84a7ac59fa07567aa753",
+      "sha256": "e6edc7b6c63ce50f90abc9b093aa1cf1652fc9918a8371fa7ef170edc960cf55",
       "executable": false
     },
     "src/auth/tenancy/context.d.mts": {
@@ -3751,7 +3751,7 @@
       "executable": false
     },
     "tests/integration/agents-browser.test.mjs": {
-      "sha256": "bbd9440d2450bdb2c8043ab4dd664d50da10e802bf3f150025c2846a9bfdf6c0",
+      "sha256": "5686872269f37ac5e8deedbc58efa3be0d91a38ac39db9c0cfa12c183213caa9",
       "executable": false
     },
     "tests/integration/automations-browser.test.mjs": {
@@ -3763,7 +3763,7 @@
       "executable": false
     },
     "tests/integration/company-apps-browser.test.mjs": {
-      "sha256": "76aa3cde3c870c79fab181ade6244f4c6c18f4c4635f68dabd2a44f1bb282d62",
+      "sha256": "00025bb9a2fe6e96f93a22821e9e98d2d8752cec70d15826b32fd5e41c5491b6",
       "executable": false
     },
     "tests/integration/continuity-drill.mjs": {
@@ -3775,7 +3775,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "b48dc546bd897c56506db5e20dd97b65c97b5c6d5acf8f33a3679cdf4610bcbe",
+      "sha256": "3a28e285b4356666c33e41feb3488f2889055066903c2a0aeff05f2f024c9547",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
@@ -3811,7 +3811,7 @@
       "executable": false
     },
     "tests/integration/helpers/followup-roles-journey.mjs": {
-      "sha256": "d69124a3b216276b8031a8d32383ac6a6605608aa091834b92b71b6e77713c2e",
+      "sha256": "68655a443466e417d1b98916747e18e48c8f2d09de837c8c78b12d9de0747725",
       "executable": false
     },
     "tests/integration/helpers/hr-file-journey.mjs": {

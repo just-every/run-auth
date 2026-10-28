@@ -33,8 +33,9 @@ async function followupRolesAtWidth({app,browser,owner,page,shoot,width,fixtureB
    const cdp=await context.newCDPSession(mine);await cdp.send('WebAuthn.enable');
    await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
    await mine.goto(app.origin+'/app/methods');
-   const registered=mine.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
+   const registered=mine.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify')),reloaded=mine.waitForEvent('load');
    await mine.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await registered).status(),200);
+   await reloaded;
   }
   const me=await body(await context.request.get(app.origin+'/api/auth/me'));
   return {context,page:mine,id:me.user.id,address};
@@ -154,8 +155,9 @@ async function followupRolesAtWidth({app,browser,owner,page,shoot,width,fixtureB
   assert.equal((await orgPost('/auth/identity/email/request',{email:app.vars.OWNER_EMAIL})).status(),202);
   assert.equal((await orgPost('/auth/identity/email/confirm',{token:(await app.link(prefix)).searchParams.get('token')})).status(),200);
   await orgPage.goto(app.origin+prefix+'/app/methods');
-  const orgRegistered=orgPage.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
+  const orgRegistered=orgPage.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify')),orgReloaded=orgPage.waitForEvent('load');
   await orgPage.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await orgRegistered).status(),200);
+  await orgReloaded;
   const orgPolicy=await body(await orgContext.request.get(app.origin+prefix+'/api/auth/followup'));
   const rootPolicy=(await read(owner)).policy;
   for(const rootActor of [{context:owner,page},installationAdmin,manager]) {
@@ -171,8 +173,9 @@ async function followupRolesAtWidth({app,browser,owner,page,shoot,width,fixtureB
   assert.equal((await memberPost('/auth/identity/email/request',{email:manager.address})).status(),202);
   assert.equal((await memberPost('/auth/identity/email/confirm',{token:(await app.link(prefix)).searchParams.get('token')})).status(),200);
   await manager.page.goto(app.origin+prefix+'/app/methods');
-  const memberRegistered=manager.page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
+  const memberRegistered=manager.page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify')),memberReloaded=manager.page.waitForEvent('load');
   await manager.page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await memberRegistered).status(),200);
+  await memberReloaded;
   const memberWrite=await memberPost('/api/auth/followup/settings',{...rootPolicy,confirm:true});
   assert.equal(memberWrite.status(),403);assert.equal((await memberWrite.json()).error,'role_permission_required','an installation role is not an employer role');
   assert.equal((await body(await manager.context.request.get(app.origin+prefix+'/api/auth/followup'))).canManage,false);

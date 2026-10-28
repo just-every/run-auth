@@ -86,8 +86,9 @@ export const requestPass=(ctx,request,data)=>administrativeAction(ctx,'request',
 export const issuePass=(ctx,request,data)=>administrativeAction(ctx,'issue',()=>issuePassAction(ctx,request,data));
 export const revokePass=(ctx,request,data)=>administrativeAction(ctx,'revoke',()=>revokePassAction(ctx,request,data));
 export async function temporaryPassesModel(ctx,s) {
- const state=await roleState(ctx,s),hardware=JSON.parse(s.amr).includes('hwk');
  const hires=await all(ctx,`SELECT h.person_id FROM auth_onboarding h JOIN oa_operators p ON p.id=h.person_id WHERE h.rescinded_at IS NULL AND p.status IN ('active','invited') AND NOT EXISTS(SELECT 1 FROM auth_passkeys k WHERE k.person_id=p.id)`);
+ if(!hires.length)return {people:[],requests:[],passes:[]};
+ const state=await roleState(ctx,s),hardware=JSON.parse(s.amr).includes('hwk');
  const people=hires.flatMap(({person_id:id})=>{
   const p=state.dir.people.get(id);if(!p||p.role!=='member'||state.rankOf(id)>0)return [];
   const canRequest=hardware&&managerOf(state,id)===s.person_id&&id!==s.person_id,canIssuePass=hardware&&canIssue(state,id);

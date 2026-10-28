@@ -7,6 +7,7 @@ import {join} from 'node:path';
 import {chromium,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {openApp} from './runtime.mjs';
+import {captureViews} from './helpers/capture-views.mjs';
 
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 
@@ -20,15 +21,14 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- const shoot=async (name,page=primary)=>{for(const [width,theme] of views){
-  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();
+ const shoot=async (name,page=primary)=>captureViews({page,views,errors,capture:async(page,width,theme)=>{
   await expect(page.locator('h1')).toBeVisible();
   const results=await new AxeBuilder({page}).analyze();
   assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`${width} ${theme} ${name}`);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
   for(const control of await page.locator('[data-tooltip]:visible').all()){await page.mouse.move(0,0);await control.blur();await expect(page.getByRole('tooltip')).toBeHidden();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
   await page.screenshot({path:join(directory,`directory-${name}-${width}-${theme}.png`),fullPage:true});
- }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});};
+ }});
  const row=name=>page.locator('[data-person-row]',{hasText:name});
  const saved=async action=>{const loaded=page.waitForEvent('load');await action();await loaded;};
 

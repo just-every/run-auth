@@ -9,6 +9,7 @@ import {openApp} from './runtime.mjs';
 import {followupJourney} from './helpers/followup-journey.mjs';
 import {followupRolesJourney} from './helpers/followup-roles-journey.mjs';
 import {delegatedAssignmentJourney} from './helpers/delegation-journey.mjs';
+import {captureViews} from './helpers/capture-views.mjs';
 
 import {diagnosticJourney} from './helpers/diagnostic-journey.mjs';
 test('sign-in repair journey: owner snapshot consent, cited exact diff, passkey approval, employee callback and uncertainty at 1440 and 390',diagnosticJourney);
@@ -26,13 +27,12 @@ test('agents journey: mint a key, an agent files a suspension, a person approves
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  const accessible=async (label,target=primary)=>{const results=await new AxeBuilder({page:target}).analyze();assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],label);};
- const shoot=async (name,page=primary,prepare=async()=>{})=>{for(const [width,theme] of views){
-  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});await page.reload();await prepare(page);
+ const shoot=async (name,page=primary,prepare=async()=>{})=>captureViews({page,views,errors,prepare,capture:async(page,width,theme)=>{
   await expect(page.locator('h1')).toBeVisible();await accessible(`${width} ${theme} ${name}`,page);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
   await page.screenshot({path:join(directory,`agents-${name}-${width}-${theme}.png`),fullPage:true});
   if(name.startsWith('followup'))await page.locator('[data-followup-panel]').screenshot({path:join(directory,`agents-${name}-${width}-${theme}-panel.png`)});
- }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});};
+ }});
 
  // First owner: browser email link, setup, hardware passkey.
  await page.goto(app.origin+'/signin?returnTo=%2Fsetup');

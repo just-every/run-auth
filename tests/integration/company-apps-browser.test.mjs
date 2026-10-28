@@ -11,6 +11,7 @@ import {SAML} from '@node-saml/node-saml';
 import * as oidc from 'openid-client';
 import {openApp} from './runtime.mjs';
 import {spCredentials} from '../auth/saml-helpers.mjs';
+import {captureViews} from './helpers/capture-views.mjs';
 
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 const EMPLOYEE='erin@northwind.example.com';
@@ -70,14 +71,13 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- const shoot=async(target,name)=>{for(const [width,theme] of views){
-  await target.setViewportSize({width,height:1000});await target.emulateMedia({colorScheme:theme});await target.reload();
+ const shoot=async(target,name)=>captureViews({page:target,views,errors,capture:async(target,width,theme)=>{
   await expect(target.locator('h1')).toBeVisible();
   const results=await new AxeBuilder({page:target}).analyze();
   assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`${width} ${theme} ${name}`);
   assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
   await target.screenshot({path:join(directory,`company-apps-${name}-${width}-${theme}.png`),fullPage:true});
- }await target.setViewportSize({width:1440,height:1000});await target.emulateMedia({colorScheme:'light'});};
+ }});
 
  // Owner: browser email link, setup, hardware passkey.
  await page.goto(app.origin+'/signin?returnTo=%2Fsetup');
