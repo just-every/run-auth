@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "75f40b3a17a87c6955611360d872723b8773353c76b943cd616476993c60f6af",
+      "sha256": "34c0a16da4799ea945ee3a81a965135ceb71f95fc7f0584d5283ee7f61e83e96",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "0b48aa31a3cae257a0dbc0306c82496068a4d07ae31c500fa7a61d8a558d906f",
+      "sha256": "ad45a171f61eb9a908f1c9e97cbca431755fe7225d992d62e27e78b9f528ca6c",
       "executable": false
     },
     "deploy-site.json": {
@@ -235,7 +235,7 @@
       "executable": false
     },
     "docs/directory-sources.md": {
-      "sha256": "8d1241636672c95554d1f60d320c10197142340be2bce9de837b0937918db3a8",
+      "sha256": "f636011b6316c4e448ee0c9ae525d54b3eba553ba00b37064106c2a38a136140",
       "executable": false
     },
     "docs/employer-providers.md": {
@@ -635,7 +635,7 @@
       "executable": false
     },
     "migrations/core/0077_auth_directory_freshness.sql": {
-      "sha256": "f54028ea9181bc2b92891b61c61505f8a2927bef02b56efc23955947d1f42139",
+      "sha256": "8b85831cdad62a5b17ae436a0e51050a2719ca5f548bf982f20110151b023285",
       "executable": false
     },
     "MOVE-IN.md": {
@@ -3407,7 +3407,7 @@
       "executable": false
     },
     "tests/auth/directory-source-flow.mjs": {
-      "sha256": "f9e267f43896a08e9ca733a055eaae6f4fbe7208dae19f113de2a6e78fbcaaee",
+      "sha256": "ad0ef311bcba9481aed5d7660c05a36f0f4a4f4087a287f938c4250f3e1ac408",
       "executable": false
     },
     "tests/auth/directory.test.mjs": {

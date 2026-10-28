@@ -216,4 +216,18 @@ export async function directoryFreshnessFlow(t) {
  await command('directory/edit',{personId:'synthetic-auth-202',state:'active'});await r.restart();
  assert.equal((await r.call('/api/auth/directory-sources/pull',post({sourceId:owned.sourceId},owner.cookie))).status,403,'restored administrator cannot revive the old source credential');
  assert.deepEqual(await reminders(),[]);assert.equal((await applied()).n,0);
+ // Closed source history follows the existing confirmed retention policy.
+ const classes=['profiles','sourceSnapshots','authentication','decisions','provisioning','audit','modelTraces','erasureReceipts'];
+ await command('retention/settings',{confirm:true,classes:Object.fromEntries(classes.map(name=>[name,name==='provisioning'?{unit:'days',value:90}:{unit:'years',value:7}]))});
+ r.now+=120*86400000;await emailSession(r,address(201));owner=await signInAgain(r,owner,address(201));
+ const queued=await command('retention/preview',{});assert.ok(queued.run);
+ r.now+=8*86400000;await r.restart();await tick();owner=await signInAgain(r,owner,address(201));
+ const retention=await result(await r.call('/api/auth/retention',{cookie:owner.cookie}));
+ assert.equal(retention.runs.find(run=>run.id===queued.run.id).status,'completed','closed source history expires through the confirmed policy');
+ const closed=await command('retention/preview',{});assert.ok(closed.run);
+ r.now+=8*86400000;await r.restart();await tick();owner=await signInAgain(r,owner,address(201));
+ const finalRetention=await result(await r.call('/api/auth/retention',{cookie:owner.cookie}));
+ assert.equal(finalRetention.runs.find(run=>run.id===closed.run.id).status,'completed','closed source obligations must not block confirmed retention cleanup');
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_directory_source_obligations').first()).n,0,'expired source bindings leave with their closed obligations');
+ assert.equal((await read()).obligations.filter(ob=>ob.kind==='directory_source').length,0);
 }
