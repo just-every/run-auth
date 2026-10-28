@@ -28,6 +28,10 @@ test('interactive audit finds twelve-month sign-ins and reconciles a frozen auth
  assert.equal((await read(r,base,owner.cookie)).total,1105,'a new read needs current authority without fresh email write proof');r.now=now;
  const rolePage=await read(r,base.replace('/api/auth/audit','/api/auth/roles/audit'),owner.cookie);
  assert.equal(rolePage.total,1105);assert.deepEqual(rolePage.events,page.events);assert.ok(rolePage.nextCursor);
+ const exportBase=base.replace('/api/auth/audit','/api/auth/audit/export');
+ let exported=await read(r,exportBase,owner.cookie);assert.equal(exported.total,1105);
+ assert.deepEqual(exported.events,page.events);assert.ok(exported.exportOperationId);
+ assert.equal((await r.call(exportBase+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:owner.cookie})).status,409,'a view cursor never authorizes export');
  const first=page.events[0].eventId,ids=page.events.map(e=>e.id),eventIds=page.events.map(e=>e.eventId);
  await r.db.prepare("INSERT INTO auth_activity(actor_id,event,subject_id,created_at) VALUES('owner','person_invited','worker',?)").bind(now-1000).run();
  await r.restart();
@@ -38,6 +42,18 @@ test('interactive audit finds twelve-month sign-ins and reconciles a frozen auth
   assert.equal(page.total,1105);ids.push(...page.events.map(e=>e.id));eventIds.push(...page.events.map(e=>e.eventId));
  }
  assert.deepEqual(ids,expected.reverse());assert.equal(new Set(eventIds).size,1105);
+ const exportedIds=exported.events.map(e=>e.id);
+ while(exported.nextCursor) {
+  exported=await read(r,exportBase+'&cursor='+encodeURIComponent(exported.nextCursor),owner.cookie);
+  assert.equal(exported.total,1105);exportedIds.push(...exported.events.map(e=>e.id));
+ }
+ assert.deepEqual(exportedIds,ids,'native export reconciles all retained events beyond the legacy role export cap');
+ const receipts=(await r.db.prepare("SELECT detail FROM auth_activity_details d JOIN auth_activity a ON a.id=d.activity_id WHERE a.event='audit.export' ORDER BY a.id").all()).results.map(row=>JSON.parse(row.detail));
+ assert.deepEqual(receipts.flatMap(receipt=>receipt.eventIds),eventIds);
+ assert.ok(receipts.every(receipt=>receipt.total===1105&&receipt.asOf===now));
+ r.now+=10*60000;
+ assert.equal((await r.call(exportBase,{cookie:owner.cookie})).status,403,'export requires fresh email even while interactive read remains allowed');
+ assert.equal((await r.call(base,{cookie:owner.cookie})).status,200);r.now=now;
  assert.equal((await read(r,base,owner.cookie)).total,1106);
  assert.equal((await r.call(base+'&cursor=bad',{cookie:owner.cookie})).status,400);
  assert.equal((await r.call(base+'&to=0',{cookie:owner.cookie})).status,400);
@@ -65,7 +81,7 @@ test('interactive audit rechecks employer, person scope and revoked auditor auth
   const unscoped=await read(r,'/api/auth/audit?event='+event,owner.cookie);
   const allowed=unscoped.events.filter(e=>{const detail=JSON.parse(e.detail);return detail.person==='synthetic-auth-3@example.com'||detail.personId==='inside'||detail.group==='Audit scope';}).map(e=>e.id);
   assert.equal(allowed.length,event.startsWith('app_')?2:1,'supported related targets exist');
-  for(const door of ['/api/auth/audit','/api/auth/roles/audit']) {
+  for(const door of ['/api/auth/audit','/api/auth/roles/audit','/api/auth/audit/export']) {
    let result=await read(r,door+'?event='+event+'&limit=1',auditor.cookie),ids=[];
    do {
     assert.equal(result.total,allowed.length,event+' excludes related resources from the count');assert.equal(result.events.length,1);ids.push(result.events[0].id);
@@ -78,7 +94,9 @@ test('interactive audit rechecks employer, person scope and revoked auditor auth
  const base='/api/auth/audit?event=person_invited&limit=1',page=await read(r,base,auditor.cookie);
  assert.equal(page.total,2);assert.deepEqual(page.events.map(e=>e.subject_id),['inside']);assert.equal(page.events[0].detail,undefined);assert.equal(page.events[0].actor_email,undefined);
  assert.equal((await r.call(base)).status,401);
+ assert.equal((await r.call('/api/auth/audit/export')).status,401);
  const emailOnly=await emailSession(r,'synthetic-auth-2@example.com');assert.equal((await r.call(base,{cookie:emailOnly})).status,403,'interactive audit still requires hardware proof');
+ assert.equal((await r.call('/api/auth/audit/export',{cookie:emailOnly})).status,403);
  assert.equal((await r.call('/api/auth/audit?person=outside',{cookie:auditor.cookie})).status,403);
  assert.equal((await r.call('/api/auth/activity',{cookie:auditor.cookie})).status,403,'legacy full-detail feed stays administrator only');
  assert.equal((await r.call('/api/auth/directory/edit',post({personId:'inside',set:{name:'Unauthorized'}},auditor.cookie))).status,403);
@@ -88,15 +106,29 @@ test('interactive audit rechecks employer, person scope and revoked auditor auth
  const reader=await passkeyPerson(r,'reader','synthetic-auth-5@example.com','member');
  await plan(r,owner.cookie,{kind:'grant',personId:'reader',roleId:custom.role.id,resources});
  assert.equal((await r.call('/api/auth/roles/audit/export',{cookie:reader.cookie})).status,403,'interactive view never grants export');
+ assert.equal((await r.call('/api/auth/audit/export',{cookie:reader.cookie})).status,403);
+ assert.equal((await r.call('/api/auth/audit/export?person=outside',{cookie:auditor.cookie})).status,403);
+ const exportPage=await read(r,base.replace('/api/auth/audit','/api/auth/audit/export'),auditor.cookie);
+ assert.equal(exportPage.total,2);assert.equal(exportPage.events[0].detail,undefined);
+ assert.equal(exportPage.events[0].subject_id,'inside');
+ assert.ok(exportPage.nextCursor);
  const org=await (await r.call('/api/auth/organizations/create',post({name:'Separate employer'},owner.cookie))).json();assert.ok(org.id);
  const client={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+org.id+path,options)};
  const orgOwner=await register(client,await emailSession(client,'owner@example.com'));
  assert.equal((await client.call('/api/auth/audit',{cookie:owner.cookie})).status,401);
+ assert.equal((await client.call('/api/auth/audit/export',{cookie:owner.cookie})).status,401);
+ assert.equal((await client.call('/api/auth/audit/export?event=person_invited&limit=1&cursor='+encodeURIComponent(exportPage.nextCursor),{cookie:orgOwner.cookie})).status,409);
  assert.equal((await client.call(base+'&cursor='+encodeURIComponent(page.nextCursor),{cookie:orgOwner.cookie})).status,409);
  const orgPage=await read(client,'/api/auth/audit?event=person_invited',orgOwner.cookie);assert.equal(orgPage.total,0);
  const current=await read(r,base,auditor.cookie);
  await plan(r,owner.cookie,{kind:'revoke',grantId:granted.id});
  for(const path of [base,base+'&cursor='+encodeURIComponent(current.nextCursor),'/api/auth/roles/audit'])assert.equal((await r.call(path,{cookie:auditor.cookie})).status,403);
+ const receiptsBefore=(await r.db.prepare("SELECT COUNT(*) AS n FROM auth_activity WHERE event='audit.export'").first()).n;
+ for(const query of ['', '&cursor='+encodeURIComponent(exportPage.nextCursor)])assert.equal((await r.call(base.replace('/api/auth/audit','/api/auth/audit/export')+query,{cookie:auditor.cookie})).status,403);
+ assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM auth_activity WHERE event='audit.export'").first()).n,receiptsBefore,'refused exports have no successful receipt');
+ const lostProof=await r.call('/api/auth/audit/export',{cookie:owner.cookie,factorRace:"UPDATE auth_sessions SET local_email_verified_at=0 WHERE person_id='owner'"});
+ assert.equal(lostProof.status,409);assert.deepEqual(await lostProof.json(),{error:'role_authority_changed'});
+ assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM auth_activity WHERE event='audit.export'").first()).n,receiptsBefore,'loss of authority at receipt commit releases no export');
 });
 
 test('interactive audit preserves stable event IDs and opaque projections after real subject erasure',async t=>{
@@ -113,16 +145,25 @@ test('interactive audit preserves stable event IDs and opaque projections after 
  const erasedIds=new Set([invitation.id,...(await read(r,'/api/auth/audit?person='+invitationPerson.id,owner.cookie)).events.map(e=>e.id)]);
  const replacement=await r.call('/api/auth/directory/onboard',post({email:'synthetic-auth-7@example.com',name:'Independent New Holder',kind:'employee'},owner.cookie));assert.equal(replacement.status,201);const replacementPerson=await replacement.json();
  const replacementIdentity=await register(r,await emailSession(r,'synthetic-auth-7@example.com'));
+ const capturePath='/api/auth/audit/export?person='+invitationPerson.id+'&limit=1';
+ const capture=await read(r,capturePath,owner.cookie);assert.ok(capture.nextCursor);
+ const captureReceipt=(await r.db.prepare('SELECT detail FROM auth_role_operations WHERE id=?').bind(capture.exportOperationId).first()).detail;
+ assert.equal(JSON.parse(captureReceipt).filters.person,invitationPerson.id);
  await r.call('/api/auth/erasure/policy',post({confirm:true,automaticDeletion:false,honorLegalHolds:true},owner.cookie));
  const preview=await r.call('/api/auth/erasure/preview',post({kind:'person',target:worker.id},owner.cookie));assert.equal(preview.status,200);const proposal=await preview.json();
  const erased=await r.call('/api/auth/erasure/confirm',post({previewId:proposal.id,confirmation:'ERASE',destinations:[]},owner.cookie));assert.equal(erased.status,200,await erased.clone().text());const receipt=await erased.json();
  const invitationPreview=await r.call('/api/auth/erasure/preview',post({kind:'person',target:invitationPerson.id},owner.cookie));assert.equal(invitationPreview.status,200);
  const invitationErased=await r.call('/api/auth/erasure/confirm',post({previewId:(await invitationPreview.json()).id,confirmation:'ERASE',destinations:[]},owner.cookie));assert.equal(invitationErased.status,200,await invitationErased.clone().text());const invitationReceipt=await invitationErased.json();
  await r.restart();
+ const replayedCapture=await r.call(capturePath+'&cursor='+encodeURIComponent(capture.nextCursor),{cookie:owner.cookie});
+ assert.equal(replayedCapture.status,409,'erasure invalidates the prior capture rather than reviving its personal rows');
+ const retainedCapture=(await r.db.prepare('SELECT detail FROM auth_role_operations WHERE id=?').bind(capture.exportOperationId).first()).detail;
+ assert.deepEqual(JSON.parse(retainedCapture),{erasure:invitationReceipt.reference},'real erasure replaces retained export detail with an opaque reference');
+ assert.ok(!retainedCapture.includes(invitationPerson.id));
  const after=await read(r,'/api/auth/audit?event=person_onboarded',owner.cookie),row=after.events.find(e=>e.eventId===original.eventId);assert.ok(row);assert.equal(row.subject_id,receipt.reference);
  for(const personal of ['Morgan Synthetic','synthetic-auth-6@example.com',worker.id])assert.ok(!JSON.stringify(after).includes(personal));
  assert.equal(row.eventId,original.eventId);assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM oa_operators WHERE id=?').bind(worker.id).first()).n,0);
- for(const door of ['/api/auth/audit','/api/auth/roles/audit','/api/auth/activity']) {
+ for(const door of ['/api/auth/audit','/api/auth/roles/audit','/api/auth/activity','/api/auth/audit/export']) {
   const result=await read(r,door,owner.cookie),events=Array.isArray(result)?result:result.events;
   const retained=events.find(e=>e.id===invitation.id);assert.ok(retained,door+' retains the invitation');assert.equal(retained.subject_id,invitationReceipt.reference,door+' anonymizes the historical invitation');
   const related=events.filter(e=>erasedIds.has(e.id));assert.equal(related.length,erasedIds.size);

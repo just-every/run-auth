@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "da779d80be111749e9e62de4f69b23384ae3e98933fec728f7ba0fef9dc89ca3",
+      "sha256": "0acefce3ee9b165dc3aefda2bc599e9d437d5d5c61fae9d650e59e776b870f7a",
       "executable": false
     },
     "AGENTS.md": {
@@ -175,7 +175,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "fb47a80ccdae969a569c7ad368ad2902b2e955d4cf739ba37f6e4f08ef7c4199",
+      "sha256": "0563411591c1e22fe27a086c140ddaefefeb363783eb6500ea930fbcf167d472",
       "executable": false
     },
     "deploy-site.json": {
@@ -191,7 +191,7 @@
       "executable": false
     },
     "docs/activity.md": {
-      "sha256": "5b6b5f32f62ec99328c9cb98cfd1f5b0fa992fd1703f39b8e55839ec4ed79920",
+      "sha256": "58d77d80c2d6ccd9f4eff1a2c0aaed9db036b1e959b634d24a4676dbad872a1f",
       "executable": false
     },
     "docs/admin-api.md": {
@@ -239,15 +239,15 @@
       "executable": false
     },
     "docs/contract/COVERAGE.json": {
-      "sha256": "16763c355dd1f8cc7fa59ebe2096d897bf4e5ed5487ed8d408f5f78b7f87e392",
+      "sha256": "91a709337e18cc94d5cfecb651d1b3892dff52033d97a9676829d78770541c07",
       "executable": false
     },
     "docs/contract/DONE-AUDIT.md": {
-      "sha256": "dc085149ed92d9755aaa30c7eb50bd8ed2af88952fb16f2efb77a0e9a555b037",
+      "sha256": "d498e3c60299d5caf431d70b8f6cb6be251588fc332c16d3621c4d3ea89dd290",
       "executable": false
     },
     "docs/contract/ID-MAP.json": {
-      "sha256": "e97537cf2428e4ebfec0f3df69827bbf0151a1f4f36585b4dd042acb05e51fb9",
+      "sha256": "575517b581b7551278163eb0ed23869e25da2845c50693edd890a9fe75c0c2dd",
       "executable": false
     },
     "docs/delegated-agents.md": {
@@ -1335,7 +1335,7 @@
       "executable": false
     },
     "src/auth/audit/query.mjs": {
-      "sha256": "e4a1c577f59546e5192fb6e726760edca51f4f1f0de5dfa842207bc75f6fcc94",
+      "sha256": "bfee5b3b04cc63e897f912ccb5486eb6b4c1a5d08fe59c827b258fe229b084aa",
       "executable": false
     },
     "src/auth/authorization-login.mjs": {
@@ -1723,7 +1723,7 @@
       "executable": false
     },
     "src/auth/index.mjs": {
-      "sha256": "e0611e4761d8f9a036420f2a91db211172ffb4f35a7a9bdec86d78f65fe67bff",
+      "sha256": "1dc13440f1c2916b87f3fc471cb420cdc5e1a336dde69656fc0583629b1c1b3f",
       "executable": false
     },
     "src/auth/keys.mjs": {
@@ -3395,7 +3395,7 @@
       "executable": false
     },
     "tests/auth/audit.test.mjs": {
-      "sha256": "77efe2768327d8d63e5a2b2d2e0de2525c314b287d5c526bea406b2536196545",
+      "sha256": "3a0235918061b16e10ade43d703c1c76d7b56a96d670da9caf02a0fa821d1d19",
       "executable": false
     },
     "tests/auth/authorization-policy.test.mjs": {

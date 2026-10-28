@@ -98,6 +98,7 @@ function scopedRuntime(options) {
     if(path===AUTOMATIONS_READ)return await automationsRead(ctx,request);
     if(path==='/api/auth/abuse')return await abuseRead(ctx,request);
     if(path==='/api/auth/audit')return json(await auditPage(ctx,await requireSession(ctx,request),request));
+    if(path==='/api/auth/audit/export')return json(await auditPage(ctx,await requireSession(ctx,request),request,{exporting:true}),200,{'content-disposition':'attachment; filename="auth-activity.json"'});
     if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);
     if(path===FEDERATION_READ)return await federationRead(ctx,request);
     if(path===CAMPAIGNS||path===CAMPAIGNS+'/export.csv')return await campaignRead(ctx,request);

@@ -36,9 +36,30 @@ administrator-only. Native machine log reads remain a separate business-event pr
 related people and groups must also fall inside the machine credential's scope.
 Credential, factor, recovery and role events remain excluded from that door.
 
-Interactive view does not grant export. The existing scoped audit export still
-requires `audit.export`, hardware proof and fresh local email, and keeps its
-existing bounded role-event projection. This slice adds no sink or stream.
+Interactive view does not grant export. Use `GET /api/auth/audit/export` to
+download native activity as JSON, with the same filters, page limits and as-of
+traversal as the interactive query. Follow its `nextCursor` on this export
+endpoint to collect the complete authorized period; the older role-event export
+cap does not truncate this traversal. An interactive cursor cannot be used for
+export. Each page requires `audit.export`, hardware proof and local email
+confirmation younger than ten minutes. Delegated exports contain only scoped
+summaries, with the same related-resource exclusions as interactive reads.
+
+Each returned page includes `exportOperationId`, identifying a committed
+`audit.export` receipt with the as-of time, filters, authorized total and stable
+event IDs from that page. The receipt commits only while the current session,
+fresh email and role authority still hold. A refused export returns no events
+and creates no successful receipt. The receipts themselves are later audit
+events and cannot alter the captured traversal. After a restart, continuation
+still requires the same live session and export authority. Subject erasure
+invalidates old cursors and replaces personally identifying receipt details
+with the existing opaque erasure reference. These receipts record
+release from Auth; they do not prove delivery to an external destination or
+provide general tamper detection.
+
+The existing scoped role-event export remains available at
+`GET /api/auth/roles/audit/export` with its existing bounded projection and
+separate export gate. No sink or stream is added.
 
 Still unproved: authorized Datadog, Splunk, Microsoft Sentinel and Evidence
 exports; full failed-sign-in, policy and provisioning correlation; complete

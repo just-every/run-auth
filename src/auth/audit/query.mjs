@@ -1,6 +1,8 @@
 import {all,one,fail,b64,unb64,utf8} from '../core.mjs';
 import {roleState} from '../roles/state.mjs';
-import {assertPermission,permitted,requireHardware} from '../roles/policy.mjs';
+import {assertPermission,permitted,requireHardware,roleGuard} from '../roles/policy.mjs';
+import {requireLocalEmail} from '../local-email.mjs';
+import {commit} from '../roles/commit.mjs';
 
 const integer=(value,min,max)=>{
  if(!/^\d+$/.test(String(value)))fail('invalid_audit_filter');
@@ -29,15 +31,17 @@ async function decode(ctx,raw) {
   return JSON.parse(new TextDecoder().decode(unb64(body)));
  }catch {fail('invalid_audit_cursor');}
 }
-export async function auditPage(ctx,s,request) {
+export async function auditPage(ctx,s,request,{exporting=false}={}) {
  requireHardware(s);
- const state=await roleState(ctx,s);assertPermission(state,'audit.view',{write:false});
+ if(exporting)requireLocalEmail(ctx,s);
+ const permission=exporting?'audit.export':'audit.view';
+ const state=await roleState(ctx,s);assertPermission(state,permission,{write:false});
  const params=new URL(request.url).searchParams;
  for(const name of ['from','to','person','event','limit','cursor'])if(params.getAll(name).length>1)fail('invalid_audit_filter');
  const filters={from:timestamp(params.get('from'),0),to:timestamp(params.get('to'),8640000000000000),person:params.get('person')??'',event:params.get('event')??''};
  if(filters.from>filters.to||filters.person.length>200||filters.event.length>100||filters.event&&!/^[a-zA-Z0-9_.-]+$/.test(filters.event))fail('invalid_audit_filter');
- if(filters.person&&!state.legacy)assertPermission(state,'audit.view',{personId:filters.person,write:false});
- const limit=integer(params.get('limit')??50,1,100),binding={issuer:ctx.issuer??ctx.origin,organization:ctx.organizationId??'root',session:s.id,epoch:state.epoch,filters,limit};
+ if(filters.person&&!state.legacy)assertPermission(state,permission,{personId:filters.person,write:false});
+ const limit=integer(params.get('limit')??50,1,100),binding={issuer:ctx.issuer??ctx.origin,organization:ctx.organizationId??'root',session:s.id,epoch:state.epoch,door:exporting?'export':'view',filters,limit};
  let cursor;
  if(params.has('cursor')) {
   cursor=await decode(ctx,params.get('cursor'));
@@ -52,8 +56,8 @@ export async function auditPage(ctx,s,request) {
  // personal fields from another resource carried inside an event's details.
  const visible=new Set();
  if(!state.legacy) {
-  for(const p of state.dir.people.values())if(permitted(state,'audit.view',{personId:p.id,write:false})){visible.add(p.id);visible.add(p.email);}
-  for(const [kind,rows] of [['groupId',state.dir.groups],['appId',state.apps],['caseId',state.cases]])for(const row of rows)if(permitted(state,'audit.view',{[kind]:row.id,write:false}))visible.add(row.id);
+  for(const p of state.dir.people.values())if(permitted(state,permission,{personId:p.id,write:false})){visible.add(p.id);visible.add(p.email);}
+  for(const [kind,rows] of [['groupId',state.dir.groups],['appId',state.apps],['caseId',state.cases]])for(const row of rows)if(permitted(state,permission,{[kind]:row.id,write:false}))visible.add(row.id);
  }
  const person=filters.person?state.dir.people.get(filters.person):null;
  const where=['a.id<=?','a.created_at>=?','a.created_at<=?'],args=[cursor.max,filters.from,Math.min(filters.to,cursor.asOf)];
@@ -90,5 +94,12 @@ export async function auditPage(ctx,s,request) {
  const held=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),state.epoch);
  if(!held)fail('role_authority_changed',409);
  const more=events.length>limit;events.length=Math.min(events.length,limit);
- return {events,total,asOf:cursor.asOf,filters,limit,nextCursor:more?await encode(ctx,{...cursor,before:events.at(-1).id}):null};
+ const result={events,total,asOf:cursor.asOf,filters,limit,nextCursor:more?await encode(ctx,{...cursor,before:events.at(-1).id}):null};
+ if(exporting) {
+  // Record only the authorized event references. The current session, fresh
+  // email and role epoch must still hold in the same transaction as the receipt.
+  const receipt=await commit(ctx,s,roleGuard(ctx,s,state),'audit.export',null,{asOf:cursor.asOf,filters,total,eventIds:events.map(event=>event.eventId)});
+  result.exportOperationId=receipt.operationId;
+ }
+ return result;
 }
