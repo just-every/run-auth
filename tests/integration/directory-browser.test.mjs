@@ -167,6 +167,26 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const helperContext=await browser.newContext(),helperPage=await helperContext.newPage();await hardware(helperContext,helperPage);await signIn(helperPage,'sam@northwind.example.com');
  const group=await post('/api/auth/groups/create',{name:'US engineering staff'},201);await post('/api/auth/groups/add',{groupId:group.id,personId:worker.id});
  const appConfig=await post('/api/auth/company-apps/create',{name:'Engineering documents',entityId:'https://documents.example.com',acsUrl:'https://documents.example.com/acs'},201);
+ // Before setup the committed grant remains actionable, with no outbound
+ // security mail and a link to the existing notification configuration.
+ const noticeAddress=['synthetic-auth-90','example.com'].join('@');
+ const noticePerson=await post('/api/auth/directory/onboard',{name:'Required notice recipient',email:noticeAddress,kind:'employee'},201);
+ const noticeContext=await browser.newContext();t.after(()=>noticeContext.close());
+ await post('/auth/identity/email/request',{email:noticeAddress},202,noticeContext);
+ await post('/auth/identity/email/confirm',{token:(await app.link()).searchParams.get('token')},200,noticeContext);
+ const requiredPreview=await post('/api/auth/roles/preview',{kind:'grant',personId:noticePerson.id,roleId:'app-administrator',resources:{view:{apps:[appConfig.id]},edit:{apps:[appConfig.id]}}});
+ const requiredGrant=await post('/api/auth/roles/apply',{previewId:requiredPreview.previewId});
+ const requiredWork=(await (await context.request.get(app.origin+'/api/auth/followup')).json()).obligations.find(ob=>ob.source_id==='security-notice:'+requiredGrant.operationId);
+ assert.equal(requiredWork.last_error,'notification_channel_setup_required');
+ await page.goto(app.origin+'/app/account');
+ const requiredNotice=page.locator(`[data-followup-id="${requiredWork.id}"]`);
+ await expect(requiredNotice).toContainText('configure security notifications and review required notice');
+ await expect(requiredNotice.getByRole('link',{name:'Open Security notifications'})).toHaveAttribute('href','/app/account');
+ for(const theme of ['light','dark'])for(const width of [1440,390]) {
+  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});
+  await requiredNotice.scrollIntoViewIfNeeded();await page.screenshot({path:join(directory,`role-notice-setup-required-${width}-${theme}.png`),fullPage:true});
+ }
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});await noticeContext.close();
  // The existing custom-grant action must send mandatory mail even when
  // optional browser notices are off. Read it only through the gated outbox.
  const securityOwner=(await (await context.request.get(app.origin+'/api/auth/me')).json()).user.id;

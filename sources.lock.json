@@ -634,6 +634,10 @@
       "sha256": "f87fa1bf844efa116e52b076f5cb59a31789c88453cc1132cfb7892b7f488f67",
       "executable": false
     },
+    "migrations/core/0077_auth_role_notice_intents.sql": {
+      "sha256": "bf4ce6f71fc936e41f5623726e52c81d9ced2243a715d90b5df9548c8f3af014",
+      "executable": false
+    },
     "MOVE-IN.md": {
       "sha256": "6ae7c746b82f539f41885e5b2e61dc95928931b7985a21cf3b6d45a3de5b54af",
       "executable": false
@@ -1808,6 +1812,10 @@
     },
     "src/auth/notifications/index.mjs": {
       "sha256": "a210942e31fe68448f4e869e35c9ebe2c2557e6188d3d1e4ce52622167e3f912",
+      "executable": false
+    },
+    "src/auth/notifications/intents.mjs": {
+      "sha256": "9c9ceb3166a20a4d527de54dfcdd67d162acc867b4a98aca0292b106c00cd566",
       "executable": false
     },
     "src/auth/notifications/messages.mjs": {
@@ -3515,7 +3523,7 @@
       "executable": false
     },
     "tests/auth/notifications-flow.mjs": {
-      "sha256": "cf3f243510b1504455ee940f381f623fd34c178e9322278367177aff858657a3",
+      "sha256": "4f1954a93315f697d8e18fa1c9e9281529315f02f642095203b610556526a54d",
       "executable": false
     },
     "tests/auth/notifications.test.mjs": {
@@ -3803,7 +3811,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "2fcf68e7e38d2f211e8f621ec0ac27bad5c05379e695571f18c2445aecb72d7b",
+      "sha256": "da69668a55bcfc6cec715e5ad0a79abf207d2e0d015338cf560d7d8993de3321",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {

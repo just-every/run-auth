@@ -215,6 +215,14 @@ async function roleGrantNotices(t) {
  // intent; a request cannot supply an alternate recipient.
  await post('/directory/edit',{personId:'synthetic-auth-12',email:address(22)});
  const unverified=await apply(await preview(12));assert.equal((await intent(unverified.operationId)).recipient_email,null);assert.equal((await intent(unverified.operationId)).state,'refused');assert.equal((await notices()).length,5);
+ // Generic reminder consent cannot authorize another security-mail attempt.
+ await post('/followup/settings',{confirm:true,enabled:true,calendar:{timezone:'UTC',weekdays:[0,1,2,3,4,5,6],holidays:[],at:'09:00'},reminderBusinessDays:1,deadlineBusinessDays:5,recipients:['synthetic-auth-1'],escalationRecipients:['synthetic-auth-1'],escalation:'repeat_until_resolved'});
+ const mailCount=(await r.mails()).length;
+ for(const operationId of [failed.operationId,unknown.id]) {
+  const ob=(await followup()).find(ob=>ob.source_id==='security-notice:'+operationId);assert.ok(ob);
+  await post('/followup/send',{id:ob.id});
+ }
+ assert.equal((await r.mails()).length,mailCount,'general reminder consent cannot resend a required security notice');
  const foreign=await post('/organizations/create',{name:'Other notice employer'},201);
  const foreignModel=await r.call('/org/'+foreign.id+'/api/auth/notifications',{cookie:owner.cookie});assert.equal(foreignModel.status,401);
  const employer={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+foreign.id+path,options)};
