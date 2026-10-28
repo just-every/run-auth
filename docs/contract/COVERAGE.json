@@ -2,7 +2,7 @@
   "schema": 1,
   "seed": "auth",
   "old": {
-    "commit": "35a9807ecd1c952746c29f551c15de8cc86818ea",
+    "commit": "20258c61e0959c2afc0476f3d2bcbe1c2d0249f5",
     "files": [
       "CONTRACT.md",
       "ACCEPTANCE.md",
@@ -2483,18 +2483,6 @@
     },
     {
       "file": "CONTRACT.md",
-      "line": 532,
-      "cell": "gap",
-      "text": "Partial remains unchanged. Native connectors stage observations and apply only exact human-approved changes. Remaining Gaps are complete live provider mover and leaver qualification, Google Workspace directory delegation, measured pushed and polling bounds, full-reconciliation timing, receipt-to-application timeliness while human approval is pending, directory stale-source follow-up, and nested or external membership support. Timely provisioning and deprovisioning remain complete category requirements. CT approves approval-origin timing only for the interim approved-delivery execution profile; it does not redefine receipt-origin source performance, authorize recurring approval, infer termination from absence or grant outbound consent.",
-      "to": "gap",
-      "ids": [
-        "AUTH-SCIM-002",
-        "AUTH-SCIM-003",
-        "AUTH-SCIM-004"
-      ]
-    },
-    {
-      "file": "CONTRACT.md",
       "line": 533,
       "cell": "gap",
       "text": "No implementing product path in audited src/ and tests/; acceptance journey remains to be built.",
@@ -3587,21 +3575,14 @@
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 203,
-      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 \"inbound directories and scoped SCIM stage immutable users and groups, require exact approval, retain incomplete feeds and fence reviewed leavers\" (all four source adapters at their network edges, paginated users and groups, stable IDs, reviewed mover and leaver effects, foreign credentials, duplicates, incomplete and empty holds); `tests/integration/move-in-browser.test.mjs` \u2014 \"move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes\" (source setup, held preview, application and disable at 1440 and 390); `journeys/directory-sandboxes.mjs` (held-key qualification journey; live result remains pending); `docs/directory-sources.md`.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 205,
+      "line": 207,
       "text": "Gap: Partial remains unchanged. Native connectors stage observations and apply only exact human-approved changes. Remaining Gaps are complete live provider mover and leaver qualification, Google Workspace directory delegation, measured pushed and polling bounds, full-reconciliation timing, receipt-to-application timeliness while human approval is pending, directory stale-source follow-up, and nested or external membership support. Timely provisioning and deprovisioning remain complete category requirements. CT approves approval-origin timing only for the interim approved-delivery execution profile; it does not redefine receipt-origin source performance, authorize recurring approval, infer termination from absence or grant outbound consent.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 207,
+      "line": 209,
       "text": "CT policy ruling, 26 October 2026: Incoming observations remain staged until an authorized organization administrator approves one exact delivery, selected changes and preview digest with hardware passkey and fresh local email proof. Receipt and staging grant no sign-in, enrollment, assignment or authority-changing effect. Execution rechecks current approver authority, approved content and target; drift returns to review, and interruption recovery prevents duplicate effects. Recurring pulls and later deliveries never approve themselves. Missing or empty feeds never infer termination, and outbound reminders require separate audited consent. For this interim approved-delivery profile, execution timing starts at exact approval or the approved future effective time. Record receipt, approval, effective and application times separately. Approval delay remains visible and cannot be excluded when assessing the complete receipt-to-application source promise. The original 60-second pushed application, 15-minute polling and 24-hour full-reconciliation targets remain unchanged; staging alone does not satisfy them or timely deprovisioning. An approved leaver event retains every AUTH-TIMING-001 local-denial and downstream obligation. AUTH-HRIS-002 exact-approval and interruption-recovery protections, AUTH-DIRECTORY-001 identity and planner protections, AUTH-HOOKS-001 import protections and AUTH-FOLLOWUP-003 consent and follow-through obligations remain inherited before their receiving doors ship. Every original acceptance point remains required.",
       "to": "copy",
       "of": 219,
@@ -3616,98 +3597,98 @@
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 209,
+      "line": 211,
       "text": "**AUTH-HRIS-001 \u2014 HR-driven identity sources (missing).** Connect each of the ten named HR sources in an authorized tenant; synchronize a future hire, US employment start, department/manager move, scheduled termination and rehire, and measure each change's arrival against its event or polling bound. Exercise DST/timezone effective times, conflicting sources, duplicate/out-of-order events and a stale feed; verify resulting access and unresolved source errors.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 211,
+      "line": 213,
       "text": "Existing evidence and limits: No implementing product path or acceptance test yet. Its future password-verification or match/create import doors inherit every AUTH-HOOKS-001 signature, minimal-payload, timeout/fail-policy, protected-identity, destination and audited-call obligation before shipping.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 214,
+      "line": 216,
       "text": "**AUTH-HRIS-002 \u2014 Scheduled HR file feeds (done).** Configure an SFTP feed with a mapping, deliver a file with a hire, a move and a termination and see the preview and resulting access; deliver a malformed file, an empty file and one terminating 20% of workers and see each held; skip a delivery and see the stale flag and follow-up. Refuse a wrong SFTP key and a file for another employer.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 216,
+      "line": 218,
       "text": "Existing evidence: `tests/auth/directory.test.mjs` \u2014 \"saved HR file mappings hold destructive, empty and malformed deliveries, preview current and future rows, and retain one stale-feed follow-up across restart\" proves mappings, held empty, malformed and 20-percent termination files, future preview, duplicate-delivery and stale-episode restart behavior, recovery and retained-row erasure. \"a real SFTP listener verifies the employer key, applies reviewed hires, moves and leavers, refuses traversal and shells, and ends ingress after disabling\" proves the real SSH and SFTP protocol, wrong-key refusal, bounded upload, employer isolation and credential destruction. \"an explicitly approved HR file applies current and dated hires, moves and leavers once, resolves managers and resumes interruptions while preserving enrollment and authority refusals\" proves current-time native group and app effects, signed minimal import hooks and protected-authority refusal, explicit destructive confirmation, ordinary new-worker email and passkey enrollment and replay and restart behavior. `tests/integration/directory-browser.test.mjs` \u2014 \"directory journey: an administrator onboards a worker, edits and bulk-moves people with a preview, sets a group rule, terminates and rehires, at desktop/mobile in both themes\" proves the built stale-source Activity row, consent-limited reminder controls and guide link at 1440/390. `tests/integration/browser.test.mjs` \u2014 \"docs pages support keyboard code scrolling and remain readable at desktop and mobile\" proves all published guides and keyboard scrolling at both widths. `docs/hr-file-feeds.md`. The same approved-file journey additionally proves current and future hires, moves and leavers; exactly one native application and approver plus digest receipt per row under concurrent scheduled workers; manager IDs resolved through the same feed's HR source bindings; changed digest or target and demoted or removed approver refusal; unapproved deliveries remaining unapplied; and an interrupted multi-row apply resuming after restart without duplicate people or application receipts. `tests/auth/provisioning.test.mjs` \u2014 \"request, review and stale HR obligations retain decider reminders and resolution history across DST and restart\" proves stale-source messages require separately selected source-owner consent and stop after refresh. No acceptance gap remains for CT's 24 October exact per-file-approved execution profile: approval requires hardware plus fresh local email, scheduled execution rechecks current approver authority and approved content and target, and drift returns to review. Recurring pulls never self-approve, and outbound actions require separate consent. AUTH-HRIS-001 and AUTH-SCIM-002 inherit these protections before automation.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 218,
+      "line": 220,
       "text": "**AUTH-LIFECYCLE-001 \u2014 Complete joiner, mover and leaver execution (partial).** From HR/admin doors, onboard a sales hire across Workspace, Slack and Salesforce, move them to engineering/GitHub, then terminate while one provider is unavailable. Restart the worker, inspect deadlines and approvals, restore the provider and confirm each remote outcome with its timestamps; local access must remain denied throughout.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 220,
+      "line": 222,
       "text": "Existing evidence and limits: src/auth/admin.mjs; src/auth/links/logout.mjs; tests/auth/linking.test.mjs \u2014 manual invitations, suspension and RER fences exist; multi-app HR-driven execution is missing.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 222,
+      "line": 224,
       "text": "**AUTH-TIMING-001 \u2014 Measured lifecycle time bounds (partial).** With healthy connectors to three SaaS test tenants, terminate a person and measure: local refusal on every door and logout delivery within 60 seconds, dispatch within 60 seconds and remote verification within 5 minutes per app. Hold one connector down past 15 minutes and see the escalation; add a future hire and see verified accounts before 06:00 local on the start date. Export the timeliness report for the period and reconcile each row's four timestamps with the audit trail.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 224,
+      "line": 226,
       "text": "Existing evidence and limits: src/auth/admin.mjs; src/auth/links/logout.mjs; src/auth/provisioning/obligations.mjs; tests/auth/security.test.mjs; tests/auth/linking.test.mjs; tests/auth/provisioning.test.mjs \u2014 suspension denies Auth sessions at once and starts signed RER back-channel logout with bounded retries; each SCIM obligation records event, dispatch and remote-verified times and is flagged unverified past 15 minutes. Missing: source and joiner bounds, the 24-hour reconciliation of every source, and the timeliness report.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 226,
+      "line": 228,
       "text": "**AUTH-WORKFLOWS-001 \u2014 Employer-built identity automations (partial).** In authorized Google Workspace and Microsoft 365 test tenants, enable the leaver templates and terminate a person through HR: read back Drive files owned by the manager, the transferred calendar, the Gmail auto-reply and delegate, the shared mailbox with manager access and every reclaimed license. Dry-run an edited automation and see no remote change; fail one step and see it held as an unresolved obligation in the person's plan; refuse a step outside the automation's granted scope. Call a generic REST endpoint with stored OAuth client credentials and use its response in a later step; refuse an HTTP step aimed at a private address.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 229,
+      "line": 231,
       "text": "Existing evidence and limits: `tests/auth/automations.test.mjs` (\"automation public doors dry run without calls, acquire OAuth and chain two signed steps, retain history and exclude credentials from projections and archives\"; \"automation refuses lost permission, foreign scope and stale configuration, and holds failed or interrupted effects as person obligations without replay\"; \"automation hosted destinations refuse private addresses and DNS, redirects and unbounded response mapping without credential diagnostics\"); `tests/auth/events.test.mjs` (retained native event delivery); `tests/integration/automations-browser.test.mjs` (editor, person dry run and failure history at 1440 and 390 in both themes); `docs/automations.md` \u2014 The bounded native slice implements one group-membership trigger, two signed HTTP steps, encrypted OAuth client-credentials custody, scoped authority, exact named approval for every run, person-specific zero-outbound dry runs and durable failure obligations. Held: authorized Google Workspace and Microsoft 365 tenants with Drive, Calendar, Gmail and Graph mailbox and license consent. All live HR-triggered leaver-template journeys, Drive and Calendar transfer, Gmail delegation and auto-reply, shared mailbox and OneDrive manager access, and Google, Microsoft 365, Slack, Zoom and Salesforce license reclaim remain unproved. Other trigger families, full mapping conditions, connector-action steps, waits, branches, notification steps, remaining authentication modes, template copying and editing, full remote verification and retry journeys, and complete lifecycle-plan integration remain unbuilt. Native peers qualify no vendor template.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 232,
+      "line": 234,
       "text": "**AUTH-FEDERATION-001 \u2014 Generic upstream federation (partial).** Through delegated setup, connect generic SAML/OIDC plus the three named providers, sign in to an assigned downstream app and rotate upstream keys. Refuse an email-only collision, replay, changed issuer/configuration, malicious metadata URL and foreign organization setup; simulate upstream outage and use approved recovery.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 234,
+      "line": 236,
       "text": "Existing evidence and limits: `tests/auth/upstreams.test.mjs` \u2014 \"delegated federation tests a representative without granting a session, previews exact immutable mappings, activates with owner consent and refuses drift and collisions\" (generic OIDC and SAML setup, representative isolation, exact mapping approval, assigned downstream sign-in, signing-key refresh, correlation, replay, collision, private metadata and stale-authority refusal); `tests/auth/security.test.mjs` \u2014 \"organizations isolate every existing HTTP family, admit expiring memberships and switch only between proven sessions\" (foreign employer setup); `tests/integration/move-in-browser.test.mjs` \u2014 \"move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes\" (delegated setup, tested mapping, activation and provider screens at 1440 and 390); `docs/upstream-campaigns.md`.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 236,
+      "line": 238,
       "text": "Gap: Partial remains unchanged. The owner-only delegated RS256 OIDC and plaintext SAML profile is implemented according to the cited repository evidence. Remaining Gaps are live Google callback and consenting test-user proof, an authorized Okta web registration, live Entra employee callback, full live downstream qualification, SAML upstream certificate-rotation and outage-recovery qualification, and broader federation-loop qualification. Every original generic and named-provider acceptance journey remains required. CT approves exact owner activation with isolated representative testing and the stated riders; this ruling certifies neither provider interoperability nor implementation completion.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 238,
+      "line": 240,
       "text": "CT policy ruling, 26 October 2026: The interim activation profile is owner-only and limited to exact reviewed ordinary subjects and their immutable mappings. The affected organization\u2019s owner approves with hardware passkey and fresh local email proof; current authority, organization binding, trust configuration and mapping are rechecked at commit, and drift returns to review. Installation authority grants no administration of an isolated organization. A representative test validates upstream proof and previews mappings only: it creates no employee session, authenticated membership, downstream grant or administrator authority. Activation does not itself sign in the employee or bypass assignments, policy or AUTH-PROFILE-001 existing-account and new-identity proof. Record only necessary trust configuration, reviewed bindings, approval facts and redacted validation outcomes; disclosure remains governed by existing claims and scope rules. Upstream proof never replaces local administrator proof. Machine administration remains limited to enabling or disabling approved trust; future machine doors inherit all AUTH-ADMINAPI-001 protections. Every original federation acceptance point remains required.",
       "to": "copy",
       "of": 253,
@@ -3722,315 +3703,315 @@
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 240,
+      "line": 242,
       "text": "**AUTH-SOCIAL-001 \u2014 Controlled external identity sign-in (partial).** Configure each adapter with a real provider app, sign in an invited contractor, exercise private/changed email and unlink/relink, then withdraw employer permission. Refuse a same-email unproven identity and observe immediate policy denial on further token issuance.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 242,
+      "line": 244,
       "text": "Existing evidence and limits: src/auth/upstreams.mjs; tests/auth/upstreams.test.mjs \u2014 Google OIDC is exercised; GitHub and Apple adapters are missing.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 244,
+      "line": 246,
       "text": "**AUTH-LEGACY-001 \u2014 LDAP, Active Directory and RADIUS access (missing).** Install the real private connector. Sign in to GlobalProtect through RADIUS with password plus push and with password plus TOTP; deny the push and let one time out, and each sign-in is refused. Join Meraki Wi-Fi with EAP-TLS and with EAP-TTLS plus push, bind an LDAPS app, and exercise each AD direction (source import, delegated authentication, password write-back, group push). Disable the employee, rotate trust and disconnect the connector; prove new access stops within AUTH-TIMING-001's leaver bound and unresolved external sessions remain visible.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 246,
-      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
       "line": 248,
-      "text": "**AUTH-DEVICE-001 \u2014 Device identity and trust (missing).** Enroll one device per supported desktop OS and an iPhone and an Android phone, and read posture from each named management service; launch from a jailbroken or rooted phone and from one below the required OS version and be denied. Launch an app, stale the posture, mark a device noncompliant and revoke it; verify policy denial, trust removal and an auditable employee/help-desk recovery path.",
+      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 250,
-      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
+      "text": "**AUTH-DEVICE-001 \u2014 Device identity and trust (missing).** Enroll one device per supported desktop OS and an iPhone and an Android phone, and read posture from each named management service; launch from a jailbroken or rooted phone and from one below the required OS version and be denied. Launch an app, stale the posture, mark a device noncompliant and revoke it; verify policy denial, trust removal and an auditable employee/help-desk recovery path.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 252,
-      "text": "**AUTH-DESKTOP-001 \u2014 Sign in to the computer with company identity (missing).** On a managed Mac and Windows PC, sign in at the OS login with company identity using push, TOTP and a security key; on the Mac exercise both password-sync and Secure Enclave modes. Sign in offline within and beyond the cached period. Lock an employee out and restore them with a help-desk recovery PIN, then refuse the PIN's reuse and its use after an hour. Offboard the employee and see the next online login and unlock refused. On a domain-joined Windows PC, open the launcher and be signed in by Kerberos, then be stepped up where policy requires.",
+      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 254,
-      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
+      "text": "**AUTH-DESKTOP-001 \u2014 Sign in to the computer with company identity (missing).** On a managed Mac and Windows PC, sign in at the OS login with company identity using push, TOTP and a security key; on the Mac exercise both password-sync and Secure Enclave modes. Sign in offline within and beyond the cached period. Lock an employee out and restore them with a help-desk recovery PIN, then refuse the PIN's reuse and its use after an hour. Offboard the employee and see the next online login and unlock refused. On a domain-joined Windows PC, open the launcher and be signed in by Kerberos, then be stepped up where policy requires.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 256,
-      "text": "**AUTH-GATEWAY-001 \u2014 On-premises web apps through an access gateway (missing).** Deploy the gateway on a private network with no inbound port and publish a header-based test app and an IIS app using Kerberos constrained delegation. Launch both as an assigned employee and read the identity headers and Kerberos identity at each app. Send a forged identity header and see it stripped; deny an unassigned employee and a path-level rule; offboard the employee and see the next request refused within 60 seconds.",
+      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 258,
-      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
+      "text": "**AUTH-GATEWAY-001 \u2014 On-premises web apps through an access gateway (missing).** Deploy the gateway on a private network with no inbound port and publish a header-based test app and an IIS app using Kerberos constrained delegation. Launch both as an assigned employee and read the identity headers and Kerberos identity at each app. Send a forged identity header and see it stripped; deny an unassigned employee and a path-level rule; offboard the employee and see the next request refused within 60 seconds.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 260,
-      "text": "**AUTH-PRIVILEGED-001 \u2014 Server and SSH access without standing keys (missing).** Enroll two Linux servers (one with the agent, one with only the CA key) and one Windows server. As an engineer in a server group, sign in with a passkey, obtain a certificate and SSH in; RDP to the Windows server through the gateway. Be refused sudo until a time-bound request is approved, then gain it and see it expire. Refuse a server outside the person's groups, an expired certificate and an unassigned engineer. Offboard the engineer and see the next connection refused and the local account removed; the audit shows each session.",
+      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 262,
-      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
+      "text": "**AUTH-PRIVILEGED-001 \u2014 Server and SSH access without standing keys (missing).** Enroll two Linux servers (one with the agent, one with only the CA key) and one Windows server. As an engineer in a server group, sign in with a passkey, obtain a certificate and SSH in; RDP to the Windows server through the gateway. Be refused sudo until a time-bound request is approved, then gain it and see it expire. Refuse a server outside the person's groups, an expired certificate and an unassigned engineer. Offboard the engineer and see the next connection refused and the local account removed; the audit shows each session.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 266,
-      "text": "**AUTH-GRANTS-001 \u2014 App roles, APIs and service identities (done).** Register an API, map a group to read/write and resource-level permissions, and call it as an employee and a service identity. Deny an unassigned role, cross-employer resource, wrong audience, excessive scope and revoked service credential; role removal must change the next authorization decision.",
+      "line": 264,
+      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 268,
-      "text": "Existing evidence: `tests/auth/oidc-apps.test.mjs` (\"resource APIs use live app roles and tenant resources for employees and distinct accountable OAuth services\"): registration, native group roles, employee/service checks, resource relationships, no subject substitution, active cross-employer/wrong-audience/excess-scope refusals, revocation and next-decision role changes. Existing `tests/auth/provisioning.test.mjs` group-assignment/SCIM-role journey proves the shared assignment effects. `docs/authorization-api.md` documents app-holder scope, public JWKS, expiring accountable clients and mandatory live decisions. `tests/integration/directory-browser.test.mjs` (\"organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile\") proves registration, group-role mapping, service issuance, live authorization and next-call revocation at 1440/390. No remaining acceptance gap.",
+      "text": "**AUTH-GRANTS-001 \u2014 App roles, APIs and service identities (done).** Register an API, map a group to read/write and resource-level permissions, and call it as an employee and a service identity. Deny an unassigned role, cross-employer resource, wrong audience, excessive scope and revoked service credential; role removal must change the next authorization decision.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 270,
-      "text": "**AUTH-TOKENS-001 \u2014 Refresh and delegated session lifecycle (done).** Use a native SDK to obtain an approved refresh grant, rotate it, replay an old token and revoke the family through My account. Run concurrent refresh, expiry, suspension and app removal, confirming the resource API refuses invalid authority and strict RER clients receive no refresh token.",
+      "text": "Existing evidence: `tests/auth/oidc-apps.test.mjs` (\"resource APIs use live app roles and tenant resources for employees and distinct accountable OAuth services\"): registration, native group roles, employee/service checks, resource relationships, no subject substitution, active cross-employer/wrong-audience/excess-scope refusals, revocation and next-decision role changes. Existing `tests/auth/provisioning.test.mjs` group-assignment/SCIM-role journey proves the shared assignment effects. `docs/authorization-api.md` documents app-holder scope, public JWKS, expiring accountable clients and mandatory live decisions. `tests/integration/directory-browser.test.mjs` (\"organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile\") proves registration, group-role mapping, service issuance, live authorization and next-call revocation at 1440/390. No remaining acceptance gap.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 272,
-      "text": "Existing evidence: `tests/auth/oidc-apps.test.mjs` \u2014 \"native offline consent and SDK rotation preserve device binding, detect reuse and concurrency, and end resource authority on expiry, revocation, suspension and app removal\": native SDK consent and rotation, device/client/tenant binding, least scopes and pairwise subjects, SDK single-flight and storage failure, consumed-token reuse and simultaneous raw refresh, restart and browser-expiry continuity, idle/absolute expiry, scoped/ranked/fresh-email administrator controls, employee revocation, suspension/app removal, live resource denial, supported logout and store cleanup; `tests/integration/refresh-browser.test.mjs` \u2014 \"offline app journey: publish a profile, consent to a native device, inspect and revoke it through My account at 1440 and 390\": profile publication/disablement, exact consent, employee/admin inventory and My account family revocation, readable end states and every icon-only control's delayed-hover/immediate-focus tooltip at 1440/390; `tests/auth/protocol.test.mjs` \u2014 \"code flow preserves ES256 ID token claims and adds a userinfo access token\": strict RER has no refresh token and refuses offline authorization/refresh; `docs/offline-sessions.md`; `packages/session-sdk/index.mjs`. No acceptance gap remains. The exact current profile and inheritance are documented in CONTRACT.md and docs/offline-sessions.md.",
+      "text": "**AUTH-TOKENS-001 \u2014 Refresh and delegated session lifecycle (done).** Use a native SDK to obtain an approved refresh grant, rotate it, replay an old token and revoke the family through My account. Run concurrent refresh, expiry, suspension and app removal, confirming the resource API refuses invalid authority and strict RER clients receive no refresh token.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 274,
-      "text": "**AUTH-HOOKS-001 \u2014 Inline hooks for custom sign-in logic (done).** Register a token hook that adds a cost-center claim and see it in the ID token; a registration hook that denies an outside domain; and a hook that tries to add an administrator role and change the subject, and see both changes refused. Let a fail-closed hook time out and see the sign-in refused with a clear error, then a fail-open hook time out and see sign-in continue with the event logged. Refuse a hook URL that resolves to a private address.",
+      "text": "Existing evidence: `tests/auth/oidc-apps.test.mjs` \u2014 \"native offline consent and SDK rotation preserve device binding, detect reuse and concurrency, and end resource authority on expiry, revocation, suspension and app removal\": native SDK consent and rotation, device/client/tenant binding, least scopes and pairwise subjects, SDK single-flight and storage failure, consumed-token reuse and simultaneous raw refresh, restart and browser-expiry continuity, idle/absolute expiry, scoped/ranked/fresh-email administrator controls, employee revocation, suspension/app removal, live resource denial, supported logout and store cleanup; `tests/integration/refresh-browser.test.mjs` \u2014 \"offline app journey: publish a profile, consent to a native device, inspect and revoke it through My account at 1440 and 390\": profile publication/disablement, exact consent, employee/admin inventory and My account family revocation, readable end states and every icon-only control's delayed-hover/immediate-focus tooltip at 1440/390; `tests/auth/protocol.test.mjs` \u2014 \"code flow preserves ES256 ID token claims and adds a userinfo access token\": strict RER has no refresh token and refuses offline authorization/refresh; `docs/offline-sessions.md`; `packages/session-sdk/index.mjs`. No acceptance gap remains. The exact current profile and inheritance are documented in CONTRACT.md and docs/offline-sessions.md.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 276,
-      "text": "Existing evidence: `tests/auth/oidc-apps.test.mjs` (\"inline hooks add only approved token and SAML fields, deny registration and imports, enforce signed minimal payloads and timeout choices, and refuse private DNS and protected identity changes\": cost-center ID token and independent SP assertion, registration/import denial, subject/admin-role/MFA/policy refusal, real fail-closed/fail-open timeouts with public error and audit, private DNS at registration and invocation, revocation during the call); `tests/auth/protocol.test.mjs` (\"code flow preserves ES256 ID token claims and adds a userinfo access token\": strict RER hook and unchanged proof claims); `tests/auth/move-in-admission.test.mjs` (\"admission is the ordinary invitation: administrators only, no proof, right, session or mail, and existing people never rebound\": signed import denial and creation); `tests/integration/company-apps-browser.test.mjs` (\"company apps journey: the owner adds a SAML app from its metadata, an OpenID Connect app, a group and assignments; an employee signs in through Auth, and loses both when removed, at desktop/mobile in both themes\": register/refuse/stop hook and Activity latency/outcome at 1440/390); `docs/inline-hooks.md`. Exact current-door semantics cover strict RER/general OIDC issuance, SAML, self-registration, staged move-in and source-id-matched imports. Subjects, roles, MFA, policy and reviewed identity bindings remain protected, and live authority is rechecked after each remote call. AUTH-MIGRATION-002 inherits the password-verification/first-login hook; new match/create doors in AUTH-HRIS-001, AUTH-HRIS-002 and AUTH-SCIM-002 inherit every hook protection before shipping. Password-hook registration currently refuses; no password-verification or general identity-matching bridge is claimed.",
+      "text": "**AUTH-HOOKS-001 \u2014 Inline hooks for custom sign-in logic (done).** Register a token hook that adds a cost-center claim and see it in the ID token; a registration hook that denies an outside domain; and a hook that tries to add an administrator role and change the subject, and see both changes refused. Let a fail-closed hook time out and see the sign-in refused with a clear error, then a fail-open hook time out and see sign-in continue with the event logged. Refuse a hook URL that resolves to a private address.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 278,
-      "text": "**AUTH-REQUESTS-001 \u2014 Access requests and time-bound grants (partial).** Request Salesforce access and temporary AWS elevation from the launcher, have the required independent people approve, provision only those roles, and let the grant expire while a connector fails. Reject self/stale/concurrent approvals and verify revocation/escalation before closing the request.",
+      "text": "Existing evidence: `tests/auth/oidc-apps.test.mjs` (\"inline hooks add only approved token and SAML fields, deny registration and imports, enforce signed minimal payloads and timeout choices, and refuse private DNS and protected identity changes\": cost-center ID token and independent SP assertion, registration/import denial, subject/admin-role/MFA/policy refusal, real fail-closed/fail-open timeouts with public error and audit, private DNS at registration and invocation, revocation during the call); `tests/auth/protocol.test.mjs` (\"code flow preserves ES256 ID token claims and adds a userinfo access token\": strict RER hook and unchanged proof claims); `tests/auth/move-in-admission.test.mjs` (\"admission is the ordinary invitation: administrators only, no proof, right, session or mail, and existing people never rebound\": signed import denial and creation); `tests/integration/company-apps-browser.test.mjs` (\"company apps journey: the owner adds a SAML app from its metadata, an OpenID Connect app, a group and assignments; an employee signs in through Auth, and loses both when removed, at desktop/mobile in both themes\": register/refuse/stop hook and Activity latency/outcome at 1440/390); `docs/inline-hooks.md`. Exact current-door semantics cover strict RER/general OIDC issuance, SAML, self-registration, staged move-in and source-id-matched imports. Subjects, roles, MFA, policy and reviewed identity bindings remain protected, and live authority is rechecked after each remote call. AUTH-MIGRATION-002 inherits the password-verification/first-login hook; new match/create doors in AUTH-HRIS-001, AUTH-HRIS-002 and AUTH-SCIM-002 inherit every hook protection before shipping. Password-hook registration currently refuses; no password-verification or general identity-matching bridge is claimed.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 280,
-      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 independent request decisions bind the current approver and temporary access expires without claiming remote removal; `src/auth/requests/index.mjs`; `docs/access-decisions.md`. Gap: Native single-decider temporary requests and exact decision/expiry foundation built for DECISIONS-001. Authorized Salesforce/AWS role/elevation tenants, multi-stage routing, extensions/emergency rules, chat and live remote expiry qualification remain. Default ADOPTED pending ct: explicit administrator-selected decider and maximum 30-day duration; no standing direct assignment overwritten.",
+      "text": "**AUTH-REQUESTS-001 \u2014 Access requests and time-bound grants (partial).** Request Salesforce access and temporary AWS elevation from the launcher, have the required independent people approve, provision only those roles, and let the grant expire while a connector fails. Reject self/stale/concurrent approvals and verify revocation/escalation before closing the request.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 282,
-      "text": "**AUTH-REVIEWS-001 \u2014 Periodic access certification (partial).** Start a quarterly review of employee, contractor and service-account access, delegate one reviewer, certify one role and revoke another. Change membership mid-review, miss a deadline and fail a provider removal; inspect immutable snapshot, new drift and an export whose completion cannot conceal unfinished remediation.",
+      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 independent request decisions bind the current approver and temporary access expires without claiming remote removal; `src/auth/requests/index.mjs`; `docs/access-decisions.md`. Gap: Native single-decider temporary requests and exact decision/expiry foundation built for DECISIONS-001. Authorized Salesforce/AWS role/elevation tenants, multi-stage routing, extensions/emergency rules, chat and live remote expiry qualification remain. Default ADOPTED pending ct: explicit administrator-selected decider and maximum 30-day duration; no standing direct assignment overwritten.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 284,
-      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 quarterly access snapshots retain delegation, drift, overdue escalation and verified remediation; `tests/auth/access-decisions-flow.mjs`; `src/auth/reviews/routes.mjs`; `docs/access-decisions.md`. Gap: Employee/contractor/service snapshots, recurring quarterly runs, delegation, certify/reduce/revoke, new drift, calendar/DST reviewer reminders, absence/overdue escalation, provider-failure closure and immutable export built. Scoped published review permissions and optional native Auth administrator-grant snapshots are built; native revocation reuses live role/rank fences, terminates sessions and refuses owner removal. Generic obligations are FOLLOWUP-003; future POLICY/PASSWORD clauses inherit immutable policy-version evidence before shipping. Default ADOPTED pending ct: scoped hardware-plus-email management/delegation/export, explicit app hierarchy with persistent caps and fail-closed republication.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 285,
-      "text": "Additional public journeys: `tests/auth/directory.test.mjs` (\"review reductions follow a published app order and cap live access through provider readback\"; \"review reminders follow current reviewer consent and business calendars across restart with absence escalation\"). The former proves lower-role SCIM/SAML/resource effects and stale/unknown ordering refusals; the latter proves consent, calendar/DST, delegation/absence, overdue escalation and interrupted-transport restart behavior.",
+      "text": "**AUTH-REVIEWS-001 \u2014 Periodic access certification (partial).** Start a quarterly review of employee, contractor and service-account access, delegate one reviewer, certify one role and revoke another. Change membership mid-review, miss a deadline and fail a provider removal; inspect immutable snapshot, new drift and an export whose completion cannot conceal unfinished remediation.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 286,
-      "text": "Native and scoped journeys: `tests/auth/directory.test.mjs` (\"native administration reviews preserve scoped grant evidence and enforce the existing revocation door\"; \"scoped review coordinators schedule only editable resources and cannot hide excluded evidence in exports\") prove immutable grant/resource provenance, independent certification, hardware/fresh-email and owner/rank refusals, session ending, stale role revision, bounded campaigns, full-scope exports and recurring authority loss.",
+      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 quarterly access snapshots retain delegation, drift, overdue escalation and verified remediation; `tests/auth/access-decisions-flow.mjs`; `src/auth/reviews/routes.mjs`; `docs/access-decisions.md`. Gap: Employee/contractor/service snapshots, recurring quarterly runs, delegation, certify/reduce/revoke, new drift, calendar/DST reviewer reminders, absence/overdue escalation, provider-failure closure and immutable export built. Scoped published review permissions and optional native Auth administrator-grant snapshots are built; native revocation reuses live role/rank fences, terminates sessions and refuses owner removal. Generic obligations are FOLLOWUP-003; future POLICY/PASSWORD clauses inherit immutable policy-version evidence before shipping. Default ADOPTED pending ct: scoped hardware-plus-email management/delegation/export, explicit app hierarchy with persistent caps and fail-closed republication.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 287,
-      "text": "Browser journey: `tests/integration/directory-browser.test.mjs` (\"access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390\").",
+      "text": "Additional public journeys: `tests/auth/directory.test.mjs` (\"review reductions follow a published app order and cap live access through provider readback\"; \"review reminders follow current reviewer consent and business calendars across restart with absence escalation\"). The former proves lower-role SCIM/SAML/resource effects and stale/unknown ordering refusals; the latter proves consent, calendar/DST, delegation/absence, overdue escalation and interrupted-transport restart behavior.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 288,
+      "text": "Native and scoped journeys: `tests/auth/directory.test.mjs` (\"native administration reviews preserve scoped grant evidence and enforce the existing revocation door\"; \"scoped review coordinators schedule only editable resources and cannot hide excluded evidence in exports\") prove immutable grant/resource provenance, independent certification, hardware/fresh-email and owner/rank refusals, session ending, stale role revision, bounded campaigns, full-scope exports and recurring authority loss.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 289,
-      "text": "**AUTH-DECISIONS-001 \u2014 Proof levels for administration and everyday decisions (partial).** As a manager with an employee passkey and no local email confirmation, approve a Salesforce request, edit a non-privileged group as its owner, and certify access in a review; each commits after step-up. Attempt to approve a request for an administrator role, edit a privileged group and approve an administrator's recovery with the same proof; each is refused until the administrator gate is satisfied. Approve a stale request and one the decider lost authority over between view and commit; both are refused.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 291,
-      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 group owners confirm exact ordinary decisions without email and lose stale or privileged authority; independent request decisions bind the current approver and temporary access expires without claiming remote removal; quarterly access snapshots retain delegation, drift, overdue escalation and verified remediation; `tests/auth/access-decisions-flow.mjs`; `src/auth/decisions/routes.mjs`; `docs/access-decisions.md`. Gap: Native group/request submission/approval/review certify-reduce-revoke doors, exact UV proof, stale/lost/concurrent refusal built. Authorized Salesforce/AWS live request qualification remains under REQUESTS-001; configurable step-up policy inherits POLICY-001. Request submission now uses the same exact UV proof. Default ADOPTED pending ct: apps and their unclassified roles privileged until audited administrator classification; exact app-role overrides propagate to group decisions; management/delegation/export published scoped permission with hardware plus fresh email; explicit role-order caps fail closed on republication.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 292,
       "text": "Browser journey: `tests/integration/directory-browser.test.mjs` (\"access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390\").",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
+      "line": 291,
+      "text": "**AUTH-DECISIONS-001 \u2014 Proof levels for administration and everyday decisions (partial).** As a manager with an employee passkey and no local email confirmation, approve a Salesforce request, edit a non-privileged group as its owner, and certify access in a review; each commits after step-up. Attempt to approve a request for an administrator role, edit a privileged group and approve an administrator's recovery with the same proof; each is refused until the administrator gate is satisfied. Approve a stale request and one the decider lost authority over between view and commit; both are refused.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 293,
+      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 group owners confirm exact ordinary decisions without email and lose stale or privileged authority; independent request decisions bind the current approver and temporary access expires without claiming remote removal; quarterly access snapshots retain delegation, drift, overdue escalation and verified remediation; `tests/auth/access-decisions-flow.mjs`; `src/auth/decisions/routes.mjs`; `docs/access-decisions.md`. Gap: Native group/request submission/approval/review certify-reduce-revoke doors, exact UV proof, stale/lost/concurrent refusal built. Authorized Salesforce/AWS live request qualification remains under REQUESTS-001; configurable step-up policy inherits POLICY-001. Request submission now uses the same exact UV proof. Default ADOPTED pending ct: apps and their unclassified roles privileged until audited administrator classification; exact app-role overrides propagate to group decisions; management/delegation/export published scoped permission with hardware plus fresh email; explicit role-order caps fail closed on republication.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
       "line": 294,
-      "text": "**AUTH-CHAT-001 \u2014 Approve, deny and certify from Slack and Microsoft Teams (missing).** In authorized Slack and Teams test workspaces, bind a manager, approve one request and deny another from each, certify a review item, and see the outcomes provisioned and audited. Refuse an action from an unbound chat account, one bound to a different person, a stale or already-decided request and a removed binding; a privileged-role request offers only the web link.",
+      "text": "Browser journey: `tests/integration/directory-browser.test.mjs` (\"access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390\").",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 296,
-      "text": "Blocked dependency for this round: main must choose and configure the shared Slack app Interactivity Request URL or router; Teams requires Entra administrator consent. No native chat completion is claimed.",
+      "text": "**AUTH-CHAT-001 \u2014 Approve, deny and certify from Slack and Microsoft Teams (missing).** In authorized Slack and Teams test workspaces, bind a manager, approve one request and deny another from each, certify a review item, and see the outcomes provisioned and audited. Refuse an action from an unbound chat account, one bound to a different person, a stale or already-decided request and a removed binding; a privileged-role request offers only the web link.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 298,
-      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
+      "text": "Blocked dependency for this round: main must choose and configure the shared Slack app Interactivity Request URL or router; Teams requires Entra administrator consent. No native chat completion is claimed.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 300,
-      "text": "**AUTH-AUDIT-001 \u2014 Identity investigation and reporting (partial).** Investigate an employee\u2019s failed sign-in through its policy decision and provisioning history, export a review period to each named sink/Evidence, and reconcile the AUTH-REPORTS-001 MFA-enrollment export for one employer row by row with its directory, with every person who has no factor present and marked non-compliant. Query an event 12 months old through the log API on a default installation. Reconcile event counts across pages, detect tampering/gaps, deny an auditor\u2019s write attempt and prove erased subjects no longer disclose personal identifiers.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 303,
-      "text": "Existing evidence and limits: `tests/auth/audit.test.mjs` \u2014 \"interactive audit finds twelve-month sign-ins and reconciles a frozen authorized set beyond the old cap across restart and concurrent appends\"; \"interactive audit rechecks employer, person scope and revoked auditor authority without conferring directory or export writes\"; \"interactive audit preserves stable event IDs and opaque projections after real subject erasure\". The scope probe checks related people and groups before counts and pagination; the erasure probe includes an invitation, two email changes, persistent restart and an independent new holder of the old address. `tests/auth/agents-keys.test.mjs` \u2014 \"admin service apps use private-key OAuth for scoped group and assignment writes; resource, IP, expiry, owner and ETag fences refuse automation while every scope excludes identity and credential custody\" includes related-target machine log refusals. `tests/integration/directory-browser.test.mjs` \u2014 \"organization and authority journey\" includes Activity pagination, authority loss between pages and erased-subject readback at 1440 and 390 in both themes. `docs/activity.md`. \u2014 Native interactive Activity and role audit queries now have stable employer-bound event IDs, bounded time, person and event filters, as-of pagination and current authority checks. Twelve-month sign-in readback, reconciliation beyond the old cap despite concurrent appends, auditor write and related-target scope refusals before counts and pagination, recoverable Activity filter and cursor errors, and opaque erased-subject projections are implemented. Held: authorized Datadog, Splunk, Microsoft Sentinel and Evidence destinations, sink export and streaming, complete failed-sign-in, policy and provisioning correlation, full employee device and grant history, MFA and other report reconciliation including password, push and policy dependencies, and general durable tamper and gap evidence remain unproved. AUTH-RETENTION-001 and AUTH-ERASURE-002 policy holds are unchanged.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 306,
-      "text": "**AUTH-REPORTS-001 \u2014 Named per-person identity reports (partial).** With 20 people (15 with a passkey or push, 3 with only a password, 2 with no factor), export the MFA-enrollment report and reconcile it row by row with the directory: all 20 rows are present and the 5 non-compliant people are marked. Terminate two people, one while a connector is held down, export the terminated-people report and reconcile each row's local-denial and full-deprovision times with the AUTH-TIMING-001 audit; the held app is named. Grant and revoke a custom administrator role and see the administrators report follow; age a person past 90 days without sign-in and see them on the dormant report. Refuse export to a role without export rights. Each export's row count equals the directory count for its filter at its as-of time.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 308,
-      "text": "Existing evidence: `tests/auth/directory.test.mjs` \u2014 \"native MFA reports reconcile every scoped directory row and keep no-factor workers noncompliant while separate export rights and audit gates apply\" proves 20 scoped rows with 15 enrolled passkeys and 5 no-factor workers, filters, separate export denial, audit and unknown employer-policy outcomes. \"the administrators report follows a live published custom role grant and its revocation\" proves current custom grants; \"the dormant report distinguishes an aged successful sign-in from recent activity and explicit unknown history\" proves the 90-day filter; \"terminated reports retain held app names and verified remote outcomes while connector failures and unmeasured timing stay explicit\" proves named residual access and honest native SCIM health. `docs/identity-reports.md` defines columns, capture/count semantics and limitations. Gap: the exact password/push acceptance cohort and employer MFA policy, local-denial/full-deprovision timing audit reconciliation, all connector coverage, schedules, machine exports and compliance/Evidence delivery remain unproved. No unknown is counted compliant, and no queue acknowledgment becomes a full-deprovision timestamp.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 310,
-      "text": "**AUTH-COMPLIANCE-001 \u2014 Identity-provider connectors for compliance platforms (missing).** In an authorized Vanta test tenant, connect Auth through the private integration: Vanta's accounts page shows every Auth person in scope with the correct status, MFA status and factor types, and a custom MFA test passes. Remove one person's last factor and see the test fail within one sync; offboard another and see them in Vanta's offboarding queue within one sync. Scope by an Auth group and see Vanta's scope follow a membership change. Repeat in a Drata test tenant and see \"MFA on Identity Provider\" pass and then fail the same way. Configure the Secureframe and Thoropass recipes in authorized test accounts and see each person's MFA status. Revoke the Vanta credential and see the connector unhealthy, with a follow-up raised, within two hours.",
-      "to": "generated",
-      "note": "The contract generator writes this status or count."
-    },
-    {
-      "file": "ACCEPTANCE.md",
-      "line": 312,
       "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 316,
-      "text": "**AUTH-MIGRATION-001 \u2014 Switch from Okta, Entra ID or JumpCloud (partial).** For Okta Workforce Identity, Microsoft Entra ID and JumpCloud separately, migrate a populated authorized test tenant with groups, apps, a collision, suspended worker and privileged assignment. Pilot a cohort, re-enroll factors through the AUTH-MIGRATION-003 campaign, compare counts/permissions, roll back and cut over; prove old subjects cannot act as credentials and no app is silently omitted. With Vanta and Drata connected to the incumbent, see both listed with AUTH-COMPLIANCE-001 as their replacement, and cutover held until each replacement's first sync succeeds.",
+      "line": 302,
+      "text": "**AUTH-AUDIT-001 \u2014 Identity investigation and reporting (partial).** Investigate an employee\u2019s failed sign-in through its policy decision and provisioning history, export a review period to each named sink/Evidence, and reconcile the AUTH-REPORTS-001 MFA-enrollment export for one employer row by row with its directory, with every person who has no factor present and marked non-compliant. Query an event 12 months old through the log API on a default installation. Reconcile event counts across pages, detect tampering/gaps, deny an auditor\u2019s write attempt and prove erased subjects no longer disclose personal identifiers.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 305,
+      "text": "Existing evidence and limits: `tests/auth/audit.test.mjs` \u2014 \"interactive audit finds twelve-month sign-ins and reconciles a frozen authorized set beyond the old cap across restart and concurrent appends\"; \"interactive audit rechecks employer, person scope and revoked auditor authority without conferring directory or export writes\"; \"interactive audit preserves stable event IDs and opaque projections after real subject erasure\". The scope probe checks related people and groups before counts and pagination; the erasure probe includes an invitation, two email changes, persistent restart and an independent new holder of the old address. `tests/auth/agents-keys.test.mjs` \u2014 \"admin service apps use private-key OAuth for scoped group and assignment writes; resource, IP, expiry, owner and ETag fences refuse automation while every scope excludes identity and credential custody\" includes related-target machine log refusals. `tests/integration/directory-browser.test.mjs` \u2014 \"organization and authority journey\" includes Activity pagination, authority loss between pages and erased-subject readback at 1440 and 390 in both themes. `docs/activity.md`. \u2014 Native interactive Activity and role audit queries now have stable employer-bound event IDs, bounded time, person and event filters, as-of pagination and current authority checks. Twelve-month sign-in readback, reconciliation beyond the old cap despite concurrent appends, auditor write and related-target scope refusals before counts and pagination, recoverable Activity filter and cursor errors, and opaque erased-subject projections are implemented. Held: authorized Datadog, Splunk, Microsoft Sentinel and Evidence destinations, sink export and streaming, complete failed-sign-in, policy and provisioning correlation, full employee device and grant history, MFA and other report reconciliation including password, push and policy dependencies, and general durable tamper and gap evidence remain unproved. AUTH-RETENTION-001 and AUTH-ERASURE-002 policy holds are unchanged.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 308,
+      "text": "**AUTH-REPORTS-001 \u2014 Named per-person identity reports (partial).** With 20 people (15 with a passkey or push, 3 with only a password, 2 with no factor), export the MFA-enrollment report and reconcile it row by row with the directory: all 20 rows are present and the 5 non-compliant people are marked. Terminate two people, one while a connector is held down, export the terminated-people report and reconcile each row's local-denial and full-deprovision times with the AUTH-TIMING-001 audit; the held app is named. Grant and revoke a custom administrator role and see the administrators report follow; age a person past 90 days without sign-in and see them on the dormant report. Refuse export to a role without export rights. Each export's row count equals the directory count for its filter at its as-of time.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 310,
+      "text": "Existing evidence: `tests/auth/directory.test.mjs` \u2014 \"native MFA reports reconcile every scoped directory row and keep no-factor workers noncompliant while separate export rights and audit gates apply\" proves 20 scoped rows with 15 enrolled passkeys and 5 no-factor workers, filters, separate export denial, audit and unknown employer-policy outcomes. \"the administrators report follows a live published custom role grant and its revocation\" proves current custom grants; \"the dormant report distinguishes an aged successful sign-in from recent activity and explicit unknown history\" proves the 90-day filter; \"terminated reports retain held app names and verified remote outcomes while connector failures and unmeasured timing stay explicit\" proves named residual access and honest native SCIM health. `docs/identity-reports.md` defines columns, capture/count semantics and limitations. Gap: the exact password/push acceptance cohort and employer MFA policy, local-denial/full-deprovision timing audit reconciliation, all connector coverage, schedules, machine exports and compliance/Evidence delivery remain unproved. No unknown is counted compliant, and no queue acknowledgment becomes a full-deprovision timestamp.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 312,
+      "text": "**AUTH-COMPLIANCE-001 \u2014 Identity-provider connectors for compliance platforms (missing).** In an authorized Vanta test tenant, connect Auth through the private integration: Vanta's accounts page shows every Auth person in scope with the correct status, MFA status and factor types, and a custom MFA test passes. Remove one person's last factor and see the test fail within one sync; offboard another and see them in Vanta's offboarding queue within one sync. Scope by an Auth group and see Vanta's scope follow a membership change. Repeat in a Drata test tenant and see \"MFA on Identity Provider\" pass and then fail the same way. Configure the Secureframe and Thoropass recipes in authorized test accounts and see each person's MFA status. Revoke the Vanta credential and see the connector unhealthy, with a follow-up raised, within two hours.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 314,
+      "text": "Existing evidence and limits: No implementing product path or acceptance test yet.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 318,
-      "text": "Existing evidence and limits: src/auth/move-in/sources.mjs; src/auth/move-in/routes.mjs; tests/auth/move-in-staging.test.mjs; tests/auth/move-in-admission.test.mjs \u2014 Export staging and admission exist for all three; full configuration, group and app migration and live cutover are missing. JumpCloud, Vanta and Drata accounts are not held.",
+      "text": "**AUTH-MIGRATION-001 \u2014 Switch from Okta, Entra ID or JumpCloud (partial).** For Okta Workforce Identity, Microsoft Entra ID and JumpCloud separately, migrate a populated authorized test tenant with groups, apps, a collision, suspended worker and privileged assignment. Pilot a cohort, re-enroll factors through the AUTH-MIGRATION-003 campaign, compare counts/permissions, roll back and cut over; prove old subjects cannot act as credentials and no app is silently omitted. With Vanta and Drata connected to the incumbent, see both listed with AUTH-COMPLIANCE-001 as their replacement, and cutover held until each replacement's first sync succeeds.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 320,
-      "text": "**AUTH-MIGRATION-002 \u2014 Custom-directory and progressive move-in (done).** Import Google and Auth0 records, migrate one eligible legacy worker at first login through the real bridge, and compare downstream subject mapping before/after. Refuse a wrong password, email collision and disabled worker; interrupt migration and prove an idempotent outcome and a cleanly disabled bridge.",
+      "text": "Existing evidence and limits: src/auth/move-in/sources.mjs; src/auth/move-in/routes.mjs; tests/auth/move-in-staging.test.mjs; tests/auth/move-in-admission.test.mjs \u2014 Export staging and admission exist for all three; full configuration, group and app migration and live cutover are missing. JumpCloud, Vanta and Drata accounts are not held.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 322,
-      "text": "Existing evidence: `tests/auth/move-in-staging.test.mjs` and `tests/auth/move-in-admission.test.mjs` retain documented Google/Auth0 staging/admission and former-subject proof. `tests/auth/move-in-admission.test.mjs` \u2014 \"reviewed custom-directory workers migrate at first legacy login with protected history, exact subject mapping, inherited hooks and permanent bridge shutdown\" proves the real signed bounded verifier profile through its network edge, immutable reviewed identifiers/profile history, normal Auth email and passkey enrollment, real linked-app sign-in, wrong-password/collision/disabled refusal, interrupted mail delivery and restart without duplicate people, old-password retirement and disabling during an in-flight verifier call. `tests/integration/move-in-browser.test.mjs` \u2014 \"move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes\" proves the built Worker migration/enrollment and the clause screens at 1440/390, including icon hover/focus tooltips. `docs/progressive-migration.md`. The signed verifier additionally refuses private DNS and substituted subjects and fails closed at its actual five-second timeout; standalone exact-candidate receipt `sx-auth-c12-final-targets` records this outside push Verify. No acceptance point remains unproved for this constrained profile; a live incumbent enrollment campaign and password preservation at RADIUS remain MIGRATION-003/PASSWORD-001.",
+      "text": "**AUTH-MIGRATION-002 \u2014 Custom-directory and progressive move-in (done).** Import Google and Auth0 records, migrate one eligible legacy worker at first login through the real bridge, and compare downstream subject mapping before/after. Refuse a wrong password, email collision and disabled worker; interrupt migration and prove an idempotent outcome and a cleanly disabled bridge.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 324,
-      "text": "**AUTH-MIGRATION-003 \u2014 Cutover enrollment campaign (partial).** In an authorized Okta test tenant with 20 staged employees, run a campaign: all 20 enroll through Okta-federated proof with no help-desk action while the dashboard counts down. Leave 3 unenrolled and see them named as overdue with manager reminders and in the export. Refuse a person whose email matches but whose Okta subject differs, an unstaged person, proof after the campaign window and campaign proof for an administrator. Bridge one employee's Okta password and sign in with it at RADIUS after cutover. Repeat the enrollment proof with Entra ID and JumpCloud as upstreams.",
+      "text": "Existing evidence: `tests/auth/move-in-staging.test.mjs` and `tests/auth/move-in-admission.test.mjs` retain documented Google/Auth0 staging/admission and former-subject proof. `tests/auth/move-in-admission.test.mjs` \u2014 \"reviewed custom-directory workers migrate at first legacy login with protected history, exact subject mapping, inherited hooks and permanent bridge shutdown\" proves the real signed bounded verifier profile through its network edge, immutable reviewed identifiers/profile history, normal Auth email and passkey enrollment, real linked-app sign-in, wrong-password/collision/disabled refusal, interrupted mail delivery and restart without duplicate people, old-password retirement and disabling during an in-flight verifier call. `tests/integration/move-in-browser.test.mjs` \u2014 \"move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes\" proves the built Worker migration/enrollment and the clause screens at 1440/390, including icon hover/focus tooltips. `docs/progressive-migration.md`. The signed verifier additionally refuses private DNS and substituted subjects and fails closed at its actual five-second timeout; standalone exact-candidate receipt `sx-auth-c12-final-targets` records this outside push Verify. No acceptance point remains unproved for this constrained profile; a live incumbent enrollment campaign and password preservation at RADIUS remain MIGRATION-003/PASSWORD-001.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 326,
-      "text": "Existing evidence and limits: `tests/auth/move-in-admission.test.mjs` \u2014 \"an immutable-subject campaign enrolls twenty staged workers, counts down, reminds managers once and refuses MFA, window and administrator bypasses\" (twenty local passkey-ready workers, countdown, three overdue names, CSV, durable consent-bound reminders, exact subject, MFA, administrator and cutover refusal); `tests/integration/move-in-browser.test.mjs` \u2014 \"move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes\" (campaign setup, pending, overdue and closed screens at 1440 and 390); `docs/upstream-campaigns.md`.",
+      "text": "**AUTH-MIGRATION-003 \u2014 Cutover enrollment campaign (partial).** In an authorized Okta test tenant with 20 staged employees, run a campaign: all 20 enroll through Okta-federated proof with no help-desk action while the dashboard counts down. Leave 3 unenrolled and see them named as overdue with manager reminders and in the export. Refuse a person whose email matches but whose Okta subject differs, an unstaged person, proof after the campaign window and campaign proof for an administrator. Bridge one employee's Okta password and sign in with it at RADIUS after cutover. Repeat the enrollment proof with Entra ID and JumpCloud as upstreams.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 328,
-      "text": "Gap: Partial remains unchanged. Native campaign passkey readiness is distinct from complete enrollment. Remaining Gaps are the live twenty-worker Okta callback with an authorized web registration, live Entra employee proof and JumpCloud qualification, native Auth authenticator enrollment, optional eligible Okta password preservation and RADIUS cutover, Slack or Teams delivery, and temporary access passes after cutover. Every original campaign acceptance point remains required. CT approves the separately consented minimal cohort-manager reminder policy with the stated riders; this ruling supplies no implementation or live-provider proof.",
+      "text": "Existing evidence and limits: `tests/auth/move-in-admission.test.mjs` \u2014 \"an immutable-subject campaign enrolls twenty staged workers, counts down, reminds managers once and refuses MFA, window and administrator bypasses\" (twenty local passkey-ready workers, countdown, three overdue names, CSV, durable consent-bound reminders, exact subject, MFA, administrator and cutover refusal); `tests/integration/move-in-browser.test.mjs` \u2014 \"move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes\" (campaign setup, pending, overdue and closed screens at 1440 and 390); `docs/upstream-campaigns.md`.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 330,
+      "text": "Gap: Partial remains unchanged. Native campaign passkey readiness is distinct from complete enrollment. Remaining Gaps are the live twenty-worker Okta callback with an authorized web registration, live Entra employee proof and JumpCloud qualification, native Auth authenticator enrollment, optional eligible Okta password preservation and RADIUS cutover, Slack or Teams delivery, and temporary access passes after cutover. Every original campaign acceptance point remains required. CT approves the separately consented minimal cohort-manager reminder policy with the stated riders; this ruling supplies no implementation or live-provider proof.",
+      "to": "generated",
+      "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 332,
       "text": "CT policy ruling, 26 October 2026: The owner may explicitly select a cohort manager. Sending that manager enrollment reminders requires separate audited outbound consent in a policy write by the organization owner or a role holding the published manage-follow-up permission, with hardware passkey and fresh local email proof rechecked at commit. Campaign creation, a directory manager field and existing reminder consent do not grant this consent. Each manager notice contains only the affected employee\u2019s name, work address and enrollment deadline. Dispatch rechecks the selected manager\u2019s current organization membership, state and cohort duty; a failed recheck follows the existing approved escalation rule. The notice grants no enrollment, recovery, approval or administrator authority and contains no credential or proof-bypassing link. Consent, dispatch outcomes and stopping history remain subject to AUTH-FOLLOWUP-001, AUTH-FOLLOWUP-002, AUTH-RETENTION-001 and AUTH-ERASURE-001. Completion, cancellation or expired campaign authority stops reminders. This policy does not replace any enrollment, channel, escalation, export, cutover or provider acceptance requirement.",
       "to": "copy",
       "of": 345,
@@ -4045,451 +4026,451 @@
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 332,
+      "line": 334,
       "text": "**AUTH-DEVELOPER-001 \u2014 Working integration SDKs and admin API (partial).** Build and run each framework quickstart against a fresh Auth install; enroll an employee, sign in, verify a protected API, switch an authorized organization, revoke access and observe logout. Follow the docs from an empty app and diagnose a deliberately wrong redirect without hand-editing SDK internals.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 334,
+      "line": 336,
       "text": "Existing evidence and limits: `tests/auth/agents-keys.test.mjs` \u2014 \"a packed Node SDK installs in an empty app and enforces scoped private-key administration, pagination, ETags and live revocation over HTTP\" proves the installed Node client and quickstart. \"a built Python wheel installs in an empty app and enforces scoped administration, ETags, pagination and cached-token revocation over HTTP\" builds version 0.1.0, installs its wheel in a fresh virtual environment, runs the installed quickstart unchanged and proves real private-key OAuth, scope and resource denial, pagination, stale ETags without retry, path confinement and cached-token revocation. \"an installed Hono quickstart checks genuine employee consent, callback binding, rotation and live revocation against fresh Auth\" installs both packages in an empty app, enrolls an employee with browser-bound email and hardware proof, completes genuine OAuth consent with PKCE and DPoP, refuses a wrong callback, runs the unchanged installed protected-route example and proves rotation and next-request revocation. The guides `packages/session-sdk/README.md`, `packages/admin-python/README.md` and `packages/hono-sdk/README.md` state supported profiles, errors, rotation, custody and deployment limits. Gap: Next.js and React, embedded components, Python employee sessions, authorized organization switching and complete fresh-install browser sign-in and logout journeys remain unproved. These are proven SDK slices; neither whole acceptance sentence is complete.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 336,
+      "line": 338,
       "text": "**AUTH-ADMINAPI-001 \u2014 Admin API credentials for automation (done).** Create a service app with `groups.manage` and `assignments.manage` from an allowed IP, call the API to create a group and assign an app; call a policy endpoint and from another IP and be refused; attempt each excluded action with every scope and be refused. Expire the app, suspend its owner, and replay a stale ETag; each is refused or suspended as stated, and the audit shows every call.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 338,
+      "line": 340,
       "text": "Existing evidence: `tests/auth/agents-keys.test.mjs` (\"admin service apps use private-key OAuth for scoped group and assignment writes; resource, IP, expiry, owner and ETag fences refuse automation while every scope excludes identity and credential custody\": allowed group/assignment, wrong scope/IP/resource, every exclusion under every advertised scope, app/token expiry, persistent suspension/demotion/departure, reassignment, stale ETag, complete call audit and no stored assertions/tokens/private keys; \"machine directory and company-app commands share native lifecycle planning, dynamic membership, safe paginated reads and optimistic updates\": native people/rule/app/policy composition, pagination, safe reads and optimistic updates); `tests/auth/fresh-proof.test.mjs` (\"every sensitive action refuses a stale local email proof without change and succeeds after a fresh confirmation\": service create/reassign/revoke); `tests/integration/agents-browser.test.mjs` (\"agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes\": register, use and revoke a real service app and inspect attributed Activity at 1440/390); `docs/admin-api.md`. Current v1 exposes native people/profile/lifecycle, groups/rules/membership, SAML/OIDC company apps and assignments, exact-domain provider requirements, configured-provider availability, domains and safe audit reads. Resource sets are explicit people/group/app IDs; creation requires unrestricted access to the new resource kind, and compound effects must remain within the grant. Provider identity and credentials remain owner configuration; `idps.manage` enables or disables that configuration and cannot replace its issuer, client or bindings. Tokens are issuer-local, at most five minutes, with live owner/revision/IP checks; mutations use guarded native commands and atomic shared-revision ETags. AUTH-ROLES-001, AUTH-POLICY-001 and AUTH-FEDERATION-001 inherit the same scoped, excluded-action, audit and concurrency obligations for their future machine doors before shipping.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 340,
+      "line": 342,
       "text": "**AUTH-TERRAFORM-001 \u2014 Terraform provider (partial).** Against a fresh install, `terraform plan` and `terraform apply` create a group, an app assignment and a policy; a second plan shows no changes; a change made in the UI appears as drift on the next plan; `terraform import` adopts an existing app. A resource needing a scope outside the credential's grant fails at apply with a refused, audited call and no partial change to that resource.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 342,
+      "line": 344,
       "text": "Existing evidence and limits: `packages/terraform-provider/README.md` documents local Terraform and OpenTofu installation and the three resource schemas. `tests/auth/terraform-provider.test.mjs` (\"terraform installs the Auth provider and reconciles native resources with drift, import and audited scope and stale-plan refusals\" and the matching OpenTofu journey) uses actual CLIs against fresh native Auth persistence: group, SAML app and assignment creation, a second unchanged plan, app update drift, existing-app import, exact stale ETag refusal with one attempted mutation and previous state preserved, audited scope and resource refusal without partial mutation, RSA and P-256 private-key OAuth, and no private keys or tokens in state or diagnostics. `tests/integration/company-apps-browser.test.mjs` (company apps journey, extended by `tests/integration/helpers/terraform-journey.mjs`) applies native resources with actual Terraform, checks an unchanged plan and detects an app removed through the Apps UI; screenshots cover 1440 and 390 in both themes. `packages/terraform-provider/internal/provider/provider_test.go` (\"TestRefusalNeverRetriesOrLeaksResponse\") asserts refusal sanitization and no retry or tag advancement. Machine updates preserve omitted service-provider certificates.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 344,
+      "line": 346,
       "text": "Gap: Public Terraform Registry publication and signing remain gr-held. People, group rules, OIDC and password apps, attribute mappings, policies, identity providers, domains and automations remain unimplemented provider families. The required conditional-access policy remains AUTH-POLICY-001 device-held and automations remain AUTH-WORKFLOWS-001 account-blocked; the exact-domain provider rule does not replace that policy. Full policy and automation acceptance and public release remain unproved.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 346,
+      "line": 348,
       "text": "**AUTH-MOBILE-001 \u2014 Native employee and administrator access (partial).** On real iOS and Android builds plus Expo SDK clients, deploy the app with managed configuration through Intune and Android Enterprise, enroll a passkey, return through a verified link, launch an assigned app, approve an authorized request and revoke the lost device. Refuse a hijacked callback and offline approval; exercise web equivalents at 1440 and 390.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 348,
+      "line": 350,
       "text": "Existing evidence and limits: src/ui/pages/account.ts; tests/integration/browser.test.mjs \u2014 responsive account/admin web exists; native apps, mobile SDKs and launcher do not.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 350,
+      "line": 352,
       "text": "**AUTH-EVENTS-001 \u2014 Reliable lifecycle events and webhooks (done).** Subscribe a real app endpoint through admin/API, perform a joiner/mover/leaver, rotate signing material and recover after 429, timeout and outage. Replay an event and request a historical cursor; verify ordered/versioned reconstruction without duplicate grants or missing unresolved work.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 352,
+      "line": 354,
       "text": "Existing evidence and limits: src/auth/events/; src/auth/outbound.mjs; tests/auth/events.test.mjs; COMPANY-APPS.md \u2014 administrators subscribe HTTPS endpoints (private, IP and internal destinations refused); versioned events with stable IDs and commit-order cursors for people, memberships, assignments, provisioning outcomes, recovery and policy are signed (Standard Webhooks HMAC), retried through 429 with Retry-After, a timeout and an outage without changing their ID, signed with both secrets during a rotation overlap, replayable with the original ID, and readable from a resumable cursor with a per-subscription read key; a delivery acknowledgment closes no access obligation.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 354,
+      "line": 356,
       "text": "**AUTH-FOLLOWUP-001 \u2014 Follow-through until access is resolved (done).** Leave an invitation, a recovery awaiting a distinct administrator's approval, and a failed deprovision unresolved across a weekend/DST change and a process restart. Observe due actions, reminders and escalation, including for a legacy policy with no escalation recipient. Complete or cancel each through its normal door, and verify reminders cease while the complete history remains.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 356,
+      "line": 358,
       "text": "Evidence: `tests/auth/provisioning.test.mjs` \u2014 \"durable follow-up dispatches on the employer business calendar across DST and restart, escalates unresolved revocation and stops on source completion, cancellation and expiry\": invitation, recovery awaiting distinct-admin approval and failed deprovision across weekend/DST/restart; due actions and reminders; legacy policy recipient-recheck escalation (including a stopped pre-0047 deadline); exact 15-minute downstream escalation outside business hours, concurrent/restart deduplication; normal-door completion/cancellation/expiry stops with retained history; policy refusals and credential-free mail. `tests/integration/agents-browser.test.mjs` \u2014 \"agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes\": Activity policy/scheduling, pending recovery restart and cancellation, enrollment completion and retained history at 1440/390 in both themes. `docs/follow-up.md`. Legacy upgrades copy only the policy\u2019s already approved administrator IDs into escalation and audit that migration; no new person or address is added. Current role/state and source authority are rechecked on every dispatch. AUTH-FOLLOWUP-003/004 retain the additional-source and channel work.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 358,
+      "line": 360,
       "text": "**AUTH-FOLLOWUP-002 \u2014 Role-derived recipients, manage-follow-up authority and early send (done).** A custom role with 'manage follow-up' saves the policy. An installation role is refused. The employee receives their own enrollment and recovery reminders, and the holding help desk receives its case reminders. A help-desk holder who loses the role escalates. A holder's early send reaches only allowed recipients, and a non-holder is refused. All of this runs at 1440 and 390.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 360,
+      "line": 362,
       "text": "Evidence: `tests/auth/provisioning.test.mjs` \u2014 \"follow-up duties resolve employees and scoped case holders, restrict early send and escalate lost case authority\": a custom role holding the published manage follow-up permission (followup.manage) saves the policy and loses that write when revoked; an installation session has no employer session (401) and the same installation-role holder, signed in as a passkey member of the isolated employer, is refused with role_permission_required; scheduled reminders reach the invited and active employee for enrollment, the employee for their own recovery and the help desk holding the exact case, never administrators or policy managers; a holder who loses exact case authority fails the dispatch recheck and escalates to the named owner; holder early send ignores injected recipients, non-holders are refused with followup_holder_required and an early occurrence is not resent after restart or when due; cancellation stops reminders; a pre-0048 employer upgrades and case-binding erasure keeps anonymous history. `tests/integration/agents-browser.test.mjs` \u2014 \"agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes\", through `tests/integration/helpers/followup-roles-journey.mjs` followupRolesJourney at 1440 and 390 with light/dark captures: custom-role save in the settings form; installation owner, administrator and coordinator sessions refused at the isolated employer and the coordinator refused as its passkey member; employee enrollment, own-recovery and holding help-desk case reminders delivered through the gated outbox; injected-recipient and non-holder refusal; lost case role escalation with its visible recheck failure. `docs/follow-up.md`. The published `followup.manage` permission manages organization-wide follow-up only, with passkey and fresh local email proof. Case reminders resolve the opener only while current exact-case edit authority remains; the separately assigned follow-up owner may send early but cannot change source custody. Existing named administrator selections retain their approved owner/admin roles. Source decisions keep their original proof gates. Employee read coverage replaces the former blanket employee-refusal assertion with scoped own-record/history assertions.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 362,
+      "line": 364,
       "text": "**AUTH-FOLLOWUP-003 \u2014 Access-request, review and stale-source obligations (done).** Leave an access approval, an overdue review item and a stale source unresolved across a weekend and DST change and a restart. Observe that decider reminders and escalation happen. Decide, cancel or refresh each through its normal door, and verify reminders cease while the history remains.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 364,
+      "line": 366,
       "text": "Evidence: `tests/auth/provisioning.test.mjs` \u2014 \"request, review and stale HR obligations retain decider reminders and resolution history across DST and restart\" (implementation: `tests/auth/followup-decisions-flow.mjs`): (1) pending native requests, an overdue review item and a stale HR file feed remain recorded across the weekend, DST and a Worker restart; (2) current-decider reminders and approved-administrator escalation, explicit HR source-owner consent, concurrent and restart deduplication, changed request-policy expiry and refusal after source-owner demotion; (3) normal request denial, requester cancellation, review certification and valid HR refresh stop the old obligations while history remains. `tests/auth/directory.test.mjs` \u2014 \"review reminders follow current reviewer consent and business calendars across restart with absence escalation\": live delegation, absence and uncertain transport. `tests/integration/directory-browser.test.mjs` \u2014 \"access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390\" (implementation: `tests/integration/helpers/access-review-journey.mjs`): real Activity source records, normal source links, explicit consent saved through the settings form, responsive layout, accessibility and icon tooltips at 1440 and 390. `docs/follow-up.md`.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 366,
+      "line": 368,
       "text": "Implemented semantics: Current source doors are native pending access requests, open native review items and registered HR file feeds. Requests and review items resolve the current decider at dispatch; follow-up ownership never grants decision authority. Stale HR delivery reminders require the separately selected source-owner duty in an explicit audited policy write; registering a feed and existing reviewer consent grant no additional outbound consent. The source owner must retain current administrator authority and the registered version. Source completion, cancellation or expired request authority stops reminders without deciding access. Future source doors in AUTH-SCIM-002 and AUTH-HRIS-001, and additional request or review doors in AUTH-REQUESTS-001 and AUTH-REVIEWS-001, inherit the same adapter, current-authority, consent, stop and retained-history obligations before shipping.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 368,
+      "line": 370,
       "text": "**AUTH-FOLLOWUP-004 \u2014 Slack, Teams and Oncall follow-up channels (missing).** Through authorized Slack, Teams and Oncall test workspaces, deliver a reminder, decide a request from Slack and from Teams, and raise a security escalation to Oncall. A recipient whose binding or authority has lapsed receives nothing and the reminder escalates. Reminders contain no credentials and no links that act without their door's own proof.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 370,
+      "line": 372,
       "text": "Existing evidence and limits: Email only; no chat or Oncall adapters (depends on CHAT-001).",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 372,
+      "line": 374,
       "text": "**AUTH-DELIVERY-001 \u2014 Email and SMS delivery operations (partial).** Configure SES and Twilio in authorized test accounts, enroll/recover a worker and observe accepted, bounced, throttled and unavailable outcomes. Prove tokens/credentials absent from logs/exports and a notification failure leaves the original access obligation unresolved.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 374,
+      "line": 376,
       "text": "SendGrid slice evidence: the two mail delivery tests in `tests/auth/notifications.test.mjs` prove signed recipient-bound reconciliation, durable suppression, provider and local throttling, unresolved enrollment on failure and no automatic uncertain-send replay. The mail delivery diagnostics journey in `tests/integration/security-settings-browser.test.mjs` loads `tests/integration/helpers/delivery-journey.mjs` for private delivery diagnostics at 1440 and 390. SES and Twilio live enrollment and recovery, shared-relay live delivery and bounce and full live archive qualification remain unproved. Conservative default adopted pending ct: suppression is private, excluded from archives and has no automatic expiry or self-service bypass.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 376,
+      "line": 378,
       "text": "Existing evidence and limits: src/auth/email.mjs; src/mail.server.mjs; tests/integration/http.test.mjs; tests/email-link.mjs \u2014 Base mail/outbox wiring and send-failure activity exist; SES/Twilio-specific setup and delivery reconciliation are missing.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 378,
+      "line": 380,
       "text": "**AUTH-OPS-001 \u2014 Operate a company identity service (partial).** Deploy to the supported production host, perform a rolling/key-certificate upgrade, fail a dependency, restore a backup and measure against each numeric objective: availability from synthetic sign-ins at one-minute intervals across a month, the restore's elapsed time against the 1-hour RTO and its newest recovered write against the 5-minute RPO, p95 authorization/SAML and token/UserInfo latency under a load of 50 sign-ins per second, and leaver processing against AUTH-TIMING-001. Trigger Uptime/Oncall escalation and reconcile the USD usage forecast to actual provider usage without exposing secrets.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 380,
+      "line": 382,
       "text": "Existing evidence and limits: AUTH-COMMANDS.md; scripts/installer/local.mjs; src/auth/keys.mjs; tests/integration/dev.test.mjs \u2014 local command/recovery and key operations exist; hosted resilience, SLO measurement, region selection and usage forecasting are missing.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 382,
+      "line": 384,
       "text": "**AUTH-RECOVERY-002 \u2014 Emergency continuity and recovery drills (done).** Drill lost phone/key, unavailable upstream, expired signing certificate and restoration of an owner installation through the public account/CLI doors. Confirm ordinary workers cannot invoke emergency authority, cancellation wins against completion where applicable, all notices persist and used credentials cannot be replayed.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 384,
+      "line": 386,
       "text": "Existing evidence: `tests/auth/security.test.mjs` (\"scheduled continuity drill exercises protected lost-factor recovery, upstream outage and expired signing-certificate replacement\") proves a separately held backup administrator with redundant hardware, distinct higher-rank recovery approval, employee notices and mail for each change, signed delivery to the security owner across receiver outage/restart, cancellation after approval, lost-factor/recovery replay refusal, the required-upstream failure and protected administrator recovery, then a strict independent relying-party edge\u2019s actual X.509 date refusal and manual signer replacement/old-trust refusal. `tests/integration/http.test.mjs` (\"scheduled installation continuity drill restores an owner through real archive and local recovery commands without replaying authority\") proves real CLI export/reset/import with separately held private configuration, no live archived authority, owner-only local emergency recovery with an atomic persistent notice, replaced hardware and old-token/link/factor replay refusal. `tests/auth/provisioning.test.mjs` (\"a provider answering 429 and 503, or losing a response, is retried until it recovers with no duplicate account; a name collision waits for an administrator; drift is found across pages\") supplies the connector recovery drill. `tests/integration/browser.test.mjs` (\"real Auth pages: browser email, first setup, hardware passkey, people and account at desktop/mobile in both themes\") now exercises pending/cancelled recovery at 1440 and 390. `pnpm run drill:continuity`, `.github/workflows/continuity.yml` and `docs/continuity-drills.md` preserve each failed and explicitly unmeasured step. AUTH-IDENTITY-001 already permits the local owner emergency token; the drill adds no approval exception or bypass. Isolated-employer archive restoration and hosted disaster recovery remain TRANSFER-002 and OPS-001, and inherit these drills before shipping. The certificate test edge\u2019s strict date policy is explicit and is not attributed to every vendor.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 386,
+      "line": 388,
       "text": "**AUTH-RECOVERY-003 \u2014 Same-day help-desk recovery for employees (partial).** As help desk scoped to the employee's group, restore a non-admin employee with no recovery code through manager attestation, and another through a Persona check in an authorized test account, each from case opening to a newly enrolled passkey in under 1 hour. Refuse the path for an administrator, for an employee outside scope, without a recorded verification, and on reuse or after an hour of the enrollment link; see the revoked sessions and every notice.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 389,
+      "line": 391,
       "text": "Existing evidence and limits: `tests/auth/security.test.mjs` (\"recovery waits 72 hours, notifies every session, supports cancellation and distinct admin approval\", including `tests/auth/recovery-cases-flow.mjs`: manager-bound attestation, active-case link enforcement, cancellation and later administrator-reset enrollment, replay and expiry refusal, replacement passkey authentication); `tests/integration/directory-browser.test.mjs` (\"organization and authority journey\") \u2014 Manager-session attestation, scoped reset, native session and passkey revocation, digest-only case-bound single-use enrollment, employee and manager email notices, and the native passkey journey are implemented. Closing a case or a later administrator factor reset voids incomplete enrollment requirements; active and expired case links retain their existing gates. Persona or CLEAR qualification requires an authorized test account and consenting subject; remaining push or TOTP verification, temporary access pass and desktop PIN alternatives, real-device revocation, every enrolled-channel notification and live delivery remain unproved.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 394,
+      "line": 396,
       "text": "**AUTH-ERASURE-001 \u2014 Authorized erasure with retained accountability (done).** Erase a worker with multiple factors, imports, agent grants and SaaS access through the owner door; query/export all stores, inspect receipt and anonymized audit, and attempt restore of a pre-erasure archive with the later journal. Keep a blocked remote deletion visible, test legal hold and last-owner protection, then reset a local installation.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 396,
+      "line": 398,
       "text": "Existing evidence: `tests/auth/provisioning.test.mjs` (\"owner erasure previews every store, honors legal holds, anonymizes decisions and keeps refused remote deletion visible\"; \"app erasure removes connector custody and protected organization reset retains only installation-owner anonymous outcomes and credential-free pending work\") and `tests/integration/http.test.mjs` (\"owner erasure fences a pre-erasure rer archive with its later journal, restores anonymous evidence and resets the local installation\") contain the HTTP/CLI journeys. `tests/integration/directory-browser.test.mjs` contains the desktop/mobile organization-and-authority journey. Passing HTTP proof covers the CT-ratified custody requirements: anonymous versus sealed records, no retained employer credential, pre-reset destination consent, fresh tenant-bound single-purpose connections, root-owner-only minimal views/retries/abandonment, every erased-issuer door, all organization authority ending, root audit and cleanup/tamper verification. The actual archive journey passes at `64d257be` in Verify Auth `39703632411`; the 1440/390 authority journey passes at `64d257be` in Verify Auth `39703632411`. Named provisioning assertions additionally prove unknown-store fail-closed behavior, stale person preview, employer-owner person/app/membership erasure, live credential termination, unconsented-destination revocation success and copy/partner limits. `tests/auth/fresh-proof.test.mjs` proves hardware/fresh-email gates and installation-admin refusal. Voluntary separate-membership release is AUTH-ERASURE-002. Whole-hold refusal and the whole-older-archive fence are accepted interim limits; applying the journal during inactive restore stays under AUTH-TRANSFER-002. See `docs/erasure.md`.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 398,
+      "line": 400,
       "text": "**AUTH-ERASURE-002 \u2014 Per-person erasure across separate organization identities (partial).** Give one person isolated memberships A, B and C. Link A from proved sessions, refuse a link to B from a root session alone, and leave C unlinked. No administrator sees the link in UI, admin API or export. Installation-identity erasure commits without a membership check; only A gets a handle-only obligation; the root preview and receipt name no employer or count; the person's receipt shows A's notice and the unlinked sentence. Erasing an organization's creator leaves the organization.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 400,
+      "line": 402,
       "text": "Existing evidence: `tests/auth/security.test.mjs` \u2014 \"voluntary independent identity pairs keep employer release notices private through installation erasure, holds, membership erasure and creator removal\" proves the A, B and C independent two-passkey pairing, root, foreign and replay refusal, own-only export and unlink and administrator privacy, opaque A-only release, root preview and receipt privacy, durable owner obligation with holds and reopening, receipt and creator preservation. `tests/integration/directory-browser.test.mjs` \u2014 \"identity release journey: two independent passkeys, private administration, opaque employer follow-up and erasure contact at 1440 and 390\" passes through the built Worker at 1440/390 in light and dark, including the shared hover and focus tooltips. `docs/erasure.md`. CT 23 Oct approved the receipt key with riders and requires PARTIAL. The same HTTP journey additionally proves explicit own-passkey issuance, digest-only persistence, no sign-in or erasure or membership authority, body-only transport, opaque receipt fields, post-erasure self-revocation and retained expiry and revocation facts across maintenance and restart. The browser journey asserts opaque receipt fields and revocation through the built Worker. Gap: CT requires PARTIAL. Default ADOPTED pending CT: key possession plus explicit confirmation is the proof for surrendering only that key after sign-in ends. Pre-rider encrypted receipts resolve opaque fields only while the original notice survives; missing handles after an earlier employer reset cannot be reconstructed and access fails closed.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 402,
+      "line": 404,
       "text": "**AUTH-ERASURE-003 (partial).** Give one account a live session, an API key, a passkey, an OAuth client token with refresh token, a delegation it issued to a second account, and a grant another account issued to it. Before erasure each credential works. Erase the account: the same calls are refused at the very next request, with no grace window, and the delegation it issued stops working for its holders at their next call while the grant issued to it by the other account is removed. The audit row exists, holds the opaque id and the per-kind revocation counts, and a search of it for the account's email and name finds nothing. Restore an export and a backup taken before erasure: the erased account's credentials stay inactive and the account does not reappear, and the restore writes the same opaque-id audit row. Force one revocation step to fail: the erasure aborts and every credential still works. Each refusal is asserted beside its positive case, and removing any revocation (sessions, keys, passkeys, OAuth tokens, delegations) fails its own assertion.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 404,
+      "line": 406,
       "text": "Existing evidence: the named owner-erasure journey in `tests/auth/provisioning.test.mjs` proves live sessions, preparer keys, passkeys and client OAuth authority beside their next-request refusals, an injected storage failure with rollback, and the opaque audit with kind counts and no name or email. The native offline journey in `tests/auth/oidc-apps.test.mjs` proves independently live access and refresh credentials, rollback, next-request refusal after erasure and nonzero refresh revocation counts. The person-consented assignment journey in `tests/auth/agents-proposals.test.mjs` proves matched one-use resource successes beside issuer and holder erasure refusals, removed grants, usable resource authority after storage-failure rollback and nonzero delegation revocation counts. The archive journey in `tests/integration/http.test.mjs` proves the post-erasure archive preserves the same opaque audit and does not restore the erased passkey; the organization-and-authority journey in `tests/integration/directory-browser.test.mjs` covers erasure screens at 1440 and 390. Remaining: AUTH-TRANSFER-002 receives the unproved assertion that restoring a pre-erasure product export or backup never revives the erased account or any credential, drops erased records and replays the same opaque audit. Its required Base staged journal hook is not in released rer 0.2.80; the current whole-archive refusal does not prove that assertion. Kind counts describe durable credential authorities rather than every signed stateless token string. Platform-operator backups outside the product remain excluded. AUTH-ERASURE-002 receipt semantics are unchanged.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 406,
+      "line": 408,
       "text": "**AUTH-RETENTION-001 \u2014 Explicit retention and secret custody (partial).** On a default installation, confirm 13-month audit retention; try to set it to 30 days and be refused; open a review over a period and see its events kept past their expiry. Populate every retained class, age it across each configured expiry, restart and inspect the public history/export doors: transient secrets expire, retained history and unresolved obligations remain, held data is preserved and scheduled deletion produces accountable results. Rotate a connector/signing key and verify secrets absent from logs/assets/archive.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 408,
+      "line": 410,
       "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 retention previews export before expiry and preserve held classes and unfinished work across restart; `tests/auth/provisioning.test.mjs` \u2014 scheduled retention expiry preserves erasure audit verification while altered expiry commitments fail; `tests/auth/retention-flow.mjs`; `tests/auth/retention-integrity-flow.mjs`; `docs/retention.md`; `src/auth/retention/index.mjs`. Gap: Eight-class retention, calendar default/bounds, review/request/investigation/legal holds, pre-delete export, restart/concurrent cleanup and authenticated expiry built. Default ADOPTED pending ct: scheduled expiry waits for an explicit audited policy confirmation; non-audit classes inherit 13 months; terminated profiles anonymize while identity/state remain; whole-employer erasure holds and unfinished-period holds; seven-day export window and 200-row batches. Deployment region/processors disclosed, not independently verified.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 409,
+      "line": 411,
       "text": "Secret/archive journey: `tests/integration/http.test.mjs` (\"owner erasure fences a pre-erasure rer archive with its later journal, restores anonymous evidence and resets the local installation\") rotates signing/connector custody through public doors, excludes current and previous credentials and all private columns from actual rer archives/logs/assets, and restores review parent/snapshot records.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 410,
+      "line": 412,
       "text": "Browser journey: `tests/integration/directory-browser.test.mjs` (\"access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390\").",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 412,
+      "line": 414,
       "text": "**AUTH-TRANSFER-002 \u2014 Complete workforce portability (partial).** Create a populated workforce installation, export/import/export through rer and compare every declared portable record. Refuse corrupt/foreign/unknown schema and nonempty destination; restore with later erasure journal, confirm all jobs/grants are inactive, then reauthorize one connector and verify exactly its approved work resumes.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 414,
+      "line": 416,
       "text": "Existing evidence and limits: `scripts/installer/transfer.mjs`, `src/auth/stores.mjs` and `src/auth/links/grant-map.mjs` use the shared explicit portable inventory and exclude installation-local credentials, sessions and sealed remote work. `tests/auth/linking.test.mjs` (\"an app links with a one-use token, signs a person in through Auth, and Sign out everywhere ends that app session\") covers identity continuity; `tests/integration/http.test.mjs` (\"owner erasure fences a pre-erasure rer archive with its later journal, restores anonymous evidence and resets the local installation\") contains the real rer fence/restore journey. The actual archive journey passes at `64d257be` in Verify Auth `39703632411`. Whole-archive refusal when given a later erasure journal is an accepted interim; complete inactive workforce/grant/job restoration, validation/conflict preview, destination organization schemas and receiving-owner reauthorization remain obligations, so this clause stays partial.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 418,
+      "line": 420,
       "text": "**AUTH-AGENT-001 \u2014 Agent-led SaaS onboarding (partial).** Ask the agent to onboard Slack and a generic SAML/SCIM SaaS, approve a scoped configuration diff, and run a real assigned employee through sign-in/provision/change/revoke. Inject malicious vendor text, stale settings and withheld domain consent; prove no unauthorized change and a blocked readiness state with an actionable next step.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 420,
+      "line": 422,
       "text": "Existing evidence and limits: src/auth/agents/app-kinds.mjs; src/auth/agents/approval.mjs; tests/auth/agents-proposals.test.mjs \u2014 exact human-approved RER link proposals exist; native SaaS onboarding remains unbuilt. Model access and the held Slack app are available. BLOCKED: the required generic SAML and SCIM SaaS acceptance journey needs an authorized tenant and assigned employee that this run does not hold. Scoped vendor setup, real employee sign-in, provisioning, change and revocation, plus malicious metadata, stale settings and withheld domain-consent readiness proof remain unproved. No substitute tenant establishes this acceptance point.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 422,
+      "line": 424,
       "text": "**AUTH-AGENT-002 \u2014 Diagnose and repair broken sign-in (done).** Break a callback, expire a certificate and fail recovery mail on separate app journeys; ask the agent to diagnose with source citations, approve a repair and verify end-to-end behavior. Deny approval and inject untrusted trace instructions, confirming no configuration or authority changes.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 424,
+      "line": 426,
       "text": "Existing evidence: `tests/auth/agents-proposals.test.mjs` \u2014 \"sign-in diagnosis cites approved facts and exact repairs restore callback, expired certificate and recovery mail journeys through sign-in and logout\" proves each broken journey, cited diagnosis, exact owner passkey approval, repair and complete scoped OIDC or signed SAML sign-in and logout with denied next requests. It also proves that a repeated mail failure stays failed, a successful resend occurs once to the verified recipient, and recovery delay, approval and factors remain unchanged. \"diagnostic consent, denied approval, untrusted instructions, unknown citations, uncertainty and stale targets cannot change configuration or authority\" proves denied consent and approval, rejected raw trace instructions and model authority instructions, unknown citations, provider outage, uncertain diagnosis and stale approval including a target changed during the model call. `tests/integration/agents-browser.test.mjs` \u2014 \"sign-in repair journey: owner snapshot consent, cited exact diff, passkey approval, employee callback and uncertainty at 1440 and 390\" proves the actual owner form, cited before and after, passkey approval, repaired callback and employee sign-out, uncertain next action without approval, accessibility and delayed hover with immediate keyboard-focus icon tooltips. `scripts/diagnostic-probe.mjs` runs the same independent protocol consumers against the exact approved proposal and employee, outside model context. `docs/agent-diagnostics.md` documents consent, supported repairs, custody and honest unverified outcomes. A held-key Anthropic Messages call through the public diagnosis route returned a cited callback repair (provider request `msg_011CgPhRMW3c7neioSmd8X1a`, 25 October 2026); provider transport alone does not prove working access. No acceptance gap remains. Unsupported repair or probe profiles stay unverified; uncertainty has a next diagnostic action and cannot be approved.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 426,
+      "line": 428,
       "text": "**AUTH-AGENT-003 \u2014 Find orphaned and excessive access (partial).** Feed real approved connector data containing a departed worker\u2019s remote account, an excessive role and an unused but required emergency grant. Review the cited findings, approve only the first two, and verify downstream state plus the worker\u2019s allowed tasks; stale data or changed employment invalidates the proposal.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 428,
+      "line": 430,
       "text": "Existing evidence and limits: src/auth/agents/preparer.mjs; src/auth/agents/approval.mjs; tests/auth/agents-proposals.test.mjs \u2014 allow-listed inventory and human-approved suspension/domain proposals exist; cross-app usage analysis and regression verification do not.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 430,
+      "line": 432,
       "text": "**AUTH-AGENT-004 \u2014 Person-bound delegated agent identities (done).** Authorize an agent to update one approved app assignment until a fixed deadline, invoke its target API/MCP tool and inspect attribution. Deny another person, purpose, resource, target, scope, expired grant and replay/substitution; show and revoke the active grant in My account and prove its next request is refused.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 432,
+      "line": 434,
       "text": "Existing evidence: `tests/auth/agents-proposals.test.mjs` \u2014 \"a person-consented agent changes exactly one employer assignment after independent employer approval; substitutions, replay and every local ending deny its next request\": real private-key OAuth and DPoP, one existing assignment and fixed deadline; concrete consent and independent passkey approval; agent/person/approver execution and refusal attribution through Activity; person/purpose/resource/target/scope/deadline substitutions, expiry and replay; human-cookie and publicly minted preparer-key refusal at token and execution doors with no token or assignment change; forged client/grant claims retain attempted identifiers without verified attribution; refused scope/resource requests exhaust a bounded per-agent proof budget, return 429 without verified attribution and recover after its window; My account inventory, revoke/next-request denial and reversal request; `tests/integration/agents-browser.test.mjs` \u2014 \"agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes\": consent, approval, My account and Activity at 1440/390; `docs/delegated-agents.md`. CT 22 Oct approved the native profile; the token-door and refusal-audit gaps identified in its 03:46 re-read are now asserted. Unknown attempted IDs never supply verified attribution. AUTH-AGENT-006 separately proves registered external API/MCP POST tasks; this native profile remains bound to its original assignment target.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 434,
+      "line": 436,
       "text": "**AUTH-AGENT-005 \u2014 Verify revocation everywhere (partial).** Revoke a delegated grant and offboard its accountable worker while one SaaS is offline and another offers no session-revocation API. Prove immediate Auth denial, enumerate all derivatives, resume verification after restart/provider recovery and retain the manual exception until a person resolves it; every final claim must match a remote read/probe.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 436,
+      "line": 438,
       "text": "Existing evidence and limits: src/auth/links/logout.mjs; src/auth/agents/keys.mjs; tests/auth/linking.test.mjs; tests/auth/agents-keys.test.mjs \u2014 local key revocation and RER fences exist; app-wide delegated-credential inventory and verified remote reconciliation are missing.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 438,
+      "line": 440,
       "text": "**AUTH-AGENT-006 \u2014 External and MCP delegated task identities (done).** Register a test MCP server and an external API. Authorize one tool and one operation for one person. At each resource, deny an unregistered audience, another tool or operation, scope, person, replay and an expired grant. Revoke in My account and prove the next call is refused.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 440,
+      "line": 442,
       "text": "Existing evidence: `tests/auth/agents-proposals.test.mjs` \u2014 \"registered MCP and external API resources execute one person-consented task; operation, person, scope, audience, replay, expiry and live revocation are enforced at each resource\" proves both registered resources, exact tasks and all acceptance refusals through independent HTTP handlers using `packages/delegated-resource/index.mjs`, plus concurrent one-use consumption, current authority and person erasure. `tests/integration/agents-browser.test.mjs` \u2014 \"agents journey: mint a key, an agent files a suspension, a person approves with a passkey, the session ends and Activity records it, at desktop/mobile in both themes\" proves both resource tasks in My account, consent, independent approval, inventory/revocation and hover/focus tooltips at 1440 and 390 in both themes. `docs/delegated-agents.md` declares the bounded POST profile, errors, live resource enforcement, key replacement and unknown remote outcomes. No acceptance gap remains for this profile.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 442,
+      "line": 444,
       "text": "92 clauses: **38 done / 36 partial / 18 missing**. A completed request, review, lifecycle plan or agent job must satisfy every affected app\u2019s end state; provider acknowledgment or local queue success alone is insufficient.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 446,
+      "line": 448,
       "text": "The independent Auth slice has tests through real D1 and the emitted Worker. `tests/auth/security.test.mjs`, `protocol.test.mjs` and `upstreams.test.mjs` exercise browser-bound proof, passkey policy, recovery, encrypted ES256/RS256 signing-key lifecycle, PKCE/private-key JWT protocol behavior and signed upstream responses. Domain-policy coverage includes required-provider management, owner exemption, excluded email/passkey routes, current policy at code redemption, provider removal/configuration changes, exact-domain enrollment and retained provider evidence through email, passkeys and recovery. `recovery-cli.test.mjs` exercises real local wrangler and private recovery-token storage. These are implementation checks, not OpenID certification.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 448,
+      "line": 450,
       "text": "`tests/integration/http.test.mjs` proves the real runtime/mail/outbox wiring, owner bootstrap versus Auth authority, inherited Base route denial, per-request private authorization, native confirmation, first-run completion and publication of real public signing keys. The retained `tests/email-link.mjs` now proves Auth sessions and browser-bound links instead of inherited Base email-cookie behavior. `tests/runtime.mjs` now expects the root to redirect to sign-in instead of serving a public placeholder.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 450,
+      "line": 452,
       "text": "`tests/integration/browser.test.mjs` exercises actual Auth pages, email confirmation, first setup, native Chromium passkey enrollment/authentication, people invitation/domain/suspension and recovery cancellation. It checks the five private pages at 1440 and 390 in light and dark, with axe serious/critical violations required to be zero. `tests/integration/dev.test.mjs` runs fresh real rer setup/dev, uses RER_OPEN in Chromium, checks the key-gated owner session and key removal, and proves localhost enrollment and private-path refusal. CI installs Chromium before running them. Test success must be read from the run evidence; having these tests alone is not acceptance.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 452,
+      "line": 454,
       "text": "Run `rer check --profile first-party`, `pnpm typecheck`, and the appropriate targeted tests after changes. `rer verify` is the complete seed check. `tests/auth/userinfo.test.mjs` exercises real signed access tokens and scoped GET/POST UserInfo, expiry, issuer/audience/type/subject/client/session refusal, sign-out revocation, account/client/policy changes and RS256 key publication/retirement. The existing ID-token flows still prove nonce, issuer, audience, pairwise subjects and one-time owner claims. The old ID-token-only assertion is replaced by the approved access-token response; no refusal or claim assertions were weakened.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 454,
+      "line": 456,
       "text": "`tests/auth/authorization-policy.test.mjs` adds one HTTP regression for each authorization-policy requirement: sessions ending with the email proof and returning through email re-proof to the app; prompt/max-age active authentication with fresh `auth_time`, silent refusal, continuation binding/expiry/replay and upstream SSO followed by a local email confirmation; and discovery matching explicit request-object refusals with callback validation. No previous test is weakened or removed, and no wider Basic OP or logout profile is introduced.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 456,
+      "line": 458,
       "text": "Run site (run-auth.com, HOMEPAGE-VARIANTS.md): `tests/site/run-site.test.mjs` builds it with `rer build --site` and checks that the homepage's Run Auth action opens `/run`, that it links no installed-instance route, and that every guide `docs/site.json` lists is built. `rer build --site` itself refuses broken links, instance-only routes, other origins and installation data. Its deploy (`.github/workflows/run-site.yml`) stays off until the repository variable `RUN_SITE_DEPLOY` is `true`.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 458,
+      "line": 460,
       "text": "Move-in (MOVE-IN.md): `tests/auth/move-in-staging.test.mjs` stages each source's documented export (Google CSV and JSON, Entra CSV, Auth0 CSV and NDJSON, Okta Users API JSON, JumpCloud CSV and JSON) through the staging route, refuses the hostile set and oversize or unknown files, proves staging leaves people, sessions, grants and mail untouched apart from one Activity entry, and flags every review class. `tests/auth/move-in-admission.test.mjs` proves admission through the admin route (member, email-only, signed-out and stale-proof sessions refused; invited members with no proof, right, session or mail; the owner's address and matching emails change nothing), undo (untouched person removed, signed-in and granted people kept and named), and that an Auth0 former subject is refused by UserInfo and the token endpoint and never becomes the pairwise subject. `tests/integration/move-in-browser.test.mjs` runs the 30-row Google journey at 1440 and 390 in light and dark with axe serious/critical at zero. Fixtures are hand-written from provider documentation (tests/fixtures/move-in/README.md); no provider account or live tenant was used, so live cutover is not accepted. Export carries the former subject map with the signed grant map (below).",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 460,
+      "line": 462,
       "text": "Agents (AUTH-ADMIN-001): `tests/auth/agents-keys.test.mjs` proves minting, renewal and revocation through the admin routes (no-session, member, email-link-only and stale-proof sessions refused; expired, revoked and orphaned keys refused on the next request; the key absent from listings, Activity, every stored row and the test process's output) and that a key opens nothing but the preparer API while a session cookie is no key. `tests/auth/agents-proposals.test.mjs` parses the inventory from a populated store against an allow-list of field names, files and approves each proposal kind (filing leaves people, sessions, apps, links, rules and mail unchanged), and proves approval rules: passkey signature by the approver in the session that asked, replay, stale targets with what changed, expiry, rejection, concurrent approvals held at a commit barrier, a revoked key's pending proposals, owner and self-suspension refusals. `tests/integration/agents-browser.test.mjs` runs mint, file, review, passkey approval and Activity at 1440 and 390 in light and dark with axe serious/critical at zero. `remove_app_link` is proven the same way; `approve_app_link` reads the app's own documents when filed and again at approval.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 462,
+      "line": 464,
       "text": "Linking (AUTH-LINK-001, AUTH-LOGOUT-001, AUTH-TRANSFER-001, LINKING.md): `tests/auth/linking.test.mjs` links an app Worker built only from Base's own app side with a one-use link token (a replayed token refused), signs a person in to it through Auth, and proves Sign out everywhere ends that app session. On 13 Oct 2026 a fresh clone of Spool, whose setup declares the optional `oidc-provider@1` dependency, linked a fresh local Auth install through `rer setup --non-interactive` and a person signed in to it through Auth at 1440 and 390 (screenshots and network log kept with the task evidence). The same run proved, through HTTP: a replayed redeem code, a second concurrent redemption, a link token reused or presented for another origin, a key swap without continuity, a version downgrade before owner approval, and loopback or plain-http origins on a production install, each refused; Sign out everywhere and suspension ending Spool sessions (200 before, 401 after); a replayed logout token refused at Spool (409) while a fresh one is accepted; and `rer export` into a fresh install with `rer import`, after which Spool re-linked with the same client, sector and pairwise subject. Hosted acceptance, a public release and certification are not claimed.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 464,
+      "line": 466,
       "text": "OpenID conformance, 13 Oct 2026, Auth `9915adf`: the unchanged release-v5.3.2 suite through `tests/conformance` (listener on 127.0.0.1, browser automation for the authorization and logout pages). **Config OP PASSED**: `oidcc-discovery-endpoint-verification` PASSED. **Back-Channel Logout OP** (code, static client, the plan's own client_secret_basic variant): `oidcc-backchannel-logout-discovery-endpoint-verification` now PASSED (Auth advertises `end_session_endpoint`, `backchannel_logout_supported` and `backchannel_logout_session_supported`); `oidcc-backchannel-rp-initiated-logout` FAILED at `EnsureServerConfigurationSupportsClientSecretBasic`, the kept strict profile (private_key_jwt and mandatory PKCE), as decided. No expectation annotations were added and the profile was not widened.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 466,
+      "line": 468,
       "text": "OpenID conformance, 12 Oct 2026: the unchanged OpenID Foundation release-v5.3.2 suite ran through `tests/conformance` against real local Workerd/D1 Auth with signed access tokens and UserInfo. **Config OP PASSED**: its discovery module PASSED, runner exit 0, no warnings, reviews or skips. **Back-Channel Logout OP FAILED**: with Auth's private_key_jwt variant the suite refuses to create the plan (HTTP 400, the plan fixes client authentication); with the plan's own variant (code, static client, client_secret_basic) both modules FAILED. `oidcc-backchannel-logout-discovery-endpoint-verification` finds no `backchannel_logout_supported`, `backchannel_logout_session_supported` or `end_session_endpoint`; `oidcc-backchannel-rp-initiated-logout` fails `EnsureServerConfigurationSupportsClientSecretBasic` and then sends an authorization request without PKCE, which Auth refuses with HTTP 400. **Basic OP not run**: plan creation HTTP 400 for private_key_jwt. Config's native configuration declares the required `rer_interfaces` extension through upstream's `server.allow_unexpected_metadata_fields`; structural validation and every protocol condition remain active, with no expected-failure or skip annotations.",
       "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
-      "line": 468,
+      "line": 470,
       "text": "Back-Channel Logout OP can pass only with client_secret_basic for the test client and authorization without PKCE, which widen the approved private_key_jwt and mandatory-PKCE profile (the same decision that holds Basic OP); the end-session endpoint and signed `logout_token` sender it also needed now exist. An earlier unchanged static Basic diagnostic exported two FAILED results (`EnsureServerConfigurationSupportsClientSecretBasic`) and was stopped after an ordinary Basic authorization request without mandatory PKCE returned Auth HTTP 400; it is incomplete, not certification.",
       "to": "changelog"
     },
@@ -5079,6 +5060,24 @@
       "text": "Existing evidence and limits: `tests/auth/security.test.mjs`: native TOTP enrollment protects secrets, refuses replay and preserves administrator assurance; lost-factor removal ends current sessions and preserves a replacement passkey; single-use recovery codes rotate, refuse foreign or privileged use and end after replacement enrollment; sensitive app factor policy rechecks assurance at authorization and token issuance. `tests/auth/local-email.test.mjs` retains fresh-email gates. `tests/integration/security-settings-browser.test.mjs`: native multifactor settings enroll TOTP, publish app assurance and end sessions on factor loss or code rotation. \u2014 Native web TOTP, digest-only single-use recovery codes, factor inventory and lost-factor revocation, app assurance and current-session revocation built. Conservative native default: only the owner with passkey and fresh email configures app assurance; TOTP never grants administration; recovery codes require fresh email, refuse every active delegated role and permit only replacement enrollment for members; factor removal and code rotation end all Auth sessions. Scoped factor-policy delegation and broader assurance policy await ct. Real Auth push and native authenticator TOTP need AUTH-AUTHENTICATOR-001 devices and gr signing; RADIUS and OS-login assurance need AUTH-LEGACY-001 and AUTH-DESKTOP-001. Live notification delivery, mobile and desktop inventory and revocation, and same-business-day lost-factor recovery remain unproved under AUTH-NOTIFY-001 and AUTH-RECOVERY-003.",
       "to": "generated",
       "note": "The contract generator writes this status or count."
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 532,
+      "text": "Partial remains unchanged. Native connectors stage observations and apply only exact human-approved changes. Generic SCIM pull sources now refresh liveness on successful unchanged content and retain visible source-bound failure and overdue episodes under their registered custodian and existing polling schedule. Recovery closes an episode without approving changes; disablement and custody loss stop it with retained history. No global or HR follow-up consent authorizes a directory reminder. Remaining Gaps are complete live provider mover and leaver qualification, Google Workspace directory delegation, measured pushed and polling bounds, full-reconciliation timing, receipt-to-application timeliness while human approval is pending, stale-source follow-up for other directory profiles and every outbound reminder, and nested or external membership support. Timely provisioning and deprovisioning remain complete category requirements. CT approves approval-origin timing only for the interim approved-delivery execution profile; it does not redefine receipt-origin source performance, authorize recurring approval, infer termination from absence or grant outbound consent.",
+      "to": "gap",
+      "cell": "gap",
+      "ids": [
+        "AUTH-SCIM-002",
+        "AUTH-SCIM-003",
+        "AUTH-SCIM-004"
+      ]
+    },
+    {
+      "file": "ACCEPTANCE.md",
+      "line": 204,
+      "text": "Existing evidence and limits: `tests/auth/directory.test.mjs` \u2014 \"inbound directories and scoped SCIM stage immutable users and groups, require exact approval, retain incomplete feeds and fence reviewed leavers\" (all four source adapters at their network edges, paginated users and groups, stable IDs, reviewed mover and leaver effects, foreign credentials, duplicates, incomplete and empty holds); `tests/integration/move-in-browser.test.mjs` \u2014 \"move-in journey: stage a 30-person Google export, review, admit, invite and undo at desktop and mobile in both themes\" (source setup, held preview, application and disable, generic SCIM stale and recovered source cards and retained non-dispatchable Activity obligations at 1440 and 390 in both themes); `tests/auth/provisioning.test.mjs` \u2014 \"request, review and stale HR obligations retain decider reminders and resolution history across DST and restart\" (implementation: `tests/auth/directory-source-flow.mjs`, directoryFreshnessFlow: generic SCIM pull liveness, one durable failure or overdue episode, unchanged-content recovery, restart and concurrent maintenance, source custody and employer refusals, held snapshots, no reminder under global or HR consent, and closed-episode expiry under confirmed retention); `journeys/directory-sandboxes.mjs` (held-key qualification journey; live result remains pending); `docs/directory-sources.md` \u2014 Partial remains unchanged. Native connectors stage observations and apply only exact human-approved changes. Generic SCIM pull sources now refresh liveness on successful unchanged content and retain visible source-bound failure and overdue episodes under their registered custodian and existing polling schedule. Recovery closes an episode without approving changes; disablement and custody loss stop it with retained history. No global or HR follow-up consent authorizes a directory reminder. Remaining Gaps are complete live provider mover and leaver qualification, Google Workspace directory delegation, measured pushed and polling bounds, full-reconciliation timing, receipt-to-application timeliness while human approval is pending, stale-source follow-up for other directory profiles and every outbound reminder, and nested or external membership support. Timely provisioning and deprovisioning remain complete category requirements. CT approves approval-origin timing only for the interim approved-delivery execution profile; it does not redefine receipt-origin source performance, authorize recurring approval, infer termination from absence or grant outbound consent.",
+      "to": "changelog"
     }
   ]
 }

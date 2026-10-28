@@ -31,19 +31,23 @@ export function canonicalSnapshot(payload) {
  }).sort((a,b)=>a.sourceId.localeCompare(b.sourceId));
  return {complete:payload.complete,users,groups};
 }
+async function refreshObservation(ctx,source,guard) {
+ const changed=await ctx.db.prepare(`UPDATE auth_directory_sources SET observation_version=observation_version+1,last_read_at=?,next_poll_at=CASE WHEN mode='pull' THEN ? ELSE NULL END,last_error=NULL,last_failure_at=NULL WHERE id=? AND revision=? AND observation_version=? AND ${guard.clause}`).bind(ctx.now(),ctx.now()+15*60000,source.id,source.revision,source.observation_version,...guard.args).run();
+ if(!changed.meta.changes)fail('directory_source_changed',409);
+}
 export async function stageSnapshot(ctx,source,payload,guard,{resource}={}) {
  const canonical=canonicalSnapshot(payload),serialized=JSON.stringify(canonical),digest=await hash(serialized);
  if(new TextEncoder().encode(serialized).length>LIMITS.snapshotBytes)fail('directory_source_limit',413);
  const existing=await one(ctx,'SELECT id,state,reasons FROM auth_directory_snapshots WHERE source_id=? AND digest=?',source.id,digest);
- if(existing)return {snapshotId:existing.id,state:existing.state,reasons:JSON.parse(existing.reasons),replayed:true};
+ if(existing){await refreshObservation(ctx,source,guard);return {snapshotId:existing.id,state:existing.state,reasons:JSON.parse(existing.reasons),replayed:true};}
  const reasons=[];if(!canonical.complete)reasons.push('incomplete_snapshot');if(!canonical.users.length&&!canonical.groups.length)reasons.push('empty_snapshot');
  if(canonical.users.some(row=>!row.active)||canonical.groups.some(row=>row.deleted))reasons.push('destructive_change');
  const id=random(),marker={clause:'EXISTS(SELECT 1 FROM auth_directory_snapshots WHERE id=?)',args:[id]};
- const statements=[ctx.db.prepare(`INSERT INTO auth_directory_snapshots(id,source_id,digest,payload,complete,state,reasons,created_at) SELECT ?,?,?,?,?,?,?,? WHERE ${guard.clause} AND EXISTS(SELECT 1 FROM auth_directory_sources WHERE id=? AND revision=?)`).bind(id,source.id,digest,serialized,canonical.complete?1:0,reasons.length?'held':'staged',JSON.stringify(reasons),ctx.now(),...guard.args,source.id,source.revision)];
+ const statements=[ctx.db.prepare(`INSERT INTO auth_directory_snapshots(id,source_id,digest,payload,complete,state,reasons,created_at) SELECT ?,?,?,?,?,?,?,? WHERE ${guard.clause} AND EXISTS(SELECT 1 FROM auth_directory_sources WHERE id=? AND revision=? AND observation_version=?)`).bind(id,source.id,digest,serialized,canonical.complete?1:0,reasons.length?'held':'staged',JSON.stringify(reasons),ctx.now(),...guard.args,source.id,source.revision,source.observation_version)];
  const resources=resource?[resource]:[...canonical.users.map(row=>({type:'Users',id:row.sourceId,document:row})),...canonical.groups.map(row=>({type:'Groups',id:row.sourceId,document:row}))];
  for(const row of resources)statements.push(ctx.db.prepare(`INSERT INTO auth_directory_resources(source_id,resource_type,external_id,document,deleted) SELECT ?,?,?,?,? WHERE ${marker.clause} ON CONFLICT(source_id,resource_type,external_id) DO UPDATE SET document=excluded.document,deleted=excluded.deleted`).bind(source.id,row.type,row.id,JSON.stringify(row.document),row.document.deleted?1:0,id));
- statements.push(ctx.db.prepare(`UPDATE auth_directory_sources SET revision=revision+1,last_read_at=?,next_poll_at=CASE WHEN mode='pull' THEN ? ELSE NULL END,last_error=NULL WHERE id=? AND ${marker.clause}`).bind(ctx.now(),ctx.now()+15*60000,source.id,id));
- let done;try{done=await ctx.db.batch(statements);}catch(error){if(/UNIQUE/.test(String(error?.message))){const prior=await one(ctx,'SELECT id,state,reasons FROM auth_directory_snapshots WHERE source_id=? AND digest=?',source.id,digest);if(prior)return {snapshotId:prior.id,state:prior.state,reasons:JSON.parse(prior.reasons),replayed:true};}throw error;}
+ statements.push(ctx.db.prepare(`UPDATE auth_directory_sources SET revision=revision+1,observation_version=observation_version+1,last_failure_at=NULL,last_read_at=?,next_poll_at=CASE WHEN mode='pull' THEN ? ELSE NULL END,last_error=NULL WHERE id=? AND ${marker.clause}`).bind(ctx.now(),ctx.now()+15*60000,source.id,id));
+ let done;try{done=await ctx.db.batch(statements);}catch(error){if(/UNIQUE/.test(String(error?.message))){const prior=await one(ctx,'SELECT id,state,reasons FROM auth_directory_snapshots WHERE source_id=? AND digest=?',source.id,digest);if(prior){await refreshObservation(ctx,source,guard);return {snapshotId:prior.id,state:prior.state,reasons:JSON.parse(prior.reasons),replayed:true};}}throw error;}
  if(!done[0].meta.changes)fail('directory_source_changed',409);
  await auditDetail(ctx,null,'directory_source_observed',source.id,{snapshotId:id,complete:canonical.complete,users:canonical.users.length,groups:canonical.groups.length,reasons});
  return {snapshotId:id,state:reasons.length?'held':'staged',reasons,replayed:false};

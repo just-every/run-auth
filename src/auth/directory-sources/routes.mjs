@@ -1,4 +1,6 @@
-import {one,all,run,hash,random,fail,json,auditDetail} from '../core.mjs';
+import {syncObligations} from '../obligations/sources.mjs';
+import {directorySourceHealth,recordDirectoryFailure} from './followup.mjs';
+import {AuthError,one,all,run,hash,random,fail,json,auditDetail} from '../core.mjs';
 import {authority,requireAuthority} from '../local-email.mjs';
 import {seal,unseal} from '../keys.mjs';
 import {fetchDirectorySnapshot} from './index.mjs';
@@ -14,7 +16,7 @@ const CONFIG_FIELDS=new Set(['name','department','title','location']);
 export async function directorySourceModel(ctx) {
  const sources=await all(ctx,'SELECT * FROM auth_directory_sources ORDER BY created_at,id');
  const snapshots=await all(ctx,'SELECT id,source_id,digest,complete,state,reasons,created_at,approved_by,approved_at,error FROM auth_directory_snapshots ORDER BY created_at DESC,id DESC LIMIT 100');
- return {sources:sources.map(publicSource),snapshots:snapshots.map(row=>({id:row.id,sourceId:row.source_id,digest:row.digest,complete:Boolean(row.complete),state:row.state,reasons:JSON.parse(row.reasons),createdAt:row.created_at,approvedBy:row.approved_by,approvedAt:row.approved_at,error:row.error})),limitations:LIMITATIONS};
+ return {sources:await Promise.all(sources.map(async source=>({...publicSource(source),freshness:await directorySourceHealth(ctx,source)}))),snapshots:snapshots.map(row=>({id:row.id,sourceId:row.source_id,digest:row.digest,complete:Boolean(row.complete),state:row.state,reasons:JSON.parse(row.reasons),createdAt:row.created_at,approvedBy:row.approved_by,approvedAt:row.approved_at,error:row.error})),limitations:LIMITATIONS};
 }
 export async function directorySourceRead(ctx,request) {
  const s=await administrator(ctx,request),model=await directorySourceModel(ctx),snapshotId=new URL(request.url).searchParams.get('snapshotId');
@@ -23,10 +25,16 @@ export async function directorySourceRead(ctx,request) {
  return json({...model,preview});
 }
 export async function pullDirectorySource(ctx,source,guard) {
+ try {
  const config={kind:source.kind,baseUrl:source.base_url??undefined,organizationBinding:source.organization_binding};
  const credential=await directoryCredential(ctx,config,await unseal(ctx,'directory-source:'+source.id,source.sealed_credential));
  const snapshot=await fetchDirectorySnapshot(ctx,config,credential);
- return stageSnapshot(ctx,source,snapshot,guard);
+ const result=await stageSnapshot(ctx,source,snapshot,guard);
+ await syncObligations(ctx);return result;
+ }catch(error){
+  if(error instanceof AuthError&&!['directory_source_changed','directory_source_authority_changed'].includes(error.message)){await recordDirectoryFailure(ctx,source,error.message);await syncObligations(ctx);}
+  throw error;
+ }
 }
 export async function directorySourceAction(ctx,request,action,data) {
  const s=await administrator(ctx,request,action!=='/directory-sources/preview');
@@ -63,7 +71,7 @@ export async function directorySourceAction(ctx,request,action,data) {
   if(data.confirm!==true)fail('explicit_directory_source_confirmation_required',403);
   const done=await run(ctx,`UPDATE auth_directory_sources SET disabled_at=?,sealed_credential=NULL,ingress_hash=NULL,next_poll_at=NULL,revision=revision+1 WHERE id=? AND ${guard.clause}`,ctx.now(),source.id,...guard.args);
   await requireAuthority(ctx,s,human);if(!done.meta.changes)fail('directory_source_changed',409);
-  await auditDetail(ctx,s.person_id,'directory_source_disabled',source.id,{});return json({ok:true});
+  await syncObligations(ctx);await auditDetail(ctx,s.person_id,'directory_source_disabled',source.id,{});return json({ok:true});
  }
  if(action==='/directory-sources/pull'){
   if(source.mode!=='pull')fail('directory_source_pull_refused',409);
