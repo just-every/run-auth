@@ -1,4 +1,4 @@
-import {factorAssurance,factorPolicyGuard} from './factors/policy.mjs';
+import {factorAssurance,factorPolicyGuard,factorMethods} from './factors/policy.mjs';
 import {appAccessGuard,appAccess} from './onboarding/gate.mjs';
 import {invokeHooks} from './hooks/index.mjs';
 import {recheckIssuance} from './hooks/fences.mjs';
@@ -83,7 +83,7 @@ export async function token(ctx,request) {
  if(!await factorAssurance(ctx,s,c.id)||!await appAccess(ctx,s)||!await permitsSession(ctx,s))fail('invalid_grant');
  await activeSigningKey(ctx,c.id_token_signed_response_alg);
  const consumed=await one(ctx,'DELETE FROM auth_codes WHERE code_hash=? AND consumed_at IS NULL RETURNING code_hash',code.code_hash);if(!consumed)fail('invalid_grant');
- const scopes=JSON.parse(code.scopes),claims={aud:c.id,sub:await pairwiseSubject(ctx,c.sector_id,code.person_id),nonce:code.nonce,sid:s.id,amr:ctx.local?['dev']:JSON.parse(s.amr),auth_time:Math.floor(s.created_at/1000),email_verified_at:Math.floor(proof.verified_at/1000)};
+ const scopes=JSON.parse(code.scopes),claims={aud:c.id,sub:await pairwiseSubject(ctx,c.sector_id,code.person_id),nonce:code.nonce,sid:s.id,amr:ctx.local?['dev']:await factorMethods(ctx,s),auth_time:Math.floor(s.created_at/1000),email_verified_at:Math.floor(proof.verified_at/1000)};
  if(scopes.includes('email'))Object.assign(claims,{email:s.email,email_verified:true});if(scopes.includes('profile'))claims.name=s.display_name;
  const extension=await invokeHooks(ctx,'token',{personId:s.person_id,clientId:c.id});
  await recheckIssuance(ctx,s,{clientId:c.id});

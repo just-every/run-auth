@@ -21,18 +21,18 @@ async function edge(t,handler) {
  await new Promise(done=>server.listen(0,'127.0.0.1',done));t.after(()=>{server.closeAllConnections();return new Promise(done=>server.close(done));});
  return 'http://127.0.0.1:'+server.address().port;
 }
-async function nativeGrant(r,post,personId,cookie) {
+export async function nativeGrant(r,post,personId,cookie) {
  await r.call('/.well-known/openid-configuration');await r.db.prepare('UPDATE auth_signing_keys SET use_after=?').bind(r.now-1).run();
  const app=await post('/oidc-apps/create',{name:'Synthetic Auth Documents',authMethod:'none',redirectUris:['com.synthetic.auth:/callback','https://native.example.com/callback'],backchannelLogoutUri:'https://native.example.com/logout'},201);
  const api=await post('/resource-apis/register',{appId:app.id,name:'Synthetic Auth Documents API',audience:'https://native.example.com/documents',scopes:['read'],roles:[{role:'reader',scopes:['read'],resources:['document:*']}],resources:[{id:'document:one'}]},201);
  await post('/resource-apis/assign',{apiId:api.id,principalType:'person',principalId:personId,role:'reader'});
  await post('/refresh/profile',{clientId:app.clientId,apiId:api.id,scopes:['read'],idleHours:24,absoluteHours:48});
  const keyPair=await generateKeyPair('ES256',{extractable:true});
- const sdk=await createSessionClient({issuer:r.origin,clientId:app.clientId,redirectUri:'com.synthetic.auth:/callback',keyPair,fetch:(url,options={})=>r.call(local(url),{method:options.method,headers:{...Object.fromEntries(new Headers(options.headers)),origin:'https://native.example.com'},form:options.body?Object.fromEntries(new URLSearchParams(options.body)):undefined})});
+ const sdk=await createSessionClient({issuer:r.origin,clientId:app.clientId,redirectUri:'com.synthetic.auth:/callback',keyPair,fetch:(url,options={})=>{const headers={...Object.fromEntries(new Headers(options.headers)),origin:'https://native.example.com'};return r.call(local(url),{method:options.method,headers,...(headers['content-type']==='application/json'?{data:JSON.parse(options.body)}:{form:options.body?Object.fromEntries(new URLSearchParams(options.body)):undefined})});}});
  const authorization=await sdk.authorization({resource:'https://native.example.com/documents',scopes:['read'],deviceName:'Synthetic Auth Tablet'}),response=await r.call(local(authorization.url),{cookie}),location=new URL(response.headers.get('location'),r.origin),id=location.searchParams.get('refreshConsent');
  assert.ok(id,await response.clone().text());
  const consent=await post('/refresh/consent',{id,decision:'approve'},200,cookie);const tokens=await sdk.complete(consent.redirect);
- return {sdk,tokens,app};
+ return {sdk,tokens,app,api};
 }
 
 export async function notificationsFlow(t) {

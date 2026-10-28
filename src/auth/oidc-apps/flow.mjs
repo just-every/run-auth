@@ -1,4 +1,4 @@
-import {factorAssurance,factorPolicyGuard} from '../factors/policy.mjs';
+import {factorAssurance,factorPolicyGuard,factorMethods} from '../factors/policy.mjs';
 import {appAccess,appAccessGuard} from '../onboarding/gate.mjs';
 import {offlineAuthorization,profileFor} from '../tokens/consent.mjs';
 import {initialProof,initialFamily,refreshFamily} from '../tokens/issuance.mjs';
@@ -37,7 +37,7 @@ async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToke
  await recheckIssuance(ctx,s,{appId:client.app_id,appVersion:client.app_version,mappingVersion:client.mapping_version,assignmentRole:assigned.role});
  if(withAccessToken)Object.assign(out,{access_token:await signToken(ctx,{aud:`${(ctx.issuer??ctx.origin)}/oidc/userinfo`,sub,client_id:client.client_id,sid:s.id,scope:scopes.join(' '),jti:random()},{alg,typ:'at+jwt',expiresAt}),token_type:'Bearer',expires_in:expiresAt-Math.floor(ctx.now()/1000)});
  if(withIdToken) {
-  const claims=await capRoleClaims(ctx,client.app_id,s.person_id,client.attributes,{aud:client.client_id,sub,sid:grantSid??s.id,auth_time:Math.floor(s.created_at/1000),amr:JSON.parse(s.amr),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims});
+  const claims=await capRoleClaims(ctx,client.app_id,s.person_id,client.attributes,{aud:client.client_id,sub,sid:grantSid??s.id,auth_time:Math.floor(s.created_at/1000),amr:await factorMethods(ctx,s),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims});
   if(out.access_token)claims.at_hash=await halfHash(out.access_token);
   if(code)claims.c_hash=await halfHash(code);
   out.id_token=await signToken(ctx,claims,{alg,expiresAt:Math.floor(ctx.now()/1000)+TOKEN_SECONDS});

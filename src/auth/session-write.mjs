@@ -4,7 +4,7 @@ import {notifyNewDevice} from './notifications/index.mjs';
 import {one,fail,random,hash,cookie,cookieName,SESSION_MAX_AGE,EMAIL_MAX_AGE} from './core.mjs';
 import {requirePolicy,upstreamProof} from './domain-policy.mjs';
 
-export async function prepareSession(ctx,personId,amr,upstreamProofId=null,{localEmailVerifiedAt=null,expiresAt=Infinity,sourceSession=null,personVersion=null,enrollment=false,guard=null}={}) {
+export async function prepareSession(ctx,personId,amr,upstreamProofId=null,{localEmailVerifiedAt=null,expiresAt=Infinity,sourceSession=null,personVersion=null,enrollment=false,guard=null,passkeyVerifiedAt=null}={}) {
  if(sourceSession&&JSON.parse(sourceSession.amr).includes('tap')&&!enrollment)guard=await capabilityGuard(ctx,await sessionPass(ctx,sourceSession));
  const person=await one(ctx,"SELECT * FROM oa_operators WHERE id=? AND status='active'",personId);if(!person)fail('account_unavailable',403);
  if(personVersion!==null&&person.version!==personVersion)fail('session_authority_changed',403);
@@ -29,12 +29,19 @@ export async function prepareSession(ctx,personId,amr,upstreamProofId=null,{loca
  personId,person.version,devOnly?1:0,personId,emailProof?.verified_at??null,EMAIL_MAX_AGE,now,
  sourceSession?.id||null,sourceSession?.id||null,personId,person.version,sourceSession?.person_version??null,sourceSession?.amr||null,now,sourceSession?.expires_at??null,
  firstEnrollment?1:0,personId,...(guard?guard.args:[]));
- return {id,header:cookie(ctx,cookieName(ctx),raw,Math.floor((deadline-now)/1000)),statement,now};
+ // Keep passkey age separate from session creation: email confirmation may
+ // replace a session while retaining, but never renewing, its passkey proof.
+ const passkeyProofs=!amr.includes('hwk')?[]:passkeyVerifiedAt!==null?[
+  ctx.db.prepare('INSERT INTO auth_passkey_session_proofs(session_id,person_id,verified_at) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM auth_sessions WHERE id=?)').bind(id,personId,passkeyVerifiedAt,id),
+ ]:sourceSession?[
+  ctx.db.prepare('INSERT INTO auth_passkey_session_proofs(session_id,person_id,verified_at) SELECT ?,person_id,verified_at FROM auth_passkey_session_proofs WHERE session_id=? AND person_id=? AND EXISTS(SELECT 1 FROM auth_sessions WHERE id=?)').bind(id,sourceSession.id,personId,id),
+ ]:[];
+ return {id,header:cookie(ctx,cookieName(ctx),raw,Math.floor((deadline-now)/1000)),statement,passkeyProofs,now};
 }
 
 export async function createSession(ctx,...args) {
  const prepared=await prepareSession(ctx,...args),source=args[3]?.sourceSession;
- const [inserted]=await ctx.db.batch([prepared.statement,...rebindSession(ctx,source,prepared.id)]);
+ const [inserted]=await ctx.db.batch([prepared.statement,...prepared.passkeyProofs,...rebindSession(ctx,source,prepared.id)]);
  if(!inserted.meta.changes)fail('session_authority_changed',403);
  const deviceHeader=await notifyNewDevice(ctx,{personId:args[0],sessionId:prepared.id,request:args[3]?.request,app:args[3]?.app});
  return {id:prepared.id,header:prepared.header,deviceHeader};

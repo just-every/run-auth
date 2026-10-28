@@ -42,3 +42,9 @@ BEGIN
  DELETE FROM auth_person_recovery_codes WHERE person_id=NEW.id;
  DELETE FROM auth_factor_proofs WHERE person_id=NEW.id;
 END;
+
+CREATE TABLE auth_passkey_session_proofs (
+ session_id TEXT PRIMARY KEY REFERENCES auth_sessions(id),
+ person_id TEXT NOT NULL REFERENCES oa_operators(id),
+ verified_at INTEGER NOT NULL
+);

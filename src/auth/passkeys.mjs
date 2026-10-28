@@ -38,13 +38,14 @@ export async function registrationVerify(ctx,request,data) {
  let checked; try { checked=await verifyRegistrationResponse({response:data.response,expectedChallenge:tx.payload.challenge,expectedOrigin:ctx.origin,expectedRPID:new URL(ctx.origin).hostname,requireUserVerification:true,supportedAlgorithmIDs:[-7,-257]}); } catch {fail('invalid_passkey');}
  if(!checked.verified || !checked.registrationInfo) fail('invalid_passkey');
  const c=checked.registrationInfo.credential;
- const established=await prepareSession(ctx,s.person_id,s.upstream_proof_id?['oidc','hwk']:['hwk'],s.upstream_proof_id,{localEmailVerifiedAt:s.local_email_verified_at,sourceSession:s,enrollment:true,guard:await temporaryEnrollmentGuard(ctx,s)??await enrollmentGuard(ctx,s)??authority(ctx,s)});
+ const established=await prepareSession(ctx,s.person_id,s.upstream_proof_id?['oidc','hwk']:['hwk'],s.upstream_proof_id,{localEmailVerifiedAt:s.local_email_verified_at,sourceSession:s,enrollment:true,passkeyVerifiedAt:ctx.now(),guard:await temporaryEnrollmentGuard(ctx,s)??await enrollmentGuard(ctx,s)??authority(ctx,s)});
  const response=json({ok:true},200,{'set-cookie':established.header});
  // D1 commits this batch together or rolls it all back. Both dependent inserts
  // select the new session, which exists only while the issuing session keeps its
  // authority and fresh local proof: a refused gate creates neither credential nor audit.
  const [inserted]=await ctx.db.batch([
   established.statement,
+  ...established.passkeyProofs,
   ...(JSON.parse(s.amr).includes('recovery_code')?[ctx.db.prepare('UPDATE auth_sessions SET revoked_at=? WHERE id=? AND EXISTS(SELECT 1 FROM auth_sessions WHERE id=?)').bind(established.now,s.id,established.id)]:[]),
   ...completeEnrollment(ctx,s,established.id),
   ...completeTemporaryEnrollment(ctx,s,established.id),
@@ -75,5 +76,5 @@ export async function authenticationVerify(ctx,request,data) {
  if(!proof || ctx.now()-proof.verified_at>=EMAIL_MAX_AGE){await sendProof(ctx,person,bound,tx.payload.upstreamProofId?['oidc','hwk','email']:['hwk','email'],tx.payload.returnTo,tx.payload.upstreamProofId);return json({reproof:true},202);}
  const emailSession=await sessionById(ctx,request,tx.payload.localEmailSessionId);
  const localEmailVerifiedAt=emailSession?.person_id===person.id&&freshLocalEmail(ctx,emailSession)?emailSession.local_email_verified_at:null;
- const s=await createSession(ctx,person.id,tx.payload.upstreamProofId?['oidc','hwk']:['hwk'],tx.payload.upstreamProofId,{request,app:await notificationApp(ctx,tx.payload.returnTo,request),localEmailVerifiedAt,sourceSession:localEmailVerifiedAt?emailSession:null,personVersion:person.version});await audit(ctx,person.id,'passkey_authenticated');const response=json({ok:true,returnTo:returnPath(tx.payload.returnTo)},200,{'set-cookie':s.header});if(s.deviceHeader)response.headers.append('set-cookie',s.deviceHeader);return response;
+ const s=await createSession(ctx,person.id,tx.payload.upstreamProofId?['oidc','hwk']:['hwk'],tx.payload.upstreamProofId,{request,app:await notificationApp(ctx,tx.payload.returnTo,request),localEmailVerifiedAt,sourceSession:localEmailVerifiedAt?emailSession:null,personVersion:person.version,passkeyVerifiedAt:ctx.now()});await audit(ctx,person.id,'passkey_authenticated');const response=json({ok:true,returnTo:returnPath(tx.payload.returnTo)},200,{'set-cookie':s.header});if(s.deviceHeader)response.headers.append('set-cookie',s.deviceHeader);return response;
 }

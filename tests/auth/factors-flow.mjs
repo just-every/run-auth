@@ -1,3 +1,7 @@
+import {nativeGrant} from './notifications-flow.mjs';
+import {samlInstall} from './saml-helpers.mjs';
+import {decodeJwt} from 'jose';
+import {fixture as protocolFixture} from './protocol-helpers.mjs';
 import assert from 'node:assert/strict';
 import {createHmac,createHash} from 'node:crypto';
 import {openRuntime,emailSession,cookieOf} from './runtime.mjs';
@@ -40,15 +44,24 @@ export async function totpFlow(t) {
  assert.equal((await r.call(path+'/totp/verify',post({code},email))).status,403,'a TOTP step cannot be replayed after a successful proof');
  assert.equal((await r.call('/api/auth/people',{cookie:email})).status,403,'TOTP does not confer passkey administration');
  assert.equal((await r.call('/auth/passkeys/register/options',post({},email))).status,403,'TOTP cannot enroll a new administrator credential');
+ r.now+=30000;
+ const parallel=await Promise.all([0,1].map(()=>r.call(path+'/totp/verify',post({code:authenticatorCode(pending.secret,r.now)},email,{barrier:{name:'synthetic-auth-totp',size:2}}))));
+ assert.deepEqual(parallel.map(response=>response.status).sort(),[200,403],'only one concurrent request can claim a TOTP step');
+ const ownerFactor=await enroll(r,r.owner),ownerEmail=await emailSession(r,address(1));r.now+=30000;
+ await ok(await r.call(path+'/totp/verify',post({code:authenticatorCode(ownerFactor.secret,r.now)},ownerEmail)));
+ assert.equal((await r.call('/api/auth/people',{cookie:ownerEmail})).status,403,'an owner using TOTP cannot administer');
+ assert.equal((await r.call('/auth/passkeys/register/options',post({},ownerEmail))).status,403,'an owner using TOTP cannot enroll an administrator factor');
  r.now+=11*60000;
  assert.equal((await r.call(path+'/remove',post({id:pending.id,kind:'totp'},r.member.cookie))).status,403,'fresh local email is still mandatory');
 }
 export async function factorLossFlow(t) {
  const r=await fixture(t),totp=await enroll(r),extra=await register(r,r.member.cookie);
+ await ok(await r.call('/api/auth/notifications/settings',post({confirm:true,emailEnabled:true,newDevice:false,factorEnrolled:true,securityOwnerId:'synthetic-auth-1',slackEnabled:false,endSessionsOnReport:false},r.owner.cookie)));
  assert.equal((await r.call(path+'/remove',post({id:r.owner.key.id,kind:'passkey'},r.member.cookie))).status,403,'a foreign factor cannot be removed');
  const email=await emailSession(r,address(2));r.now+=30000;
  await ok(await r.call(path+'/totp/verify',post({code:authenticatorCode(totp.secret,r.now)},email)));
  await ok(await r.call(path+'/remove',post({id:totp.id,kind:'totp'},extra.cookie)));
+ assert.equal((await r.db.prepare("SELECT COUNT(*) AS n FROM auth_security_notifications WHERE person_id=? AND event='factor_removed' AND delivery_state='accepted'").bind('synthetic-auth-2').first()).n,1,'configured factor-loss notice reaches the native mail edge exactly once');
  for(const cookie of [email,r.member.cookie,extra.cookie])assert.equal((await r.call('/api/auth/me',{cookie})).status,401,'factor removal reaches every current session');
  const returned=await fresh(r,r.member,2);
  assert.equal((await r.call(path+'/totp/verify',post({code:authenticatorCode(totp.secret,r.now+30000)},returned))).status,403);
@@ -57,6 +70,14 @@ export async function factorLossFlow(t) {
  const remaining=await fresh(r,r.member,2);
  assert.equal((await r.call(path+'/remove',post({id:r.member.key.id,kind:'passkey'},remaining))).status,409,'the last passkey needs a replacement first');
  assert.equal((await r.call('/api/auth/me',{cookie:remaining})).status,200);
+ const enrolledAgain=await enroll(r,{cookie:remaining});
+ await ok(await r.call('/api/auth/erasure/policy',post({confirm:true,automaticDeletion:false,honorLegalHolds:true},r.owner.cookie)));
+ const preview=await ok(await r.call('/api/auth/erasure/preview',post({kind:'person',target:'synthetic-auth-2'},r.owner.cookie)));
+ await ok(await r.call('/api/auth/erasure/confirm',post({previewId:preview.id,confirmation:'ERASE',destinations:[]},r.owner.cookie)));
+ await r.restart();
+ assert.equal((await r.call('/api/auth/me',{cookie:remaining})).status,401);
+ assert.equal((await r.call(path+'/totp/verify',post({code:authenticatorCode(enrolledAgain.secret,r.now+30000)},remaining))).status,401,'an erased factor cannot restore the identity');
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_totp_factors WHERE person_id=?').bind('synthetic-auth-2').first()).n,0);
 }
 export async function recoveryCodesFlow(t) {
  const r=await fixture(t),email=await emailSession(r,address(2));
@@ -68,10 +89,13 @@ export async function recoveryCodesFlow(t) {
  const recoveryEmail=await emailSession(r,address(2)),other=await emailSession(r,address(3));
  assert.equal((await r.call(path+'/recovery/redeem',post({code:issued.codes[0]},recoveryEmail))).status,403,'rotation ends old codes');
  assert.equal((await r.call(path+'/recovery/redeem',post({code:rotated.codes[0]},other))).status,403,'another person cannot redeem the code');
- const ownerCodes=await ok(await r.call(path+'/recovery/rotate',post({},r.owner.cookie))),ownerEmail=await emailSession(r,address(1));
- assert.equal((await r.call(path+'/recovery/redeem',post({code:ownerCodes.codes[0]},ownerEmail))).status,403,'administrator recovery cannot downgrade');
+ assert.equal((await r.call(path+'/recovery/rotate',post({},r.owner.cookie))).status,403,'administrators cannot issue unusable lower-assurance recovery codes');
+ const ownerEmail=await emailSession(r,address(1));
+ assert.equal((await r.call(path+'/recovery/redeem',post({code:rotated.codes[0]},ownerEmail))).status,403,'administrator recovery cannot downgrade');
  await r.restart();
- const redeemed=await r.call(path+'/recovery/redeem',post({code:rotated.codes[0]},recoveryEmail));await ok(redeemed);const limited=cookieOf(redeemed);
+ const attempts=await Promise.all([0,1].map(()=>r.call(path+'/recovery/redeem',post({code:rotated.codes[0]},recoveryEmail,{barrier:{name:'synthetic-auth-recovery',size:2}}))));
+ assert.deepEqual(attempts.map(response=>response.status).sort(),[200,403],'only one concurrent redemption can reset factors');
+ const redeemed=attempts.find(response=>response.status===200);await ok(redeemed);const limited=cookieOf(redeemed);
  assert.equal((await r.call('/api/auth/people',{cookie:limited})).status,403);
  assert.equal((await r.call(path+'/totp/verify',post({code:'000000'},limited))).status,403);
  assert.equal((await r.call(path+'/recovery/redeem',post({code:rotated.codes[0]},await emailSession(r,address(2))))).status,403,'the consumed code stays consumed across new sessions');
@@ -80,6 +104,18 @@ export async function recoveryCodesFlow(t) {
  assert.equal((await r.call('/api/auth/me',{cookie:limited})).status,401,'enrollment ends the recovery capability');
  assert.equal((await authenticate(r,replacement.key)).response.status,200);
  assert.equal((await r.call('/api/auth/me',{cookie:replacement.cookie})).status,200);
+ // A real SDK grant proves that ending browser sessions also reaches existing
+ // native access tokens and refresh credentials, including a protected app.
+ const native=await samlInstall(t),strong=await register(native,native.ada);
+ const command=async(suffix,data,status=200,cookie=native.owner.cookie)=>ok(await native.call('/api/auth'+suffix,post(data,cookie)),status);
+ const grant=await nativeGrant(native,command,'ada',strong.cookie);
+ await command('/factors/policy',{appId:grant.app.id,method:'passkey',maxAgeSeconds:60});
+ assert.ok((await grant.sdk.refresh()).refresh_token,'a current passkey satisfies protected native refresh');
+ assert.equal((await grant.sdk.resourceRequest('/api/auth/resource-apis/check',{apiId:grant.api.id,action:'read',resource:'document:one'})).allowed,true,'the same native access request works before rotation');
+ await command('/factors/recovery/rotate',{},200,strong.cookie);
+ await assert.rejects(grant.sdk.resourceRequest('/api/auth/resource-apis/check',{apiId:grant.api.id,action:'read',resource:'document:one'}));
+ await assert.rejects(grant.sdk.refresh(),'code rotation ends an existing native refresh grant');
+
 }
 export async function assuranceFlow(t) {
  const r=await fixture(t),totp=await enroll(r),admin=(suffix,data)=>r.call('/api/auth/'+suffix,post(data,r.owner.cookie));
@@ -97,12 +133,31 @@ export async function assuranceFlow(t) {
  r.now+=30000;await ok(await r.call(path+'/totp/verify',post({code:authenticatorCode(totp.secret,r.now)},email)));
  assert.equal(result(await authorize(app,email)).get('error'),'interaction_required','TOTP cannot satisfy passkey-only assurance');
  await ok(await policy('passkey_or_totp'));
+ const exchange=code=>r.call('/oidc/token',{method:'POST',form:{client_id:app.clientId,grant_type:'authorization_code',code,redirect_uri:'https://payroll.example.test/callback',code_verifier:verifier}});
+ const otpGranted=await ok(await exchange(result(await authorize(app,email)).get('code')));assert.ok(decodeJwt(otpGranted.id_token).amr.includes('otp'),'the app receives the actual lower-assurance method');
  const authorized=result(await authorize(app,email));assert.ok(authorized.get('code'));
  await ok(await policy('passkey'));
- const exchange=code=>r.call('/oidc/token',{method:'POST',form:{client_id:app.clientId,grant_type:'authorization_code',code,redirect_uri:'https://payroll.example.test/callback',code_verifier:verifier}});
  assert.equal((await exchange(authorized.get('code'))).status,400,'token issuance rechecks the current policy');
  const passkey=cookieOf((await authenticate(r,r.member.key)).response),strong=result(await authorize(app,passkey));assert.ok(strong.get('code'));
  assert.ok((await ok(await exchange(strong.get('code')))).id_token);
  r.now+=61000;assert.equal(result(await authorize(app,passkey)).get('error'),'interaction_required','stale assurance requires another step-up');
+ const reproof=await finishProof(r,await requestProof(r,address(2),passkey));await ok(reproof);
+ assert.equal(result(await authorize(app,cookieOf(reproof))).get('error'),'interaction_required','email confirmation cannot renew passkey assurance age');
  assert.equal((await r.call(path+'/policy',post({appId:app.id,method:'passkey_or_totp',maxAgeSeconds:60},email))).status,403);
+ const saml=await ok(await admin('company-apps/create',{name:'Sensitive SAML app',entityId:'https://saml.example.test',acsUrl:'https://saml.example.test/acs',idpInitiated:true}),201);
+ await ok(await admin('company-apps/assign',{appId:saml.id,principalType:'person',principalId:'synthetic-auth-2'}));
+ await ok(await r.call(path+'/policy',post({appId:saml.id,method:'passkey',maxAgeSeconds:60},r.owner.cookie)));
+ const samlRefused=await r.call('/saml/launch/'+saml.id,{cookie:email});assert.equal(samlRefused.status,400);assert.match(await samlRefused.text(),/factor_step_up_required/,'direct SAML launch cannot bypass assurance');
+ const freshPasskey=cookieOf((await authenticate(r,r.member.key)).response);
+ const launched=await r.call('/saml/launch/'+saml.id,{cookie:freshPasskey});assert.equal(launched.status,200);assert.match(await launched.text(),/name="SAMLResponse"/);
+ const native=await protocolFixture(t),nativeOwner=await register(native,native.cookie);
+ await ok(await native.call(path+'/policy',post({appId:'app',method:'passkey',maxAgeSeconds:60},nativeOwner.cookie)));
+ const denied=await native.authorize();assert.equal(new URL(denied.response.headers.get('location')).searchParams.get('error'),'interaction_required','RER authorization enforces its app policy');
+ native.cookie=nativeOwner.cookie;const accepted=await native.authorize();assert.ok(accepted.code);
+ native.now+=61000;assert.equal((await native.redeem(accepted)).status,400,'RER token exchange rechecks assurance age');
+ const before=await r.db.prepare('SELECT revision FROM auth_factor_policies WHERE app_id=?').bind(app.id).first();
+ const raced=await r.call(path+'/policy',post({appId:app.id,method:'passkey_or_totp',maxAgeSeconds:300},r.owner.cookie,{factorRace:"UPDATE auth_sessions SET local_email_verified_at=0 WHERE person_id='synthetic-auth-1'"}));
+ assert.equal(raced.status,403,'email authority is rechecked in the policy commit');
+ assert.deepEqual(await r.db.prepare('SELECT revision FROM auth_factor_policies WHERE app_id=?').bind(app.id).first(),before,'a refused policy write leaves the previous revision intact');
+
 }

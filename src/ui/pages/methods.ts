@@ -32,7 +32,7 @@ export function renderMethodsPage(model: AuthPageModel): string {
     : `<p>${passkeys.length ? 'Sign in with your existing passkey to register another.' : 'Confirm your email in this browser before registering your first passkey.'}</p><a class="primary-button" href="/signin?returnTo=%2Fapp%2Fmethods">${passkeys.length ? 'Sign in with your passkey' : 'Confirm your email'}</a>`
   const currentUser = model.user ?? model.me
   const confirmEmail = `<form method="post" action="/auth/identity/email/request" data-auth-action data-email-request>${csrfField(model.csrf)}<input type="hidden" name="email" value="${escape(currentUser?.email)}"><input type="hidden" name="returnTo" value="/app/methods"><button class="secondary-button" type="submit">Confirm my email</button></form>`
-  const authenticate = passkeys.length && !amr.includes('hwk') ? '<button class="secondary-button" type="button" data-passkey-authenticate data-return-to="/app/methods">Continue with a passkey</button>' : ''
+  const authenticate = passkeys.length ? `<button class="secondary-button" type="button" data-passkey-authenticate data-return-to="/app/methods">${amr.includes('hwk') ? 'Confirm with a passkey' : 'Continue with a passkey'}</button>` : ''
   const providers = asArray(model.providers).filter(provider => provider.visible === true && ['google', 'microsoft', 'okta', 'oidc', 'saml'].includes(provider.preset))
   const providerState = providers.length
     ? `<div class="data-list">${providers.map(provider => `<div class="data-row"><strong>${escape(provider.label)}</strong><span></span><span class="pill accent">Available</span></div>`).join('')}</div>`

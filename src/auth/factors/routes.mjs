@@ -7,13 +7,15 @@ import {encodeSecret,matchingStep} from './totp.mjs';
 import {factorCommit,endSessions} from './writes.mjs';
 import {configurePolicy,policyModel} from './policy.mjs';
 
+const recoveryGuard="EXISTS(SELECT 1 FROM oa_operators WHERE id=? AND role='member' AND status='active') AND NOT EXISTS(SELECT 1 FROM auth_role_grants WHERE person_id=? AND revoked_at IS NULL)";
+async function recoveryEligible(ctx,s) {return Boolean((await one(ctx,`SELECT ${recoveryGuard} AS held`,s.person_id,s.person_id)).held);}
 async function management(ctx,request) {
  const s=await requireSession(ctx,request);
  if(!JSON.parse(s.amr).includes('hwk'))fail('passkey_required',403);
  requireLocalEmail(ctx,s);return s;
 }
 export async function factorsModel(ctx,s) {
- return {totp:await all(ctx,'SELECT id,created_at,confirmed_at FROM auth_totp_factors WHERE person_id=? AND confirmed_at IS NOT NULL',s.person_id),recoveryCodes:(await one(ctx,'SELECT COUNT(*) AS n FROM auth_person_recovery_codes WHERE person_id=? AND consumed_at IS NULL',s.person_id)).n,
+ return {recoveryEligible:await recoveryEligible(ctx,s),totp:await all(ctx,'SELECT id,created_at,confirmed_at FROM auth_totp_factors WHERE person_id=? AND confirmed_at IS NOT NULL',s.person_id),recoveryCodes:(await one(ctx,'SELECT COUNT(*) AS n FROM auth_person_recovery_codes WHERE person_id=? AND consumed_at IS NULL',s.person_id)).n,
  assurance:{passkey:'phishing-resistant',totp:'one-time code; not phishing-resistant',recovery:'enrollment only; never administrator access'},...(s.role==='owner'&&JSON.parse(s.amr).includes('hwk')?await policyModel(ctx):{})};
 }
 export async function factorsRead(ctx,request) {return json(await factorsModel(ctx,await requireSession(ctx,request)));}
@@ -58,6 +60,8 @@ export async function factorsAction(ctx,request,path,data) {
   return json({ok:true,message:'Factor removed. All Auth sessions ended. Sign in again with a remaining passkey.'});
  }
  if(path==='/recovery/rotate') {
+  if(!await recoveryEligible(ctx,s))fail('administrator_recovery_required',403);
+  guard.clause+=` AND ${recoveryGuard}`;guard.args.push(s.person_id,s.person_id);
   const codes=Array.from({length:8},()=>random()),digests=await Promise.all(codes.map(hash));
   const operation=await factorCommit(ctx,s,guard,'recovery_codes_rotated',(q,held)=>[
    q(`DELETE FROM auth_person_recovery_codes WHERE person_id=? AND ${held}`,s.person_id),
@@ -87,7 +91,7 @@ async function redeemCode(ctx,request,data) {
  const s=await requireSession(ctx,request);requireLocalEmail(ctx,s);
  if(JSON.parse(s.amr).some(m=>['tap','onboarding','recovery_code'].includes(m)))fail('enrollment_only',403);
  // Administrator recovery stays separate, including active delegated roles.
- const safe=`EXISTS(SELECT 1 FROM oa_operators WHERE id=? AND role='member' AND status='active') AND NOT EXISTS(SELECT 1 FROM auth_role_grants WHERE person_id=? AND revoked_at IS NULL)`;
+ const safe=recoveryGuard;
  if(!(await one(ctx,`SELECT ${safe} AS held`,s.person_id,s.person_id)).held)fail('administrator_recovery_required',403);
  if(!await limit(ctx,'recovery-code:'+s.person_id,10,300000))fail('rate_limited',429);
  const digest=await hash(String(data.code??'')),g=authority(ctx,s);
