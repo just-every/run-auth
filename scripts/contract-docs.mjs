@@ -17,8 +17,12 @@ for(const id of selected) {
   result=result.slice(0,start)+generated+result.slice(finish+end.length);
  } else {
   const start=result.indexOf('**'+id+' — '),next=result.indexOf('\n**',start+3),section=result.slice(start,next<0?undefined:next);
-  if(start<0||!section.includes('Existing evidence and limits: '))throw new Error('Missing legacy evidence section '+id);
-  const old=section.match(/Existing evidence and limits: [^\n]*/)[0];result=result.slice(0,start)+section.replace(old,generated)+result.slice(next<0?result.length:next);
+  const old=section.match(/^Existing evidence(?: and limits)?: [^\n]*/m)?.[0];
+  if(start<0||!old)throw new Error('Missing legacy evidence section '+id);
+  // Older entries store evidence and gaps on separate lines. Generate both
+  // from the Status row while preserving the acceptance journey above them.
+  const updated=section.replace(old,generated).replace(/^Remaining gaps: [^\n]*\n?/m,'');
+  result=result.slice(0,start)+updated+result.slice(next<0?result.length:next);
  }
  const heading=new RegExp('(\\*\\*'+id+' — [^\\n]+?\\()(done|partial|missing)(\\)\\.\\*\\*)');
  result=result.replace(heading,(_,before,status,after)=>before+row.status+after);

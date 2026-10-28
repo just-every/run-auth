@@ -168,6 +168,39 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const helperContext=await browser.newContext(),helperPage=await helperContext.newPage();await hardware(helperContext,helperPage);await signIn(helperPage,'sam@northwind.example.com');
  const group=await post('/api/auth/groups/create',{name:'US engineering staff'},201);await post('/api/auth/groups/add',{groupId:group.id,personId:worker.id});
  const appConfig=await post('/api/auth/company-apps/create',{name:'Engineering documents',entityId:'https://documents.example.com',acsUrl:'https://documents.example.com/acs'},201);
+ // Before setup the committed grant remains actionable, with no outbound
+ // security mail and a link to the existing notification configuration.
+ const noticeAddress=['synthetic-auth-90','example.com'].join('@');
+ const noticePerson=await post('/api/auth/directory/onboard',{name:'Required notice recipient',email:noticeAddress,kind:'employee'},201);
+ const noticeContext=await browser.newContext();t.after(()=>noticeContext.close());
+ await post('/auth/identity/email/request',{email:noticeAddress},202,noticeContext);
+ await post('/auth/identity/email/confirm',{token:(await app.link()).searchParams.get('token')},200,noticeContext);
+ const requiredPreview=await post('/api/auth/roles/preview',{kind:'grant',personId:noticePerson.id,roleId:'app-administrator',resources:{view:{apps:[appConfig.id]},edit:{apps:[appConfig.id]}}});
+ const requiredGrant=await post('/api/auth/roles/apply',{previewId:requiredPreview.previewId});
+ const requiredWork=(await (await context.request.get(app.origin+'/api/auth/followup')).json()).obligations.find(ob=>ob.source_id==='security-notice:'+requiredGrant.operationId);
+ assert.equal(requiredWork.last_error,'notification_channel_setup_required');
+ await page.goto(app.origin+'/app/account');
+ const requiredNotice=page.locator(`[data-followup-id="${requiredWork.id}"]`);
+ await expect(requiredNotice).toContainText('configure security notifications and review required notice');
+ await expect(requiredNotice.getByRole('link',{name:'Open Security notifications'})).toHaveAttribute('href','/app/account');
+ for(const theme of ['light','dark'])for(const width of [1440,390]) {
+  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});
+  await requiredNotice.scrollIntoViewIfNeeded();await page.screenshot({path:join(directory,`role-notice-setup-required-${width}-${theme}.png`),fullPage:true});
+ }
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});await noticeContext.close();
+ // The existing custom-grant action must send mandatory mail even when
+ // optional browser notices are off. Read it only through the gated outbox.
+ const securityOwner=(await (await context.request.get(app.origin+'/api/auth/me')).json()).user.id;
+ await post('/api/auth/notifications/settings',{confirm:true,emailEnabled:true,newDevice:false,factorEnrolled:true,securityOwnerId:securityOwner,slackEnabled:false,endSessionsOnReport:false});
+ const roleNotices=async()=>{
+  const listing=await(await app.get('/__dev/outbox',{'x-rer-dev-key':app.vars.RER_DEV_KEY})).text(),messages=[];
+  for(const match of listing.matchAll(/href="(\/__dev\/outbox\?message=[^"]+)"/g)) {
+   const detail=await(await app.get(match[1].replaceAll('&amp;','&'),{'x-rer-dev-key':app.vars.RER_DEV_KEY})).text();
+   if(detail.includes('Auth administrator role granted'))messages.push(detail);
+  }
+  return messages;
+ };
+ const beforeGrantNotices=(await roleNotices()).length;
  await page.goto(app.origin+'/app/roles');
  const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');await definition.getByText('Choose permissions',{exact:true}).click();
  for(const id of ['roles.view','people.view','people.factors.reset','cases.open','groups.view','apps.view','apps.assign','admin-api.manage','audit.view'])await definition.locator(`input[value="${id}"]`).check();
@@ -175,7 +208,28 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.locator('[name=roleId]').selectOption({label:'Engineering support'});
  await grant.locator('[name="view.groups"]').selectOption(group.id);await grant.locator('[name="edit.groups"]').selectOption(group.id);
  await grant.locator('[name="view.apps"]').selectOption(appConfig.id);await grant.locator('[name="edit.apps"]').selectOption(appConfig.id);
- await grant.getByRole('button',{name:'Preview delegation'}).click();await expect(grant.locator('[data-role-preview]')).toContainText('sam@northwind.example.com');await expect(grant.locator('[data-role-preview]')).toContainText('people.factors.reset');await expect(grant.locator('[data-role-preview]')).toContainText(group.id);await shoot('delegation-preview');await saved(()=>grant.locator('[data-role-apply]').click());
+ await grant.getByRole('button',{name:'Preview delegation'}).click();await expect(grant.locator('[data-role-preview]')).toContainText('sam@northwind.example.com');await expect(grant.locator('[data-role-preview]')).toContainText('people.factors.reset');await expect(grant.locator('[data-role-preview]')).toContainText(group.id);await shoot('delegation-preview');assert.equal((await roleNotices()).length,beforeGrantNotices);await saved(()=>grant.locator('[data-role-apply]').click());
+ const deliveredRoleNotices=await roleNotices();assert.equal(deliveredRoleNotices.length,beforeGrantNotices+1);
+ const roleNotice=deliveredRoleNotices[0];assert.ok(roleNotice.includes('Engineering support'));
+ const roleReport=roleNotice.match(/https?:\/\/[^\s<>"]+\/api\/auth\/notifications\/report\?token=[^\s<>"]+/)?.[0];assert.ok(roleReport);
+ const publicNotice=await browser.newContext(),publicNoticePage=await publicNotice.newPage();t.after(()=>publicNotice.close());
+ assert.equal((await publicNotice.request.get(app.origin+prefix+new URL(roleReport).pathname+new URL(roleReport).search)).status(),410);
+ for(const [state,title] of [['reported','Suspicious activity reported'],['replayed','Report unavailable']]) {
+  const response=await publicNoticePage.goto(roleReport.replaceAll('&amp;','&'));assert.equal(response.status(),state==='reported'?200:410);
+  await expect(publicNoticePage.getByRole('heading',{name:title,exact:true})).toBeVisible();
+  for(const theme of ['light','dark'])for(const width of [1440,390]) {
+   await publicNoticePage.setViewportSize({width,height:1000});await publicNoticePage.emulateMedia({colorScheme:theme});
+   await publicNoticePage.screenshot({path:join(directory,`role-notice-${state}-${width}-${theme}.png`),fullPage:true});
+  }
+ }
+ await publicNotice.close();
+ await page.goto(app.origin+'/app/account');
+ await expect(page.locator('[data-notification-resolve]')).toHaveCount(1);
+ for(const theme of ['light','dark'])for(const width of [1440,390]) {
+  await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});
+  await page.screenshot({path:join(directory,`role-notice-account-${width}-${theme}.png`),fullPage:true});
+ }
+ await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});
  await helperPage.goto(app.origin+'/app/roles');await expect(helperPage.getByRole('heading',{name:'Open an employee recovery case'})).toBeVisible();await shoot('scoped-help-desk',helperPage);
  const {generateKeyPair,exportJWK,SignJWT}=await import('jose'),pair=await generateKeyPair('ES256'),jwk={...await exportJWK(pair.publicKey),kid:'synthetic-auth-5',alg:'ES256',use:'sig'};
  const credential=helperPage.locator('[data-admin-service-create]');await credential.getByLabel('App name',{exact:true}).fill('Engineering assignment service');await credential.getByLabel('Purpose',{exact:true}).fill('Manage assignments only for the approved engineering app and workforce group');await expect(credential.getByLabel('Accountable owner',{exact:true})).toHaveValue(helper.id);

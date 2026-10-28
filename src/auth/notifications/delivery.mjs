@@ -4,6 +4,7 @@ import {fencePerson} from '../links/logout.mjs';
 import {syncObligations} from '../obligations/sources.mjs';
 import {notificationPolicy} from './policy.mjs';
 import {notificationSourceId} from './followup.mjs';
+import {maintainNoticeIntents} from './intents.mjs';
 
 async function history(ctx,report,event,error=null) {
  const ob=await one(ctx,"SELECT id FROM auth_obligations WHERE kind='app_setup' AND source_id=?",notificationSourceId(report.id));
@@ -40,5 +41,6 @@ export async function finishReport(ctx,report) {
  }catch {await run(ctx,"UPDATE auth_suspicious_reports SET slack_state='failed' WHERE id=?",report.id);await history(ctx,report,'security_slack_failed','slack_delivery_failed');}
 }
 export async function maintainNotifications(ctx) {
+ await maintainNoticeIntents(ctx);
  for(const report of await all(ctx,"SELECT * FROM auth_suspicious_reports WHERE resolved_at IS NULL AND (sessions_state='pending' OR slack_state='pending') LIMIT 50"))await finishReport(ctx,report);
 }
