@@ -1,0 +1,558 @@
+{
+  "schema": 1,
+  "old": "4e43cf2eb0fc243c022906a2af1625ec32600a68",
+  "ids": {
+    "AUTH-HOST-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-HOST-001"
+      ]
+    },
+    "AUTH-PRIVACY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-PRIVACY-001"
+      ]
+    },
+    "AUTH-RER-TRUST-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-RER-TRUST-001"
+      ]
+    },
+    "AUTH-IDENTITY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-IDENTITY-001"
+      ]
+    },
+    "AUTH-PROTOCOL-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-PROTOCOL-001"
+      ]
+    },
+    "AUTH-BOUNDARY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-BOUNDARY-001"
+      ]
+    },
+    "AUTH-MOVEIN-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-MOVEIN-001"
+      ]
+    },
+    "AUTH-ADMIN-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-ADMIN-001"
+      ]
+    },
+    "CMD-001": {
+      "how": "kept",
+      "to": [
+        "CMD-001"
+      ]
+    },
+    "HTTP-001": {
+      "how": "kept",
+      "to": [
+        "HTTP-001"
+      ]
+    },
+    "AUTH-LINK-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-LINK-001"
+      ]
+    },
+    "AUTH-LOGOUT-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-LOGOUT-001"
+      ]
+    },
+    "AUTH-TRANSFER-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-TRANSFER-001"
+      ]
+    },
+    "AUTH-DIRECTORY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-DIRECTORY-001"
+      ]
+    },
+    "AUTH-TENANCY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-TENANCY-001"
+      ]
+    },
+    "AUTH-TENANCY-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-TENANCY-002"
+      ]
+    },
+    "AUTH-ROLES-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-ROLES-001"
+      ]
+    },
+    "AUTH-DOMAINS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-DOMAINS-001"
+      ]
+    },
+    "AUTH-PROFILE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-PROFILE-001"
+      ]
+    },
+    "AUTH-ENROLLMENT-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-ENROLLMENT-001"
+      ]
+    },
+    "AUTH-PASSWORD-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-PASSWORD-001"
+      ]
+    },
+    "AUTH-PASSWORD-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-PASSWORD-002"
+      ]
+    },
+    "AUTH-ONBOARD-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-ONBOARD-001"
+      ]
+    },
+    "AUTH-TAP-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-TAP-001"
+      ]
+    },
+    "AUTH-EXPERIENCE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-EXPERIENCE-001"
+      ]
+    },
+    "AUTH-LOCALE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-LOCALE-001"
+      ]
+    },
+    "AUTH-LAUNCHER-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-LAUNCHER-001"
+      ]
+    },
+    "AUTH-SWA-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-SWA-001"
+      ]
+    },
+    "AUTH-MFA-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-MFA-001"
+      ]
+    },
+    "AUTH-AUTHENTICATOR-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-AUTHENTICATOR-001"
+      ]
+    },
+    "AUTH-POLICY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-POLICY-001"
+      ]
+    },
+    "AUTH-ABUSE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-ABUSE-001"
+      ]
+    },
+    "AUTH-RISK-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-RISK-001"
+      ]
+    },
+    "AUTH-NOTIFY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-NOTIFY-001"
+      ]
+    },
+    "AUTH-LOGOUT-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-LOGOUT-002"
+      ]
+    },
+    "AUTH-SAML-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-SAML-001"
+      ]
+    },
+    "AUTH-OIDC-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-OIDC-001"
+      ]
+    },
+    "AUTH-MAPPING-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-MAPPING-001"
+      ]
+    },
+    "AUTH-CATALOG-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-CATALOG-001"
+      ]
+    },
+    "AUTH-CATALOG-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-CATALOG-002"
+      ]
+    },
+    "AUTH-M365-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-M365-001"
+      ]
+    },
+    "AUTH-SCIM-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-SCIM-001"
+      ]
+    },
+    "AUTH-SCIM-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-SCIM-002"
+      ]
+    },
+    "AUTH-HRIS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-HRIS-001"
+      ]
+    },
+    "AUTH-HRIS-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-HRIS-002"
+      ]
+    },
+    "AUTH-LIFECYCLE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-LIFECYCLE-001"
+      ]
+    },
+    "AUTH-TIMING-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-TIMING-001"
+      ]
+    },
+    "AUTH-WORKFLOWS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-WORKFLOWS-001"
+      ]
+    },
+    "AUTH-FEDERATION-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-FEDERATION-001"
+      ]
+    },
+    "AUTH-SOCIAL-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-SOCIAL-001"
+      ]
+    },
+    "AUTH-LEGACY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-LEGACY-001"
+      ]
+    },
+    "AUTH-DEVICE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-DEVICE-001"
+      ]
+    },
+    "AUTH-DESKTOP-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-DESKTOP-001"
+      ]
+    },
+    "AUTH-GATEWAY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-GATEWAY-001"
+      ]
+    },
+    "AUTH-PRIVILEGED-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-PRIVILEGED-001"
+      ]
+    },
+    "AUTH-GRANTS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-GRANTS-001"
+      ]
+    },
+    "AUTH-TOKENS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-TOKENS-001"
+      ]
+    },
+    "AUTH-HOOKS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-HOOKS-001"
+      ]
+    },
+    "AUTH-REQUESTS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-REQUESTS-001"
+      ]
+    },
+    "AUTH-REVIEWS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-REVIEWS-001"
+      ]
+    },
+    "AUTH-DECISIONS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-DECISIONS-001"
+      ]
+    },
+    "AUTH-CHAT-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-CHAT-001"
+      ]
+    },
+    "AUTH-AUDIT-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-AUDIT-001"
+      ]
+    },
+    "AUTH-REPORTS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-REPORTS-001"
+      ]
+    },
+    "AUTH-COMPLIANCE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-COMPLIANCE-001"
+      ]
+    },
+    "AUTH-MIGRATION-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-MIGRATION-001"
+      ]
+    },
+    "AUTH-MIGRATION-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-MIGRATION-002"
+      ]
+    },
+    "AUTH-MIGRATION-003": {
+      "how": "kept",
+      "to": [
+        "AUTH-MIGRATION-003"
+      ]
+    },
+    "AUTH-DEVELOPER-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-DEVELOPER-001"
+      ]
+    },
+    "AUTH-ADMINAPI-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-ADMINAPI-001"
+      ]
+    },
+    "AUTH-TERRAFORM-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-TERRAFORM-001"
+      ]
+    },
+    "AUTH-MOBILE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-MOBILE-001"
+      ]
+    },
+    "AUTH-EVENTS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-EVENTS-001"
+      ]
+    },
+    "AUTH-FOLLOWUP-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-FOLLOWUP-001"
+      ]
+    },
+    "AUTH-FOLLOWUP-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-FOLLOWUP-002"
+      ]
+    },
+    "AUTH-FOLLOWUP-003": {
+      "how": "kept",
+      "to": [
+        "AUTH-FOLLOWUP-003"
+      ]
+    },
+    "AUTH-FOLLOWUP-004": {
+      "how": "kept",
+      "to": [
+        "AUTH-FOLLOWUP-004"
+      ]
+    },
+    "AUTH-DELIVERY-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-DELIVERY-001"
+      ]
+    },
+    "AUTH-OPS-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-OPS-001"
+      ]
+    },
+    "AUTH-RECOVERY-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-RECOVERY-002"
+      ]
+    },
+    "AUTH-RECOVERY-003": {
+      "how": "kept",
+      "to": [
+        "AUTH-RECOVERY-003"
+      ]
+    },
+    "AUTH-ERASURE-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-ERASURE-001"
+      ]
+    },
+    "AUTH-ERASURE-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-ERASURE-002"
+      ]
+    },
+    "AUTH-ERASURE-003": {
+      "how": "kept",
+      "to": [
+        "AUTH-ERASURE-003"
+      ]
+    },
+    "AUTH-RETENTION-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-RETENTION-001"
+      ]
+    },
+    "AUTH-TRANSFER-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-TRANSFER-002"
+      ]
+    },
+    "AUTH-AGENT-001": {
+      "how": "kept",
+      "to": [
+        "AUTH-AGENT-001"
+      ]
+    },
+    "AUTH-AGENT-002": {
+      "how": "kept",
+      "to": [
+        "AUTH-AGENT-002"
+      ]
+    },
+    "AUTH-AGENT-003": {
+      "how": "kept",
+      "to": [
+        "AUTH-AGENT-003"
+      ]
+    },
+    "AUTH-AGENT-004": {
+      "how": "kept",
+      "to": [
+        "AUTH-AGENT-004"
+      ]
+    },
+    "AUTH-AGENT-005": {
+      "how": "kept",
+      "to": [
+        "AUTH-AGENT-005"
+      ]
+    },
+    "AUTH-AGENT-006": {
+      "how": "kept",
+      "to": [
+        "AUTH-AGENT-006"
+      ]
+    }
+  }
+}
