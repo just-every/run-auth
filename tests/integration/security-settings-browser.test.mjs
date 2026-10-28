@@ -293,3 +293,6 @@ test('attack protection settings persist, explain refusal and preserve proved re
  await expect(panel().getByRole('status')).toContainText('Changes have not been saved.');
  await snapshot('unsaved');
 });
+
+import {factorsJourney} from './helpers/factors-journey.mjs';
+test('native multifactor settings enroll TOTP, publish app assurance and end sessions on factor loss or code rotation',factorsJourney);

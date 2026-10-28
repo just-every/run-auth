@@ -426,8 +426,8 @@ Core · target · **partial**
 1. Enroll a platform passkey, hardware key, Auth push and TOTP, require step-up for a sensitive app, revoke a lost factor and consume a recovery code once.
 2. Deny downgraded admin access and prove factor removal/rotation reaches current sessions according to policy.
 
-**Evidence.** `src/auth/passkeys.mjs`; `src/auth/local-email.mjs`; `tests/auth/security.test.mjs`; `tests/auth/local-email.test.mjs`
-**Gap.** hardware passkeys and local email step-up exist; configurable factor policy/TOTP/recovery codes do not.
+**Evidence.** `tests/auth/security.test.mjs`: native TOTP enrollment protects secrets, refuses replay and preserves administrator assurance; lost-factor removal ends current sessions and preserves a replacement passkey; single-use recovery codes rotate, refuse foreign or privileged use and end after replacement enrollment; sensitive app factor policy rechecks assurance at authorization and token issuance. `tests/auth/local-email.test.mjs` retains fresh-email gates. `tests/integration/security-settings-browser.test.mjs`: native multifactor settings enroll TOTP, publish app assurance and end sessions on factor loss or code rotation.
+**Gap.** Native web TOTP, digest-only single-use recovery codes, factor inventory and lost-factor revocation, app assurance and current-session revocation built. Conservative native default: only the owner with passkey and fresh email configures app assurance; TOTP never grants administration; recovery codes require fresh email, refuse every active delegated role and permit only replacement enrollment for members; factor removal and code rotation end all Auth sessions. Scoped factor-policy delegation and broader assurance policy await ct. Real Auth push and native authenticator TOTP need AUTH-AUTHENTICATOR-001 devices and gr signing; RADIUS and OS-login assurance need AUTH-LEGACY-001 and AUTH-DESKTOP-001. Live notification delivery, mobile and desktop inventory and revocation, and same-business-day lost-factor recovery remain unproved under AUTH-NOTIFY-001 and AUTH-RECOVERY-003.
 
 #### AUTH-AUTHENTICATOR-001 — Push authenticator in the Auth mobile app
 

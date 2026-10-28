@@ -1,3 +1,4 @@
+import {factorAssurance,factorPolicyGuard,factorMethods} from '../factors/policy.mjs';
 import {appAccess,appAccessGuard} from '../onboarding/gate.mjs';
 import {offlineAuthorization,profileFor} from '../tokens/consent.mjs';
 import {initialProof,initialFamily,refreshFamily} from '../tokens/issuance.mjs';
@@ -27,7 +28,7 @@ function respond(ctx,uri,mode,params) {
 async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToken,grantSid}) {
  const proof=await one(ctx,'SELECT verified_at FROM auth_emails WHERE person_id=?',s.person_id);
  const assigned=await assignment(ctx,client.app_id,s.person_id);
- if(!await appAccess(ctx,s)||!proof||ctx.now()-proof.verified_at>=EMAIL_MAX_AGE||!assigned)return null;
+ if(!await factorAssurance(ctx,s,client.app_id)||!await appAccess(ctx,s)||!proof||ctx.now()-proof.verified_at>=EMAIL_MAX_AGE||!assigned)return null;
  const sub=await subjectFor(ctx,client,s.person_id),alg=client.id_token_alg,out={};
  const expiresAt=Math.min(Math.floor(ctx.now()/1000)+TOKEN_SECONDS,Math.floor(s.expires_at/1000),Math.floor((proof.verified_at+EMAIL_MAX_AGE)/1000));
  if(expiresAt<=Math.floor(ctx.now()/1000))return null;
@@ -36,7 +37,7 @@ async function tokens(ctx,client,s,{scopes,nonce,code,withIdToken,withAccessToke
  await recheckIssuance(ctx,s,{appId:client.app_id,appVersion:client.app_version,mappingVersion:client.mapping_version,assignmentRole:assigned.role});
  if(withAccessToken)Object.assign(out,{access_token:await signToken(ctx,{aud:`${(ctx.issuer??ctx.origin)}/oidc/userinfo`,sub,client_id:client.client_id,sid:s.id,scope:scopes.join(' '),jti:random()},{alg,typ:'at+jwt',expiresAt}),token_type:'Bearer',expires_in:expiresAt-Math.floor(ctx.now()/1000)});
  if(withIdToken) {
-  const claims=await capRoleClaims(ctx,client.app_id,s.person_id,client.attributes,{aud:client.client_id,sub,sid:grantSid??s.id,auth_time:Math.floor(s.created_at/1000),amr:JSON.parse(s.amr),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims});
+  const claims=await capRoleClaims(ctx,client.app_id,s.person_id,client.attributes,{aud:client.client_id,sub,sid:grantSid??s.id,auth_time:Math.floor(s.created_at/1000),amr:await factorMethods(ctx,s),...(nonce?{nonce}:{}),...mappedClaims,...extension.claims});
   if(out.access_token)claims.at_hash=await halfHash(out.access_token);
   if(code)claims.c_hash=await halfHash(code);
   out.id_token=await signToken(ctx,claims,{alg,expiresAt:Math.floor(ctx.now()/1000)+TOKEN_SECONDS});
@@ -78,12 +79,13 @@ export async function genericAuthorize(ctx,request,login,client) {
   return beginAuthorizationLogin(ctx,request,s,Boolean(s));
  }
  if(!await appAccess(ctx,s))return error('access_denied');
+ if(!await factorAssurance(ctx,s,client.app_id))return error('interaction_required');
  if(!await assignment(ctx,client.app_id,s.person_id)){await audit(ctx,s.person_id,'oidc_refused_unassigned',client.app_id);return error('access_denied');}
  if(scopes.includes('offline_access'))return offlineAuthorization(ctx,request,s,client);
  let code;
  if(type.includes('code')) {
   code=random();
-  const gate=appAccessGuard(ctx,s);const inserted=await run(ctx,`INSERT INTO auth_oidc_codes(code_hash,client_id,person_id,session_id,redirect_uri,challenge,nonce,scopes,expires_at) SELECT ?,?,?,?,?,?,?,?,? WHERE ${gate.clause}`,await hash(code),client.client_id,s.person_id,s.id,uri,challenge,nonce,JSON.stringify(scopes),ctx.now()+CODE_LIFETIME,...gate.args);if(!inserted.meta.changes)return error('access_denied');
+  const gate=appAccessGuard(ctx,s),factorGate=factorPolicyGuard(ctx,s,client.app_id);gate.clause+=` AND ${factorGate.clause}`;gate.args.push(...factorGate.args);const inserted=await run(ctx,`INSERT INTO auth_oidc_codes(code_hash,client_id,person_id,session_id,redirect_uri,challenge,nonce,scopes,expires_at) SELECT ?,?,?,?,?,?,?,?,? WHERE ${gate.clause}`,await hash(code),client.client_id,s.person_id,s.id,uri,challenge,nonce,JSON.stringify(scopes),ctx.now()+CODE_LIFETIME,...gate.args);if(!inserted.meta.changes)return error('access_denied');
  }
  const issued=front?await tokens(ctx,client,s,{scopes,nonce,code,withIdToken:type.includes('id_token'),withAccessToken:type.split(' ').includes('token')}):{};
  if(!issued)return error('access_denied');
