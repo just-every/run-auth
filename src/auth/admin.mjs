@@ -2,6 +2,7 @@ import {factorsModel} from './factors/routes.mjs';
 import {temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction} from './onboarding/index.mjs';
 import {automationsModel} from './automations/routes.mjs';
+import {sessionControlModel} from './session-control/index.mjs';
 import {recoveryCasesModel} from './recovery-cases/index.mjs';
 import {abuseModel} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -103,6 +104,10 @@ export async function model(ctx,request,page='account') {
    result.adminServiceCustody={scopes:custody.legacy?Object.keys(SCOPE_PERMISSIONS):Object.entries(SCOPE_PERMISSIONS).filter(([scope,permissions])=>!globalScopes.has(scope)&&custody.entries.some(entry=>entry.role.permissions.includes('admin-api.manage')&&permissions.every(permission=>entry.role.permissions.includes(permission)))).map(([scope])=>scope)};
   }
 
+ }
+ if(['people','roles'].includes(page)&&JSON.parse(s.amr).includes('hwk')) {
+  if(!result.rolePeople)try{result.rolePeople=(await (await roleRead(ctx,request,'/api/auth/roles/people')).json()).people;}catch(error){if(!(error instanceof AuthError)||error.status!==403)throw error;result.rolePeople=[];}
+  result.sessionControl=await sessionControlModel(ctx,s,(result.rolePeople??[]).filter(p=>p.canEndSessions).map(p=>p.id));
  }
  if(page==='permissions'&&isAdmin){result.resourceApis=await grantModel(ctx);result.workforce=await workforceModel(ctx);}
  if(page==='erasure'&&s.role==='owner'&&isAdmin)result.erasure=await erasureModel(ctx,request);
