@@ -1079,7 +1079,7 @@
       "executable": false
     },
     "scripts/installer/transfer.mjs": {
-      "sha256": "cdbce1507a361604b60ef021e42538aa977ab71afa994980e5b46b190a30fefc",
+      "sha256": "fc33677186f5a1e3adc06e7b73bdb90e6739351bf699e6f99ba205e02f494c49",
       "executable": false
     },
     "scripts/installer/ui/background.svg": {
