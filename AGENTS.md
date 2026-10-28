@@ -37,3 +37,7 @@ Lander-Regenerate: node src/base/contract-docs.mjs write
 Lander-Regenerate: node scripts/edition-authoring/cli.mjs lock
 
 Run `node src/base/contract-docs.mjs check` and `pnpm check:sources` before publishing.
+
+## Contract proof standard
+
+Before merge, keep the suite focused on sanity journeys through public doors using real data and sandboxes or official-schema fakes at network edges. A journey performs and checks the clause as a user or the business sees it; money, security and data-loss journeys complete the allowed path and refuse the unsafe path without change. Browser journeys cover 1440 and 390. An assertion per point, outcome, field or branch, a failing mutation, a unit or pin test, or a test count is not required for DONE. Contract cleanup adds no per-point tests and carries existing demotions until a fresh judge accepts a completion claim.

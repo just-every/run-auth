@@ -1,4 +1,4 @@
-import {all,AuthError} from '../core.mjs';
+import {all,run,AuthError} from '../core.mjs';
 import {syncObligations} from '../obligations/sources.mjs';
 import {requireLiveSource} from './store.mjs';
 import {pullDirectorySource} from './routes.mjs';
@@ -14,7 +14,11 @@ export async function maintainDirectorySources(ctx) {
   catch(error){
    if(!(error instanceof AuthError))throw error;
    // Pull failures are recorded under the observation's revision fence.
-   // Custody loss never refreshes liveness or retries with ended authority.
+   // Ended custody is permanent for this source; stop scheduling it without
+   // refreshing liveness or overwriting a newer observation or disablement.
+   if(error.message==='directory_source_authority_changed')await run(ctx,
+    'UPDATE auth_directory_sources SET next_poll_at=NULL WHERE id=? AND revision=? AND observation_version=? AND next_poll_at=? AND disabled_at IS NULL',
+    source.id,source.revision,source.observation_version,source.next_poll_at);
   }
  }
  await syncObligations(ctx);

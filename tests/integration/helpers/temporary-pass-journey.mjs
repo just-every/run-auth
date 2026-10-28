@@ -42,8 +42,8 @@ export async function temporaryPassJourney({app,browser,page,directory}) {
   const preview=await post('/api/auth/roles/preview',{kind:'grant',personId:helper.id,roleId:'help-desk',resources:scope});await post('/api/auth/roles/apply',{previewId:preview.previewId});
   await page.goto(app.origin+'/app/account#temporary-passes');const managerPanel=page.locator('#temporary-passes');
   await managerPanel.getByLabel('Manager verification').fill('Verified the new hire in person against the employer record');
-  const requested=page.waitForResponse(r=>r.url().endsWith('/temporary-passes/request'));await managerPanel.getByRole('button',{name:'Verify and request pass'}).click();assert.equal((await requested).status(),201);
-  await page.waitForTimeout(600);await page.reload();await proof(page,'manager-requested');
+  const requested=page.waitForResponse(r=>r.url().endsWith('/temporary-passes/request')),requestedLoad=page.waitForEvent('load');await managerPanel.getByRole('button',{name:'Verify and request pass'}).click();assert.equal((await requested).status(),201);
+  await requestedLoad;await proof(page,'manager-requested');
   await helperPage.goto(app.origin+'/app/account#temporary-passes');
   const helpPanel=helperPage.locator('#temporary-passes');await expect(helpPanel.getByRole('button',{name:'Issue temporary pass'})).toBeVisible();await proof(helperPage,'scoped-issuance');
   const issuance=helperPage.waitForResponse(r=>r.url().endsWith('/temporary-passes/issue'));await helpPanel.getByRole('button',{name:'Issue temporary pass'}).click();assert.equal((await issuance).status(),201);

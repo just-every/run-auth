@@ -202,6 +202,8 @@ export async function directoryFreshnessFlow(t) {
  assert.equal((await r.call('/api/auth/directory-sources/pull',post({sourceId:source.sourceId},owner.cookie))).status,403);
  // A custodian's ended authority is permanent for this registered source.
  outage=false;const freshCustodian=await signInAgain(r,custodian,address(202)),owned=await create(freshCustodian);
+ const siblings=[await create(freshCustodian),await create(freshCustodian)];
+ r.now+=1;const healthy=await create(owner);
  outage=true;await command('directory-sources/pull',{sourceId:owned.sourceId},502);const [ownedEpisode]=await obligations(owned.sourceId);assert.ok(ownedEpisode);
  outage=false;const observedAt=(await model(owned.sourceId)).lastReadAt;r.now+=1000;
  const inFlight=new Promise(done=>{entered=done;});holdNext='success';
@@ -213,6 +215,17 @@ export async function directoryFreshnessFlow(t) {
  assert.equal((await r.call('/api/auth/directory-sources/pull',post({sourceId:owned.sourceId},owner.cookie))).status,403);assert.equal(seen.length,before,'ended custody makes no authenticated network call');
  const cancelled=(await obligations(owned.sourceId)).find(ob=>ob.id===ownedEpisode.id);assert.equal(cancelled.state,'cancelled');assert.equal(cancelled.last_error,'directory_source_authority_changed');
  assert.ok((await read()).history.some(event=>event.obligation_id===ownedEpisode.id&&event.event==='cancelled'&&event.error==='directory_source_authority_changed'));
+ // Three older sources with ended custody must yield the bounded polling batch.
+ // Only the healthy fourth source can make an authenticated directory request.
+ const reads=()=>seen.filter(request=>request.path==='/scim/Users').length;
+ const readsBefore=reads(),progress=[];
+ for(let round=0;round<3;round++){r.now+=15*60000;await r.restart();await tick();progress.push(reads()-readsBefore);}
+ assert.deepEqual(progress,[0,1,2],'ended custodians must not starve a healthy fourth directory source');
+ for(const stopped of [owned,...siblings])assert.equal((await model(stopped.sourceId)).freshness.state,'custody_lost');
+ assert.equal((await model(healthy.sourceId)).lastReadAt,r.now,'healthy source keeps its existing polling schedule');
+ assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_directory_snapshots WHERE approved_at IS NOT NULL').first()).n,0,'maintenance never approves any source');
+ owner=await signInAgain(r,owner,address(201));
+ await command('directory-sources/disable',{sourceId:healthy.sourceId,confirm:true});
  await command('directory/edit',{personId:'synthetic-auth-202',state:'active'});await r.restart();
  assert.equal((await r.call('/api/auth/directory-sources/pull',post({sourceId:owned.sourceId},owner.cookie))).status,403,'restored administrator cannot revive the old source credential');
  assert.deepEqual(await reminders(),[]);assert.equal((await applied()).n,0);

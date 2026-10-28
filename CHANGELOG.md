@@ -1,5 +1,10 @@
 # Changelog
 
+## 28 October 2026 — Contract reconciliation
+
+Carried the newer scoped administrator-grant notice evidence onto AUTH-NOTIFY-001 and AUTH-NOTIFY-002. Explicit scoped grants retain required notice intents before setup; failed or uncertain delivery stays actionable without automatic resend. Other role-grant and factor-removal doors, their pre-setup obligations and live scoped-grant delivery qualification remain open. RL-104 remains the channel and report-authority ruling. Existing clause demotions remain unchanged.
+
+
 ## Contract source before 4e43cf2eb0fc243c022906a2af1625ec32600a68
 
 # Auth target product contract

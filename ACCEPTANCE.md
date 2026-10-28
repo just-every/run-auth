@@ -29,8 +29,8 @@ Core · published · **partial** · Rules D-1 · Register R-1, R-2, R-4
 1. Choose localhost on fresh setup; repeat with an explicit/saved issuer; enroll a passkey and link an app.
 2. Attempt a host move and require a new app-owner approval rather than preserving issuer authority.
 
-**Evidence.** `tests/integration/dev.test.mjs`; `tests/auth/linking.test.mjs`; `scripts/installer/local.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: preserved explicit issuer; preserved saved issuer; native passkey enrollment; host move requires a fresh app-owner approval; issuer authority is not silently preserved. Asserted: fresh localhost; link an app.
+**Evidence.** `tests/integration/dev.test.mjs` — "fresh rer setup chooses localhost; rer dev bridges only the gated real owner and refuses private paths"; `tests/auth/linking.test.mjs` — "an app links with a one-use token, signs a person in through Auth, and Sign out everywhere ends that app session"; `scripts/installer/local.mjs`
+**Gap.** Missing a cited journey covering: preserved explicit issuer; preserved saved issuer; native passkey enrollment; host move requires a fresh app-owner approval; issuer authority is not silently preserved. Existing cited journeys show: fresh localhost; link an app.
 
 #### AUTH-PRIVACY-001 — Shared claims
 
@@ -42,8 +42,8 @@ Core · published · **partial** · Cites BASE-INPUT-001, BASE-INSTALL-001, BASE
 1. Sign in to two linked apps with different granted identity scopes; inspect UserInfo and tokens for only the permitted claims.
 2. Add a RER approval key and confirm it grants no user-data access without an ordinary app sign-in.
 
-**Evidence.** `src/auth/userinfo.mjs`; `tests/auth/userinfo.test.mjs`; `tests/auth/rer-approval.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: scoped token identity claims; two independently linked app grants; trust key alone grants no user-data read without app sign-in. Asserted: scoped UserInfo email; scoped UserInfo name; RER trust key installation.
+**Evidence.** `src/auth/userinfo.mjs`; `tests/auth/userinfo.test.mjs` — "ES256 and RS256 tokens resolve matching scoped userinfo through GET and POST"; `tests/auth/rer-approval.test.mjs` — "Auth links an app only on a fresh, trusted RER approval that binds its origin and key, and claims only for its owner"
+**Gap.** Missing a cited journey covering: scoped token identity claims; two independently linked app grants; trust key alone grants no user-data read without app sign-in. Existing cited journeys show: scoped UserInfo email; scoped UserInfo name; RER trust key installation.
 
 #### AUTH-RER-TRUST-001 — RER trust
 
@@ -55,8 +55,8 @@ Core · published · **partial** · Cites BASE-BACKUP-001, BASE-INPUT-001, BASE-
 1. Link using a correctly signed RER approval, then refuse wrong issuer/origin/key/claim, stale assertion and jti replay.
 2. Withdraw trust through both supported doors and prove the key cannot be restored or used again.
 
-**Evidence.** `src/auth/links/rer-trust.mjs`; `src/auth/links/rer-approval.mjs`; `tests/auth/rer-approval.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: wrong issuer; stale assertion; RER-signed withdrawal ends use; withdrawn key cannot be restored. Asserted: valid signed RER link; origin mismatch; link-key mismatch; foreign owner claim; assertion replay; administrator withdrawal ends use.
+**Evidence.** `src/auth/links/rer-trust.mjs`; `src/auth/links/rer-approval.mjs`; `tests/auth/rer-approval.test.mjs` — "Auth links an app only on a fresh, trusted RER approval that binds its origin and key, and claims only for its owner"
+**Gap.** Missing a cited journey covering: wrong issuer; stale assertion; RER-signed withdrawal ends use; withdrawn key cannot be restored. Existing cited journeys show: valid signed RER link; origin mismatch; link-key mismatch; foreign owner claim; assertion replay; administrator withdrawal ends use.
 
 #### AUTH-IDENTITY-001 — Owner and sign-in proof
 
@@ -67,8 +67,8 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-INPUT-001, BASE-
 **Acceptance.**
 1. Through the real email, WebAuthn and administration routes, prove same-browser one-use confirmation, first/additional enrollment, fresh local email step-up rechecked at commit, wrong-session and revoked-session refusal, and approved/delayed/canceled/emergency recovery.
 
-**Evidence.** `src/auth/local-email.mjs`; `src/auth/recovery.mjs`; `tests/auth/security.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/auth/local-email.test.mjs`; `tests/auth/recovery-cli.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: fresh email at commit. Asserted: same-browser proof; one-use confirmation; first enrollment; additional enrollment gate; wrong-session enrollment refusal; revoked-session enrollment refusal; independent approved recovery; delayed recovery; canceled recovery; emergency recovery replay refusal; additional enrollment persists a new key.
+**Evidence.** `src/auth/local-email.mjs`; `src/auth/recovery.mjs`; `tests/auth/security.test.mjs` — "email proof is uniform, browser bound, one use and preserves a safe return path"; `tests/auth/fresh-proof.test.mjs` — "every sensitive action refuses a stale local email proof without change and succeeds after a fresh confirmation"; `tests/auth/local-email.test.mjs`; `tests/auth/recovery-cli.test.mjs`
+**Gap.** Missing a cited journey covering: fresh email at commit. Existing cited journeys show: same-browser proof; one-use confirmation; first enrollment; additional enrollment gate; wrong-session enrollment refusal; revoked-session enrollment refusal; independent approved recovery; delayed recovery; canceled recovery; emergency recovery replay refusal; additional enrollment persists a new key.
 
 #### AUTH-PROTOCOL-001 — OpenID Connect profile
 
@@ -80,8 +80,8 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-INPUT-001, BASE-
 1. A registered RER client completes code/PKCE/private_key_jwt, validates nonce/issuer/audience/pairwise subject, and calls scoped GET/POST UserInfo.
 2. Refuse code/assertion replay and inactive client/person/session/grant/policy; test encrypted ES256/RS256 publish-before-use and retirement.
 
-**Evidence.** `src/auth/protocol.mjs`; `src/auth/userinfo.mjs`; `src/auth/keys.mjs`; `tests/auth/protocol.test.mjs`; `tests/auth/userinfo.test.mjs`; `tests/auth/authorization-policy.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: token audience; code replay; encrypted RS256 private keys. Asserted: code and PKCE; private-key client proof; nonce; issuer; pairwise subject; scoped GET UserInfo; scoped POST UserInfo; assertion replay; inactive client; inactive person; inactive session; revoked grant; current policy; encrypted ES256 private keys; publish before use; retained-key retirement.
+**Evidence.** `src/auth/protocol.mjs`; `src/auth/userinfo.mjs`; `src/auth/keys.mjs`; `tests/auth/protocol.test.mjs` — "code flow preserves ES256 ID token claims and adds a userinfo access token" — "bad client and callback show local error without redirect; code needs matching PKCE and assertion"; `tests/auth/userinfo.test.mjs`; `tests/auth/authorization-policy.test.mjs`
+**Gap.** Missing a cited journey covering: token audience; code replay; encrypted RS256 private keys. Existing cited journeys show: code and PKCE; private-key client proof; nonce; issuer; pairwise subject; scoped GET UserInfo; scoped POST UserInfo; assertion replay; inactive client; inactive person; inactive session; revoked grant; current policy; encrypted ES256 private keys; publish before use; retained-key retirement.
 
 #### AUTH-BOUNDARY-001 — Private authorization
 
@@ -93,8 +93,8 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-INPUT-001, BASE-
 1. Request each private page/API signed out, as an email-only member, as a passkey administrator and with revoked authority; deny inherited Base management and production dev tokens.
 2. Remove the local dev gate and confirm authority ends.
 
-**Evidence.** `src/server.ts`; `src/auth/index.mjs`; `tests/integration/http.test.mjs`; `tests/integration/dev.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: passkey administrator page access; production dev proof refusal. Asserted: signed-out private document; signed-out private API; email-only page refusal; email-only mutation refusal; revoked authority; inherited Base management denied; removing checkout gate ends dev authority.
+**Evidence.** `src/server.ts`; `src/auth/index.mjs`; `tests/integration/http.test.mjs` — "emitted Auth protects private documents and Base authority seams; email proof belongs to the requesting browser"; `tests/integration/dev.test.mjs` — "fresh rer setup chooses localhost; rer dev bridges only the gated real owner and refuses private paths"
+**Gap.** Missing a cited journey covering: passkey administrator page access; production dev proof refusal. Existing cited journeys show: signed-out private document; signed-out private API; email-only page refusal; email-only mutation refusal; revoked authority; inherited Base management denied; removing checkout gate ends dev authority.
 
 #### AUTH-MOVEIN-001 — Staged move-in
 
@@ -106,8 +106,8 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-DATA-001, BASE-I
 1. Stage Google, Entra, Auth0, Okta and JumpCloud exports through Move-in, inspect collision/disabled rows, admit selected members without proof/roles/mail, explicitly invite, and undo only untouched admissions.
 2. Refuse former Auth0 subjects as credentials and concurrent/stale administrative authority.
 
-**Evidence.** `src/auth/move-in/routes.mjs`; `src/auth/move-in/sources.mjs`; `tests/auth/move-in-staging.test.mjs`; `tests/auth/move-in-admission.test.mjs`; `tests/integration/move-in-browser.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: concurrent administrator authority at commit. Asserted: Google export rows; Entra export rows; Auth0 export rows; Okta export rows; JumpCloud export rows; collision flags; disabled flags; admitted member role and invited state; no email proof; no factor; no session; no app grant; no admission mail; explicit invitation recipient; untouched admission removed; changed admissions retained; undo audit records removed and kept; former Auth0 subject rejected as token code; former subject never pairwise identity; stale administrator proof refused.
+**Evidence.** `src/auth/move-in/routes.mjs`; `src/auth/move-in/sources.mjs`; `tests/auth/move-in-staging.test.mjs` — "review flags every conflict class; disabled-at-source rows start unselected and groups stay context"; `tests/auth/move-in-admission.test.mjs` — "admission is the ordinary invitation: administrators only, no proof, right, session or mail, and existing people never rebound"; `tests/integration/move-in-browser.test.mjs`
+**Gap.** Missing a cited journey covering: concurrent administrator authority at commit. Existing cited journeys show: Google export rows; Entra export rows; Auth0 export rows; Okta export rows; JumpCloud export rows; collision flags; disabled flags; admitted member role and invited state; no email proof; no factor; no session; no app grant; no admission mail; explicit invitation recipient; untouched admission removed; changed admissions retained; undo audit records removed and kept; former Auth0 subject rejected as token code; former subject never pairwise identity; stale administrator proof refused.
 
 #### AUTH-ADMIN-001 — Agent preparation
 
@@ -119,8 +119,8 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-AGENT-005, BASE-
 1. Under the held company policy, mint/renew/revoke a preparer key, inspect its allow-listed inventory, file each supported proposal and approve its exact state with a person’s passkey and fresh local email.
 2. Under the held company policy for access and security, prove expiry, stale-state refusal, one winner under concurrent approvals and permanent loss of key authority after administrator removal.
 
-**Evidence.** `src/auth/agents/keys.mjs`; `src/auth/agents/preparer.mjs`; `src/auth/agents/approval.mjs`; `tests/auth/agents-keys.test.mjs`; `tests/auth/agents-proposals.test.mjs`; `tests/integration/agents-browser.test.mjs`
-**Gap.** The old outcomes are asserted; the previously published partial status is retained for fresh judgment of the requirement and its policy integration.
+**Evidence.** `src/auth/agents/keys.mjs`; `src/auth/agents/preparer.mjs`; `src/auth/agents/approval.mjs`; `tests/auth/agents-keys.test.mjs` — "preparer keys: only a passkey administrator with fresh email proof mints, renews and revokes; expired, revoked and orphaned keys are refused; the key is shown once and stored, listed, audited and logged nowhere"; `tests/auth/agents-proposals.test.mjs` — "the inventory returns only allow-listed fields and no session, passkey, key or token material from a populated store"; `tests/integration/agents-browser.test.mjs`
+**Gap.** Missing a cited journey covering the whole clause. The old outcomes are asserted; the previously published partial status is retained for fresh judgment of the requirement and its policy integration.
 
 #### CMD-001 — Commands
 
@@ -131,8 +131,8 @@ Core · published · **partial** · Cites BASE-INSTALL-001 · Rules D-1 · Regis
 **Acceptance.**
 1. Run real install/setup/dev, start browser sign-in, repeat setup without replacing owner/settings/data, stop the managed process, and generate/redeem local recovery with only a digest in D1 and a mode-0600 raw token file.
 
-**Evidence.** `AUTH-COMMANDS.md`; `scripts/installer/local.mjs`; `tests/integration/dev.test.mjs`; `tests/auth/recovery-cli.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: repeated setup preserves owner; repeated setup preserves settings; repeated setup preserves data; local-command token redeemed through the same installation. Asserted: real install/setup/dev readiness; browser sign-in; owned process shutdown; generated local token digest; raw token is mode 0600.
+**Evidence.** `AUTH-COMMANDS.md`; `scripts/installer/local.mjs`; `tests/integration/dev.test.mjs` — "fresh rer setup chooses localhost; rer dev bridges only the gated real owner and refuses private paths"; `tests/auth/recovery-cli.test.mjs` — "local recovery command writes only token digest through wrangler and protects saved token"
+**Gap.** Missing a cited journey covering: repeated setup preserves owner; repeated setup preserves settings; repeated setup preserves data; local-command token redeemed through the same installation. Existing cited journeys show: real install/setup/dev readiness; browser sign-in; owned process shutdown; generated local token digest; raw token is mode 0600.
 
 #### HTTP-001 — HTTP surfaces
 
@@ -143,7 +143,7 @@ Core · published · **done** · Cites BASE-INPUT-001 · Rules D-1 · Register R
 **Acceptance.**
 1. Call health, Auth APIs and public/private documents through the emitted Worker; confirm identity interception, per-request authorization and an ordinary 404 for unknown routes.
 
-**Evidence.** `src/server.ts`; `tests/integration/http.test.mjs`; `tests/runtime.mjs`
+**Evidence.** `tests/runtime.mjs` — "HTTP-001 passed against emitted Auth Worker: health, protected root, real sign-in document and HTTP/document 404s"; `tests/integration/http.test.mjs` — "emitted Auth protects private documents and Base authority seams; email proof belongs to the requesting browser"
 **Gap.** None.
 
 #### AUTH-LINK-001 — App links
@@ -156,8 +156,8 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-INPUT-001, BASE-
 1. Use the pull/link-token flow to link a real Base app Worker, sign in, re-link with continuity, and remove it.
 2. Refuse mismatched callbacks/origins, replay/concurrent redemption, unauthorized key swap and unapproved downgrade; observe linked-app sessions end on removal.
 
-**Evidence.** `src/auth/links/handshake.mjs`; `src/auth/links/routes.mjs`; `src/auth/links/versions.mjs`; `tests/auth/linking.test.mjs`; `tests/auth/agents-proposals.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: removal ends linked app; mismatched callbacks; mismatched origin; concurrent code redemption; unauthorized key swap; app session ends upon removal. Asserted: pull protocol links Base app; employee signs in; relink keeps client and subject; link-token replay; unapproved version downgrade.
+**Evidence.** `src/auth/links/handshake.mjs`; `src/auth/links/routes.mjs`; `src/auth/links/versions.mjs`; `tests/auth/linking.test.mjs` — "a link that would take over another app's identity names that app to the approver, and runs only on an approval that named it" — "an app links with a one-use token, signs a person in through Auth, and Sign out everywhere ends that app session"; `tests/auth/agents-proposals.test.mjs`
+**Gap.** Missing a cited journey covering: removal ends linked app; mismatched callbacks; mismatched origin; concurrent code redemption; unauthorized key swap; app session ends upon removal. Existing cited journeys show: pull protocol links Base app; employee signs in; relink keeps client and subject; link-token replay; unapproved version downgrade.
 
 #### AUTH-LOGOUT-001 — Sign-out reach
 
@@ -169,8 +169,8 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-INPUT-001 · Rul
 1. Sign out everywhere, suspend a person and request RP logout through real Auth/app endpoints; the app rejects the old session and replayed logout tokens.
 2. Exercise bounded retries and inspect the persisted delivery outcome; discovery advertises the supported endpoints.
 
-**Evidence.** `src/auth/links/logout.mjs`; `src/auth/links/end-session.mjs`; `tests/auth/linking.test.mjs`; `tests/auth/protocol.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: suspension ends app session; RP-initiated logout ends app session; replayed logout token is refused; bounded logout retries; persisted delivery outcome read back; discovery advertises end-session; discovery advertises back-channel support. Asserted: sign out everywhere ends app session.
+**Evidence.** `src/auth/links/logout.mjs`; `src/auth/links/end-session.mjs`; `tests/auth/linking.test.mjs` — "an app links with a one-use token, signs a person in through Auth, and Sign out everywhere ends that app session"; `tests/auth/protocol.test.mjs`
+**Gap.** Missing a cited journey covering: suspension ends app session; RP-initiated logout ends app session; replayed logout token is refused; bounded logout retries; persisted delivery outcome read back; discovery advertises end-session; discovery advertises back-channel support. Existing cited journeys show: sign out everywhere ends app session.
 
 #### AUTH-TRANSFER-001 — Export and import
 
@@ -183,7 +183,7 @@ Core · published · **partial** · Cites BASE-ACCESS-002, BASE-BACKUP-001, BASE
 2. Inspect retained records and absent authority; refuse incompatible origins and active dev personas.
 
 **Evidence.** `scripts/installer/transfer.mjs`; `src/auth/links/grant-map.mjs`; `tests/auth/linking.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: populated installation exported; same-host empty import; post-restore client continuity; post-restore sector continuity; post-restore pairwise subject continuity; all declared retained records read back; sessions and authority absent after import; incompatible origin refused; active dev persona refused. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here.
+**Gap.** Missing a cited journey covering: populated installation exported; same-host empty import; post-restore client continuity; post-restore sector continuity; post-restore pairwise subject continuity; all declared retained records read back; sessions and authority absent after import; incompatible origin refused; active dev persona refused. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here.
 
 ### The workforce directory and employee experience
 
@@ -196,8 +196,8 @@ Core · target · **partial** · Cites BASE-ACCESS-002, BASE-AUDIT-001, BASE-INP
 **Acceptance.**
 1. In People/API, onboard a W-2 employee and a contractor, rename and transfer one, preview a bulk edit, evaluate dynamic groups, suspend and rehire; verify stable identifiers, explicit source conflicts and resulting assignments without duplicate accounts.
 
-**Evidence.** `src/auth/workforce/people/`; `src/auth/admin.mjs`; `tests/auth/directory.test.mjs`; `tests/integration/directory-browser.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: suspend state read back. Asserted: W-2 onboarding; contractor onboarding; rename; transfer; exact bulk preview; dynamic membership; rehire preserves identifier; source conflict visible; resulting assignments; no duplicate account.
+**Evidence.** `src/auth/workforce/people/`; `src/auth/admin.mjs`; `tests/auth/directory.test.mjs` — "source precedence, manual overrides and conflicts are visible; a source finds people by its own id, never by email; an email change keeps the same person, sessions end and apps follow" — "onboard, rename, transfer, bulk preview, dynamic groups, suspend and rehire keep one stable account per person"; `tests/integration/directory-browser.test.mjs`
+**Gap.** Missing a cited journey covering: suspend state read back. Existing cited journeys show: W-2 onboarding; contractor onboarding; rename; transfer; exact bulk preview; dynamic membership; rehire preserves identifier; source conflict visible; resulting assignments; no duplicate account.
 
 #### AUTH-TENANCY-001 — Organizations and delegated administration
 
@@ -210,8 +210,8 @@ Core · target · **partial** · Cites BASE-ACCESS-002, BASE-AUDIT-001, BASE-DAT
 2. For an isolated employer, installation roles acquire no employer session, membership or directory authority merely by hosting it.
 3. Installation archive export/import refuses an active isolated employer, including an active employer inside a source archive; anonymous evidence from an erased employer remains portable, with credentials and sealed pending remote work excluded.
 
-**Evidence.** `tests/auth/security.test.mjs`; `tests/integration/directory-browser.test.mjs`; `docs/administrator-roles.md`; `tests/integration/http.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: contractor in two employers; proved organization switch; one-app delegation; one-case help-desk delegation; active-employer export refusal; active-employer import refusal; active employer within source archive refused; anonymous erased-employer evidence remains portable; portable credentials absent; sealed remote work excluded. Asserted: cross-employer reads denied; cross-employer writes denied; cross-employer export denied; role escalation refused; installation session creates no employer session; installation hosting creates no membership; installation role has no employer directory authority. Relevant assertions are in tests/integration/erasure-portability.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/security.test.mjs` — "organizations isolate every existing HTTP family, admit expiring memberships and switch only between proven sessions"; `tests/integration/directory-browser.test.mjs`; `docs/administrator-roles.md`; `tests/integration/http.test.mjs`
+**Gap.** Missing a cited journey covering: contractor in two employers; proved organization switch; one-app delegation; one-case help-desk delegation; active-employer export refusal; active-employer import refusal; active employer within source archive refused; anonymous erased-employer evidence remains portable; portable credentials absent; sealed remote work excluded. Existing cited journeys show: cross-employer reads denied; cross-employer writes denied; cross-employer export denied; role escalation refused; installation session creates no employer session; installation hosting creates no membership; installation role has no employer directory authority. Relevant assertions are in tests/integration/erasure-portability.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-TENANCY-002 — No cross-organization linking or proof transfer
 
@@ -223,8 +223,8 @@ Core · target · **partial** · Cites BASE-ACCESS-002, BASE-AGENT-005, BASE-DAT
 1. Give one person memberships in two isolated organizations with the same email and upstream subject; confirm no automatic link or match, that a passkey sign-in, step-up, recovery or approval completed in one does not satisfy the other, and that an administrator of one cannot see or act on the other membership through UI, admin API or export.
 2. Reset one organization, create a new organization with the same name, domain and people, and confirm none of the retained receipts or sealed work appears in, links to or can be retried from it.
 
-**Evidence.** `tests/auth/security.test.mjs`; `tests/auth/provisioning.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: identical upstream subject remains separate; no automatic link or match; foreign-membership UI hidden; replacement organization with same name cannot attach receipts; matching domain cannot attach receipts; matching people cannot attach sealed work; retained work never appears; retained work cannot be linked; retained work cannot be retried from replacement. Asserted: same-email identities remain separate; cross-employer passkey refused; cross-employer step-up refused; cross-employer recovery refused; cross-employer approval refused; foreign admin API read denied; foreign export denied. Relevant assertions are in tests/auth/scoped-upstream-flow.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/security.test.mjs` — "organizations isolate every existing HTTP family, admit expiring memberships and switch only between proven sessions"; `tests/auth/provisioning.test.mjs`
+**Gap.** Missing a cited journey covering: identical upstream subject remains separate; no automatic link or match; foreign-membership UI hidden; replacement organization with same name cannot attach receipts; matching domain cannot attach receipts; matching people cannot attach sealed work; retained work never appears; retained work cannot be linked; retained work cannot be retried from replacement. Existing cited journeys show: same-email identities remain separate; cross-employer passkey refused; cross-employer step-up refused; cross-employer recovery refused; cross-employer approval refused; foreign admin API read denied; foreign export denied. Relevant assertions are in tests/auth/scoped-upstream-flow.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-ROLES-001 — Custom administrator roles and resource sets
 
@@ -237,7 +237,7 @@ Core · target · **done** · Cites BASE-ACCESS-002, BASE-AUDIT-001, BASE-BACKUP
 2. As its holder, reset a factor for a person in A; be refused editing in B (view succeeds), refused on an administrator in A, and refused via direct API and export.
 3. Attempt to grant the role over a wider set and be refused; change group A's membership and observe the next decision follow it.
 
-**Evidence.** `tests/auth/directory.test.mjs`; `tests/auth/security.test.mjs`; `tests/auth/agents-keys.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/directory-browser.test.mjs`; `docs/administrator-roles.md`
+**Evidence.** `tests/auth/directory.test.mjs` — "scoped help desk separates view and edit, refuses privileged and out-of-group people, and follows live membership"; `tests/integration/directory-browser.test.mjs` — "organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile"
 **Gap.** None.
 
 #### AUTH-DOMAINS-001 — Verified employer domains
@@ -250,8 +250,8 @@ Core · target · **partial** · Cites BASE-AUDIT-001, BASE-INPUT-001 · Rules D
 1. Claim a domain through the admin setup door, fail an incorrect or expired challenge and competing claim, then enroll and route an eligible worker.
 2. Revoke domain ownership and confirm policy reevaluation and audited recovery access.
 
-**Evidence.** `tests/auth/domains.test.mjs`; `tests/auth/upstreams.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/security-settings-browser.test.mjs`; `docs/verified-domains.md`
-**Gap.** Unasserted outcomes in the old cited evidence: eligible worker signs in; required-provider routing; emergency owner remains admitted. Asserted: correct domain enables enrollment; incorrect challenge refused; expired challenge refused; competing employer refused; domain revoked; current worker policy denied; emergency access audit.
+**Evidence.** `tests/auth/domains.test.mjs` — "revocation reevaluates existing sessions and enrollment while emergency owners retain audited access and can reverify" — "domain setup refuses unproved, incorrect, expired and competing ownership; exact aliases need proof and eligible enrollment still needs individual email proof"; `tests/auth/upstreams.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/security-settings-browser.test.mjs`; `docs/verified-domains.md`
+**Gap.** Missing a cited journey covering: eligible worker signs in; required-provider routing; emergency owner remains admitted. Existing cited journeys show: correct domain enables enrollment; incorrect challenge refused; expired challenge refused; competing employer refused; domain revoked; current worker policy denied; emergency access audit.
 
 #### AUTH-PROFILE-001 — Profiles and safe identity linking
 
@@ -263,7 +263,7 @@ Core · target · **done** · Cites BASE-AGENT-005, BASE-INPUT-001, BASE-MAIL-00
 1. Edit an employee profile and protected HR field, connect a second proven upstream and then unlink it; refuse an email collision, foreign subject, concurrent binding and last usable sign-in removal.
 2. Inspect app claims for only consented fields.
 
-**Evidence.** `src/auth/profiles/`; `src/auth/upstreams.mjs`; `src/auth/userinfo.mjs`; `tests/auth/profile.test.mjs`; `tests/auth/upstreams.test.mjs`; `tests/integration/directory-browser.test.mjs`
+**Evidence.** `tests/auth/profile.test.mjs` — "an employee edits only permitted profile fields; fields held by HR or an administrator are protected and say who holds them; hidden fields stay hidden; groups follow"; `tests/auth/upstreams.test.mjs` — "a signed-in person connects a second proven identity after confirming, and disconnects it; an email collision, a foreign subject, a replay and a concurrent binding are refused"; `tests/auth/upstreams.test.mjs` — "an agent proposal, imported metadata or a matching email never connects an identity, and the last usable sign-in cannot be disconnected"; `tests/auth/profile.test.mjs` — "apps receive the edited name only under the profile scope, and never a custom or hidden field"
 **Gap.** None.
 
 #### AUTH-ENROLLMENT-001 — Managed enrollment and password compatibility
@@ -500,8 +500,8 @@ Core · target · **partial** · From AUTH-NOTIFY-001 · Cites BASE-ACCESS-002, 
 7. Slack disclosure and destructive report responses have separate audited authorization.
 8. Once the configured channel is usable, recovery, factor reset or removal and administrator-grant notices cannot be disabled.
 
-**Evidence.** `tests/auth/notifications.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/security-settings-browser.test.mjs`; `docs/security-notifications.md`
-**Gap.** Push notices depend on AUTH-AUTHENTICATOR-001. Password-changed and password-lockout notices depend on AUTH-PASSWORD-001; temporary access pass notices depend on AUTH-TAP-001. Remaining: all factor-removal and role-grant doors, connected SaaS session revocation under AUTH-LOGOUT-002, additional report responses, Oncall escalation and configured SIEM qualification.
+**Evidence.** `tests/auth/notifications.test.mjs` — "security notifications report suspicious activity, escalate once and end sessions and refresh grants with back-channel logout"; `tests/auth/notifications.test.mjs` — "security notice preferences retain mandatory recovery and factor notices, and report links refuse forgery, cross-employer use and expiry"; `tests/auth/fresh-proof.test.mjs` — "every sensitive action refuses a stale local email proof without change and succeeds after a fresh confirmation"; `tests/integration/security-settings-browser.test.mjs` — "security settings: prove and revoke employer ownership, preview affected workers, and authorize persistent notification preferences at desktop and mobile"; `tests/auth/notifications-flow.mjs` — "roleGrantNotices" (within the mandatory-notice journey); `tests/integration/directory-browser.test.mjs` — "organization and authority journey"; `docs/security-notifications.md`
+**Gap.** Push notices depend on AUTH-AUTHENTICATOR-001. Password-changed and password-lockout notices depend on AUTH-PASSWORD-001; temporary access pass notice coverage remains under AUTH-TAP-001. Explicit scoped grants now atomically retain required email intents bound to the operation and verified work address, including before setup; failed or uncertain attempts remain actionable without automatic resend. Remaining: every role-grant path outside this existing explicit action, remaining factor-removal and other unbuilt event doors, required-notice intents before setup at those doors, connected SaaS session revocation under AUTH-LOGOUT-002, additional report responses, Oncall escalation and configured SIEM qualification. Live delivery qualification of this scoped-grant path remains unproved.
 
 #### AUTH-NOTIFY-002 — Mandatory channels and report authority
 
@@ -513,8 +513,8 @@ Core · target · **partial** · From AUTH-NOTIFY-001 · Cites BASE-ACCESS-002, 
 1. Before setup, each required notice remains an actionable undeliverable obligation; existing recovery notices continue.
 2. A report link permits only its bound report, with no sign-in, arbitrary suspension or implicit cross-SaaS authority.
 
-**Evidence.** `tests/auth/notifications.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/security-settings-browser.test.mjs`; `docs/security-notifications.md`
-**Gap.** Push notices depend on AUTH-AUTHENTICATOR-001. Password-changed and password-lockout notices depend on AUTH-PASSWORD-001; temporary access pass notices depend on AUTH-TAP-001. Remaining: all factor-removal and role-grant doors, connected SaaS session revocation under AUTH-LOGOUT-002, additional report responses, Oncall escalation and configured SIEM qualification.
+**Evidence.** `tests/auth/notifications.test.mjs` — "security notifications report suspicious activity, escalate once and end sessions and refresh grants with back-channel logout"; `tests/auth/notifications.test.mjs` — "security notice preferences retain mandatory recovery and factor notices, and report links refuse forgery, cross-employer use and expiry"; `tests/auth/fresh-proof.test.mjs` — "every sensitive action refuses a stale local email proof without change and succeeds after a fresh confirmation"; `tests/integration/security-settings-browser.test.mjs` — "security settings: prove and revoke employer ownership, preview affected workers, and authorize persistent notification preferences at desktop and mobile"; `tests/auth/notifications-flow.mjs` — "roleGrantNotices" (within the mandatory-notice journey); `tests/integration/directory-browser.test.mjs` — "organization and authority journey"; `docs/security-notifications.md`
+**Gap.** Push notices depend on AUTH-AUTHENTICATOR-001. Password-changed and password-lockout notices depend on AUTH-PASSWORD-001; temporary access pass notice coverage remains under AUTH-TAP-001. Explicit scoped grants now atomically retain required email intents bound to the operation and verified work address, including before setup; failed or uncertain attempts remain actionable without automatic resend. Remaining: every role-grant path outside this existing explicit action, remaining factor-removal and other unbuilt event doors, required-notice intents before setup at those doors, connected SaaS session revocation under AUTH-LOGOUT-002, additional report responses, Oncall escalation and configured SIEM qualification. Live delivery qualification of this scoped-grant path remains unproved.
 
 #### AUTH-LOGOUT-002 — Universal logout from connected SaaS for a compromised account
 
@@ -542,8 +542,8 @@ Core · target · **partial** · Cites BASE-DATA-001, BASE-INPUT-001, BASE-MAIL-
 2. Complete SP- and IdP-initiated logout over both bindings.
 3. Refuse a forged request, altered ACS, wrong audience, SHA-1 without an exception, stale/replayed assertion and unassigned user.
 
-**Evidence.** `src/auth/saml/`; `src/auth/workforce/routes.mjs`; `tests/auth/saml.test.mjs`; `tests/integration/company-apps-browser.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: RSA-OAEP transport; stale assertion refused; replayed assertion refused. Asserted: generic SP configured; POST request binding; Redirect request binding; persistent NameID; emailAddress NameID; unspecified NameID; transient NameID; mapped role; response signature; assertion signature; both signatures; SHA-256; SHA-512; AES-256-GCM assertion decryption; AES-128-CBC assertion decryption; overlapping certificate rollover; SP-initiated POST logout; SP-initiated Redirect logout; IdP-initiated POST logout; IdP-initiated Redirect logout; forged request refused; altered ACS refused; wrong audience refused; SHA-1 without exception refused; unassigned employee refused.
+**Evidence.** `src/auth/saml/`; `src/auth/workforce/routes.mjs`; `tests/auth/saml.test.mjs` — "encrypted assertions open at the app with AES-256-GCM and AES-128-CBC; a Redirect-bound response is signed in its query; IdP-initiated launch only where the app permits it" — "an assigned employee signs in to a SAML app over both request bindings, with each NameID format, signature placement and algorithm"; `tests/integration/company-apps-browser.test.mjs`
+**Gap.** Missing a cited journey covering: RSA-OAEP transport; stale assertion refused; replayed assertion refused. Existing cited journeys show: generic SP configured; POST request binding; Redirect request binding; persistent NameID; emailAddress NameID; unspecified NameID; transient NameID; mapped role; response signature; assertion signature; both signatures; SHA-256; SHA-512; AES-256-GCM assertion decryption; AES-128-CBC assertion decryption; overlapping certificate rollover; SP-initiated POST logout; SP-initiated Redirect logout; IdP-initiated POST logout; IdP-initiated Redirect logout; forged request refused; altered ACS refused; wrong audience refused; SHA-1 without exception refused; unassigned employee refused.
 
 #### AUTH-OIDC-001 — General SaaS OIDC and OAuth profiles
 
@@ -556,8 +556,8 @@ Core · target · **partial** · Cites BASE-ACCESS-002, BASE-INPUT-001, BASE-SEC
 2. Refuse a wrong or rotated-out secret, a public client without PKCE, redirect substitution, token substitution, code replay and unsupported grants.
 3. Re-run the strict RER journey unchanged and inspect each connection’s advertised profile.
 
-**Evidence.** `src/auth/oidc-apps/`; `src/auth/protocol.mjs`; `src/auth/links/end-session.mjs`; `tests/auth/oidc-apps.test.mjs`; `tests/integration/company-apps-browser.test.mjs`; `COMPANY-APPS.md`
-**Gap.** Unasserted outcomes in the old cited evidence: logout for each profile; strict RER journey preserves advertised profile. Asserted: client_secret_basic code flow; client_secret_post code flow; private_key_jwt code flow; public none plus PKCE code flow; secret rotation overlap; wrong secret refused; rotated-out secret refused; public client without PKCE refused; substituted redirect refused; substituted token refused; code replay refused; unsupported grant refused; each general connection advertises its profile.
+**Evidence.** `src/auth/oidc-apps/`; `src/auth/protocol.mjs`; `src/auth/links/end-session.mjs`; `tests/auth/oidc-apps.test.mjs` — "wrong, mismatched and rotated-out secrets, substituted redirects and codes, replays and unsupported grants are refused; legacy flows only where opted in; unassigned people get no tokens" — "SaaS clients sign in with client_secret_basic, client_secret_post and private_key_jwt, and a native app with none and PKCE; RP-initiated logout reaches front- and back-channel apps"; `tests/integration/company-apps-browser.test.mjs`; `COMPANY-APPS.md`
+**Gap.** Missing a cited journey covering: logout for each profile; strict RER journey preserves advertised profile. Existing cited journeys show: client_secret_basic code flow; client_secret_post code flow; private_key_jwt code flow; public none plus PKCE code flow; secret rotation overlap; wrong secret refused; rotated-out secret refused; public client without PKCE refused; substituted redirect refused; substituted token refused; code replay refused; unsupported grant refused; each general connection advertises its profile.
 
 #### AUTH-MAPPING-001 — Attribute and NameID transform language
 
@@ -573,8 +573,8 @@ Core · target · **partial** · Cites BASE-AUDIT-001, BASE-INPUT-001, BASE-ROLE
 5. Preview allocates collision suffixes against the entire directory; a save requires the exact preview and current version, and rollback publishes a new audited version.
 6. Output doors include SAML, generic OIDC and SCIM.
 
-**Evidence.** `tests/auth/saml.test.mjs`; `tests/auth/oidc-apps.test.mjs`; `tests/integration/company-apps-browser.test.mjs`; `docs/attribute-mapping.md`
-**Gap.** Unasserted outcomes in the old cited evidence: elapsed-time budget refusal; typed version-one input projection; no runtime access; no dynamic code; node-count bound; output-size bound; elapsed-time bound; whole-directory collision allocation. Asserted: collision-safe first.last preview; group-derived role at SP; formatted SCIM date read back; missing-field warning; three-person preview; launched NameID read back; secret expression refused; network expression refused; rollback value read back; manager projection; source projection; group projection; no credential access; no network operations; character-work bound; expression-depth bound; exact preview required; current version required; rollback publishes a new audited version; SAML output read back; SCIM output read back; generic OIDC output read back.
+**Evidence.** `tests/auth/saml.test.mjs` — "app setup previews typed mappings for three people, launches computed collision-safe NameID and group role, provisions formatted dates, refuses unsafe programs and rolls back an audited version"; `tests/auth/oidc-apps.test.mjs` — "SaaS clients sign in with client_secret_basic, client_secret_post and private_key_jwt, and a native app with none and PKCE; RP-initiated logout reaches front- and back-channel apps"; `tests/integration/company-apps-browser.test.mjs`; `docs/attribute-mapping.md`
+**Gap.** Missing a cited journey covering: elapsed-time budget refusal; typed version-one input projection; no runtime access; no dynamic code; node-count bound; output-size bound; elapsed-time bound; whole-directory collision allocation. Existing cited journeys show: collision-safe first.last preview; group-derived role at SP; formatted SCIM date read back; missing-field warning; three-person preview; launched NameID read back; secret expression refused; network expression refused; rollback value read back; manager projection; source projection; group projection; no credential access; no network operations; character-work bound; expression-depth bound; exact preview required; current version required; rollback publishes a new audited version; SAML output read back; SCIM output read back; generic OIDC output read back.
 
 ### SaaS, directories and workforce lifecycle
 
@@ -629,8 +629,8 @@ Core · target · **partial** · Cites BASE-ACCESS-002, BASE-INPUT-001, BASE-MAI
 1. Assign a group through admin UI/API to a real SCIM service, provision users/groups, change a role and email, then revoke while the provider returns 429/503 and later recovers.
 2. Inspect one account per person, persisted per-app outcomes with dispatch and verification times inside the bounds while healthy, no duplicate side effect and verified deactivation rather than a green queue submission.
 
-**Evidence.** `src/auth/provisioning/`; `src/auth/workforce/`; `tests/auth/provisioning.test.mjs`; `tests/auth/scim-server.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: email updated. Asserted: group assigned; remote user values; remote group membership; role updated; 429 held outcome; 503 held outcome; provider recovery; verified revocation; one remote account per person; persisted verified state; healthy dispatch within bound; healthy verification within bound; no duplicate remote POST; remote deactivation read back.
+**Evidence.** `src/auth/provisioning/`; `src/auth/workforce/`; `tests/auth/provisioning.test.mjs` — "a provider answering 429 and 503, or losing a response, is retried until it recovers with no duplicate account; a name collision waits for an administrator; drift is found across pages" — "a group assignment provisions its members and the group over SCIM; role changes update the one account; unassignment and suspension deactivate, verified by read-back"; `tests/auth/scim-server.mjs`
+**Gap.** Missing a cited journey covering: email updated. Existing cited journeys show: group assigned; remote user values; remote group membership; role updated; 429 held outcome; 503 held outcome; provider recovery; verified revocation; one remote account per person; persisted verified state; healthy dispatch within bound; healthy verification within bound; no duplicate remote POST; remote deactivation read back.
 
 #### AUTH-SCIM-002 — Inbound directory synchronization
 
@@ -700,8 +700,8 @@ Core · target · **partial** · Cites BASE-AUDIT-001, BASE-INPUT-001, BASE-INPU
 1. Configure an SFTP feed with a mapping, deliver a file with a hire, a move and a termination and see the preview and resulting access; deliver a malformed file, an empty file and one terminating 20% of workers and see each held; skip a delivery and see the stale flag and follow-up.
 2. Refuse a wrong SFTP key and a file for another employer.
 
-**Evidence.** `tests/auth/directory.test.mjs`; `tests/integration/directory-browser.test.mjs`; `docs/hr-file-feeds.md`; `tests/auth/provisioning.test.mjs`; `tests/integration/browser.test.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: saved SFTP mapping; hire preview and resulting access; mover preview and resulting access; leaver preview and resulting access; malformed delivery held; empty delivery held; twenty-percent termination held; skipped feed is stale; stale-source follow-up; wrong SFTP key refused; foreign-employer file refused. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/hr-file-flow.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/directory.test.mjs` — "an explicitly approved HR file applies current and dated hires, moves and leavers once, resolves managers and resumes interruptions while preserving enrollment and authority refusals"; `tests/integration/directory-browser.test.mjs`; `docs/hr-file-feeds.md`; `tests/auth/provisioning.test.mjs`; `tests/integration/browser.test.mjs`
+**Gap.** Missing a cited journey covering: saved SFTP mapping; hire preview and resulting access; mover preview and resulting access; leaver preview and resulting access; malformed delivery held; empty delivery held; twenty-percent termination held; skipped feed is stale; stale-source follow-up; wrong SFTP key refused; foreign-employer file refused. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/hr-file-flow.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-LIFECYCLE-001 — Complete joiner, mover and leaver execution
 
@@ -873,7 +873,7 @@ Core · target · **done** · Cites BASE-AUDIT-001, BASE-INPUT-001, BASE-ROLE-00
 1. Register an API, map a group to read/write and resource-level permissions, and call it as an employee and a service identity.
 2. Deny an unassigned role, cross-employer resource, wrong audience, excessive scope and revoked service credential; role removal must change the next authorization decision.
 
-**Evidence.** `tests/auth/oidc-apps.test.mjs`; `tests/auth/provisioning.test.mjs`; `docs/authorization-api.md`; `tests/integration/directory-browser.test.mjs`
+**Evidence.** `tests/auth/oidc-apps.test.mjs` — "resource APIs use live app roles and tenant resources for employees and distinct accountable OAuth services"
 **Gap.** None.
 
 #### AUTH-TOKENS-001 — Refresh and delegated session lifecycle
@@ -892,8 +892,8 @@ Core · target · **partial** · From AUTH-TOKENS-001 · Cites BASE-ACCESS-002, 
 7. The SDK coalesces concurrent calls and commits storage before publishing a successor; failures require deliberate new consent.
 8. Resource decisions recheck the family, current account/app/assignment, policy and API/profile revisions and preserve the app's subject policy.
 
-**Evidence.** `tests/auth/oidc-apps.test.mjs`; `tests/integration/refresh-browser.test.mjs`; `tests/auth/protocol.test.mjs`; `docs/offline-sessions.md`; `packages/session-sdk/index.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: Use a native SDK to obtain an approved refresh grant; rotate it; replay an old token; revoke the family through My account; Run concurrent refresh; expiry; suspension; app removal; confirming the resource API refuses invalid authority; strict RER clients receive no refresh token; An administrator explicitly binds a general OIDC client to its own app's resource API; published scopes; chosen idle/absolute lifetimes; there are no implicit offline grants; Each person consents to the exact app/device; audience; scopes; lifetimes; S256 PKCE; registered client authentication; ES256 DPoP bind the grant; Refresh digests rotate with one winner; authenticated consumed-token reuse ends the family without a grace interval or cached successor; The SDK coalesces concurrent calls; commits storage before publishing a successor; failures require deliberate new consent; Resource decisions recheck the family; current account/app/assignment; policy; API/profile revisions; preserve the app's subject policy. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/refresh-flow.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/oidc-apps.test.mjs` — "native offline consent and SDK rotation preserve device binding, detect reuse and concurrency, and end resource authority on expiry, revocation, suspension and app removal"; `tests/integration/refresh-browser.test.mjs`; `tests/auth/protocol.test.mjs`; `docs/offline-sessions.md`; `packages/session-sdk/index.mjs`
+**Gap.** Missing a cited journey covering: Use a native SDK to obtain an approved refresh grant; rotate it; replay an old token; revoke the family through My account; Run concurrent refresh; expiry; suspension; app removal; confirming the resource API refuses invalid authority; strict RER clients receive no refresh token; An administrator explicitly binds a general OIDC client to its own app's resource API; published scopes; chosen idle/absolute lifetimes; there are no implicit offline grants; Each person consents to the exact app/device; audience; scopes; lifetimes; S256 PKCE; registered client authentication; ES256 DPoP bind the grant; Refresh digests rotate with one winner; authenticated consumed-token reuse ends the family without a grace interval or cached successor; The SDK coalesces concurrent calls; commits storage before publishing a successor; failures require deliberate new consent; Resource decisions recheck the family; current account/app/assignment; policy; API/profile revisions; preserve the app's subject policy. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/refresh-flow.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-TOKENS-002 — Offline resource endings and portability
 
@@ -907,8 +907,8 @@ Core · target · **partial** · From AUTH-TOKENS-001 · Cites BASE-ACCESS-002, 
 3. Supported OIDC logout is queued without claiming remote deletion.
 4. Credentials and family authority are nonportable, and the shared registry covers erasure/retention.
 
-**Evidence.** `tests/auth/oidc-apps.test.mjs`; `tests/integration/refresh-browser.test.mjs`; `tests/auth/protocol.test.mjs`; `docs/offline-sessions.md`; `packages/session-sdk/index.mjs`
-**Gap.** Unasserted outcomes in the old cited evidence: Browser expiry alone does not end an offline grant; explicit source-session revocation; account/app/profile endings; either grant expiry do; My account; scoped administrator doors retain the existing permission; view/edit resource; hardware/fresh-email; account-rank fences; Supported OIDC logout is queued without claiming remote deletion; Credentials; family authority are nonportable; the shared registry covers erasure/retention. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/refresh-flow.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/oidc-apps.test.mjs` — "native offline consent and SDK rotation preserve device binding, detect reuse and concurrency, and end resource authority on expiry, revocation, suspension and app removal"; `tests/integration/refresh-browser.test.mjs`; `tests/auth/protocol.test.mjs`; `docs/offline-sessions.md`; `packages/session-sdk/index.mjs`
+**Gap.** Missing a cited journey covering: Browser expiry alone does not end an offline grant; explicit source-session revocation; account/app/profile endings; either grant expiry do; My account; scoped administrator doors retain the existing permission; view/edit resource; hardware/fresh-email; account-rank fences; Supported OIDC logout is queued without claiming remote deletion; Credentials; family authority are nonportable; the shared registry covers erasure/retention. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/refresh-flow.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-HOOKS-001 — Inline hooks for custom sign-in logic
 
@@ -925,8 +925,8 @@ Core · target · **partial** · Cites BASE-AUDIT-001, BASE-INPUT-001, BASE-ROLE
 6. Every remote call is bounded, audited and followed by a fresh issuance/commit authority check.
 7. Unavailable password-hook registration refuses; no password verifier is simulated.
 
-**Evidence.** `tests/auth/oidc-apps.test.mjs`; `tests/auth/protocol.test.mjs`; `tests/auth/move-in-admission.test.mjs`; `tests/integration/company-apps-browser.test.mjs`; `docs/inline-hooks.md`
-**Gap.** Unasserted outcomes in the old cited evidence: neither may change an identity binding or authority; Unavailable password-hook registration refuses; no password verifier is simulated. Asserted: Register a token hook that adds a cost-center claim; see it in the ID token; a registration hook that denies an outside domain; a hook that tries to add an administrator role; change the subject; see both changes refused; Let a fail-closed hook time out; see the sign-in refused with a clear error; then a fail-open hook time out; see sign-in continue with the event logged; Refuse a hook URL that resolves to a private address; signed hooks run for strict RER; general OIDC ID tokens; SAML assertions; self-registration; staged move-in admission; source-id-matched directory imports; Token/SAML outputs are restricted to explicit custom fields; registration/import may alter only the currently exposed name field; Every remote call is bounded; audited; followed by a fresh issuance/commit authority check.
+**Evidence.** `tests/auth/oidc-apps.test.mjs` — "inline hooks add only approved token and SAML fields, deny registration and imports, enforce signed minimal payloads and timeout choices, and refuse private DNS and protected identity changes"; `tests/auth/protocol.test.mjs` — "code flow preserves ES256 ID token claims and adds a userinfo access token"; `tests/auth/move-in-admission.test.mjs`; `tests/integration/company-apps-browser.test.mjs`; `docs/inline-hooks.md`
+**Gap.** Missing a cited journey covering: neither may change an identity binding or authority; Unavailable password-hook registration refuses; no password verifier is simulated. Existing cited journeys show: Register a token hook that adds a cost-center claim; see it in the ID token; a registration hook that denies an outside domain; a hook that tries to add an administrator role; change the subject; see both changes refused; Let a fail-closed hook time out; see the sign-in refused with a clear error; then a fail-open hook time out; see sign-in continue with the event logged; Refuse a hook URL that resolves to a private address; signed hooks run for strict RER; general OIDC ID tokens; SAML assertions; self-registration; staged move-in admission; source-id-matched directory imports; Token/SAML outputs are restricted to explicit custom fields; registration/import may alter only the currently exposed name field; Every remote call is bounded; audited; followed by a fresh issuance/commit authority check.
 
 #### AUTH-REQUESTS-001 — Access requests and time-bound grants
 
@@ -1067,7 +1067,7 @@ Core · target · **partial** · Cites BASE-AGENT-005, BASE-AUDIT-001, BASE-DATA
 2. Refuse a wrong password, email collision and disabled worker; interrupt migration and prove an idempotent outcome and a cleanly disabled bridge.
 
 **Evidence.** `tests/auth/move-in-staging.test.mjs`; `tests/auth/move-in-admission.test.mjs`; `tests/integration/move-in-browser.test.mjs`; `docs/progressive-migration.md`
-**Gap.** Unasserted outcomes in the old cited evidence: Import Google; Auth0 records; migrate one eligible legacy worker at first login through the real bridge; compare downstream subject mapping before/after; Refuse a wrong password; email collision; disabled worker; interrupt migration; prove an idempotent outcome; a cleanly disabled bridge. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/legacy-bridge-flow.mjs, outside this clause’s old Evidence set.
+**Gap.** Missing a cited journey covering: Import Google; Auth0 records; migrate one eligible legacy worker at first login through the real bridge; compare downstream subject mapping before/after; Refuse a wrong password; email collision; disabled worker; interrupt migration; prove an idempotent outcome; a cleanly disabled bridge. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/legacy-bridge-flow.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-MIGRATION-003 — Cutover enrollment campaign
 
@@ -1127,8 +1127,8 @@ Core · target · **partial** · Cites BASE-AUDIT-001, BASE-INPUT-001, BASE-ROLE
 1. Create a service app with `groups.manage` and `assignments.manage` from an allowed IP, call the API to create a group and assign an app; call a policy endpoint and from another IP and be refused; attempt each excluded action with every scope and be refused.
 2. Expire the app, suspend its owner, and replay a stale ETag; each is refused or suspended as stated, and the audit shows every call.
 
-**Evidence.** `tests/auth/agents-keys.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/agents-browser.test.mjs`; `docs/admin-api.md`
-**Gap.** Unasserted outcomes in the old cited evidence: service-app assignment grant; audit records every call. Asserted: service-app group grant; allowed-IP group creation; denied policy scope; denied foreign IP; every excluded action under every scope; expired service app; suspended owner ends app; stale ETag refused.
+**Evidence.** `tests/auth/agents-keys.test.mjs` — "admin service apps use private-key OAuth for scoped group and assignment writes; resource, IP, expiry, owner and ETag fences refuse automation while every scope excludes identity and credential custody"; `tests/auth/fresh-proof.test.mjs`; `tests/integration/agents-browser.test.mjs`; `docs/admin-api.md`
+**Gap.** Missing a cited journey covering: service-app assignment grant; audit records every call. Existing cited journeys show: service-app group grant; allowed-IP group creation; denied policy scope; denied foreign IP; every excluded action under every scope; expired service app; suspended owner ends app; stale ETag refused.
 
 #### AUTH-TERRAFORM-001 — Terraform provider
 
@@ -1166,8 +1166,8 @@ Core · target · **partial** · Cites BASE-INPUT-001, BASE-SECRET-001 · Rules 
 1. Subscribe a real app endpoint through admin/API, perform a joiner/mover/leaver, rotate signing material and recover after 429, timeout and outage.
 2. Replay an event and request a historical cursor; verify ordered/versioned reconstruction without duplicate grants or missing unresolved work.
 
-**Evidence.** `src/auth/events/`; `src/auth/outbound.mjs`; `tests/auth/events.test.mjs`; `COMPANY-APPS.md`
-**Gap.** Unasserted outcomes in the old cited evidence: no duplicate grants; unresolved work not missing. Asserted: subscriber configured; joiner event; mover event; leaver event recovered; 429 preserves event ID; timeout and outage recover; rotation overlaps; old secret stops after overlap; replayed event keeps original identifier; historical cursor reconstructs every event; cursor ordering; versioned rows.
+**Evidence.** `src/auth/events/`; `src/auth/outbound.mjs`; `tests/auth/events.test.mjs` — "joiner, mover and leaver events reach a subscriber signed, in order and once each, through 429, a timeout and an outage; rotation, replay and the cursor rebuild the history"; `COMPANY-APPS.md`
+**Gap.** Missing a cited journey covering: no duplicate grants; unresolved work not missing. Existing cited journeys show: subscriber configured; joiner event; mover event; leaver event recovered; 429 preserves event ID; timeout and outage recover; rotation overlaps; old secret stops after overlap; replayed event keeps original identifier; historical cursor reconstructs every event; cursor ordering; versioned rows.
 
 #### AUTH-FOLLOWUP-001 — Follow-through until access is resolved
 
@@ -1180,8 +1180,8 @@ Core · target · **partial** · Cites BASE-INPUT-001, BASE-MAIL-001 · Rules D-
 2. Observe due actions, reminders and escalation, including for a legacy policy with no escalation recipient.
 3. Complete or cancel each through its normal door, and verify reminders cease while the complete history remains.
 
-**Evidence.** `tests/auth/provisioning.test.mjs`; `tests/integration/agents-browser.test.mjs`; `docs/follow-up.md`
-**Gap.** Unasserted outcomes in the old cited evidence: Leave an invitation; a recovery awaiting a distinct administrator's approval; a failed deprovision unresolved across a weekend/DST change; a process restart; Observe due actions; reminders; escalation; including for a legacy policy with no escalation recipient; Complete or cancel each through its normal door; verify reminders cease while the complete history remains. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/followup-flow.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/provisioning.test.mjs` — "durable follow-up dispatches on the employer business calendar across DST and restart, escalates unresolved revocation and stops on source completion, cancellation and expiry"; `tests/integration/agents-browser.test.mjs`; `docs/follow-up.md`
+**Gap.** Missing a cited journey covering: Leave an invitation; a recovery awaiting a distinct administrator's approval; a failed deprovision unresolved across a weekend/DST change; a process restart; Observe due actions; reminders; escalation; including for a legacy policy with no escalation recipient; Complete or cancel each through its normal door; verify reminders cease while the complete history remains. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/followup-flow.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-FOLLOWUP-002 — Role-derived recipients, manage-follow-up authority and early send
 
@@ -1197,8 +1197,8 @@ Core · target · **partial** · Cites BASE-INPUT-001, BASE-INSTALL-001, BASE-RO
 5. A holder's early send reaches only allowed recipients, and a non-holder is refused.
 6. All of this runs at 1440 and 390.
 
-**Evidence.** `tests/auth/provisioning.test.mjs`; `tests/integration/agents-browser.test.mjs`; `tests/integration/helpers/followup-roles-journey.mjs`; `docs/follow-up.md`
-**Gap.** Unasserted outcomes in the old cited evidence: A custom role with 'manage follow-up' saves the policy. Asserted: An installation role is refused; The employee receives their own enrollment; recovery reminders; the holding help desk receives its case reminders; A help-desk holder who loses the role escalates; A holder's early send reaches only allowed recipients; a non-holder is refused; All of this runs at 1440; 390.
+**Evidence.** `tests/auth/provisioning.test.mjs`; `tests/integration/agents-browser.test.mjs`; `tests/integration/helpers/followup-roles-journey.mjs` — "followupRolesJourney"; `docs/follow-up.md`
+**Gap.** Missing a cited journey covering: A custom role with 'manage follow-up' saves the policy. Existing cited journeys show: An installation role is refused; The employee receives their own enrollment; recovery reminders; the holding help desk receives its case reminders; A help-desk holder who loses the role escalates; A holder's early send reaches only allowed recipients; a non-holder is refused; All of this runs at 1440; 390.
 
 #### AUTH-FOLLOWUP-003 — Access-request, review and stale-source obligations
 
@@ -1211,7 +1211,7 @@ Core · target · **done** · Cites BASE-AUDIT-001, BASE-INPUT-001 · Rules D-1,
 2. Observe that decider reminders and escalation happen.
 3. Decide, cancel or refresh each through its normal door, and verify reminders cease while the history remains.
 
-**Evidence.** `tests/auth/provisioning.test.mjs`; `tests/auth/followup-decisions-flow.mjs`; `tests/auth/directory.test.mjs`; `tests/integration/directory-browser.test.mjs`; `tests/integration/helpers/access-review-journey.mjs`; `docs/follow-up.md`
+**Evidence.** `tests/auth/provisioning.test.mjs` — "request, review and stale HR obligations retain decider reminders and resolution history across DST and restart"; `tests/integration/directory-browser.test.mjs` — "access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390"
 **Gap.** None.
 
 #### AUTH-FOLLOWUP-004 — Slack, Teams and Oncall follow-up channels
@@ -1265,8 +1265,8 @@ Core · target · **partial** · Cites BASE-INPUT-001, BASE-INSTALL-001, BASE-MA
 1. Drill lost phone/key, unavailable upstream, expired signing certificate and restoration of an owner installation through the public account/CLI doors.
 2. Confirm ordinary workers cannot invoke emergency authority, cancellation wins against completion where applicable, all notices persist and used credentials cannot be replayed.
 
-**Evidence.** `tests/auth/security.test.mjs`; `tests/integration/http.test.mjs`; `tests/auth/provisioning.test.mjs`; `tests/integration/browser.test.mjs`; `docs/continuity-drills.md`; `.github/workflows/continuity.yml`
-**Gap.** Unasserted outcomes in the old cited evidence: Drill lost phone/key; unavailable upstream; expired signing certificate; restoration of an owner installation through the public account/CLI doors; Confirm ordinary workers cannot invoke emergency authority; cancellation wins against completion where applicable; all notices persist; used credentials cannot be replayed. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/continuity-flow.mjs and tests/integration/continuity-drill.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/security.test.mjs` — "scheduled continuity drill exercises protected lost-factor recovery, upstream outage and expired signing-certificate replacement"; `tests/integration/http.test.mjs`; `tests/auth/provisioning.test.mjs`; `tests/integration/browser.test.mjs`; `docs/continuity-drills.md`; `.github/workflows/continuity.yml`
+**Gap.** Missing a cited journey covering: Drill lost phone/key; unavailable upstream; expired signing certificate; restoration of an owner installation through the public account/CLI doors; Confirm ordinary workers cannot invoke emergency authority; cancellation wins against completion where applicable; all notices persist; used credentials cannot be replayed. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/continuity-flow.mjs and tests/integration/continuity-drill.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-RECOVERY-003 — Same-day help-desk recovery for employees
 
@@ -1293,8 +1293,8 @@ Core · target · **partial** · From AUTH-ERASURE-001 · Cites BASE-ACCESS-002,
 1. Erase a worker with multiple factors, imports, agent grants and SaaS access through the owner door; query/export all stores, inspect receipt and anonymized audit, and attempt restore of a pre-erasure archive with the later journal.
 2. Keep a blocked remote deletion visible, test legal hold and last-owner protection.
 
-**Evidence.** `tests/auth/provisioning.test.mjs`; `tests/integration/http.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/directory-browser.test.mjs`; `docs/erasure.md`
-**Gap.** Unasserted outcomes in the old cited evidence: query/export all stores; attempt restore of a pre-erasure archive with the later journal; last-owner protection. Asserted: Erase a worker with multiple factors; imports; agent grants; SaaS access through the owner door; inspect receipt; anonymized audit; Keep a blocked remote deletion visible; test legal hold. Relevant assertions are in tests/integration/erasure-portability.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/provisioning.test.mjs` — "owner erasure previews every store, honors legal holds, anonymizes decisions and keeps refused remote deletion visible"; `tests/integration/http.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/directory-browser.test.mjs`; `docs/erasure.md`
+**Gap.** Missing a cited journey covering: query/export all stores; attempt restore of a pre-erasure archive with the later journal; last-owner protection. Existing cited journeys show: Erase a worker with multiple factors; imports; agent grants; SaaS access through the owner door; inspect receipt; anonymized audit; Keep a blocked remote deletion visible; test legal hold. Relevant assertions are in tests/integration/erasure-portability.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-ERASURE-004 — Protected organization reset and pending-work custody
 
@@ -1309,8 +1309,8 @@ Core · target · **partial** · From AUTH-ERASURE-001 · Cites BASE-ACCESS-002,
 4. Complete or abandon the item and prove the sealed identifier and replacement credential are destroyed while the anonymous outcome and installation audit remain.
 5. Reset a local installation through its protected last-owner door.
 
-**Evidence.** `tests/auth/provisioning.test.mjs`; `tests/integration/http.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/directory-browser.test.mjs`; `docs/erasure.md`
-**Gap.** Unasserted outcomes in the old cited evidence: leaving only anonymous receipts/outcomes; Inspect each pending item as installation owner: app; operation; state; outcome are visible; person absent from UI; exports; Retry only previously authorized work through a fresh; deletion instructions; replacement credential are destroyed while the anonymous outcome; Reset a local installation through its protected last-owner door. Asserted: Reset an organization; prove its issuer; all former caller authority end; sealed pending work in installation-owner custody; destination identifier are absent from UI; explicitly authorized connection bound to the same remote tenant; without it retain the blocked item; Complete or abandon the item; prove the sealed identifier; installation audit remain. Relevant assertions are in tests/integration/erasure-portability.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/provisioning.test.mjs` — "app erasure removes connector custody and protected organization reset retains only installation-owner anonymous outcomes and credential-free pending work"; `tests/integration/http.test.mjs`; `tests/auth/fresh-proof.test.mjs`; `tests/integration/directory-browser.test.mjs` — "organization and authority journey: switch employers, delegate a scoped reset, authorize a service and erase a worker at desktop/mobile"; `docs/erasure.md`
+**Gap.** Missing a cited journey covering: leaving only anonymous receipts/outcomes; Inspect each pending item as installation owner: app; operation; state; outcome are visible; person absent from UI; exports; Retry only previously authorized work through a fresh; deletion instructions; replacement credential are destroyed while the anonymous outcome; Reset a local installation through its protected last-owner door. Existing cited journeys show: Reset an organization; prove its issuer; all former caller authority end; sealed pending work in installation-owner custody; destination identifier are absent from UI; explicitly authorized connection bound to the same remote tenant; without it retain the blocked item; Complete or abandon the item; prove the sealed identifier; installation audit remain. Relevant assertions are in tests/integration/erasure-portability.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-ERASURE-002 — Per-person erasure across separate organization identities
 
@@ -1413,8 +1413,8 @@ Core · push-further · **partial** · Cites BASE-AGENT-005, BASE-INPUT-001, BAS
 1. Under the held company policy, break a callback, expire a certificate and fail recovery mail on separate app journeys; ask the agent to diagnose with source citations, approve a repair and verify end-to-end behavior.
 2. Under the held company policy, deny approval and inject untrusted trace instructions, confirming no configuration or authority changes.
 
-**Evidence.** `tests/auth/agents-proposals.test.mjs`; `tests/integration/agents-browser.test.mjs`; `docs/agent-diagnostics.md`; `scripts/diagnostic-probe.mjs`
-**Gap.** Under the held company policy for access and security, unasserted outcomes in the old cited evidence: break a callback; expire a certificate; fail recovery mail on separate app journeys; ask the agent to diagnose with source citations; approve a repair; verify end-to-end behavior; deny approval; inject untrusted trace instructions; confirming no configuration or authority changes. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/diagnostic-flow.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/agents-proposals.test.mjs` — "the inventory returns only allow-listed fields and no session, passkey, key or token material from a populated store"; `tests/integration/agents-browser.test.mjs`; `docs/agent-diagnostics.md`; `scripts/diagnostic-probe.mjs`
+**Gap.** Missing a cited journey covering the whole clause. Under the held company policy for access and security, unasserted outcomes in the old cited evidence: break a callback; expire a certificate; fail recovery mail on separate app journeys; ask the agent to diagnose with source citations; approve a repair; verify end-to-end behavior; deny approval; inject untrusted trace instructions; confirming no configuration or authority changes. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/diagnostic-flow.mjs, outside this clause’s old Evidence set.
 
 #### AUTH-AGENT-003 — Find orphaned and excessive access
 
@@ -1445,8 +1445,8 @@ Core · push-further · **partial** · From AUTH-AGENT-004 · Cites BASE-ACCESS-
 7. No arbitrary target, new assignment, administrator target, group change or document instruction is accepted.
 8. Under the held company policy, my account revocation ends the next local request; completed changes are not undone and downstream sessions are not claimed revoked.
 
-**Evidence.** `tests/auth/agents-proposals.test.mjs`; `tests/integration/agents-browser.test.mjs`; `docs/delegated-agents.md`
-**Gap.** Under the held company policy for access and security, unasserted outcomes in the old cited evidence: downstream sessions are not claimed revoked. Asserted: authorize an agent to update one approved app assignment until a fixed deadline; invoke its target API/MCP tool; inspect attribution; Deny another person; purpose; resource; target; scope; expired grant; replay/substitution; show; revoke the active grant in My account; prove its next request is refused; the native assignment profile requires owner registration of public keys; exact employee/app limits; fresh employee passkey consent; a different legacy owner/admin's hardware/fresh-email passkey approval; the employee; agent custodian; approver are distinct; Immutable purpose; employer; person; agent; target API; deadline bind a single existing direct employee assignment change; At most five-minute target-bound tokens also require one-use signed execution proof; live authority is rechecked at each door; No arbitrary target; new assignment; administrator target; group change or document instruction is accepted; my account revocation ends the next local request; completed changes are not undone.
+**Evidence.** `tests/auth/agents-proposals.test.mjs` — "a person-consented agent changes exactly one employer assignment after independent employer approval; substitutions, replay and every local ending deny its next request"; `tests/integration/agents-browser.test.mjs`; `docs/delegated-agents.md`
+**Gap.** Missing a cited journey covering the whole clause. Under the held company policy for access and security, unasserted outcomes in the old cited evidence: downstream sessions are not claimed revoked. Existing cited journeys show: authorize an agent to update one approved app assignment until a fixed deadline; invoke its target API/MCP tool; inspect attribution; Deny another person; purpose; resource; target; scope; expired grant; replay/substitution; show; revoke the active grant in My account; prove its next request is refused; the native assignment profile requires owner registration of public keys; exact employee/app limits; fresh employee passkey consent; a different legacy owner/admin's hardware/fresh-email passkey approval; the employee; agent custodian; approver are distinct; Immutable purpose; employer; person; agent; target API; deadline bind a single existing direct employee assignment change; At most five-minute target-bound tokens also require one-use signed execution proof; live authority is rechecked at each door; No arbitrary target; new assignment; administrator target; group change or document instruction is accepted; my account revocation ends the next local request; completed changes are not undone.
 
 #### AUTH-AGENT-007 — Native delegated assignment task profile
 
@@ -1460,8 +1460,8 @@ Core · push-further · **partial** · From AUTH-AGENT-004 · Cites BASE-ACCESS-
 3. Revoking in My account stops future use, says it does not undo a completed change, and offers a request to reverse it.
 4. The native profile remains restricted to its assignment target.
 
-**Evidence.** `tests/auth/agents-proposals.test.mjs`; `tests/integration/agents-browser.test.mjs`; `docs/delegated-agents.md`
-**Gap.** Under the held company policy for access and security, unasserted outcomes in the old cited evidence: says it does not undo a completed change. Asserted: The token names the person; the agent (RFC 8693 `act`); the exact change (RFC 9396); it is issued only after the employee's passkey consent; approval by someone who holds that authority; is not the agent's custodian; Revoking in My account stops future use; offers a request to reverse it; The native profile remains restricted to its assignment target.
+**Evidence.** `tests/auth/agents-proposals.test.mjs` — "a person-consented agent changes exactly one employer assignment after independent employer approval; substitutions, replay and every local ending deny its next request"; `tests/integration/agents-browser.test.mjs`; `docs/delegated-agents.md`
+**Gap.** Missing a cited journey covering the whole clause. Under the held company policy for access and security, unasserted outcomes in the old cited evidence: says it does not undo a completed change. Existing cited journeys show: The token names the person; the agent (RFC 8693 `act`); the exact change (RFC 9396); it is issued only after the employee's passkey consent; approval by someone who holds that authority; is not the agent's custodian; Revoking in My account stops future use; offers a request to reverse it; The native profile remains restricted to its assignment target.
 
 #### AUTH-AGENT-005 — Verify revocation everywhere
 
@@ -1488,8 +1488,8 @@ Core · push-further · **partial** · Cites BASE-AGENT-004, BASE-AGENT-005, BAS
 3. At each resource, deny an unregistered audience, another tool or operation, scope, person, replay and an expired grant.
 4. Revoke in My account and prove the next call is refused.
 
-**Evidence.** `tests/auth/agents-proposals.test.mjs`; `tests/integration/agents-browser.test.mjs`; `docs/delegated-agents.md`; `packages/delegated-resource/index.mjs`
-**Gap.** Under the held company policy for access and security, unasserted outcomes in the old cited evidence: Register a test MCP server; an external API; Authorize one tool; one operation for one person; At each resource; deny an unregistered audience; another tool or operation; scope; person; replay; an expired grant; Revoke in My account; prove the next call is refused. Asserted: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/external-delegation-flow.mjs, outside this clause’s old Evidence set.
+**Evidence.** `tests/auth/agents-proposals.test.mjs` — "registered MCP and external API resources execute one person-consented task; operation, person, scope, audience, replay, expiry and live revocation are enforced at each resource"; `tests/integration/agents-browser.test.mjs`; `docs/delegated-agents.md`; `packages/delegated-resource/index.mjs`
+**Gap.** Missing a cited journey covering the whole clause. Under the held company policy for access and security, unasserted outcomes in the old cited evidence: Register a test MCP server; an external API; Authorize one tool; one operation for one person; At each resource; deny an unregistered audience; another tool or operation; scope; person; replay; an expired grant; Revoke in My account; prove the next call is refused. Existing cited journeys show: the old test entry points run their named journeys, but their outcome assertions have not been cited here. Relevant assertions are in tests/auth/external-delegation-flow.mjs, outside this clause’s old Evidence set.
 
 ## Agent surface
 

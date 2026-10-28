@@ -134,9 +134,9 @@
       "pages": [
         {
           "slug": "contract-done-audit",
-          "title": "Acceptance assertion audit",
+          "title": "Carried-done journey audit",
           "file": "contract/DONE-AUDIT.md",
-          "summary": "Acceptance outcomes traced to the contract\u2019s existing evidence."
+          "summary": "Clause journeys, public doors and retained gaps against the current main reference."
         },
         {
           "slug": "rulings",
