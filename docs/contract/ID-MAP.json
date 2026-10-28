@@ -135,9 +135,10 @@
       ]
     },
     "AUTH-ONBOARD-001": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-ONBOARD-001"
+        "AUTH-ONBOARD-001",
+        "AUTH-ONBOARD-002"
       ]
     },
     "AUTH-TAP-001": {
@@ -201,9 +202,10 @@
       ]
     },
     "AUTH-NOTIFY-001": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-NOTIFY-001"
+        "AUTH-NOTIFY-001",
+        "AUTH-NOTIFY-002"
       ]
     },
     "AUTH-LOGOUT-002": {
@@ -255,9 +257,11 @@
       ]
     },
     "AUTH-SCIM-002": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-SCIM-002"
+        "AUTH-SCIM-002",
+        "AUTH-SCIM-003",
+        "AUTH-SCIM-004"
       ]
     },
     "AUTH-HRIS-001": {
@@ -291,9 +295,10 @@
       ]
     },
     "AUTH-FEDERATION-001": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-FEDERATION-001"
+        "AUTH-FEDERATION-001",
+        "AUTH-FEDERATION-002"
       ]
     },
     "AUTH-SOCIAL-001": {
@@ -339,9 +344,10 @@
       ]
     },
     "AUTH-TOKENS-001": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-TOKENS-001"
+        "AUTH-TOKENS-001",
+        "AUTH-TOKENS-002"
       ]
     },
     "AUTH-HOOKS-001": {
@@ -405,9 +411,10 @@
       ]
     },
     "AUTH-MIGRATION-003": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-MIGRATION-003"
+        "AUTH-MIGRATION-003",
+        "AUTH-MIGRATION-004"
       ]
     },
     "AUTH-DEVELOPER-001": {
@@ -489,9 +496,10 @@
       ]
     },
     "AUTH-ERASURE-001": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-ERASURE-001"
+        "AUTH-ERASURE-001",
+        "AUTH-ERASURE-004"
       ]
     },
     "AUTH-ERASURE-002": {
@@ -507,9 +515,10 @@
       ]
     },
     "AUTH-RETENTION-001": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-RETENTION-001"
+        "AUTH-RETENTION-001",
+        "AUTH-RETENTION-002"
       ]
     },
     "AUTH-TRANSFER-002": {
@@ -537,9 +546,10 @@
       ]
     },
     "AUTH-AGENT-004": {
-      "how": "kept",
+      "how": "split",
       "to": [
-        "AUTH-AGENT-004"
+        "AUTH-AGENT-004",
+        "AUTH-AGENT-007"
       ]
     },
     "AUTH-AGENT-005": {

@@ -8,7 +8,7 @@ Activation permits passkey enrollment with the existing fresh-email and first-fa
 
 People provides Update start time, Reissue activation and Rescind offer. Each requires a hardware administrator session and fresh local email confirmation, rechecked at the write. Rescission revokes local sessions, deletes passkeys, invalidates activation and fences native linked sessions. Maintenance never sends activation after start or rescission. A zero-day lead leaves no pre-start activation window; the hire needs the verified temporary-pass path below. A late hire can be recorded with their actual start time without sending personal activation.
 
-This bounded path supplies no HR-source qualification, live-delivery receipt, automatic reminder or manager escalation, push authenticator, password, downstream provisioning, RADIUS or desktop qualification. These remain in AUTH-ONBOARD-001's Gap.
+This bounded path supplies no HR-source qualification, live-delivery receipt, automatic reminder or manager escalation, push authenticator, password, downstream provisioning, RADIUS or desktop qualification. These remain in AUTH-ONBOARD-001 and AUTH-ONBOARD-002’s Gaps; AUTH-ONBOARD-002 owns personal-contact dispatch and day-one fallback custody.
 
 
 ## Day-one hosted enrollment

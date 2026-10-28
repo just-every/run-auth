@@ -119,6 +119,8 @@ jobs:
           go -C packages/terraform-provider test ./...
           pnpm run test:terraform
       - if: matrix.shard == 'app'
+        run: node src/base/contract-docs.mjs check
+      - if: matrix.shard == 'app'
         run: pnpm exec rer check --profile first-party
       - if: matrix.shard != 'protocol'
         run: pnpm run build

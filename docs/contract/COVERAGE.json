@@ -150,6 +150,12 @@
       "to": "clause",
       "ids": [
         "AUTH-PROTOCOL-001"
+      ],
+      "also": [
+        {
+          "to": "docs",
+          "path": "docs/contract-mechanism.md"
+        }
       ]
     },
     {
@@ -164,7 +170,25 @@
     {
       "file": "CONTRACT.md",
       "line": 45,
-      "text": "**AUTH-BOUNDARY-001 \u2014 Private authorization.** Every private document and API enforces its own session and administrative policy. The seed denies inherited Base operator, invitation, provider and domain management paths. Only bootstrap, Base session inspection and local Base sign-out remain exposed; gated dev entry exists exclusively in the development bundle. Removing the gate removes dev-session authority; production refuses dev proof.",
+      "text": "**AUTH-BOUNDARY-001 \u2014 Private authorization.** ",
+      "to": "clause",
+      "ids": [
+        "AUTH-BOUNDARY-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 45,
+      "text": "Every private document and API enforces its own session and administrative policy.",
+      "to": "base",
+      "ids": [
+        "BASE-ACCESS-002"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 45,
+      "text": " The seed denies inherited Base operator, invitation, provider and domain management paths. Only bootstrap, Base session inspection and local Base sign-out remain exposed; gated dev entry exists exclusively in the development bundle. Removing the gate removes dev-session authority; production refuses dev proof.",
       "to": "clause",
       "ids": [
         "AUTH-BOUNDARY-001"
@@ -218,7 +242,25 @@
     {
       "file": "CONTRACT.md",
       "line": 57,
-      "text": "**CMD-001 \u2014 Commands.** Auth retains the shared RER command dispatcher and verbs. Its edition-owned extensions are documented in AUTH-COMMANDS.md. Setup applies real D1 migrations and claims the first owner. Sign-in begins in the browser, never by presenting an unusable CLI-bound proof. Local recovery writes only a token digest to D1 and stores the raw token in a mode-0600 private file.",
+      "text": "**CMD-001 \u2014 Commands.** ",
+      "to": "clause",
+      "ids": [
+        "CMD-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 57,
+      "text": "Auth retains the shared RER command dispatcher and verbs.",
+      "to": "base",
+      "ids": [
+        "BASE-INSTALL-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 57,
+      "text": " Its edition-owned extensions are documented in AUTH-COMMANDS.md. Setup applies real D1 migrations and claims the first owner. Sign-in begins in the browser, never by presenting an unusable CLI-bound proof. Local recovery writes only a token digest to D1 and stores the raw token in a mode-0600 private file.",
       "to": "clause",
       "ids": [
         "CMD-001"
@@ -336,10 +378,7 @@
       "file": "CONTRACT.md",
       "line": 87,
       "text": "**Current scoped administration semantics (ct 21 Oct 22:55Z; public-door conformance proven):** The original installation retains its issuer and tables. New employers have separate physical stores, path issuers, factors, sessions and signing keys; installation roles confer no directory read/write/export authority in an isolated organization. Existing HTTP tests cover proven-session switching, expiring/cancelled invitations, one-app/one-case delegation and cross-employer denials. All current organizations are isolated. Scoped credential custody and the 1440/390 authority journey pass; named HTTP assertions now cover installation-owner/admin read/write/export and issuer/connector credential refusals, including renamed cookies. The current authority journey passes at 1440 and 390. Complete organization-schema restoration remains under AUTH-TRANSFER-002; current archives fail closed without provisioned destination schemas.",
-      "to": "clause",
-      "ids": [
-        "AUTH-TENANCY-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -354,10 +393,7 @@
       "file": "CONTRACT.md",
       "line": 91,
       "text": "**Current isolation semantics:** every newly created employer is isolated. Installation roles acquire no employer session, membership or directory authority by hosting it. Installation archive export/import refuses an active isolated employer, including an active employer inside a source archive; anonymous evidence from an erased employer remains portable, with credentials and sealed pending remote work excluded. AUTH-TRANSFER-002 inherits a separate employer-owner-authorized archive/restore door before that capability ships. A future installation-operated mode inherits the published permission/resource/rank and independent-proof boundaries before it ships.",
-      "to": "clause",
-      "ids": [
-        "AUTH-TENANCY-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -390,10 +426,7 @@
       "file": "CONTRACT.md",
       "line": 99,
       "text": "**Current scoped administration semantics (ct 21 Oct 22:55Z; public-door conformance proven):** Custom and built-in roles, separate view/edit resource sets, membership-sensitive decisions, previewed grants and audited scoped commands are implemented. Existing HTTP assertions cover equal-rank account-administration refusals, higher-owner administration, viewing without a rank fence and refusal of administrator factor reset. The ratified permission/resource/rank order and immutable built-in ranks are published in `docs/administrator-roles.md`. Named HTTP journeys prove scoped admin API credential custody, rank/no-widening, owner-only isolated custom-role design, exact gain/loss previews and hardware/fresh-email gates; the authority journey proves the current controls at 1440 and 390. Future machine doors inherit AUTH-ADMINAPI-001, and ordinary decisions inherit AUTH-DECISIONS-001 before shipping.",
-      "to": "clause",
-      "ids": [
-        "AUTH-ROLES-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -500,16 +533,22 @@
       "text": "**AUTH-ONBOARD-001 \u2014 New-hire activation before the start date.** For a future hire from an HR source (AUTH-HRIS-001, AUTH-HRIS-002) or created by an administrator, Auth sends an activation invitation to the personal email address on the HR record (or one an administrator enters, marked as an unverified personal contact) at an employer-set lead time before the start date (default 7 days, 0 to 30), with reminders through AUTH-FOLLOWUP-001 and a notice to the hiring manager if it is still unused 2 days before start. The activation link is single use, bound to the person and expires after a set period (default 7 days); reissuing it voids the old one. Opening it proves the personal address; employer policy may add a second check (an SMS code to the HR-recorded mobile number, or an ID-document and selfie check through Persona or CLEAR, whose result and not the document is stored). The hire then enrolls a passkey and the Auth authenticator (AUTH-AUTHENTICATOR-001), and a password where AUTH-ENROLLMENT-001 enables it. Enrollment grants nothing before the authorized start (AUTH-TIMING-001): launcher tiles read \"available from\" the start time, and every launch, token, SAML, RADIUS and desktop sign-in is refused until then. A hire who has not enrolled by the start uses a temporary access pass (AUTH-TAP-001). An HR start-date change moves the gate; a rescinded offer revokes the enrollment and its factors. The personal address is used only for activation and for recovery notices the employer enables, never as a work sign-in identifier.",
       "to": "clause",
       "ids": [
-        "AUTH-ONBOARD-001"
+        "AUTH-ONBOARD-001",
+        "AUTH-ONBOARD-002"
       ]
     },
     {
       "file": "CONTRACT.md",
       "line": 125,
       "text": "CT policy ruling, 27 October 2026: Personal-contact activation is limited to the pre-start window. Auth must not dispatch an initial activation, reissue, retry or reminder to the personal address at or after the current authorized employer-local start time. Recheck the current start time, rescission and sending authority immediately before dispatch. A lead time of zero creates no permitted personal-email activation window and grants no exception. At or after start, only employer-enabled recovery notices may use that address under their existing controls.",
-      "to": "clause",
-      "ids": [
-        "AUTH-ONBOARD-001"
+      "to": "changelog",
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-1"
+          ]
+        }
       ]
     },
     {
@@ -518,7 +557,8 @@
       "text": "Before personal-contact dispatch, record the employer\u2019s authority to use the contact for transactional onboarding and its responsibility for required notice and consent. Importing an address does not prove mailbox ownership or legal consent; opening activation proves only the personal address. The address never becomes a work sign-in identifier or administrator credential.",
       "to": "clause",
       "ids": [
-        "AUTH-ONBOARD-001"
+        "AUTH-ONBOARD-001",
+        "AUTH-ONBOARD-002"
       ]
     },
     {
@@ -527,7 +567,8 @@
       "text": "Preserve day-one onboarding: an unenrolled hire requires the existing temporary-access-pass path, with recorded verification, a manager request where applicable, and issuance by authorized administration or group-scoped help desk. Owner-only handling is interim and cannot satisfy this workforce promise. Existing administrator proof, role scope, enrollment restrictions and start-time access gates remain binding. This ruling removes no original acceptance obligation.",
       "to": "clause",
       "ids": [
-        "AUTH-ONBOARD-001"
+        "AUTH-ONBOARD-001",
+        "AUTH-ONBOARD-002"
       ]
     },
     {
@@ -536,7 +577,8 @@
       "text": "**Acceptance evidence:** From an HR test source, add a hire starting in 10 days with a 7-day lead time; see no invitation until 7 days before start, then the invitation at the HR personal address. Enroll a passkey and push before start; be refused app launch and token issuance until the start time, then launch. Let a second hire's link expire, reissue it and refuse the old link. Move a start date earlier and later and see the gate follow; rescind an offer and see the enrollment revoked. Confirm no message reaches the personal address after start except enabled recovery notices. Assert one initial activation dispatch within a permitted pre-start lead window. For initial activation, explicit reissue, queued retry and reminder, assert zero activation dispatches exactly at start and after start. With lead time zero, assert zero personal activation dispatches and expose the unenrolled hire\u2019s required temporary-pass next step. Move start earlier and later immediately before dispatch and assert the current schedule governs; rescind the offer and assert no dispatch. Refuse personal-contact dispatch without recorded employer authority. Exercise the permitted recovery-notice case separately. Complete the manager-request and scoped-help-desk temporary-pass journey, including refusal outside scope. Preserve the original HR-source, delivered-recipient, enrollment and access-gating journeys; local dispatch assertions alone do not prove them.",
       "to": "clause",
       "ids": [
-        "AUTH-ONBOARD-001"
+        "AUTH-ONBOARD-001",
+        "AUTH-ONBOARD-002"
       ]
     },
     {
@@ -725,7 +767,8 @@
       "text": "**AUTH-NOTIFY-001 \u2014 Employee security notifications and suspicious-activity reports.** Auth sends each employee named security notifications by email to the work address, and as a push in the Auth app where enrolled, for: sign-in from a new device or browser (AUTH-RISK-001's new-device signal), with app, time, approximate location, IP and device; factor enrolled; factor reset or removed, by them or by help desk; password changed or reset; password locked; recovery started (with its cancel action); temporary access pass issued; and an administrator role granted. Employers can turn off individual types except recovery started, factor reset or removed, and administrator role granted, which always send. Every notification carries a one-click \"Report suspicious activity\" action that works from the email without signing in (a signed, single-use link valid for 7 days) and from the Auth app. A report records a suspicious-activity event linked to the triggering event, alerts the security owner through AUTH-FOLLOWUP-001 (email, Slack or Teams, and Oncall per policy), and by policy ends all the person's sessions and refresh grants with back-channel logout and in connected SaaS apps (AUTH-LOGOUT-002), requires a password reset and factor review at next sign-in, or suspends the person pending help desk. Reports and their outcomes are audited, appear in AUTH-AUDIT-001 investigations and stream to the configured SIEM. A notification never contains a sign-in link or code that could itself confer authority.",
       "to": "clause",
       "ids": [
-        "AUTH-NOTIFY-001"
+        "AUTH-NOTIFY-001",
+        "AUTH-NOTIFY-002"
       ]
     },
     {
@@ -734,7 +777,8 @@
       "text": "**Acceptance evidence:** Sign in from a new browser and receive the new-device email with its stated context. Enroll a factor, have help desk reset a factor and change a password, and receive each notification. From the new-device email, while signed out, click \"Report suspicious activity\": see the security owner's escalation in Slack and, under the end-sessions policy, the person's sessions ended and a linked app's back-channel logout delivered. Refuse the report link's reuse and use after expiry. Turn off new-device notices and receive none; try to turn off recovery notices and be refused.",
       "to": "clause",
       "ids": [
-        "AUTH-NOTIFY-001"
+        "AUTH-NOTIFY-001",
+        "AUTH-NOTIFY-002"
       ]
     },
     {
@@ -744,6 +788,12 @@
       "to": "clause",
       "ids": [
         "AUTH-LOGOUT-002"
+      ],
+      "also": [
+        {
+          "to": "docs",
+          "path": "docs/contract-mechanism.md"
+        }
       ]
     },
     {
@@ -896,7 +946,9 @@
       "text": "**AUTH-SCIM-002 \u2014 Inbound directory synchronization.** Employers can make an authorized generic SCIM 2.0 provider, Microsoft Entra ID, Okta or Google Workspace directory the source for users, groups and membership. A source connector has a scoped credential, verified organization binding, source-of-truth fields, conflict preview and reconciliation bounded by AUTH-TIMING-001: pushed SCIM requests applied within 60 seconds, polled deltas at least every 15 minutes and a full reconciliation at least every 24 hours. Deleting an upstream record cannot silently delete audit or grant a reused email authority; a full-feed outage never means every employee left. Its future password-verification or match/create import doors inherit every AUTH-HOOKS-001 signature, minimal-payload, timeout/fail-policy, protected-identity, destination and audited-call obligation before shipping.",
       "to": "clause",
       "ids": [
-        "AUTH-SCIM-002"
+        "AUTH-SCIM-002",
+        "AUTH-SCIM-003",
+        "AUTH-SCIM-004"
       ]
     },
     {
@@ -905,16 +957,23 @@
       "text": "**Acceptance evidence:** Connect each named directory and a generic SCIM client through setup, import paginated users/groups, apply a mover and deactivate a leaver. Send a foreign-tenant request, duplicate event and incomplete/full-empty snapshot; verify isolation, stable IDs and a held destructive change pending confirmation.",
       "to": "clause",
       "ids": [
-        "AUTH-SCIM-002"
+        "AUTH-SCIM-002",
+        "AUTH-SCIM-003",
+        "AUTH-SCIM-004"
       ]
     },
     {
       "file": "CONTRACT.md",
       "line": 219,
       "text": "CT policy ruling, 26 October 2026: Incoming observations remain staged until an authorized organization administrator approves one exact delivery, selected changes and preview digest with hardware passkey and fresh local email proof. Receipt and staging grant no sign-in, enrollment, assignment or authority-changing effect. Execution rechecks current approver authority, approved content and target; drift returns to review, and interruption recovery prevents duplicate effects. Recurring pulls and later deliveries never approve themselves. Missing or empty feeds never infer termination, and outbound reminders require separate audited consent. For this interim approved-delivery profile, execution timing starts at exact approval or the approved future effective time. Record receipt, approval, effective and application times separately. Approval delay remains visible and cannot be excluded when assessing the complete receipt-to-application source promise. The original 60-second pushed application, 15-minute polling and 24-hour full-reconciliation targets remain unchanged; staging alone does not satisfy them or timely deprovisioning. An approved leaver event retains every AUTH-TIMING-001 local-denial and downstream obligation. AUTH-HRIS-002 exact-approval and interruption-recovery protections, AUTH-DIRECTORY-001 identity and planner protections, AUTH-HOOKS-001 import protections and AUTH-FOLLOWUP-003 consent and follow-through obligations remain inherited before their receiving doors ship. Every original acceptance point remains required.",
-      "to": "clause",
-      "ids": [
-        "AUTH-SCIM-002"
+      "to": "changelog",
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-2"
+          ]
+        }
       ]
     },
     {
@@ -948,10 +1007,7 @@
       "file": "CONTRACT.md",
       "line": 227,
       "text": "Current execution follows CT's 24 October ruling: a human approves an exact",
-      "to": "clause",
-      "ids": [
-        "AUTH-HRIS-002"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -1076,7 +1132,8 @@
       "text": "**AUTH-FEDERATION-001 \u2014 Generic upstream federation.** Employers configure generic OIDC and SAML 2.0 upstream IdPs as well as Google Workspace, Microsoft Entra ID and Okta for coexistence, mergers or partner employees. A delegated setup portal verifies domains, issuer/metadata and keys, tests a representative user, previews mappings and activates only after authorized approval. Validate issuer, signature, audience, correlation, clock/replay and trusted subject/email evidence; prevent federation loops, unsolicited account merging and stale configuration admission. Upstream proof never substitutes for the local email/hardware requirements of existing Auth administration. Future machine administration doors inherit AUTH-ADMINAPI-001 credential, scope/resource, excluded-action, live-authority, audit and concurrency checks before shipping.",
       "to": "clause",
       "ids": [
-        "AUTH-FEDERATION-001"
+        "AUTH-FEDERATION-001",
+        "AUTH-FEDERATION-002"
       ]
     },
     {
@@ -1085,16 +1142,22 @@
       "text": "**Acceptance evidence:** Through delegated setup, connect generic SAML/OIDC plus the three named providers, sign in to an assigned downstream app and rotate upstream keys. Refuse an email-only collision, replay, changed issuer/configuration, malicious metadata URL and foreign organization setup; simulate upstream outage and use approved recovery.",
       "to": "clause",
       "ids": [
-        "AUTH-FEDERATION-001"
+        "AUTH-FEDERATION-001",
+        "AUTH-FEDERATION-002"
       ]
     },
     {
       "file": "CONTRACT.md",
       "line": 253,
       "text": "CT policy ruling, 26 October 2026: The interim activation profile is owner-only and limited to exact reviewed ordinary subjects and their immutable mappings. The affected organization\u2019s owner approves with hardware passkey and fresh local email proof; current authority, organization binding, trust configuration and mapping are rechecked at commit, and drift returns to review. Installation authority grants no administration of an isolated organization. A representative test validates upstream proof and previews mappings only: it creates no employee session, authenticated membership, downstream grant or administrator authority. Activation does not itself sign in the employee or bypass assignments, policy or AUTH-PROFILE-001 existing-account and new-identity proof. Record only necessary trust configuration, reviewed bindings, approval facts and redacted validation outcomes; disclosure remains governed by existing claims and scope rules. Upstream proof never replaces local administrator proof. Machine administration remains limited to enabling or disabling approved trust; future machine doors inherit all AUTH-ADMINAPI-001 protections. Every original federation acceptance point remains required.",
-      "to": "clause",
-      "ids": [
-        "AUTH-FEDERATION-001"
+      "to": "changelog",
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-3"
+          ]
+        }
       ]
     },
     {
@@ -1229,7 +1292,8 @@
       "text": "**AUTH-TOKENS-001 \u2014 Refresh and delegated session lifecycle.** Explicitly registered non-RER profiles may grant offline access with least-privilege consent, refresh-token rotation, reuse detection, family revocation, idle/absolute expiry and sender/client binding appropriate to the profile. Web/native SDKs rotate safely across concurrent requests without concealing replay. Employees and administrators see active app/device grants and can revoke them; disabling a person, app or grant prevents refresh and triggers supported app/session revocation. AUTH-PROTOCOL-001 continues to offer no refresh/offline access.",
       "to": "clause",
       "ids": [
-        "AUTH-TOKENS-001"
+        "AUTH-TOKENS-001",
+        "AUTH-TOKENS-002"
       ]
     },
     {
@@ -1238,17 +1302,15 @@
       "text": "**Acceptance evidence:** Use a native SDK to obtain an approved refresh grant, rotate it, replay an old token and revoke the family through My account. Run concurrent refresh, expiry, suspension and app removal, confirming the resource API refuses invalid authority and strict RER clients receive no refresh token.",
       "to": "clause",
       "ids": [
-        "AUTH-TOKENS-001"
+        "AUTH-TOKENS-001",
+        "AUTH-TOKENS-002"
       ]
     },
     {
       "file": "CONTRACT.md",
       "line": 289,
       "text": "**Current profile:** An administrator explicitly binds a general OIDC client to its own app's resource API, published scopes and chosen idle/absolute lifetimes; there are no implicit offline grants. Each person consents to the exact app/device, audience, scopes and lifetimes. S256 PKCE, registered client authentication and ES256 DPoP bind the grant. Refresh digests rotate with one winner; authenticated consumed-token reuse ends the family without a grace interval or cached successor. The SDK coalesces concurrent calls and commits storage before publishing a successor; failures require deliberate new consent. Resource decisions recheck the family, current account/app/assignment, policy and API/profile revisions and preserve the app's subject policy. Browser expiry alone does not end an offline grant; explicit source-session revocation, account/app/profile endings and either grant expiry do. My account and scoped administrator doors retain the existing permission, view/edit resource, hardware/fresh-email and account-rank fences. Supported OIDC logout is queued without claiming remote deletion. Credentials and family authority are nonportable, and the shared registry covers erasure/retention. AUTH-DEVELOPER-001 and AUTH-MOBILE-001 inherit these SDK storage, binding, concurrency and failure semantics before adding framework/native packages; AUTH-AGENT-006 remains a separate task profile.",
-      "to": "clause",
-      "ids": [
-        "AUTH-TOKENS-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -1379,7 +1441,43 @@
     {
       "file": "CONTRACT.md",
       "line": 319,
-      "text": "**AUTH-AUDIT-001 \u2014 Identity investigation and reporting.** Employees see their sign-in/device/grant history; authorized investigators search and correlate sign-ins, policy decisions, enrollment/recovery, app provisioning, approvals, agent actions and downstream confirmations. Reports show active workers, app/role/license assignments and orphaned access, and the named per-person reports of AUTH-REPORTS-001 (MFA enrollment, terminated people, administrators and privileged roles, dormant accounts, joiner/leaver timeliness, connector health), with unknown freshness explicit. Tenant-filtered export and streams to Datadog, Splunk, Microsoft Sentinel and the Evidence sibling carry stable event IDs, actor/delegate, target, time, policy revision and outcome; no secrets or raw tokens enter logs. Compliance platforms that test the identity provider through a live connection (Vanta, Drata, Secureframe, Thoropass) receive per-person state through AUTH-COMPLIANCE-001, not a log export. Durable tamper-evident audit survives subject erasure with anonymized references. Out of the box, sign-in, administration and decision events are searchable and exportable through the UI and a paginated log API for 13 months (AUTH-RETENTION-001's default).",
+      "text": "**AUTH-AUDIT-001 \u2014 Identity investigation and reporting.** Employees see their sign-in/device/grant history; authorized investigators search and correlate sign-ins, policy decisions, enrollment/recovery, app provisioning, approvals, agent actions and downstream confirmations. Reports show active workers, app/role/license assignments and orphaned access, and the named per-person reports of AUTH-REPORTS-001 (MFA enrollment, terminated people, administrators and privileged roles, dormant accounts, joiner/leaver timeliness, connector health), with unknown freshness explicit. Tenant-filtered export and streams to Datadog, Splunk, Microsoft Sentinel and the Evidence sibling carry stable event IDs, actor/delegate, target, time, policy revision and outcome; ",
+      "to": "clause",
+      "ids": [
+        "AUTH-AUDIT-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 319,
+      "text": "no secrets or raw tokens enter logs.",
+      "to": "base",
+      "ids": [
+        "BASE-SECRET-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 319,
+      "text": " Compliance platforms that test the identity provider through a live connection (Vanta, Drata, Secureframe, Thoropass) receive per-person state through AUTH-COMPLIANCE-001, not a log export. ",
+      "to": "clause",
+      "ids": [
+        "AUTH-AUDIT-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 319,
+      "text": "Durable tamper-evident audit survives subject erasure with anonymized references.",
+      "to": "base",
+      "ids": [
+        "BASE-AUDIT-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 319,
+      "text": " Out of the box, sign-in, administration and decision events are searchable and exportable through the UI and a paginated log API for 13 months (AUTH-RETENTION-001's default).",
       "to": "clause",
       "ids": [
         "AUTH-AUDIT-001"
@@ -1472,7 +1570,8 @@
       "text": "**AUTH-MIGRATION-003 \u2014 Cutover enrollment campaign.** Incumbent passwords and factor enrollments cannot be exported, so switching from Okta, Entra ID or JumpCloud includes an enrollment campaign that gets every employee enrolled in Auth before cutover without help desk. The administrator federates the incumbent as an upstream for the campaign (AUTH-FEDERATION-001: Okta, Entra ID or JumpCloud over OIDC or SAML) and sets a cohort, an enrollment deadline and a cutover date. Each employee is notified at their work address and in Slack or Teams (AUTH-FOLLOWUP-001), signs in to Auth with their current incumbent sign-in, including its MFA, as proof of identity, and enrolls a passkey and the Auth authenticator, plus a password where AUTH-ENROLLMENT-001 enables it. Auth binds the incumbent's immutable subject to the person AUTH-MIGRATION-001 staged, never by email match alone. Where the incumbent's API allows verifying a password (Okta's Authentication API), an optional bridge checks the employee's current password at their campaign sign-in and keeps it as their Auth password under AUTH-PASSWORD-001, so VPN users keep working at cutover. A campaign dashboard shows each person as enrolled, pending, overdue or exempt, with factor types, per-cohort counts and the number left before cutover. Reminders escalate to the manager 3 days before the deadline and to the administrator at the deadline, and the straggler list exports. Federated campaign proof is accepted only during the campaign window and only for staged people. After cutover the federation is removed, and anyone not enrolled uses a temporary access pass (AUTH-TAP-001). Campaign proof never confers administrator authority; administrators enroll under AUTH-IDENTITY-001.",
       "to": "clause",
       "ids": [
-        "AUTH-MIGRATION-003"
+        "AUTH-MIGRATION-003",
+        "AUTH-MIGRATION-004"
       ]
     },
     {
@@ -1481,16 +1580,22 @@
       "text": "**Acceptance evidence:** In an authorized Okta test tenant with 20 staged employees, run a campaign: all 20 enroll through Okta-federated proof with no help-desk action while the dashboard counts down. Leave 3 unenrolled and see them named as overdue with manager reminders and in the export. Refuse a person whose email matches but whose Okta subject differs, an unstaged person, proof after the campaign window and campaign proof for an administrator. Bridge one employee's Okta password and sign in with it at RADIUS after cutover. Repeat the enrollment proof with Entra ID and JumpCloud as upstreams.",
       "to": "clause",
       "ids": [
-        "AUTH-MIGRATION-003"
+        "AUTH-MIGRATION-003",
+        "AUTH-MIGRATION-004"
       ]
     },
     {
       "file": "CONTRACT.md",
       "line": 345,
       "text": "CT policy ruling, 26 October 2026: The owner may explicitly select a cohort manager. Sending that manager enrollment reminders requires separate audited outbound consent in a policy write by the organization owner or a role holding the published manage-follow-up permission, with hardware passkey and fresh local email proof rechecked at commit. Campaign creation, a directory manager field and existing reminder consent do not grant this consent. Each manager notice contains only the affected employee\u2019s name, work address and enrollment deadline. Dispatch rechecks the selected manager\u2019s current organization membership, state and cohort duty; a failed recheck follows the existing approved escalation rule. The notice grants no enrollment, recovery, approval or administrator authority and contains no credential or proof-bypassing link. Consent, dispatch outcomes and stopping history remain subject to AUTH-FOLLOWUP-001, AUTH-FOLLOWUP-002, AUTH-RETENTION-001 and AUTH-ERASURE-001. Completion, cancellation or expired campaign authority stops reminders. This policy does not replace any enrollment, channel, escalation, export, cutover or provider acceptance requirement.",
-      "to": "clause",
-      "ids": [
-        "AUTH-MIGRATION-003"
+      "to": "changelog",
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-4"
+          ]
+        }
       ]
     },
     {
@@ -1524,10 +1629,7 @@
       "file": "CONTRACT.md",
       "line": 353,
       "text": "**Current v1 semantics:** Exposes native people/profile/lifecycle, groups/rules/membership, SAML/OIDC company apps and assignments, exact-domain provider requirements, configured-provider availability, domains and safe audit reads. Resource sets are explicit people/group/app IDs; creation requires unrestricted access to the new resource kind, and compound effects must remain within the grant. Provider identity and credentials remain owner configuration; `idps.manage` enables or disables that configuration and cannot replace its issuer, client or bindings. Tokens are issuer-local, at most five minutes, with live owner/revision/IP checks; mutations use guarded native commands and atomic shared-revision ETags. AUTH-ROLES-001, AUTH-POLICY-001 and AUTH-FEDERATION-001 inherit the same scoped, excluded-action, audit and concurrency obligations for their future machine doors before shipping.",
-      "to": "clause",
-      "ids": [
-        "AUTH-ADMINAPI-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -1605,10 +1707,7 @@
       "file": "CONTRACT.md",
       "line": 371,
       "text": "**Reminder policy (ct 22 Oct):** Reminder policy (channels, schedules, escalation, recipient rules) is an organization administrator write under AUTH-DECISIONS-001, by the owner or a role holding the published 'manage follow-up' permission; installation roles have none in an isolated organization. Until that write, obligations stay visible in Activity and no reminder is sent. Recipients are roles, never addresses: the person whose action is due (the employee for their own enrollment or recovery, the decider AUTH-DECISIONS-001 names for a request or review, the help desk holding the case), with escalation to an owner or administrator the policy names. Each recipient is rechecked at dispatch against current membership, state and authority; a failed recheck escalates instead. No recipient outside the organization, no free-text address, and no reminder carries a credential or a link that acts without its door's own proof. A reminder never performs a destructive or authority-changing action, and transport acknowledgment never counts as access success. Anyone currently holding an obligation may send its due reminder early, only to recipients the policy already allows. Source completion, cancellation or expired authority stops reminders at the next dispatch; history is kept under AUTH-RETENTION-001 and erased under AUTH-ERASURE-001.",
-      "to": "clause",
-      "ids": [
-        "AUTH-FOLLOWUP-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -1703,7 +1802,25 @@
     {
       "file": "CONTRACT.md",
       "line": 393,
-      "text": "**AUTH-OPS-001 \u2014 Operate a company identity service.** Self-operation is the delivery model this contract measures: the employer's owner deploys, upgrades, monitors, backs up and recovers the installation. An install RER Managed provisions holds RER link-approval trust (AUTH-RER-TRUST-001), and that provisioning belongs to RER Managed, not to this seed (`seed.json` non-goals); the operations page names who operates each installation, and the objectives below bind whichever operator runs it. Owners can deploy, upgrade, monitor, back up and recover a US-first identity installation with explicit issuer/key custody, US data-region choices, maintenance/incident runbooks, capacity and recoverable connector state. The published objectives for the supported production deployment (Cloudflare Workers with D1, as `deploy.json` defines it) are: 99.99% monthly availability of sign-in, token, SAML, WS-Federation, RADIUS and launcher endpoints and 99.9% of the admin console; recovery time objective 1 hour and recovery point objective 5 minutes for a regional failure or a restore from backup; p95 server-side latency at a US edge of at most 300 ms for an authorization or SAML response and at most 200 ms for a token or UserInfo response, excluding the person's own interaction and upstream/push wait; and RADIUS responses within 2 seconds plus the person's push response. Measurements over each month are published on the operations page with the method used. Uptime monitors sign-in/provisioning health and Oncall receives actionable incidents. Administrators see active-worker, app, SMS/email and connector usage with USD price/cost rules and exportable forecasts before enabling billable providers; estimates distinguish measured usage and provider charges. No certification, service level or hosted capacity is claimed without measurement.",
+      "text": "**AUTH-OPS-001 \u2014 Operate a company identity service.** ",
+      "to": "clause",
+      "ids": [
+        "AUTH-OPS-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 393,
+      "text": "Self-operation is the delivery model this contract measures: the employer's owner deploys, upgrades, monitors, backs up and recovers the installation.",
+      "to": "base",
+      "ids": [
+        "BASE-INSTALL-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 393,
+      "text": " An install RER Managed provisions holds RER link-approval trust (AUTH-RER-TRUST-001), and that provisioning belongs to RER Managed, not to this seed (`seed.json` non-goals); the operations page names who operates each installation, and the objectives below bind whichever operator runs it. Owners can deploy, upgrade, monitor, back up and recover a US-first identity installation with explicit issuer/key custody, US data-region choices, maintenance/incident runbooks, capacity and recoverable connector state. The published objectives for the supported production deployment (Cloudflare Workers with D1, as `deploy.json` defines it) are: 99.99% monthly availability of sign-in, token, SAML, WS-Federation, RADIUS and launcher endpoints and 99.9% of the admin console; recovery time objective 1 hour and recovery point objective 5 minutes for a regional failure or a restore from backup; p95 server-side latency at a US edge of at most 300 ms for an authorization or SAML response and at most 200 ms for a token or UserInfo response, excluding the person's own interaction and upstream/push wait; and RADIUS responses within 2 seconds plus the person's push response. Measurements over each month are published on the operations page with the method used. Uptime monitors sign-in/provisioning health and Oncall receives actionable incidents. Administrators see active-worker, app, SMS/email and connector usage with USD price/cost rules and exportable forecasts before enabling billable providers; estimates distinguish measured usage and provider charges. No certification, service level or hosted capacity is claimed without measurement.",
       "to": "clause",
       "ids": [
         "AUTH-OPS-001"
@@ -1757,20 +1874,37 @@
     {
       "file": "CONTRACT.md",
       "line": 407,
-      "text": "**AUTH-ERASURE-001 \u2014 Authorized erasure with retained accountability.** Owners erase under explicit retention/legal-hold policy, after an exact preview tied to the current revision and counts and a confirmation rechecked at commit, with hardware passkey and fresh local email proof (AUTH-IDENTITY-001); erasure is never scheduled and no erase permission is delegable. An organization owner erases people, app connections and memberships in their organization; the installation owner erases or resets organizations and the installation, and erases a person's installation identity under AUTH-ERASURE-002. Erasure removes profiles, factor keys, invitations, grants, staged/import copies, connector credentials and dependent personal data across one shared store registry used by preview, erasure, export and restore, which refuses any store it does not know. It cuts off access at once (sessions, tokens, back-channel logout, connector deactivation) without further consent; deleting data held by a downstream app needs the owner's consent per destination, and no remote deletion is automatic. Unfinished remote work is reported separately and keeps only the minimum destination identifier it needs, sealed, until it completes or is explicitly abandoned. A legal hold naming the subject refuses the whole erasure (target: erase the unheld remainder and keep the held part restricted behind audited access, erased later only on a fresh preview and reconfirmation). Durable audit/decision evidence uses anonymized references whose tamper evidence still verifies, with a per-store completion receipt and portability fence; restore cannot resurrect erased records when given the later erasure journal (AUTH-TRANSFER-002). AUTH-RETENTION-001 expiry is not erasure and is unaffected. Already delivered messages, exported archives, external audit sinks and independently held provider data have named limits, owners and partner deletion instructions and are never reported as erased. Suspension alone is not erasure; the last owner requires a protected reset/transfer path. A protected organization reset, which removes the organization's issuer and its last owner and sessions, leaves only anonymous receipts and outcomes (no name, email, profile, directory, destination identifier, signing key or credential) and sealed remote work pending at reset, sealed to the installation and never shown or exported in clear; both pass to installation owner custody alone. No other caller authority from the organization survives: its owners, administrators, members, sessions, service apps, preparer keys and invitations end, and the erased issuer answers not found at every door. The installation owner sees each item's app, operation, state and outcome, never the person or destination identifier, and may retry or abandon it under AUTH-IDENTITY-001 proof. A retry performs only work already authorized: revocation as recorded, and deletion only where the organization's owner consented per destination before the reset. Because the organization's connector credential is destroyed, a retry needs a new connection the installation owner explicitly authorizes for that destination, verified to reach the same remote tenant, limited to that work and destroyed with it; without one the item stays blocked with partner deletion instructions. Completion or abandonment destroys the sealed identifier and keeps an anonymous outcome. Every view, retry, connection and abandonment is recorded in the installation audit.",
+      "text": "**AUTH-ERASURE-001 \u2014 Authorized erasure with retained accountability.** Owners erase under explicit retention/legal-hold policy, after an exact preview tied to the current revision and counts and a confirmation rechecked at commit, with hardware passkey and fresh local email proof (AUTH-IDENTITY-001); erasure is never scheduled and no erase permission is delegable. An organization owner erases people, app connections and memberships in their organization; the installation owner erases or resets organizations and the installation, and erases a person's installation identity under AUTH-ERASURE-002. Erasure removes profiles, factor keys, invitations, grants, staged/import copies, connector credentials and dependent personal data across one shared store registry used by preview, erasure, export and restore, which refuses any store it does not know. It cuts off access at once (sessions, tokens, back-channel logout, connector deactivation) without further consent; deleting data held by a downstream app needs the owner's consent per destination, and no remote deletion is automatic. Unfinished remote work is reported separately and keeps only the minimum destination identifier it needs, sealed, until it completes or is explicitly abandoned. A legal hold naming the subject refuses the whole erasure (target: erase the unheld remainder and keep the held part restricted behind audited access, erased later only on a fresh preview and reconfirmation). ",
       "to": "clause",
       "ids": [
-        "AUTH-ERASURE-001"
+        "AUTH-ERASURE-001",
+        "AUTH-ERASURE-004"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 407,
+      "text": "Durable audit/decision evidence uses anonymized references whose tamper evidence still verifies, with a per-store completion receipt and portability fence;",
+      "to": "base",
+      "ids": [
+        "BASE-AUDIT-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 407,
+      "text": " restore cannot resurrect erased records when given the later erasure journal (AUTH-TRANSFER-002). AUTH-RETENTION-001 expiry is not erasure and is unaffected. Already delivered messages, exported archives, external audit sinks and independently held provider data have named limits, owners and partner deletion instructions and are never reported as erased. Suspension alone is not erasure; the last owner requires a protected reset/transfer path. A protected organization reset, which removes the organization's issuer and its last owner and sessions, leaves only anonymous receipts and outcomes (no name, email, profile, directory, destination identifier, signing key or credential) and sealed remote work pending at reset, sealed to the installation and never shown or exported in clear; both pass to installation owner custody alone. No other caller authority from the organization survives: its owners, administrators, members, sessions, service apps, preparer keys and invitations end, and the erased issuer answers not found at every door. The installation owner sees each item's app, operation, state and outcome, never the person or destination identifier, and may retry or abandon it under AUTH-IDENTITY-001 proof. A retry performs only work already authorized: revocation as recorded, and deletion only where the organization's owner consented per destination before the reset. Because the organization's connector credential is destroyed, a retry needs a new connection the installation owner explicitly authorizes for that destination, verified to reach the same remote tenant, limited to that work and destroyed with it; without one the item stays blocked with partner deletion instructions. Completion or abandonment destroys the sealed identifier and keeps an anonymous outcome. Every view, retry, connection and abandonment is recorded in the installation audit.",
+      "to": "clause",
+      "ids": [
+        "AUTH-ERASURE-001",
+        "AUTH-ERASURE-004"
       ]
     },
     {
       "file": "CONTRACT.md",
       "line": 409,
       "text": "**Current erasure semantics (ct 21 Oct 22:55Z; custody conformance proven):** Owner proof, explicit policy, exact preview/confirmation, whole-hold refusal, per-store erasure, separate remote outcomes, the shared fail-closed registry and signed anonymous audit are implemented. The ratified reset policy separates anonymous receipts/outcomes from sealed pending identifiers, destroys employer connector credentials and limits installation-owner custody to previously authorized work through a fresh tenant-bound connection. HTTP journeys prove those custody requirements, erased-issuer doors, root audit and cleanup. Named HTTP assertions also cover owner hardware/fresh-email gates, installation-admin refusal, unknown-registry refusal, stale person previews, employer-owner erasure, live credential termination, successful revocation retry without deletion consent and external-copy limitations. CT 22 Oct 00:20Z assigns voluntary membership links and opaque release obligations to AUTH-ERASURE-002. Installation-identity erasure does not search, match, enumerate or wait on separate employer identities. The Base journal currently refuses the whole earlier archive; restore that applies the journal and restores inactive remains AUTH-TRANSFER-002. Whole-hold refusal is the conservative interim, and AUTH-RETENTION-001 expiry remains separate.",
-      "to": "clause",
-      "ids": [
-        "AUTH-ERASURE-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -1778,7 +1912,8 @@
       "text": "**Acceptance evidence:** Erase a worker with multiple factors, imports, agent grants and SaaS access through the owner door; query/export all stores, inspect receipt and anonymized audit, and attempt restore of a pre-erasure archive with the later journal. Keep a blocked remote deletion visible, test legal hold and last-owner protection, then reset a local installation.",
       "to": "clause",
       "ids": [
-        "AUTH-ERASURE-001"
+        "AUTH-ERASURE-001",
+        "AUTH-ERASURE-004"
       ]
     },
     {
@@ -1794,10 +1929,7 @@
       "file": "CONTRACT.md",
       "line": 415,
       "text": "**Receipt access (ct 23 Oct 10:25Z, approved with riders):** A person explicitly requests their own key from their own passkey session. It is shown once, stored only as a digest and body-posted, never placed in a URL or log. It reads only that person's receipt and cannot sign in, erase an identity or list memberships. It expires after thirteen months; the person may explicitly surrender it, including after sign-in ends. Expiry and revocation retain anonymous facts and clear the receipt payload. Each notice in the receipt carries only its random handle, erasure reference and state, with no employer, organization or count. CT requires this clause to remain partial.",
-      "to": "clause",
-      "ids": [
-        "AUTH-ERASURE-002"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -1820,10 +1952,19 @@
     {
       "file": "CONTRACT.md",
       "line": 421,
-      "text": "**AUTH-RETENTION-001 \u2014 Explicit retention and secret custody.** The product publishes employer-controlled retention for profiles, source snapshots, authentication/decision history, provisioning obligations, audit, model traces and erasure receipts, including retention holds and US storage/processor choices. Out of the box, sign-in, administration and decision audit is kept for 13 months, configurable up to 7 years; the employer can never set it below 90 days, and no event is deleted while an open access review, access request, investigation or legal hold refers to its period. Before any scheduled deletion, the employer can export what will be deleted. Expiry of short-lived challenge/rate-limit/token state cannot delete the only evidence of an unfinished obligation or improve a completion report. Encryption, scoped access and rotation protect signing/connector secrets at rest and in transit; raw credentials and authentication links never enter model context, ordinary logs, public assets or portable archives.",
+      "text": "**AUTH-RETENTION-001 \u2014 Explicit retention and secret custody.** The product publishes employer-controlled retention for profiles, source snapshots, authentication/decision history, provisioning obligations, audit, model traces and erasure receipts, including retention holds and US storage/processor choices. Out of the box, sign-in, administration and decision audit is kept for 13 months, configurable up to 7 years; the employer can never set it below 90 days, and no event is deleted while an open access review, access request, investigation or legal hold refers to its period. Before any scheduled deletion, the employer can export what will be deleted. Expiry of short-lived challenge/rate-limit/token state cannot delete the only evidence of an unfinished obligation or improve a completion report. ",
       "to": "clause",
       "ids": [
         "AUTH-RETENTION-001"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 421,
+      "text": "Encryption, scoped access and rotation protect signing/connector secrets at rest and in transit; raw credentials and authentication links never enter model context, ordinary logs, public assets or portable archives.",
+      "to": "base",
+      "ids": [
+        "BASE-SECRET-001"
       ]
     },
     {
@@ -1832,7 +1973,8 @@
       "text": "**Acceptance evidence:** On a default installation, confirm 13-month audit retention; try to set it to 30 days and be refused; open a review over a period and see its events kept past their expiry. Populate every retained class, age it across each configured expiry, restart and inspect the public history/export doors: transient secrets expire, retained history and unresolved obligations remain, held data is preserved and scheduled deletion produces accountable results. Rotate a connector/signing key and verify secrets absent from logs/assets/archive.",
       "to": "clause",
       "ids": [
-        "AUTH-RETENTION-001"
+        "AUTH-RETENTION-001",
+        "AUTH-RETENTION-002"
       ]
     },
     {
@@ -1841,7 +1983,8 @@
       "text": "Current expiry uses eight configurable classes with a 13-calendar-month default, a 90-day floor and seven-calendar-year maximum. Default ADOPTED pending ct: scheduled expiry waits for an explicit audited policy confirmation; non-audit classes inherit that default; terminated profile expiry anonymizes name/email and expired fields while retaining identity/state; erasure holds protect the whole employer and unfinished work protects its evidence period. Each exact deletion set has a seven-day export window and at most 200 rows, with live hold/state rechecks and authenticated anonymous expiry commitments preserving erasure audit verification. Storage/processor selection is disclosed as employer deployment configuration, without claiming verified residency.",
       "to": "clause",
       "ids": [
-        "AUTH-RETENTION-001"
+        "AUTH-RETENTION-001",
+        "AUTH-RETENTION-002"
       ]
     },
     {
@@ -1919,10 +2062,20 @@
     {
       "file": "CONTRACT.md",
       "line": 445,
-      "text": "**AUTH-AGENT-004 \u2014 Person-bound delegated agent identities.** People can consent to an OAuth/MCP or external-API task identity bound to accountable person, employer, agent, purpose, target resource/API, exact scopes, duration and expiry. A visible consent screen explains the concrete effects, required independent approvals and revocation reach; tokens are short-lived, target-bound and separately attributable, never reusable human sessions or preparer keys. New scopes/purpose/targets and privilege escalation require new explicit consent; employer/person/agent suspension, task completion or expiry ends authority. Untrusted app/document text cannot enlarge it.",
+      "text": "**AUTH-AGENT-004 \u2014 Person-bound delegated agent identities.** People can consent to an OAuth/MCP or external-API task identity bound to accountable person, employer, agent, purpose, target resource/API, exact scopes, duration and expiry. A visible consent screen explains the concrete effects, required independent approvals and revocation reach; tokens are short-lived, target-bound and separately attributable, never reusable human sessions or preparer keys. New scopes/purpose/targets and privilege escalation require new explicit consent; employer/person/agent suspension, task completion or expiry ends authority. ",
       "to": "clause",
       "ids": [
-        "AUTH-AGENT-004"
+        "AUTH-AGENT-004",
+        "AUTH-AGENT-007"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 445,
+      "text": "Untrusted app/document text cannot enlarge it.",
+      "to": "base",
+      "ids": [
+        "BASE-AGENT-005"
       ]
     },
     {
@@ -1931,7 +2084,8 @@
       "text": "**Acceptance evidence:** Authorize an agent to update one approved app assignment until a fixed deadline, invoke its target API/MCP tool and inspect attribution. Deny another person, purpose, resource, target, scope, expired grant and replay/substitution; show and revoke the active grant in My account and prove its next request is refused.",
       "to": "clause",
       "ids": [
-        "AUTH-AGENT-004"
+        "AUTH-AGENT-004",
+        "AUTH-AGENT-007"
       ]
     },
     {
@@ -1940,7 +2094,8 @@
       "text": "**Current delegated-task profile (ct 22 Oct 00:20Z; conformance endorsed 22 Oct 04:52Z):** The native assignment profile requires owner registration of public keys and exact employee/app limits, fresh employee passkey consent, and a different legacy owner/admin's hardware/fresh-email passkey approval. The employee, agent custodian and approver are distinct. Immutable purpose, employer, person, agent, target API, resource, scope and deadline bind a single existing direct employee assignment change. At most five-minute target-bound tokens also require one-use signed execution proof; live authority is rechecked at each door. No arbitrary target, new assignment, administrator target, group change or document instruction is accepted. My account revocation ends the next local request; completed changes are not undone and downstream sessions are not claimed revoked. Future task profiles inherit these consent, approval, audience, resource, proof and live-revocation obligations before shipping.",
       "to": "clause",
       "ids": [
-        "AUTH-AGENT-004"
+        "AUTH-AGENT-004",
+        "AUTH-AGENT-007"
       ]
     },
     {
@@ -1949,7 +2104,8 @@
       "text": "**Native profile (ct 22 Oct 00:20Z):** The first native profile changes one existing direct app assignment through a DPoP-bound (RFC 9449), audience-restricted, one-use token valid for at most five minutes. The token names the person, the agent (RFC 8693 `act`) and the exact change (RFC 9396). It is issued only after the employee's passkey consent and approval by someone who holds that authority and is not the agent's custodian. Revoking in My account stops future use, says it does not undo a completed change, and offers a request to reverse it.",
       "to": "clause",
       "ids": [
-        "AUTH-AGENT-004"
+        "AUTH-AGENT-004",
+        "AUTH-AGENT-007"
       ]
     },
     {
@@ -1958,7 +2114,8 @@
       "text": "The native profile remains restricted to its assignment target. AUTH-AGENT-006 ships a separate registered MCP/external-API POST profile, which inherits every obligation of this clause and its native profile: sender constraint, audience restriction, the five-minute one-use token, the `act` and exact `authorization_details`, passkey consent bound to the digest, a distinct employee, custodian and approver, a recheck at execution, attributed audit of every step and refusal, live endings, and My account revocation.",
       "to": "clause",
       "ids": [
-        "AUTH-AGENT-004"
+        "AUTH-AGENT-004",
+        "AUTH-AGENT-007"
       ]
     },
     {
@@ -1982,10 +2139,19 @@
     {
       "file": "CONTRACT.md",
       "line": 460,
-      "text": "**AUTH-AGENT-006 \u2014 External and MCP delegated task identities.** Remote MCP servers and external APIs are registered with Auth as resources, each with an audience, published scopes and `authorization_details` types. An agent calls one for a person only with a task identity issued for that resource under AUTH-AGENT-004. A resource that is not registered receives no token.",
+      "text": "**AUTH-AGENT-006 \u2014 External and MCP delegated task identities.** Remote MCP servers and external APIs are registered with Auth as resources, each with an audience, published scopes and `authorization_details` types. An agent calls one for a person only with a task identity issued for that resource under AUTH-AGENT-004. ",
       "to": "clause",
       "ids": [
         "AUTH-AGENT-006"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 460,
+      "text": "A resource that is not registered receives no token.",
+      "to": "base",
+      "ids": [
+        "BASE-AGENT-004"
       ]
     },
     {
@@ -2077,10 +2243,7 @@
       "line": 507,
       "cell": "gap",
       "text": "No acceptance gap remains.",
-      "to": "gap",
-      "ids": [
-        "AUTH-DOMAINS-001"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2119,7 +2282,8 @@
       "text": "Administrator-created hires support unverified personal contacts, employer-local start times, bounded lead time, digest-only single-use activation, passkey enrollment, reissue and rescission. Personal activation is enrollment-only; ordinary work-address proof remains required for application access. Local scheduling and native SAML and OIDC gates are proved. HR-source ingestion and start-date qualification, authorized HR test source and verified delivery recipient, live delivered invitations and reminders, manager escalation with outbound authority, optional SMS and Persona or CLEAR checks, Auth authenticator and password enrollment, temporary-pass fallback, downstream joiner provisioning, RADIUS, desktop and every other device or network acceptance point remain unproved. Uncertain activation delivery needs explicit reissue. Zero-day lead has no pre-start activation window; late enrollment still depends on the unbuilt temporary-pass path. CT policy approval does not complete AUTH-ONBOARD-001. Zero-day and missed-window onboarding still require the unbuilt AUTH-TAP-001 fallback and its scoped issuance and refusal proof. Recorded personal-contact authority, required notice and consent handling, dispatch-boundary proofs for initial activation, reissue, retry and reminder, and live recipient proof remain unestablished. Mail accepted by a provider before start may arrive afterward; the original delivered-message acceptance sentence remains unproved, including that in-flight delivery boundary. The strict cutoff is interim and does not remove day-one onboarding or any existing acceptance obligation. Native contact-authority recording, dispatch-boundary refusals for initial sends and explicit reissues, retries and reminders, and hosted manager-requested scoped temporary-pass enrollment are implemented; the complete AUTH-TAP-001 obligation, live recipient delivery and in-flight provider boundary remain open.",
       "to": "gap",
       "ids": [
-        "AUTH-ONBOARD-001"
+        "AUTH-ONBOARD-001",
+        "AUTH-ONBOARD-002"
       ]
     },
     {
@@ -2219,7 +2383,16 @@
       "text": "Push notices depend on AUTH-AUTHENTICATOR-001. Password-changed and password-lockout notices depend on AUTH-PASSWORD-001; temporary access pass notices depend on AUTH-TAP-001. Remaining: all factor-removal and role-grant doors, connected SaaS session revocation under AUTH-LOGOUT-002, additional report responses, Oncall escalation and configured SIEM qualification. Conservative default awaiting ct approval: owner or passkey administrator plus fresh email must explicitly authorize the new email channel and recipients; mandatory types cannot subsequently be disabled, and Slack or destructive report responses require separate audited consent. Existing recovery notices continue before that initial consent.",
       "to": "gap",
       "ids": [
-        "AUTH-NOTIFY-001"
+        "AUTH-NOTIFY-001",
+        "AUTH-NOTIFY-002"
+      ],
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-104"
+          ]
+        }
       ]
     },
     {
@@ -2299,7 +2472,9 @@
       "text": "Partial remains unchanged. Native connectors stage observations and apply only exact human-approved changes. Remaining Gaps are complete live provider mover and leaver qualification, Google Workspace directory delegation, measured pushed and polling bounds, full-reconciliation timing, receipt-to-application timeliness while human approval is pending, directory stale-source follow-up, and nested or external membership support. Timely provisioning and deprovisioning remain complete category requirements. CT approves approval-origin timing only for the interim approved-delivery execution profile; it does not redefine receipt-origin source performance, authorize recurring approval, infer termination from absence or grant outbound consent.",
       "to": "gap",
       "ids": [
-        "AUTH-SCIM-002"
+        "AUTH-SCIM-002",
+        "AUTH-SCIM-003",
+        "AUTH-SCIM-004"
       ]
     },
     {
@@ -2359,7 +2534,8 @@
       "text": "Partial remains unchanged. The owner-only delegated RS256 OIDC and plaintext SAML profile is implemented according to the cited repository evidence. Remaining Gaps are live Google callback and consenting test-user proof, an authorized Okta web registration, live Entra employee callback, full live downstream qualification, SAML upstream certificate-rotation and outage-recovery qualification, and broader federation-loop qualification. Every original generic and named-provider acceptance journey remains required. CT approves exact owner activation with isolated representative testing and the stated riders; this ruling certifies neither provider interoperability nor implementation completion.",
       "to": "gap",
       "ids": [
-        "AUTH-FEDERATION-001"
+        "AUTH-FEDERATION-001",
+        "AUTH-FEDERATION-002"
       ]
     },
     {
@@ -2430,6 +2606,14 @@
       "to": "gap",
       "ids": [
         "AUTH-REQUESTS-001"
+      ],
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-105"
+          ]
+        }
       ]
     },
     {
@@ -2440,6 +2624,14 @@
       "to": "gap",
       "ids": [
         "AUTH-REVIEWS-001"
+      ],
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-107"
+          ]
+        }
       ]
     },
     {
@@ -2450,6 +2642,14 @@
       "to": "gap",
       "ids": [
         "AUTH-DECISIONS-001"
+      ],
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-101"
+          ]
+        }
       ]
     },
     {
@@ -2519,7 +2719,8 @@
       "text": "Partial remains unchanged. Native campaign passkey readiness is distinct from complete enrollment. Remaining Gaps are the live twenty-worker Okta callback with an authorized web registration, live Entra employee proof and JumpCloud qualification, native Auth authenticator enrollment, optional eligible Okta password preservation and RADIUS cutover, Slack or Teams delivery, and temporary access passes after cutover. Every original campaign acceptance point remains required. CT approves the separately consented minimal cohort-manager reminder policy with the stated riders; this ruling supplies no implementation or live-provider proof.",
       "to": "gap",
       "ids": [
-        "AUTH-MIGRATION-003"
+        "AUTH-MIGRATION-003",
+        "AUTH-MIGRATION-004"
       ]
     },
     {
@@ -2557,10 +2758,7 @@
       "line": 565,
       "cell": "gap",
       "text": "None for existing source doors. Future source doors inherit the obligations stated above.",
-      "to": "gap",
-      "ids": [
-        "AUTH-FOLLOWUP-003"
-      ]
+      "to": "changelog"
     },
     {
       "file": "CONTRACT.md",
@@ -2580,6 +2778,14 @@
       "to": "gap",
       "ids": [
         "AUTH-DELIVERY-001"
+      ],
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-102"
+          ]
+        }
       ]
     },
     {
@@ -2610,6 +2816,14 @@
       "to": "gap",
       "ids": [
         "AUTH-ERASURE-002"
+      ],
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-103"
+          ]
+        }
       ]
     },
     {
@@ -2629,7 +2843,16 @@
       "text": "Eight-class retention, calendar default/bounds, review/request/investigation/legal holds, pre-delete export, restart/concurrent cleanup and authenticated expiry built. Default ADOPTED pending ct: scheduled expiry waits for an explicit audited policy confirmation; non-audit classes inherit 13 months; terminated profiles anonymize while identity/state remain; whole-employer erasure holds and unfinished-period holds; seven-day export window and 200-row batches. Deployment region/processors disclosed, not independently verified.",
       "to": "gap",
       "ids": [
-        "AUTH-RETENTION-001"
+        "AUTH-RETENTION-001",
+        "AUTH-RETENTION-002"
+      ],
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-106"
+          ]
+        }
       ]
     },
     {
@@ -2679,7 +2902,8 @@
       "text": "External and MCP profiles are separately registered under AUTH-AGENT-006; native assignment credentials retain their original target restrictions.",
       "to": "gap",
       "ids": [
-        "AUTH-AGENT-004"
+        "AUTH-AGENT-004",
+        "AUTH-AGENT-007"
       ]
     },
     {
@@ -2706,15 +2930,13 @@
       "file": "ACCEPTANCE.md",
       "line": 3,
       "text": "Target journeys for the 16 October 2026 workforce identity contract follow. Each paragraph carries the matching clause ID and its implementation status. Use the product\u2019s real UI, HTTP, protocol or CLI doors, real persistence and real cryptography; fakes belong only at external paid/network edges in tests. Integration acceptance additionally needs authorized provider test tenants: synthetic export fixtures do not prove a real cutover or SaaS connector. For each unfinished journey, include success, denied authority and failure/recovery end states. Employee/admin web changes are checked at 1440 and 390 with realistic employer data; native journeys run on iOS and Android. No UI or code is changed in this contract round.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 5,
       "text": "Status starts at main `cdd103e1ceeeedbacf52badf7a51bfc6b18296f6`, the unchanged code-audit revision. `done` is evidence for the bounded retained clause, `partial` has the specific missing part named, and `missing` remains a build target. Referenced test files are existing evidence, not a claim they were all rerun for this document edit. The check guidance and historical implementation/conformance notes below remain applicable. Build round gr-auth-contract-1 (17 October 2026) moved AUTH-SAML-001, AUTH-SCIM-001, AUTH-OIDC-001 and AUTH-EVENTS-001 to done and AUTH-CATALOG-001, AUTH-LAUNCHER-001 and AUTH-MAPPING-001 to partial, with the evidence named in each paragraph.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
@@ -3036,7 +3258,15 @@
       "line": 103,
       "text": "CT policy ruling, 27 October 2026: Personal-contact activation is limited to the pre-start window. Auth must not dispatch an initial activation, reissue, retry or reminder to the personal address at or after the current authorized employer-local start time. Recheck the current start time, rescission and sending authority immediately before dispatch. A lead time of zero creates no permitted personal-email activation window and grants no exception. At or after start, only employer-enabled recovery notices may use that address under their existing controls.",
       "to": "copy",
-      "of": 125
+      "of": 125,
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-1"
+          ]
+        }
+      ]
     },
     {
       "file": "ACCEPTANCE.md",
@@ -3358,7 +3588,15 @@
       "line": 207,
       "text": "CT policy ruling, 26 October 2026: Incoming observations remain staged until an authorized organization administrator approves one exact delivery, selected changes and preview digest with hardware passkey and fresh local email proof. Receipt and staging grant no sign-in, enrollment, assignment or authority-changing effect. Execution rechecks current approver authority, approved content and target; drift returns to review, and interruption recovery prevents duplicate effects. Recurring pulls and later deliveries never approve themselves. Missing or empty feeds never infer termination, and outbound reminders require separate audited consent. For this interim approved-delivery profile, execution timing starts at exact approval or the approved future effective time. Record receipt, approval, effective and application times separately. Approval delay remains visible and cannot be excluded when assessing the complete receipt-to-application source promise. The original 60-second pushed application, 15-minute polling and 24-hour full-reconciliation targets remain unchanged; staging alone does not satisfy them or timely deprovisioning. An approved leaver event retains every AUTH-TIMING-001 local-denial and downstream obligation. AUTH-HRIS-002 exact-approval and interruption-recovery protections, AUTH-DIRECTORY-001 identity and planner protections, AUTH-HOOKS-001 import protections and AUTH-FOLLOWUP-003 consent and follow-through obligations remain inherited before their receiving doors ship. Every original acceptance point remains required.",
       "to": "copy",
-      "of": 219
+      "of": 219,
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-2"
+          ]
+        }
+      ]
     },
     {
       "file": "ACCEPTANCE.md",
@@ -3456,7 +3694,15 @@
       "line": 238,
       "text": "CT policy ruling, 26 October 2026: The interim activation profile is owner-only and limited to exact reviewed ordinary subjects and their immutable mappings. The affected organization\u2019s owner approves with hardware passkey and fresh local email proof; current authority, organization binding, trust configuration and mapping are rechecked at commit, and drift returns to review. Installation authority grants no administration of an isolated organization. A representative test validates upstream proof and previews mappings only: it creates no employee session, authenticated membership, downstream grant or administrator authority. Activation does not itself sign in the employee or bypass assignments, policy or AUTH-PROFILE-001 existing-account and new-identity proof. Record only necessary trust configuration, reviewed bindings, approval facts and redacted validation outcomes; disclosure remains governed by existing claims and scope rules. Upstream proof never replaces local administrator proof. Machine administration remains limited to enabling or disabling approved trust; future machine doors inherit all AUTH-ADMINAPI-001 protections. Every original federation acceptance point remains required.",
       "to": "copy",
-      "of": 253
+      "of": 253,
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-3"
+          ]
+        }
+      ]
     },
     {
       "file": "ACCEPTANCE.md",
@@ -3771,7 +4017,15 @@
       "line": 330,
       "text": "CT policy ruling, 26 October 2026: The owner may explicitly select a cohort manager. Sending that manager enrollment reminders requires separate audited outbound consent in a policy write by the organization owner or a role holding the published manage-follow-up permission, with hardware passkey and fresh local email proof rechecked at commit. Campaign creation, a directory manager field and existing reminder consent do not grant this consent. Each manager notice contains only the affected employee\u2019s name, work address and enrollment deadline. Dispatch rechecks the selected manager\u2019s current organization membership, state and cohort duty; a failed recheck follows the existing approved escalation rule. The notice grants no enrollment, recovery, approval or administrator authority and contains no credential or proof-bypassing link. Consent, dispatch outcomes and stopping history remain subject to AUTH-FOLLOWUP-001, AUTH-FOLLOWUP-002, AUTH-RETENTION-001 and AUTH-ERASURE-001. Completion, cancellation or expired campaign authority stops reminders. This policy does not replace any enrollment, channel, escalation, export, cutover or provider acceptance requirement.",
       "to": "copy",
-      "of": 345
+      "of": 345,
+      "also": [
+        {
+          "to": "rulings",
+          "ids": [
+            "RL-4"
+          ]
+        }
+      ]
     },
     {
       "file": "ACCEPTANCE.md",
@@ -4155,85 +4409,73 @@
       "file": "ACCEPTANCE.md",
       "line": 446,
       "text": "The independent Auth slice has tests through real D1 and the emitted Worker. `tests/auth/security.test.mjs`, `protocol.test.mjs` and `upstreams.test.mjs` exercise browser-bound proof, passkey policy, recovery, encrypted ES256/RS256 signing-key lifecycle, PKCE/private-key JWT protocol behavior and signed upstream responses. Domain-policy coverage includes required-provider management, owner exemption, excluded email/passkey routes, current policy at code redemption, provider removal/configuration changes, exact-domain enrollment and retained provider evidence through email, passkeys and recovery. `recovery-cli.test.mjs` exercises real local wrangler and private recovery-token storage. These are implementation checks, not OpenID certification.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 448,
       "text": "`tests/integration/http.test.mjs` proves the real runtime/mail/outbox wiring, owner bootstrap versus Auth authority, inherited Base route denial, per-request private authorization, native confirmation, first-run completion and publication of real public signing keys. The retained `tests/email-link.mjs` now proves Auth sessions and browser-bound links instead of inherited Base email-cookie behavior. `tests/runtime.mjs` now expects the root to redirect to sign-in instead of serving a public placeholder.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 450,
       "text": "`tests/integration/browser.test.mjs` exercises actual Auth pages, email confirmation, first setup, native Chromium passkey enrollment/authentication, people invitation/domain/suspension and recovery cancellation. It checks the five private pages at 1440 and 390 in light and dark, with axe serious/critical violations required to be zero. `tests/integration/dev.test.mjs` runs fresh real rer setup/dev, uses RER_OPEN in Chromium, checks the key-gated owner session and key removal, and proves localhost enrollment and private-path refusal. CI installs Chromium before running them. Test success must be read from the run evidence; having these tests alone is not acceptance.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 452,
       "text": "Run `rer check --profile first-party`, `pnpm typecheck`, and the appropriate targeted tests after changes. `rer verify` is the complete seed check. `tests/auth/userinfo.test.mjs` exercises real signed access tokens and scoped GET/POST UserInfo, expiry, issuer/audience/type/subject/client/session refusal, sign-out revocation, account/client/policy changes and RS256 key publication/retirement. The existing ID-token flows still prove nonce, issuer, audience, pairwise subjects and one-time owner claims. The old ID-token-only assertion is replaced by the approved access-token response; no refusal or claim assertions were weakened.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 454,
       "text": "`tests/auth/authorization-policy.test.mjs` adds one HTTP regression for each authorization-policy requirement: sessions ending with the email proof and returning through email re-proof to the app; prompt/max-age active authentication with fresh `auth_time`, silent refusal, continuation binding/expiry/replay and upstream SSO followed by a local email confirmation; and discovery matching explicit request-object refusals with callback validation. No previous test is weakened or removed, and no wider Basic OP or logout profile is introduced.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 456,
       "text": "Run site (run-auth.com, HOMEPAGE-VARIANTS.md): `tests/site/run-site.test.mjs` builds it with `rer build --site` and checks that the homepage's Run Auth action opens `/run`, that it links no installed-instance route, and that every guide `docs/site.json` lists is built. `rer build --site` itself refuses broken links, instance-only routes, other origins and installation data. Its deploy (`.github/workflows/run-site.yml`) stays off until the repository variable `RUN_SITE_DEPLOY` is `true`.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 458,
       "text": "Move-in (MOVE-IN.md): `tests/auth/move-in-staging.test.mjs` stages each source's documented export (Google CSV and JSON, Entra CSV, Auth0 CSV and NDJSON, Okta Users API JSON, JumpCloud CSV and JSON) through the staging route, refuses the hostile set and oversize or unknown files, proves staging leaves people, sessions, grants and mail untouched apart from one Activity entry, and flags every review class. `tests/auth/move-in-admission.test.mjs` proves admission through the admin route (member, email-only, signed-out and stale-proof sessions refused; invited members with no proof, right, session or mail; the owner's address and matching emails change nothing), undo (untouched person removed, signed-in and granted people kept and named), and that an Auth0 former subject is refused by UserInfo and the token endpoint and never becomes the pairwise subject. `tests/integration/move-in-browser.test.mjs` runs the 30-row Google journey at 1440 and 390 in light and dark with axe serious/critical at zero. Fixtures are hand-written from provider documentation (tests/fixtures/move-in/README.md); no provider account or live tenant was used, so live cutover is not accepted. Export carries the former subject map with the signed grant map (below).",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 460,
       "text": "Agents (AUTH-ADMIN-001): `tests/auth/agents-keys.test.mjs` proves minting, renewal and revocation through the admin routes (no-session, member, email-link-only and stale-proof sessions refused; expired, revoked and orphaned keys refused on the next request; the key absent from listings, Activity, every stored row and the test process's output) and that a key opens nothing but the preparer API while a session cookie is no key. `tests/auth/agents-proposals.test.mjs` parses the inventory from a populated store against an allow-list of field names, files and approves each proposal kind (filing leaves people, sessions, apps, links, rules and mail unchanged), and proves approval rules: passkey signature by the approver in the session that asked, replay, stale targets with what changed, expiry, rejection, concurrent approvals held at a commit barrier, a revoked key's pending proposals, owner and self-suspension refusals. `tests/integration/agents-browser.test.mjs` runs mint, file, review, passkey approval and Activity at 1440 and 390 in light and dark with axe serious/critical at zero. `remove_app_link` is proven the same way; `approve_app_link` reads the app's own documents when filed and again at approval.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 462,
       "text": "Linking (AUTH-LINK-001, AUTH-LOGOUT-001, AUTH-TRANSFER-001, LINKING.md): `tests/auth/linking.test.mjs` links an app Worker built only from Base's own app side with a one-use link token (a replayed token refused), signs a person in to it through Auth, and proves Sign out everywhere ends that app session. On 13 Oct 2026 a fresh clone of Spool, whose setup declares the optional `oidc-provider@1` dependency, linked a fresh local Auth install through `rer setup --non-interactive` and a person signed in to it through Auth at 1440 and 390 (screenshots and network log kept with the task evidence). The same run proved, through HTTP: a replayed redeem code, a second concurrent redemption, a link token reused or presented for another origin, a key swap without continuity, a version downgrade before owner approval, and loopback or plain-http origins on a production install, each refused; Sign out everywhere and suspension ending Spool sessions (200 before, 401 after); a replayed logout token refused at Spool (409) while a fresh one is accepted; and `rer export` into a fresh install with `rer import`, after which Spool re-linked with the same client, sector and pairwise subject. Hosted acceptance, a public release and certification are not claimed.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 464,
       "text": "OpenID conformance, 13 Oct 2026, Auth `9915adf`: the unchanged release-v5.3.2 suite through `tests/conformance` (listener on 127.0.0.1, browser automation for the authorization and logout pages). **Config OP PASSED**: `oidcc-discovery-endpoint-verification` PASSED. **Back-Channel Logout OP** (code, static client, the plan's own client_secret_basic variant): `oidcc-backchannel-logout-discovery-endpoint-verification` now PASSED (Auth advertises `end_session_endpoint`, `backchannel_logout_supported` and `backchannel_logout_session_supported`); `oidcc-backchannel-rp-initiated-logout` FAILED at `EnsureServerConfigurationSupportsClientSecretBasic`, the kept strict profile (private_key_jwt and mandatory PKCE), as decided. No expectation annotations were added and the profile was not widened.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 466,
       "text": "OpenID conformance, 12 Oct 2026: the unchanged OpenID Foundation release-v5.3.2 suite ran through `tests/conformance` against real local Workerd/D1 Auth with signed access tokens and UserInfo. **Config OP PASSED**: its discovery module PASSED, runner exit 0, no warnings, reviews or skips. **Back-Channel Logout OP FAILED**: with Auth's private_key_jwt variant the suite refuses to create the plan (HTTP 400, the plan fixes client authentication); with the plan's own variant (code, static client, client_secret_basic) both modules FAILED. `oidcc-backchannel-logout-discovery-endpoint-verification` finds no `backchannel_logout_supported`, `backchannel_logout_session_supported` or `end_session_endpoint`; `oidcc-backchannel-rp-initiated-logout` fails `EnsureServerConfigurationSupportsClientSecretBasic` and then sends an authorization request without PKCE, which Auth refuses with HTTP 400. **Basic OP not run**: plan creation HTTP 400 for private_key_jwt. Config's native configuration declares the required `rer_interfaces` extension through upstream's `server.allow_unexpected_metadata_fields`; structural validation and every protocol condition remain active, with no expected-failure or skip annotations.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "ACCEPTANCE.md",
       "line": 468,
       "text": "Back-Channel Logout OP can pass only with client_secret_basic for the test client and authorization without PKCE, which widen the approved private_key_jwt and mandatory-PKCE profile (the same decision that holds Basic OP); the end-session endpoint and signed `logout_token` sender it also needed now exist. An earlier unchanged static Basic diagnostic exported two FAILED results (`EnsureServerConfigurationSupportsClientSecretBasic`) and was stopped after an ordinary Basic authorization request without mandatory PKCE returned Auth HTTP 400; it is incomplete, not certification.",
-      "to": "docs",
-      "path": "docs/verify.md"
+      "to": "changelog"
     },
     {
       "file": "docs/CLAIMS.md",

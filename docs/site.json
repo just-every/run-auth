@@ -128,6 +128,41 @@
           "summary": "The documents, handshake, continuity and sign-out behind a linked app."
         }
       ]
+    },
+    {
+      "title": "Contract records",
+      "pages": [
+        {
+          "slug": "contract-done-audit",
+          "title": "Acceptance assertion audit",
+          "file": "contract/DONE-AUDIT.md",
+          "summary": "Acceptance outcomes traced to the contract\u2019s existing evidence."
+        },
+        {
+          "slug": "rulings",
+          "title": "Auth rulings",
+          "file": "../RULINGS.md",
+          "summary": "Owner and ct decisions that shape the target."
+        },
+        {
+          "slug": "contract-mechanism",
+          "title": "Contract profile details",
+          "file": "contract-mechanism.md",
+          "summary": "Retained protocol and custody details."
+        },
+        {
+          "slug": "contract-history",
+          "title": "Contract history",
+          "file": "../CHANGELOG.md",
+          "summary": "Historical scope and verification receipts."
+        },
+        {
+          "slug": "verify",
+          "title": "Verify Auth",
+          "file": "verify.md",
+          "summary": "Run the contract, source, native and browser checks."
+        }
+      ]
     }
   ]
 }

@@ -31,4 +31,9 @@ An agent may prepare Auth administration; a person decides. An administrator min
 
 ## Lander-Regenerate
 
-CONTRACT.md owns status, evidence and gaps. After changing a clause's metadata, run `node ./scripts/contract-docs.mjs write CLAUSE-ID` and `node ./scripts/contract-docs.mjs check CLAUSE-ID`. This preserves legacy acceptance journeys and untouched evidence, updates the selected generated metadata, and regenerates docs/CLAIMS.md. Run `node ./scripts/edition-authoring/cli.mjs lock` last, then `pnpm check:sources`.
+CONTRACT.md is the only source for acceptance, status and homepage claims. After any contract edit, regenerate all outputs, run the shared check, then relock and check sources. The legacy scripts/contract-docs.mjs entry point delegates to the same shared generator.
+
+Lander-Regenerate: node src/base/contract-docs.mjs write
+Lander-Regenerate: node scripts/edition-authoring/cli.mjs lock
+
+Run `node src/base/contract-docs.mjs check` and `pnpm check:sources` before publishing.

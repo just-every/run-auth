@@ -119,7 +119,7 @@
       "executable": false
     },
     ".github/workflows/verify.yml": {
-      "sha256": "41abdaa99353b41fc8935af23165787c6eca075c09a1fad39c9e21499ed46e6b",
+      "sha256": "190fddde09e62fe221a6afa04954bc7a4a22eda3eb748dd28f65209e4b80b43d",
       "executable": false
     },
     ".gitignore": {
@@ -131,11 +131,11 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "a72a4e9c704e0864ad3eb12059a6aba37f00bdf1ce639c5db89ff2149615e23c",
+      "sha256": "34bb0ceca55371b678bec511b2598193185d4c33d1783d453b07958768b3b5b3",
       "executable": false
     },
     "AGENTS.md": {
-      "sha256": "78c16485e06cc98b939bcf99ae4930dc0336f9cfe7b976d859b3392b67c80c8f",
+      "sha256": "a6b712f5843a36a3e719734508e0ee5d150a7e8745178d7c8fedf2b43860547f",
       "executable": false
     },
     "AUTH-COMMANDS.md": {
@@ -147,7 +147,7 @@
       "executable": false
     },
     "CHANGELOG.md": {
-      "sha256": "d82d237667b55c4a8bc9277fab8a200840bce8f12348cdc65acf9a3959329b84",
+      "sha256": "886b3e8eae477cd2b24aae719c8e531868111e0a428350f7cfc5ef98a183eaa1",
       "executable": false
     },
     "COMPANY-APPS.md": {
@@ -175,7 +175,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "90fe5985b0b068b58ed4809e8216e6f385ab063d91d8e340834d985f26d89632",
+      "sha256": "9d972d1d121cc3d56717db98bd29d297d9509ccf406013727f39ad6ded227313",
       "executable": false
     },
     "deploy-site.json": {
@@ -227,7 +227,7 @@
       "executable": false
     },
     "docs/CLAIMS.md": {
-      "sha256": "3855cabe5e03292564186c72a532c69786a8eb00245861d52342a3957193e695",
+      "sha256": "1856e69732847998a9a45856032c29a522fdde83bb9e5b6ed7558b97bd619dd5",
       "executable": false
     },
     "docs/continuity-drills.md": {
@@ -235,19 +235,19 @@
       "executable": false
     },
     "docs/contract/COVERAGE.json": {
-      "sha256": "4670b607c1fb064684c7060ea2c5c652f25e1ed78a6ea986bbea2bf6ea5467f1",
+      "sha256": "de2a642ec2e742426f045adfe3aa893ed78619304b6f5116fdc0dd52f9f05e5a",
       "executable": false
     },
     "docs/contract/ID-MAP.json": {
-      "sha256": "9d84df3227d36a26433a4e76a6d745341bb16cb3007f00859ab7df0a874c3164",
+      "sha256": "7f31394ff5152968687fd81da388ae9bbb88771bd655e76517a735b406952b1d",
       "executable": false
     },
     "docs/delegated-agents.md": {
-      "sha256": "dda13e295b783984c8e2f1c453ab81f17e080b03a67192a8b3cb29a68c3a228f",
+      "sha256": "49589b5d157533281c521b180aba5e475606bf3aea17bbd2ac23d6aa4bf648e8",
       "executable": false
     },
     "docs/directory-sources.md": {
-      "sha256": "5adde015704c1dc0058191562c27006cefd21b360cd7caa5ea962e7b44d30b39",
+      "sha256": "579bdd6adcefaef2bae9f57ab5a5cc2af8c1cdfa998b7823f89ae2363c86ade5",
       "executable": false
     },
     "docs/employer-providers.md": {
@@ -287,7 +287,7 @@
       "executable": false
     },
     "docs/onboarding.md": {
-      "sha256": "054c8a61e2e7043631e4bc5b2552b9e10225f256e02024b2206cab15d04e7e57",
+      "sha256": "aa6b43d5f1c9ef72a7452e5a166698f37111779874f4a290800dc8b83a330011",
       "executable": false
     },
     "docs/people.md": {
@@ -303,7 +303,7 @@
       "executable": false
     },
     "docs/security-notifications.md": {
-      "sha256": "730bc87193246243f01eccabde3529ef02c0b1cb2e0cd576f804c61b30dc4f5f",
+      "sha256": "78e247546e4508a024231ed39a3866c86f1ac439c161a65bac59ed9a1470c852",
       "executable": false
     },
     "docs/sign-in.md": {
@@ -311,7 +311,7 @@
       "executable": false
     },
     "docs/site.json": {
-      "sha256": "54469630d6d6c9af4547c3b2e900864ee2fb303693a946873112678e0c06b77f",
+      "sha256": "1d5d8a6e1b9de2204a219f192355c8459e941a77ffdaf57fdb9624e15238c64e",
       "executable": false
     },
     "docs/upstream-campaigns.md": {
@@ -915,7 +915,7 @@
       "executable": false
     },
     "RULINGS.md": {
-      "sha256": "dfd4b4e176a32213e06b703f925c91ed0d2b8f1a5075d687f6bf2683ea817e65",
+      "sha256": "ff8f25957f43ffda8d43fcaea5394c469c7b06a83ec0d5543457d4ed6561c650",
       "executable": false
     },
     "RUN-LOCALLY.md": {
@@ -939,7 +939,7 @@
       "executable": false
     },
     "scripts/contract-docs.mjs": {
-      "sha256": "13d9ae26234da0d604acfff59c78cd6334998939b79b1f8a19c571147bc3ce70",
+      "sha256": "e130c8263cd18297790f09f0408f99b6387930852ebec5f2029a4e82b849597c",
       "executable": false
     },
     "scripts/delivery/base/artifact.mjs": {

@@ -25,3 +25,5 @@ The inbound SCIM profile supports Users and Groups reads, creates, replacements,
 Disabling a source destroys its stored credential and ingress digest and stops polling and pending authority. Credentials, observation snapshots and pending approvals are excluded from portable archives; review retained source bindings before establishing replacement custody; automatic reconnection is not supported. No invitation, outbound reminder or destructive approval is implied by source registration.
 
 AUTH-SCIM-002 remains partial: complete live provider qualification, pushed application timing and automatic full-reconciliation timing are unproved; Google Workspace directory delegation is not held. Directory stale-source follow-up and unsupported membership profiles remain explicit gaps. Existing exact per-file approval protections inherited from AUTH-HRIS-002 govern scheduled application of approved work.
+
+The split contract locates exact delivery approval and execution custody in AUTH-SCIM-003, and receipt-to-application timing in AUTH-SCIM-004. AUTH-SCIM-002 retains provider synchronization.
