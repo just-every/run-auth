@@ -1399,7 +1399,7 @@
       "executable": false
     },
     "src/auth/directory-sources/maintenance.mjs": {
-      "sha256": "4ae5e7554d6c3a407038b128fe242df16429f644756d0ab5b4518286a2c6d040",
+      "sha256": "c4fd62b57caea70a9ac6fc6c41a03ce8f6ef0a8cf35ffb478fb46ec92acbc268",
       "executable": false
     },
     "src/auth/directory-sources/network.mjs": {
@@ -3407,7 +3407,7 @@
       "executable": false
     },
     "tests/auth/directory-source-flow.mjs": {
-      "sha256": "ad0ef311bcba9481aed5d7660c05a36f0f4a4f4087a287f938c4250f3e1ac408",
+      "sha256": "9c707aa842b15f6a0c1d932d3138ef41e031294bed4e83f37fe94cd8355a4d68",
       "executable": false
     },
     "tests/auth/directory.test.mjs": {
