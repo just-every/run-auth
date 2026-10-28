@@ -26,6 +26,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
+  'auth_factor_policies',
   'auth_automation_runs', 'auth_automation_steps',
   'auth_mail_suppressions',
   'auth_notification_policy',
@@ -42,6 +43,7 @@ const groups = {
  // Entire stores are excluded, including hashes and sealed remote work. Public
  // passkey verification keys above are the deliberately portable exception.
  secret: [
+  'auth_totp_factors','auth_person_recovery_codes',
   'auth_onboarding_links','auth_temporary_pass_requests','auth_temporary_passes',
   'auth_automation_connections', 'auth_automations', 'auth_automation_versions',
   'auth_recovery_enrollments',
@@ -58,6 +60,7 @@ const groups = {
   'rer_dependency_keys',
  ],
  transient: [
+  'auth_factor_proofs','auth_factor_operations',
   'auth_directory_snapshots','auth_directory_source_steps','auth_federation_transactions','auth_federation_replays','auth_federation_test_providers','auth_federation_test_health',
   'auth_campaign_obligations',
   'auth_mail_deliveries','auth_mail_events',

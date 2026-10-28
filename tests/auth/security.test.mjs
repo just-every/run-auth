@@ -363,3 +363,9 @@ import {continuityFlow} from './continuity-flow.mjs';
 test('scheduled continuity drill exercises protected lost-factor recovery, upstream outage and expired signing-certificate replacement',continuityFlow);
 
  test('voluntary independent identity pairs keep employer release notices private through installation erasure, holds, membership erasure and creator removal',identityPairsFlow);
+
+import {totpFlow,factorLossFlow,recoveryCodesFlow,assuranceFlow} from './factors-flow.mjs';
+test('native TOTP enrollment protects secrets, refuses replay and preserves administrator assurance',totpFlow);
+test('lost-factor removal ends current sessions and preserves a replacement passkey',factorLossFlow);
+test('single-use recovery codes rotate, refuse foreign or privileged use and end after replacement enrollment',recoveryCodesFlow);
+test('sensitive app factor policy rechecks assurance at authorization and token issuance',assuranceFlow);

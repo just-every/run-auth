@@ -1,3 +1,4 @@
+import {factorsRead,factorsAction} from './factors/routes.mjs';
 import {requestPass,issuePass,revokePass,redeemPass,temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction,activationPage,activationError,activate} from './onboarding/index.mjs';
 import {AUTOMATIONS_READ,isAutomationAction,automationsRead,automationAction} from './automations/routes.mjs';
@@ -118,6 +119,7 @@ function scopedRuntime(options) {
     if(path===FOLLOWUP_READ)return await followupRead(ctx,request);
     if(ERASURE_READS.includes(path))return await erasureRead(ctx,request,path);
     if(ROLE_READS.includes(path))return await roleRead(ctx,request,path);
+    if(path==='/api/auth/factors')return await factorsRead(ctx,request);
     if(path==='/api/auth/refresh')return json(await refreshInventory(ctx,request));
     if(path==='/api/auth/resource-apis')return await grantRead(ctx,request,path);
     if(path===TENANCY_READ)return await tenancyRead(ctx,request);
@@ -150,6 +152,7 @@ function scopedRuntime(options) {
     }
     if(['/receipt','/receipt-key','/receipt-revoke'].some(suffix=>path===PAIRS_PREFIX+suffix)&&url.search)fail('receipt_body_required',400);
     const data=await input(ctx,request);
+    if(path.startsWith('/api/auth/factors/'))return await factorsAction(ctx,request,path.slice('/api/auth/factors'.length),data);
     if(path==='/api/auth/abuse/configure')return await configureAbuse(ctx,request,data);
     if(isDirectorySourceAction(path.slice('/api/auth'.length)))return await directorySourceAction(ctx,request,path.slice('/api/auth'.length),data);
     if(isFederationAction(path.slice('/api/auth'.length)))return await federationAction(ctx,request,path.slice('/api/auth'.length),data);

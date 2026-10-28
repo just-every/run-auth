@@ -1,3 +1,4 @@
+import type {FactorsModel} from './pages/factors.js'
 import type { AccessRequestsModel } from './pages/access-requests.js'
 import type { RetentionModel } from './pages/retention.js'
 import type { AccessDecisionsModel } from './pages/access-decisions.js'
@@ -262,6 +263,7 @@ export interface FollowupModel {
 }
 
 export interface AuthPageModel {
+  factors?: FactorsModel
   onboarding?: Array<{person_id:string; start_local:string; time_zone:string; lead_days:number; personal_verified_at:number|null; rescinded_at:number|null; contact_authority:string|null; recovery_notices_enabled:number; temporaryPassRequired:boolean}>
   automations?: import('./pages/automations.js').AutomationsModel
   retention?: RetentionModel

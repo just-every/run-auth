@@ -33,6 +33,7 @@ export async function configureAbuse(ctx,request,data) {
  return json({policy});
 }
 function door(path) {
+ if(path.startsWith('/api/auth/factors/totp/')||path==='/api/auth/factors/recovery/redeem')return 'recovery';
  if(path==='/api/auth/migration/bridge/login')return 'migration-enrollment';
  if(path==='/auth/identity/email/request')return 'email-request';
  if(path==='/auth/identity/temporary-pass')return 'recovery';

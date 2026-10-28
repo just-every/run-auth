@@ -45,6 +45,7 @@ export async function registrationVerify(ctx,request,data) {
  // authority and fresh local proof: a refused gate creates neither credential nor audit.
  const [inserted]=await ctx.db.batch([
   established.statement,
+  ...(JSON.parse(s.amr).includes('recovery_code')?[ctx.db.prepare('UPDATE auth_sessions SET revoked_at=? WHERE id=? AND EXISTS(SELECT 1 FROM auth_sessions WHERE id=?)').bind(established.now,s.id,established.id)]:[]),
   ...completeEnrollment(ctx,s,established.id),
   ...completeTemporaryEnrollment(ctx,s,established.id),
   ctx.db.prepare('INSERT INTO auth_passkeys(id,person_id,public_key,counter,transports,created_at) SELECT ?,person_id,?,?,?,? FROM auth_sessions WHERE id=?').bind(c.id,b64(c.publicKey),c.counter,JSON.stringify(c.transports||[]),established.now,established.id),

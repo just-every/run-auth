@@ -553,6 +553,23 @@
         showStatus('Organization created. Confirm your email in its sign-in page to establish your membership.', 'success')
         return
       }
+      if (form.hasAttribute('data-factor-enroll')) {
+        form.querySelector('[data-factor-secret]').textContent = result.secret
+        form.querySelector('[data-factor-enrollment]').hidden = false
+        const confirm = document.querySelector('[data-factor-confirm]')
+        confirm.querySelector('[name="id"]').value = result.id
+        confirm.hidden = false
+        showStatus('Secret shown once. Confirm a current authenticator code.', 'success')
+        return
+      }
+      if (form.hasAttribute('data-factor-codes')) {
+        const output = form.querySelector('[data-factor-code-list]')
+        output.textContent = result.codes.join('\n')
+        output.hidden = false
+        output.focus()
+        showStatus(result.message, 'success')
+        return
+      }
       const isEmailRequest = form.hasAttribute('data-email-request')
       if (isEmailRequest) {
         showStatus(result.message || 'If this address can sign in, a link has been sent.', 'success')

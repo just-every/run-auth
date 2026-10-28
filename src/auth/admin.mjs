@@ -1,3 +1,4 @@
+import {factorsModel} from './factors/routes.mjs';
 import {temporaryPassesModel} from './temporary-passes/index.mjs';
 import {onboardingModel,onboardingAction} from './onboarding/index.mjs';
 import {automationsModel} from './automations/routes.mjs';
@@ -85,6 +86,7 @@ export async function model(ctx,request,page='account') {
  }
  if(page==='account'||page==='activity'&&isAdmin){result.decisions=await decisionsModel(ctx,s);result.reviews=await reviewsModel(ctx,s);result.requests={...await (await requestsRead(ctx,request)).json(),canManage:isAdmin,meId:s.person_id,people:isAdmin?result.people:[],adminApps:isAdmin?await all(ctx,'SELECT id,name FROM auth_apps WHERE disabled_at IS NULL'):[]};}
  if(page==='activity'&&isAdmin)result.retention=await (await retentionRead(ctx,request,'/api/auth/retention')).json();
+ if(page==='methods')result.factors=await factorsModel(ctx,s);
  if(page==='methods'&&result.isAdmin){result.delivery=await deliveryModel(ctx);result.abuse=await abuseModel(ctx);}
  if(page==='account'||page==='activity')result.notifications=await notificationsModel(ctx,request);
  if(page==='account')result.followup=await (await followupRead(ctx,request)).json();

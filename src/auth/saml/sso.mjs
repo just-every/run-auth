@@ -1,3 +1,4 @@
+import {requireFactorAssurance} from '../factors/policy.mjs';
 import {requireAppAccess} from '../onboarding/gate.mjs';
 // SAML single sign-on: SP-initiated requests over HTTP-Redirect and HTTP-POST,
 // and IdP-initiated launches an app explicitly permits.
@@ -88,10 +89,12 @@ async function answer(ctx,request,pending) {
 
 async function issue(ctx,app,s,acs,inResponseTo,relayState,reply) {
  await requireAppAccess(ctx,s);
+ await requireFactorAssurance(ctx,s,app.id);
  const assigned=await assignment(ctx,app.id,s.person_id);
  if(!assigned){await audit(ctx,s.person_id,'saml_refused_unassigned',app.id);return samlPage('You are not assigned to this app',`Ask an administrator for access to ${app.name}.`,403);}
  const element=await signInResponse(ctx,{app,s,acs,inResponseTo,role:assigned.role});
  await requireAppAccess(ctx,s);
+ await requireFactorAssurance(ctx,s,app.id);
  await audit(ctx,s.person_id,'saml_assertion_issued',app.id);
  return reply(element);
 }
