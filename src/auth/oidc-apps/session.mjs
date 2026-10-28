@@ -1,3 +1,4 @@
+import {recordLogoutAttempt} from '../session-control/outcomes.mjs';
 // What a general OIDC app gets after sign-in: UserInfo while the person, the
 // session and the app assignment all still hold, and front- and back-channel
 // logout when the Auth session ends.
@@ -47,6 +48,6 @@ export async function deliverGenericLogouts(ctx,ids=null) {
   :await all(ctx,'SELECT * FROM auth_oidc_logouts WHERE finished_at IS NULL AND next_attempt_at<=? ORDER BY next_attempt_at LIMIT 50',ctx.now());
  for(const d of due) {
   const result=await attempt(ctx,d),attempts=d.attempts+1,next=ctx.now()+RETRY[Math.min(attempts-1,RETRY.length-1)],expired=!result.finished&&next>d.created_at+HORIZON;
-  await run(ctx,'UPDATE auth_oidc_logouts SET attempts=?,next_attempt_at=?,finished_at=?,outcome=? WHERE id=? AND finished_at IS NULL',attempts,next,result.finished||expired?ctx.now():null,expired?'abandoned_after_24h':result.outcome,d.id);
+  await recordLogoutAttempt(ctx,'auth_oidc_logouts',d,{attempts,next,finishedAt:result.finished||expired?ctx.now():null,outcome:expired?'abandoned_after_24h':result.outcome});
  }
 }

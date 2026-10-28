@@ -261,6 +261,16 @@ export interface FollowupModel {
  limitations:string[]
 }
 
+export interface SessionControlOperation {
+  id: string
+  actorId: string
+  reason: string
+  createdAt: number | string
+  nativeSessionsEnded: number
+  refreshGrantsEnded: number
+  logout: { pending: number; delivered: number; failed: number; unavailable: number; evidenceExpired?: boolean }
+}
+
 export interface AuthPageModel {
   automations?: import('./pages/automations.js').AutomationsModel
   retention?: RetentionModel
@@ -274,7 +284,8 @@ export interface AuthPageModel {
   delegationApps?: Array<{id:string;name:string}>
   roles?: { canDesignRoles:boolean; rank:number; permissions:Record<string,string>; roles:Array<{id:string;name:string;rank:number;permissions:string[]}>; ownGrants:Array<{id:string;roleId:string;permissions:string[]}>; grants:Array<{id:string;person_id:string;role_id:string;active:boolean}>; groups:Array<{id:string;name:string}>; apps:Array<{id:string;name:string}>; cases:Array<{id:string;person_id:string;state:string}> }
   recoveryCases?: {cases:Array<{id:string;personId:string;email:string;state:string;canAttest:boolean;canReset:boolean;canClose:boolean}>}
-  rolePeople?: Array<{id:string;email:string;name:string;canResetFactors:boolean}>
+  rolePeople?: Array<{id:string;email:string;name:string;canResetFactors:boolean;canEndSessions:boolean}>
+  sessionControl?: {people:Array<{personId:string;operations:SessionControlOperation[]}>}
   roleError?: string
   refresh?: {admin:boolean;canManage:boolean;clients:Array<{clientId:string;name:string}>;apis:Array<{id:string;appId:string;name:string;audience:string}>;profiles:Array<{clientId:string;name:string;enabled:number;idleMs:number;absoluteMs:number}>;consent:null|{id:string;appName:string;deviceName:string;audience:string;scopes:string[];identityScopes:string[];idleMs:number;absoluteMs:number};grants:Array<{id:string;personId:string;personEmail:string;appName:string;clientId:string;deviceName:string;scopes:string[];audience:string;createdAt:number;lastUsedAt:number;idleExpiresAt:number;absoluteExpiresAt:number;revokedAt:number|null;reason:string|null;status:string}>}
   resourceApis?: {apis:Array<{id:string;appId:string;name:string;audience:string;scopes:string[];roles:unknown[];resources:unknown[]}>;services:Array<{id:string;clientId:string;name:string;ownerId:string;purpose:string;scopes:string[];revokedAt:number|null}>}

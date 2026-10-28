@@ -13,6 +13,13 @@ function atBarrier(db,{name,size}) {
   const value=target[prop];return typeof value==='function'?value.bind(target):value;
  }});
 }
+function beforeBatch(db,change) {
+ let applied=false;
+ return new Proxy(db,{get(target,key){
+  if(key==='batch')return async statements=>{if(!applied){applied=true;await db.prepare(change.sql).bind(...(change.args??[])).run();}return target.batch(statements);};
+  const value=target[key];return typeof value==='function'?value.bind(target):value;
+ }});
+}
 function expireAbuseProof(db,change) {
  const wrap=statement=>new Proxy(statement,{get(target,key){
   if(key==='bind')return (...args)=>wrap(target.bind(...args));
@@ -26,7 +33,7 @@ function expireAbuseProof(db,change) {
 }
 export default {async fetch(request,env,execution) {
  const envelope=await request.json(),background=[];
- const runtime=createAuthRuntime({trustedSource:envelope.sourceIdentity?()=>envelope.sourceIdentity:undefined,mailProvider:envelope.mailProvider,sendgridWebhookKey:envelope.sendgridWebhookKey,db:envelope.expireAbuseProof?expireAbuseProof(env.DB,envelope.expireAbuseProof):envelope.barrier?atBarrier(env.DB,envelope.barrier):env.DB,agentModelKey:envelope.agentModelEdge?'synthetic-auth-1':undefined,agentModelFetch:envelope.agentModelEdge?(_uri,init)=>fetch(envelope.agentModelEdge,init):undefined,notificationSlackWebhook:envelope.notificationSlackWebhook,notificationFetch:envelope.notificationEdge?(_uri,init)=>fetch(envelope.notificationEdge,init):undefined,dnsFetch:envelope.dnsEdge?(uri,init)=>fetch(envelope.dnsEdge+'?'+new URL(uri).searchParams,init):undefined,origin:envelope.origin||'https://auth.example.com',secret:'1a'.repeat(32),local:envelope.local||false,allowDevSession:envelope.allowDevSession===true?()=>true:undefined,now:()=>envelope.now,waitUntil:work=>{background.push(work);execution.waitUntil(work);},federationResolve:async()=>['93.184.216.34'],upstreamProviders:envelope.upstreamProviders,upstreamFetch:async uri=>{const u=new URL(uri),up=envelope.upstreams?.[u.origin]??envelope.upstream;return Response.json(u.pathname.endsWith('openid-configuration')?up.discovery:u.pathname.endsWith('/keys')?up.jwks:up.tokens);},
+ const runtime=createAuthRuntime({trustedSource:envelope.sourceIdentity?()=>envelope.sourceIdentity:undefined,mailProvider:envelope.mailProvider,sendgridWebhookKey:envelope.sendgridWebhookKey,db:envelope.beforeBatchSql?beforeBatch(env.DB,envelope.beforeBatchSql):envelope.expireAbuseProof?expireAbuseProof(env.DB,envelope.expireAbuseProof):envelope.barrier?atBarrier(env.DB,envelope.barrier):env.DB,agentModelKey:envelope.agentModelEdge?'synthetic-auth-1':undefined,agentModelFetch:envelope.agentModelEdge?(_uri,init)=>fetch(envelope.agentModelEdge,init):undefined,notificationSlackWebhook:envelope.notificationSlackWebhook,notificationFetch:envelope.notificationEdge?(_uri,init)=>fetch(envelope.notificationEdge,init):undefined,dnsFetch:envelope.dnsEdge?(uri,init)=>fetch(envelope.dnsEdge+'?'+new URL(uri).searchParams,init):undefined,origin:envelope.origin||'https://auth.example.com',secret:'1a'.repeat(32),local:envelope.local||false,allowDevSession:envelope.allowDevSession===true?()=>true:undefined,now:()=>envelope.now,waitUntil:work=>{background.push(work);execution.waitUntil(work);},federationResolve:async()=>['93.184.216.34'],upstreamProviders:envelope.upstreamProviders,upstreamFetch:async uri=>{const u=new URL(uri),up=envelope.upstreams?.[u.origin]??envelope.upstream;return Response.json(u.pathname.endsWith('openid-configuration')?up.discovery:u.pathname.endsWith('/keys')?up.jwks:up.tokens);},
   // Company apps are the network edge: their public hosts are served by the test's own servers.
   connectorFetch:async(uri,init)=>{
    const url=new URL(uri);

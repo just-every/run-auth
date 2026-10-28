@@ -1,4 +1,5 @@
 import {AUTOMATIONS_READ,isAutomationAction,automationsRead,automationAction} from './automations/routes.mjs';
+import {sessionControlRead} from './session-control/index.mjs';
 import {attestCase,cancelCase,redeemEnrollment} from './recovery-cases/index.mjs';
 import {enforceAbuse,abuseRead,configureAbuse,trustedSource} from './abuse/index.mjs';
 import {auditPage} from './audit/query.mjs';
@@ -91,6 +92,7 @@ function scopedRuntime(options) {
    if(path==='/api/auth/preparer')return await preparer(ctx,request);
    if(request.method==='GET') {
     if(path===AUTOMATIONS_READ)return await automationsRead(ctx,request);
+    if(path==='/api/auth/session-control')return await sessionControlRead(ctx,request);
     if(path==='/api/auth/abuse')return await abuseRead(ctx,request);
     if(path==='/api/auth/audit')return json(await auditPage(ctx,await requireSession(ctx,request),request));
     if(path===DIRECTORY_SOURCES)return await directorySourceRead(ctx,request);
