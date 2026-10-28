@@ -3531,7 +3531,7 @@
       "executable": false
     },
     "tests/auth/notifications-flow.mjs": {
-      "sha256": "cf3f243510b1504455ee940f381f623fd34c178e9322278367177aff858657a3",
+      "sha256": "4f1954a93315f697d8e18fa1c9e9281529315f02f642095203b610556526a54d",
       "executable": false
     },
     "tests/auth/notifications.test.mjs": {
@@ -3819,7 +3819,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "2fcf68e7e38d2f211e8f621ec0ac27bad5c05379e695571f18c2445aecb72d7b",
+      "sha256": "da69668a55bcfc6cec715e5ad0a79abf207d2e0d015338cf560d7d8993de3321",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
