@@ -26,11 +26,14 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  const shoot=async (name,page=primary)=>{
   // Preserve the actual approval dialog and disclose each state on one page.
   for(const [width,theme] of views){await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});
+  await page.evaluate(async()=>{document.body.getBoundingClientRect();await Promise.all(document.getAnimations().filter(animation=>animation.effect?.getTiming().iterations!==Infinity).map(animation=>animation.finished.catch(()=>{})));});
   await expect(page.locator('h1')).toBeVisible();
   const results=await new AxeBuilder({page}).analyze();
   assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`${width} ${theme} ${name}`);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
+  const modal=await page.evaluate(()=>document.querySelector('dialog[open]')?.id??null);if(modal)await page.locator('#'+modal).evaluate(dialog=>dialog.close());
   for(const control of await page.locator('[data-tooltip]:visible').all()){await page.mouse.move(0,0);await control.blur();await expect(page.getByRole('tooltip')).toBeHidden();await control.hover();await page.waitForTimeout(150);await expect(page.getByRole('tooltip')).toBeHidden();await page.waitForTimeout(200);await expect(page.getByRole('tooltip')).toBeVisible();await page.mouse.move(0,0);await control.focus();assert.equal(await page.getByRole('tooltip').isVisible(),true);await page.keyboard.press('Escape');await control.blur();}
+  if(modal)await page.locator('#'+modal).evaluate(dialog=>dialog.showModal());
   await page.screenshot({path:join(directory,`directory-${name}-${width}-${theme}.png`),fullPage:true});
   }await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({colorScheme:'light'});
  };
@@ -103,6 +106,8 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
   const native=await lifecyclePost('company-apps/create',{name:'Lifecycle application '+(i+1),entityId:hosts[i]+'/saml',acsUrl:hosts[i]+'/acs'},201);
   await lifecyclePost('company-apps/assign',{appId:native.id,principalType:'person',principalId:erinId});
   await lifecyclePost('provisioning/connect',{appId:native.id,baseUrl:hosts[i]+'/scim/v2',token:peers[i].token,pushGroups:false},201);
+  await expect.poll(async()=>{const model=await (await context.request.get(app.origin+'/api/auth/company-apps')).json();return model.companyApps.find(app=>app.id===native.id).obligations.find(work=>work.subject_id===erinId)?.state;},{timeout:15000}).toBe('verified');
+  assert.equal([...peers[i].users.values()].find(person=>person.externalId===erinId)?.active,true);
  }
  peers[1].fail(1,503);
  // Terminate and rehire the active employee: her session ends, the account and id stay.
@@ -114,16 +119,16 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  await shoot('leaver-approval');
  await saved(()=>edit.getByRole('button',{name:'Approve leaver plan'}).click());
  const planCard=page.locator('[data-leaver-plan]').first();await planCard.locator('summary').first().click();
- await expect.poll(async()=>{await page.reload();const card=page.locator('[data-leaver-plan]').first();await card.evaluate(node=>{node.open=true});return card.textContent();}).toContain('http_503');
+ await expect.poll(async()=>{await page.reload();const card=page.locator('[data-leaver-plan]').first();await card.evaluate(node=>{node.open=true});return card.textContent();}).toContain('Provider returned HTTP 503');
  await expect(planCard).toContainText('Unresolved');await shoot('leaver-unresolved');
  const beforeRestart=(await (await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).json()).plans[0];
  await app.pause();await app.resume();await page.reload();await planCard.locator('summary').first().click();
- await expect(planCard).toContainText('http_503');await shoot('leaver-interrupted');
+ await expect(planCard).toContainText('Provider returned HTTP 503');await shoot('leaver-interrupted');
  const resumed=(await (await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).json()).plans[0];assert.equal(resumed.id,beforeRestart.id);
  const failed=resumed.steps.find(step=>step.kind==='scim'&&step.state==='failed');assert.ok(failed);
  const affected=(await (await context.request.get(app.origin+'/api/auth/company-apps')).json()).companyApps.find(native=>native.name===failed.app);assert.ok(affected);
  await lifecyclePost('provisioning/retry',{appId:affected.id});await page.reload();await planCard.locator('summary').first().click();
- await expect(planCard).toContainText('remote_readback_verified');
+ await expect(planCard).toContainText('Remote account read back and verified');
  const recovered=(await (await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).json()).plans[0];assert.ok(recovered.steps.filter(step=>step.kind==='scim').every(step=>step.state==='verified'));assert.equal(recovered.fullyOffboarded,false);
  await shoot('leaver-recovered');
  await expect(row('Erin Park')).toContainText('Terminated');assert.equal(await status(),401);

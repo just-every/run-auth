@@ -4,12 +4,13 @@ import {samlInstall,addApp,browse} from './saml-helpers.mjs';
 import {lifecyclePeer} from './lifecycle-peer.mjs';
 import {register} from './webauthn.mjs';
 import {emailSession} from './runtime.mjs';
+import {signInAgain} from './agents-helpers.mjs';
 
 const address=n=>['synthetic-auth-'+n,'example.com'].join('@');
 const remote=(peer,id)=>[...peer.users.values()].find(user=>user.externalId===id);
 
 test('approved native leaver plans survive interruption and uncertain peers, retain episode history and deny stale authority without claiming full offboarding',async t=>{
- const r=await samlInstall(t);r.tick=()=>{};
+ const r=await samlInstall(t);r.tick=()=>{};const ada=await register(r,r.ada);r.ada=ada.cookie;
  const command=async(path,data,status=200,extra={})=>{const response=await r.call('/api/auth/'+path,{method:'POST',data,cookie:r.owner.cookie,...extra});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
  const history=async(cookie=r.owner.cookie,query='personId=ada')=>{const response=await r.call('/api/auth/lifecycle/plans?'+query,{cookie});assert.equal(response.status,200,await response.clone().text());return (await response.json()).plans;};
  const peers=await Promise.all([lifecyclePeer(t,'synthetic-auth-401'),lifecyclePeer(t,'synthetic-auth-402')]);
@@ -17,9 +18,11 @@ test('approved native leaver plans survive interruption and uncertain peers, ret
  const apps=[];
  for(let i=0;i<peers.length;i++){
   apps.push(await addApp(r,{name:'Lifecycle peer '+(i+1),entityId:hosts[i]+'/saml',acsUrl:hosts[i]+'/acs'}));
-  await command('provisioning/connect',{appId:apps[i].id,baseUrl:hosts[i]+'/scim/v2',token:peers[i].token,pushGroups:false},201);
+  await command('provisioning/connect',{appId:apps[i].id,baseUrl:hosts[i]+'/scim/v2',token:peers[i].token,pushGroups:i===0},201);
   assert.equal(remote(peers[i],'ada').active,true);
  }
+ const group=await command('groups/create',{name:'Native lifecycle group'},201);await command('groups/add',{groupId:group.id,personId:'ada'});await command('company-apps/assign',{appId:apps[0].id,principalType:'group',principalId:group.id});
+ assert.ok([...peers[0].groups.values()].some(remoteGroup=>remoteGroup.members.some(member=>member.value===remote(peers[0],'ada').id)));
  const unsupported=await addApp(r,{name:'Manual resolution required',entityId:'https://lifecycle-manual.example.com/saml',acsUrl:'https://lifecycle-manual.example.com/acs'});
  const client=await command('oidc-apps/create',{name:'Native lifecycle session',authMethod:'client_secret_basic',redirectUris:['https://lifecycle-a.example.com/callback'],backchannelLogoutUri:'https://lifecycle-a.example.com/logout'},201);
  await command('company-apps/assign',{appId:client.id,principalType:'person',principalId:'ada'});
@@ -47,7 +50,7 @@ test('approved native leaver plans survive interruption and uncertain peers, ret
  let plans=await history(),first=plans[0];assert.equal(plans.length,1);assert.equal(first.digest,approved.digest);assert.equal(first.custodian,'owner');assert.equal(first.fullyOffboarded,false);
  assert.deepEqual(first.steps.filter(step=>step.kind==='scim').map(step=>step.state),['unstarted','unstarted']);
  assert.equal(first.preview.state.to,'terminated');assert.ok(first.steps.filter(step=>step.kind==='scim').every(step=>step.deadlineAt===first.createdAt+300000&&step.escalateAt===first.createdAt+900000));
- const captured=await r.db.prepare('SELECT plan FROM auth_lifecycle_plans WHERE id=?').bind(first.id).first();assert.deepEqual(JSON.parse(captured.plan),approved.entries[0]);
+ const captured=await r.db.prepare('SELECT plan FROM auth_lifecycle_plans WHERE id=?').bind(first.id).first();assert.deepEqual(JSON.parse(captured.plan),approved.entries[0]);for(const peer of peers){assert.ok(!captured.plan.includes(peer.token));assert.ok(!JSON.stringify(first).includes(peer.token));}
  await r.restart();
  peers[0].lose(503,'PATCH');peers[1].fail(1,503);
  await Promise.all([r.call('/',{action:'maintain'}),r.call('/',{action:'maintain'})]);
@@ -57,7 +60,7 @@ test('approved native leaver plans survive interruption and uncertain peers, ret
  const originalWork=first.steps.filter(step=>step.kind==='scim').map(step=>step.workId).sort();
  await r.restart();r.now+=60001;
  await Promise.all([r.call('/',{action:'maintain'}),r.call('/',{action:'maintain'})]);
- first=(await history())[0];const verified=first.steps.filter(step=>step.kind==='scim');assert.ok(verified.every(step=>step.state==='verified'&&step.verifiedAt>=step.dispatchedAt));assert.deepEqual(verified.map(step=>step.workId).sort(),originalWork);
+ first=(await history())[0];assert.ok(first.steps.some(step=>step.kind==='scim_group'&&step.state==='verified'));assert.ok([...peers[0].groups.values()].every(remoteGroup=>!remoteGroup.members.some(member=>member.value===remote(peers[0],'ada').id)));const verified=first.steps.filter(step=>step.kind==='scim');assert.ok(verified.every(step=>step.state==='verified'&&step.verifiedAt>=step.dispatchedAt));assert.deepEqual(verified.map(step=>step.workId).sort(),originalWork);
  assert.equal(peers[0].writes().filter(write=>write.method==='PATCH'&&write.body?.Operations?.[0]?.value?.active===false).length,1,'readback recovers the lost response without repeating a write');
  assert.ok(first.steps.some(step=>step.app==='Manual resolution required'&&step.state==='unknown'));assert.equal(first.fullyOffboarded,false);assert.equal((await userinfo()).status,401);
  // An approved queue cannot borrow a rotated connector or lose missing work silently.
@@ -81,7 +84,7 @@ test('approved native leaver plans survive interruption and uncertain peers, ret
  assert.equal((await r.call('/api/auth/lifecycle/plans')).status,401);
  // Rehire and terminate preserve identity but never reuse old plan evidence or sessions.
  await command('directory/edit',{personId:'ada',state:'active'});assert.equal((await r.call('/api/auth/me',{cookie:r.ada})).status,401);
- const back=await emailSession(r,(await r.db.prepare("SELECT email FROM oa_operators WHERE id='ada'").first()).email);assert.equal((await r.call('/api/auth/me',{cookie:back})).status,200);
+ const back=(await signInAgain(r,ada,(await r.db.prepare("SELECT email FROM oa_operators WHERE id='ada'").first()).email)).cookie;assert.equal((await r.call('/api/auth/me',{cookie:back})).status,200);
  await command('directory/edit',{personId:'ada',state:'terminated'});plans=await history();assert.equal(plans.length,2);assert.notEqual(plans[0].id,plans[1].id);assert.ok(plans.every(plan=>plan.personId==='ada'));assert.equal((await r.call('/api/auth/me',{cookie:back})).status,401);assert.equal((await userinfo()).status,401);
  // A removed queue cannot make unresolved work completed; erasure removes the private capture.
  const pending=plans[0].steps.find(step=>step.kind==='oidc_logout');if(pending)await r.db.prepare('DELETE FROM auth_oidc_logouts WHERE id=?').bind(pending.workId).run();

@@ -10,7 +10,7 @@ export async function reconcileLeavers(ctx) {
   let state='unknown',outcome='work_missing',dispatched=null,verified=null;
   if(step.kind==='logout'||step.kind==='oidc_logout') {
    const work=await one(ctx,step.kind==='logout'?'SELECT * FROM auth_logout_deliveries WHERE id=?':'SELECT * FROM auth_oidc_logouts WHERE id=?',step.work_id);
-   if(work){dispatched=work.attempts?work.created_at:null;state=work.outcome==='delivered'?'unknown':work.outcome?'failed':'unstarted';outcome=work.outcome==='delivered'?'accepted_remote_unverified':work.outcome??'not_dispatched';}
+   if(work){dispatched=work.dispatched_at;state=work.outcome==='delivered'?'unknown':work.outcome?'failed':'unstarted';outcome=work.outcome==='delivered'?'accepted_remote_unverified':work.outcome??'not_dispatched';}
   } else {
    const work=await one(ctx,'SELECT * FROM auth_provisioning WHERE id=?',step.work_id);
    if(work) {
@@ -41,7 +41,7 @@ export async function leaverHistory(ctx,s,personId=null) {
   plans.push({id:row.id,personId:row.person_id,person:name(row.person_id),actor:name(row.actor_id),custodian:name(row.custodian_id),createdAt:row.created_at,denialAt:row.denial_at,digest:row.preview_digest,
    preview:{source:entry.source,state:entry.state,changes:entry.changes,groups:{added:entry.groups.added.filter(g=>state.legacy||permitted(state,'groups.view',{groupId:g.id})),removed:entry.groups.removed.filter(g=>state.legacy||permitted(state,'groups.view',{groupId:g.id}))},credentialActions:entry.lifecycle.credentialActions},
    state:hidden||missing||steps.some(s=>s.state!=='verified')?'unresolved':'verified',fullyOffboarded:false,hiddenSteps:hidden,missingSteps:missing,
-   steps:shown.map(step=>({id:step.id,app:step.app_label,kind:step.kind,operation:step.operation,workId:step.work_id,state:step.state,outcome:step.outcome,deadlineAt:step.deadline_at,escalateAt:step.escalate_at,dispatchedAt:step.dispatched_at,verifiedAt:step.verified_at}))});
+   steps:shown.map(step=>({id:step.id,app:step.app_label,kind:step.kind,operation:step.operation,workId:step.work_id,state:step.state,outcome:step.outcome,deadlineAt:step.deadline_at,escalateAt:step.escalate_at,retryUntil:step.retry_until,dispatchedAt:step.dispatched_at,verifiedAt:step.verified_at}))});
  }
  // Scope and proof are checked again after reading the complete projection.
  const current=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),state.epoch);

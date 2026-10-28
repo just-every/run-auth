@@ -41,14 +41,14 @@ export function prepareLeaver(ctx,entry,digest,actorId,version) {
  if(entry.state?.kind!=='terminate'||!entry.lifecycle)return null;
  const id=random(),now=ctx.now(),steps=entry.lifecycle.steps.map(s=>({...s,id:random(),workId:['scim','scim_group','logout','oidc_logout'].includes(s.kind)?'leaver:'+random():null}));
  const held={clause:'EXISTS(SELECT 1 FROM auth_lifecycle_plans WHERE id=?)',args:[id]};
- return {id,held,statements(g) {
+ return {id,at:now,held,statements(g) {
   const q=(sql,...args)=>ctx.db.prepare(sql).bind(...args),statements=[q(`INSERT INTO auth_lifecycle_plans(id,person_id,actor_id,custodian_id,preview_digest,plan,created_at,denial_at)
    SELECT ?,?,?,?,?,?,?,? WHERE ${g.clause} AND COALESCE((SELECT epoch FROM auth_lifecycle_epoch WHERE id=1),0)=?
    AND COALESCE((SELECT epoch FROM auth_lifecycle_person_epoch WHERE person_id=?),0)=?
    AND EXISTS(SELECT 1 FROM oa_operators WHERE id=? AND version=? AND status IN ('active','inactive'))`,id,entry.personId,actorId,entry.lifecycle.custodianId,digest,JSON.stringify(entry),now,now,...g.args,entry.lifecycle.epoch.inventory,entry.personId,entry.lifecycle.epoch.person,entry.personId,version)];
   for(const s of steps) {
-   statements.push(q(`INSERT INTO auth_lifecycle_steps(id,plan_id,person_id,app_id,app_label,kind,work_id,binding,operation,deadline_at,escalate_at,state,outcome,verified_at)
-    SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${held.clause}`,s.id,id,entry.personId,s.appId,s.app,s.kind,s.workId,s.binding??null,s.operation,s.within?now+s.within:null,s.escalateAfter?now+s.escalateAfter:null,s.kind==='native'?'verified':s.kind==='unsupported'?'unknown':'unstarted',s.kind==='native'?'native_access_ended':s.kind==='unsupported'?s.operation:null,s.kind==='native'?now:null,...held.args));
+   statements.push(q(`INSERT INTO auth_lifecycle_steps(id,plan_id,person_id,app_id,app_label,kind,work_id,binding,operation,deadline_at,escalate_at,retry_until,state,outcome,verified_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${held.clause}`,s.id,id,entry.personId,s.appId,s.app,s.kind,s.workId,s.binding??null,s.operation,s.within?now+s.within:null,s.escalateAfter?now+s.escalateAfter:null,s.retryFor?now+s.retryFor:null,s.kind==='native'?'verified':s.kind==='unsupported'?'unknown':'unstarted',s.kind==='native'?'native_access_ended':s.kind==='unsupported'?s.operation:null,s.kind==='native'?now:null,...held.args));
    if(s.kind==='logout')statements.push(q(`INSERT INTO auth_logout_deliveries(id,client_id,person_id,event,jti,next_attempt_at,created_at) SELECT ?,?,?,'https://runeditrun.com/events/identity-fence',?,?,? WHERE ${held.clause}`,s.workId,s.appId,entry.personId,random(),now,now,...held.args));
    if(s.kind==='oidc_logout')statements.push(q(`INSERT INTO auth_oidc_logouts(id,client_id,person_id,sid,jti,next_attempt_at,created_at) SELECT ?,?,?,?,?,?,? WHERE ${held.clause}`,s.workId,s.clientId,entry.personId,s.sid,random(),now,now,...held.args));
    if(s.kind==='scim'||s.kind==='scim_group') {

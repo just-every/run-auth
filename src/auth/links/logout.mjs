@@ -43,6 +43,7 @@ async function attempt(ctx,d) {
  const claims={aud:client.id,sub:await pairwiseSubject(ctx,client.sector_id,d.person_id),jti:d.jti,events:{[d.event]:{}},...(d.sid?{sid:d.sid}:{})};
  const token=await signToken(ctx,claims,{typ:'logout+jwt',expiresAt:Math.floor(ctx.now()/1000)+120});
  let status;
+ await run(ctx,'UPDATE auth_logout_deliveries SET dispatched_at=COALESCE(dispatched_at,?) WHERE id=?',ctx.now(),d.id);
  try {
   const response=await fetcherOf(ctx)(client.logout_uri,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(10000),headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({logout_token:token}).toString()});
   status=response.status;await response.body?.cancel();

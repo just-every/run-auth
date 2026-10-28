@@ -37,6 +37,7 @@ async function attempt(ctx,d) {
  if(!await approvedBinding(ctx,d.id,await logoutBinding(client,true)))return {finished:true,outcome:'approved_app_changed'};
  const token=await signToken(ctx,{aud:client.client_id,sub:await subjectFor(ctx,client,d.person_id),sid:d.sid,jti:d.jti,events:{'http://schemas.openid.net/event/backchannel-logout':{}}},{alg:client.id_token_alg,typ:'logout+jwt',expiresAt:Math.floor(ctx.now()/1000)+120});
  let status;
+ await run(ctx,'UPDATE auth_oidc_logouts SET dispatched_at=COALESCE(dispatched_at,?) WHERE id=?',ctx.now(),d.id);
  try {
   const response=await (ctx.connectorFetch||fetch)(client.backchannel_logout_uri,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(10000),headers:{'content-type':'application/x-www-form-urlencoded'},body:new URLSearchParams({logout_token:token}).toString()});
   status=response.status;await response.body?.cancel();
