@@ -3835,7 +3835,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "da69668a55bcfc6cec715e5ad0a79abf207d2e0d015338cf560d7d8993de3321",
+      "sha256": "a5e461450ec08ec8b0946db52c7953563e8d16799bd051933dfaa9a4e1735608",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
@@ -3851,7 +3851,7 @@
       "executable": false
     },
     "tests/integration/helpers/capture-views.mjs": {
-      "sha256": "4022dcd45f57fe38dff68fe6996d9d8b761bcda01de7339de13cc958f88b2867",
+      "sha256": "2a18522b75153ff4406ea78609926b06c9deaf2bb023b7bfdd37335e4ead56ec",
       "executable": false
     },
     "tests/integration/helpers/delegation-journey.mjs": {

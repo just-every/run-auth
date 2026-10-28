@@ -21,7 +21,7 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- const shoot=async (name,page=primary)=>captureViews({page,views,errors,capture:async(page,width,theme)=>{
+ const shoot=async (name,page=primary)=>captureViews({page,views,errors,parallel:false,capture:async(page,width,theme)=>{
   await expect(page.locator('h1')).toBeVisible();
   const results=await new AxeBuilder({page}).analyze();
   assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`${width} ${theme} ${name}`);
