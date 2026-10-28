@@ -12,8 +12,8 @@ const snapshot=async(r,id)=>({app:await r.db.prepare('SELECT * FROM auth_apps WH
 
 export async function configurationLifecycle(t) {
  const r=await samlInstall(t),cookie=r.owner.cookie;
- const added=await success(await r.admin('catalog/add',{recipe:'slack',workspace:'synthetic-auth-1',token:'synthetic-auth-901'}),201);
- await success(await r.admin('company-apps/assign',{appId:added.id,principalType:'person',principalId:'ada',role:'editor'}));
+ const added=await success(await r.admin('/api/auth/catalog/add',{recipe:'slack',workspace:'synthetic-auth-1',token:'synthetic-auth-901'}),201);
+ await success(await r.admin('/api/auth/company-apps/assign',{appId:added.id,principalType:'person',principalId:'ada',role:'editor'}));
  let outbound=0;
  const edge=createServer((req,res)=>{outbound++;res.writeHead(503);res.end();});await new Promise(done=>edge.listen(0,'127.0.0.1',done));t.after(()=>new Promise(done=>edge.close(done)));
  r.edges={'https://api.slack.com':`http://127.0.0.1:${edge.address().port}`};
@@ -42,16 +42,16 @@ export async function configurationLifecycle(t) {
  const restored=await snapshot(r,added.id);assert.equal(restored.app.version,3);assert.equal(restored.revisions.length,3);assert.equal(restored.revisions.find(v=>v.version===3).rolled_back_from,1);assert.deepEqual(restored.assignments,before.assignments);assert.deepEqual(restored.connector,before.connector);
  const projected=JSON.stringify({history:await success(await post(r,cookie,'history',{appId:added.id})),events:(await r.db.prepare("SELECT detail FROM auth_activity_details WHERE activity_id IN (SELECT id FROM auth_activity WHERE event='catalog.configuration.approved')").all()).results});
  assert.ok(!projected.includes(before.connector.sealed_token));assert.ok(!projected.includes('synthetic-auth-ignored'));assert.ok(!projected.includes('sealed_token'));assert.ok(!projected.includes('synthetic-auth-901'));assert.equal(outbound,0,'approval and rollback do not dispatch provisioning');
- const oldWrite=await r.admin('company-apps/update',{id:added.id,version:3,entityId:'https://slack.com',acsUrl:'https://synthetic-auth-1.slack.com/sso/saml'});assert.equal(oldWrite.status,409);
+ const oldWrite=await r.admin('/api/auth/company-apps/update',{id:added.id,version:3,entityId:'https://slack.com',acsUrl:'https://synthetic-auth-1.slack.com/sso/saml'});assert.equal(oldWrite.status,409);
  await r.restart();assert.equal(await login(undefined),original);
 }
 
 export async function configurationAuthority(t) {
  const r=await samlInstall(t),cookie=r.owner.cookie;
- const added=await success(await r.admin('catalog/add',{recipe:'zoom',vanity:'synthetic-auth-2'}),201),appId=added.id;
+ const added=await success(await r.admin('/api/auth/catalog/add',{recipe:'zoom',vanity:'synthetic-auth-2'}),201),appId=added.id;
  const prepare=()=>post(r,cookie,'preview',{appId,version:1,settings:{name:'Reviewed app'}});
  const review=await success(await prepare()),approved={appId,preview:review.preview,confirm:true};
- const isolated=await success(await r.admin('organizations/create',{name:'Separate catalog employer'}),201);
+ const isolated=await success(await r.admin('/api/auth/organizations/create',{name:'Separate catalog employer'}),201);
  for(const [path,data] of [['preview',{appId,version:1}],['approve',approved],['history',{appId}]])assert.equal((await r.call('/org/'+isolated.id+'/api/auth/catalog/'+path,{method:'POST',cookie,data})).status,401);
  const org={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+isolated.id+path,options)};
  const foreignOwner=await register(org,await emailSession(org,address('owner')));
@@ -67,12 +67,12 @@ export async function configurationAuthority(t) {
  assert.deepEqual(await snapshot(r,appId),before);
  // Grant real scoped authority through the ordinary reviewed role door.
  const holder=await passkeyPerson(r,'synthetic-auth-3',address('synthetic-auth-3'),'member');
- const change=async data=>{const proposed=await success(await r.admin('roles/preview',data));return success(await r.admin('roles/apply',{previewId:proposed.previewId}));};
+ const change=async data=>{const proposed=await success(await r.admin('/api/auth/roles/preview',data));return success(await r.admin('/api/auth/roles/apply',{previewId:proposed.previewId}));};
  const role=await change({kind:'role',role:{name:'App custodian',rank:20,permissions:['apps.edit','apps.view','roles.view']}});
  const scope={people:[],groups:[],apps:[appId],cases:[]};
  await change({kind:'grant',personId:'synthetic-auth-3',roleId:role.plan.role.id,resources:{view:scope,edit:scope}});
  let scoped=await success(await post(r,holder.cookie,'preview',{appId,version:1,settings:{name:'Scoped app'}}));
- const foreign=await success(await r.admin('catalog/add',{recipe:'zoom',vanity:'synthetic-auth-4'}),201);
+ const foreign=await success(await r.admin('/api/auth/catalog/add',{recipe:'zoom',vanity:'synthetic-auth-4'}),201);
  assert.equal((await post(r,holder.cookie,'preview',{appId:foreign.id,version:1})).status,403);
  assert.equal((await post(r,holder.cookie,'approve',approved)).status,409,'another session cannot approve a captured preview');
  await success(await r.call('/api/auth/roles/command',{method:'POST',cookie:holder.cookie,data:{action:'/catalog/approve',params:{appId,preview:scoped.preview,confirm:true}}}));
@@ -91,13 +91,13 @@ export async function configurationAuthority(t) {
   assert.deepEqual(await snapshot(r,appId),before);
  }
  r.owner=await signInAgain(r,r.owner,address('owner'));
- await success(await r.admin('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true}));
- const erase=await success(await r.admin('erasure/preview',{kind:'person',target:'synthetic-auth-3'}));
- await success(await r.admin('erasure/confirm',{previewId:erase.id,confirmation:'ERASE',destinations:[]}));
+ await success(await r.admin('/api/auth/erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true}));
+ const erase=await success(await r.admin('/api/auth/erasure/preview',{kind:'person',target:'synthetic-auth-3'}));
+ await success(await r.admin('/api/auth/erasure/confirm',{previewId:erase.id,confirmation:'ERASE',destinations:[]}));
  assert.equal((await post(r,holder.cookie,'approve',{appId,preview:scoped.preview,confirm:true})).status,401,'erased actors cannot replay a capture');
  assert.equal((await snapshot(r,appId)).app.version,version);
  const removed=await success(await post(r,r.owner.cookie,'preview',{appId,version}));
- await success(await r.admin('company-apps/remove',{id:appId}));
+ await success(await r.admin('/api/auth/company-apps/remove',{id:appId}));
  assert.equal((await post(r,r.owner.cookie,'approve',{appId,preview:removed.preview,confirm:true})).status,404);
  assert.equal((await post(r,r.owner.cookie,'history',{appId})).status,404);
 }

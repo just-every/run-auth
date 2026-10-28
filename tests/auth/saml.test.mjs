@@ -38,11 +38,11 @@ test('an assigned employee signs in to a SAML app over both request bindings, wi
  // Reviewing transport settings cannot bypass SAML request validation or restore
  // a removed assignment, including when an administrator rolls settings back.
  const app=(await (await r.call('/api/auth/company-apps',{cookie:r.owner.cookie})).json()).companyApps.find(a=>a.entityId==='https://sp-0-persistent.example.com');
- const review=await (await r.admin('catalog/preview',{appId:app.id,version:app.version,settings:{name:'Reviewed SAML app'}})).json();
- assert.equal((await r.admin('catalog/approve',{appId:app.id,preview:review.preview,confirm:true})).status,200);
- assert.equal((await r.admin('company-apps/unassign',{appId:app.id,principalType:'person',principalId:'ada'})).status,200);
- const rollback=await (await r.admin('catalog/preview',{appId:app.id,version:app.version+1,targetVersion:app.version})).json();
- assert.equal((await r.admin('catalog/approve',{appId:app.id,preview:rollback.preview,confirm:true})).status,200);
+ const review=await (await r.admin('/api/auth/catalog/preview',{appId:app.id,version:app.version,settings:{name:'Reviewed SAML app'}})).json();
+ assert.equal((await r.admin('/api/auth/catalog/approve',{appId:app.id,preview:review.preview,confirm:true})).status,200);
+ assert.equal((await r.admin('/api/auth/company-apps/unassign',{appId:app.id,principalType:'person',principalId:'ada'})).status,200);
+ const rollback=await (await r.admin('/api/auth/catalog/preview',{appId:app.id,version:app.version+1,targetVersion:app.version})).json();
+ assert.equal((await r.admin('/api/auth/catalog/approve',{appId:app.id,preview:rollback.preview,confirm:true})).status,200);
  const refused=await signIn(r,saml,r.ada);assert.equal(refused.status,403);assert.equal(field(await refused.text(),'SAMLResponse'),null);
 
 });

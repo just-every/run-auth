@@ -3403,7 +3403,7 @@
       "executable": false
     },
     "tests/auth/catalog-revisions-flow.mjs": {
-      "sha256": "c434c9a3c4ef01160c98f095d7c78f53e4f6ca228a0853a043fc51025142261f",
+      "sha256": "281098c94e2616424c6b4ebe976156ae01ef2073687b938ce7be76e690481e4f",
       "executable": false
     },
     "tests/auth/catalog.test.mjs": {
@@ -3579,7 +3579,7 @@
       "executable": false
     },
     "tests/auth/provisioning.test.mjs": {
-      "sha256": "adf7a2a2ec33f3c7a92ca56a812033a489b3c745b859cc5840daacec245cd870",
+      "sha256": "5d7852debae7204a34d335a23ab1808e25c4645f075bb997256dd95d38da40bd",
       "executable": false
     },
     "tests/auth/recovery-cases-flow.mjs": {
@@ -3635,7 +3635,7 @@
       "executable": false
     },
     "tests/auth/saml.test.mjs": {
-      "sha256": "0f22ec1412c71c5946f6883e0b5ecf4cd49e0d0e32c9efbff269d0861231005e",
+      "sha256": "731f4acc32ea7f69136354d9431e1bd369efc67773ca545ec760ac2c4d842375",
       "executable": false
     },
     "tests/auth/scim-server.mjs": {
