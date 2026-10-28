@@ -51,7 +51,9 @@ event IDs from that page. The receipt commits only while the current session,
 fresh email and role authority still hold. A refused export returns no events
 and creates no successful receipt. The receipts themselves are later audit
 events and cannot alter the captured traversal. After a restart, continuation
-still requires the same live session and export authority. These receipts record
+still requires the same live session and export authority. Subject erasure
+invalidates old cursors and replaces personally identifying receipt details
+with the existing opaque erasure reference. These receipts record
 release from Auth; they do not prove delivery to an external destination or
 provide general tamper detection.
 
