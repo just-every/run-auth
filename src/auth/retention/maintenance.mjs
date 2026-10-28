@@ -37,6 +37,12 @@ export async function maintainRetention(ctx) {
    statements.push(ctx.db.prepare(`UPDATE ${table} AS t SET email=(SELECT json_extract(candidate.value,'$.expiredEmail') FROM json_each(?) candidate WHERE ${identity}),display_name='Expired profile' WHERE ${condition}`).bind(json,pending.id,claim,json));
   }else {
    statements.push(...await expiryStatements(ctx,entry,planned,condition,[pending.id,claim,json],pending.id));
+   // Session-bound factor proofs have no authority after their parent ends.
+   // Remove only references to this exact eligible snapshot, under the same
+   // live holds and transaction claim as the parent deletion.
+   if(entry.table==='auth_sessions')for(const proof of ['auth_passkey_session_proofs','auth_factor_proofs']) {
+    statements.push(ctx.db.prepare(`DELETE FROM ${tableQuote(proof)} WHERE session_id IN (SELECT t.id FROM ${table} t WHERE ${condition})`).bind(pending.id,claim,json));
+   }
    statements.push(ctx.db.prepare(`DELETE FROM ${table} AS t WHERE ${condition}`).bind(pending.id,claim,json));
   }
   statements.push(ctx.db.prepare(`UPDATE auth_retention_runs SET result=json_set(result,?,changes()) WHERE id=? AND status='queued' AND claim_id=?`).bind('$.'+entryId(entry),pending.id,claim));

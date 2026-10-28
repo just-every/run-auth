@@ -308,3 +308,6 @@ test('a real SFTP listener verifies the employer key, applies reviewed hires, mo
 test('an explicitly approved HR file applies current and dated hires, moves and leavers once, resolves managers and resumes interruptions while preserving enrollment and authority refusals',hrFileApplyFlow);
 
 test('inbound directories and scoped SCIM stage immutable users and groups, require exact approval, retain incomplete feeds and fence reviewed leavers',directorySourceFlow);
+
+import {retentionSessionProofsFlow} from './retention-session-proofs-flow.mjs';
+test('authentication-only retention expires three session proofs without directory sources and preserves live sessions',retentionSessionProofsFlow);

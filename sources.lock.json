@@ -2011,7 +2011,7 @@
       "executable": false
     },
     "src/auth/retention/maintenance.mjs": {
-      "sha256": "b8d6ffeb3e32cdb3bd2da4fe4c1cb4c36cfdfa420f021c500be5028512041de5",
+      "sha256": "0784e032514467fb9780125d2c9307d428e2bf94950dc91c3742a35d51d86c48",
       "executable": false
     },
     "src/auth/retention/plan.mjs": {
@@ -3411,7 +3411,7 @@
       "executable": false
     },
     "tests/auth/directory.test.mjs": {
-      "sha256": "a4a65a84df3318779223c2970dd6ae0a06ea93e2c5b90f449a5b5b7e00b2c365",
+      "sha256": "f73a80139da743e36cd2b6c421ec1a59251aff173b909c3159b1d271200c10b6",
       "executable": false
     },
     "tests/auth/domain-helpers.mjs": {
@@ -3588,6 +3588,10 @@
     },
     "tests/auth/retention-integrity-flow.mjs": {
       "sha256": "a5a48dbe5b067c07b86903fef9cb458ae522557921df21a27b2b739b33d1c76d",
+      "executable": false
+    },
+    "tests/auth/retention-session-proofs-flow.mjs": {
+      "sha256": "cac39104e9f97ad11cd4935e6ba238bcb6d4b75be0018a5725f8f8118fed30bd",
       "executable": false
     },
     "tests/auth/review-reduction-flow.mjs": {
