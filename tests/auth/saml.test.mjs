@@ -35,6 +35,16 @@ test('an assigned employee signs in to a SAML app over both request bindings, wi
  const saml=serviceProvider(r,{entity:'https://sp-0-persistent.example.com',idpCerts,sp,format:FORMAT.persistent,assertion:false});
  const waiting=await signIn(r,saml,undefined);assert.equal(waiting.status,404);
  const issued=(await r.db.prepare("SELECT COUNT(*) AS n FROM auth_activity WHERE event='saml_assertion_issued'").first()).n;assert.equal(issued,12);
+ // Reviewing transport settings cannot bypass SAML request validation or restore
+ // a removed assignment, including when an administrator rolls settings back.
+ const app=(await (await r.call('/api/auth/company-apps',{cookie:r.owner.cookie})).json()).companyApps.find(a=>a.entityId==='https://sp-0-persistent.example.com');
+ const review=await (await r.admin('catalog/preview',{appId:app.id,version:app.version,settings:{name:'Reviewed SAML app'}})).json();
+ assert.equal((await r.admin('catalog/approve',{appId:app.id,preview:review.preview,confirm:true})).status,200);
+ assert.equal((await r.admin('company-apps/unassign',{appId:app.id,principalType:'person',principalId:'ada'})).status,200);
+ const rollback=await (await r.admin('catalog/preview',{appId:app.id,version:app.version+1,targetVersion:app.version})).json();
+ assert.equal((await r.admin('catalog/approve',{appId:app.id,preview:rollback.preview,confirm:true})).status,200);
+ const refused=await signIn(r,saml,r.ada);assert.equal(refused.status,403);assert.equal(field(await refused.text(),'SAMLResponse'),null);
+
 });
 
 test('encrypted assertions open at the app with AES-256-GCM and AES-128-CBC; a Redirect-bound response is signed in its query; IdP-initiated launch only where the app permits it',async t=>{

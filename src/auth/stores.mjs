@@ -3,6 +3,7 @@
 // A new managed store requires an explicit decision before either operation.
 const groups = {
  portable: [
+  'auth_app_revisions',
   'auth_onboarding',
   'auth_launcher_bookmarks', 'auth_launcher_preferences',
   'auth_import_history',

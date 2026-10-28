@@ -332,7 +332,13 @@ export interface CompanyAppObligation {
   subject_type: string; subject_id: string; label?: string | null; reason: string; operation?: string | null; state: string
   event_at: number; dispatched_at?: number | null; verified_at?: number | null; attempts: number; last_status?: number | null; last_error?: string | null; overdue?: boolean
 }
+export interface SamlConfiguration {
+ name: string; metadata: string; nameIdFormat: string; sign: string; digest: string; idpInitiated: boolean
+ attributes: Array<{name: string; source: string}>
+}
 export interface CompanyApp {
+  configuration?: SamlConfiguration | null
+  revisions?: Array<{version: number; created_at: number; rolled_back_from: number | null}>
   mapping: { version: number; versions: { version: number; program: string; created_at: number }[] }
   id: string; name: string; protocol: string; recipe?: string | null
   oidc: { clientId: string; authMethod: string; redirectUris: string[]; postLogoutRedirectUris: string[]; requirePkce: boolean; subjectType: string; legacyFlows: boolean; frontchannelLogoutUri?: string | null; backchannelLogoutUri?: string | null; idTokenAlg: string; liveSecrets: number; previousSecretUntil?: number | null } | null; entityId: string; acs: Array<{ url: string; binding: string }>; slo?: { url: string; binding: string } | null

@@ -1,3 +1,4 @@
+import {configurationLifecycle,configurationAuthority} from './catalog-revisions-flow.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {samlInstall,spCredentials,idpCertificates,serviceProvider,metadataOf,signIn,posted} from './saml-helpers.mjs';
@@ -6,6 +7,7 @@ import {passkeyPerson} from './agents-helpers.mjs';
 const INPUTS={'google-workspace':{domain:'company.com'},'microsoft-365':{domain:'company.com'},slack:{workspace:'company'},'github-enterprise':{enterprise:'company'},salesforce:{myDomain:'company',orgId:'00D000000000001AAA'},zoom:{vanity:'company'}};
 
 test('the catalog configures the seven named apps as working SAML apps with their SCIM connectors, and states what each needs',async t=>{
+ await configurationLifecycle(t);
  const r=await samlInstall(t),idpCerts=await idpCertificates(r);
  const model=await (await r.call('/api/auth/company-apps',{cookie:r.owner.cookie})).json();
  assert.deepEqual(model.catalog.map(c=>c.id).sort(),['aws-iam-identity-center','github-enterprise','google-workspace','microsoft-365','salesforce','slack','zoom']);
@@ -37,6 +39,7 @@ test('the catalog configures the seven named apps as working SAML apps with thei
 });
 
 test('company-app administration needs a passkey administrator with a fresh email proof, and signing certificates are the owner\'s',async t=>{
+ await configurationAuthority(t);
  const r=await samlInstall(t);
  const admin=await passkeyPerson(r,'admin','admin@example.com','admin');
  const as=(cookie,path,data)=>{r.tick();return r.call('/api/auth/'+path,{method:'POST',data,cookie});};

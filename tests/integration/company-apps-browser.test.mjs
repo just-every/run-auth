@@ -1,3 +1,4 @@
+import {catalogConfigurationJourney} from './helpers/catalog-configuration-journey.mjs';
 import {terraformJourney} from './helpers/terraform-journey.mjs';
 import {hookServer} from '../auth/hooks-server.mjs';
 import {test} from 'node:test';
@@ -102,6 +103,12 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  await employeePage.goto(app.origin+'/app/methods');
  const employeeRegistered=employeePage.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify')),employeeLoaded=employeePage.waitForEvent('load');
  await employeePage.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await employeeRegistered).status(),200);await employeeLoaded;
+
+ const catalogSp=await serviceProvider(t,app.origin);
+ await catalogConfigurationJourney({app,context,page,employeePage,sp:catalogSp,views,errors,capture:async(target,width,theme,name)=>{
+  assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
+  await target.screenshot({path:join(directory,`company-apps-${name}-${width}-${theme}.png`),fullPage:true});
+ }});
 
  // The app's own metadata, pasted on the Apps page.
  const sp=await serviceProvider(t,app.origin);

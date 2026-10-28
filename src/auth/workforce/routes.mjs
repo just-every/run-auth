@@ -13,6 +13,7 @@ import {stageSamlKey,activateSamlKey,retireSamlKey,publishedKeys,ensureSamlKey} 
 import {idpEntity} from '../saml/assertion.mjs';
 import {scimBase,connectorOf,testConnection} from '../provisioning/scim.mjs';
 import {queue,queueApp,groupChanged,reconcile,preview,dispatch,ESCALATE_AFTER} from '../provisioning/obligations.mjs';
+import {isRevisionAction,revisionAction,revisionHistory,configurationOf} from '../catalog/revisions.mjs';
 import {recipe,catalog} from '../catalog/recipes.mjs';
 import {launcher,launcherPreference,launcherOpen} from '../launcher/index.mjs';
 import {emit} from '../events/store.mjs';
@@ -21,10 +22,11 @@ import {matches} from './people/groups.mjs';
 
 const OWNER_ACTIONS=['/saml-keys/stage','/saml-keys/activate','/saml-keys/retire'];
 const ADMIN_ACTIONS=['/bookmarks/create','/bookmarks/remove','/oidc-apps/create','/oidc-apps/rotate-secret','/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
-export const isWorkforceAction=path=>path==='/launcher/favorite'||OWNER_ACTIONS.includes(path)||ADMIN_ACTIONS.includes(path);
+export const isWorkforceAction=path=>isRevisionAction(path)||path==='/launcher/favorite'||OWNER_ACTIONS.includes(path)||ADMIN_ACTIONS.includes(path);
 const text=(value,max,code)=>{const v=String(value??'').trim();if(!v||v.length>max)fail(code);return v;};
 
 export async function workforceAction(ctx,request,path,data) {
+ if(isRevisionAction(path))return revisionAction(ctx,request,path,data);
  if(path==='/launcher/favorite')return launcherPreference(ctx,request,data);
  const s=await requireSession(ctx,request,true),owner=OWNER_ACTIONS.includes(path);
  if(owner&&s.role!=='owner')fail('owner_required',403);
@@ -148,6 +150,7 @@ export async function workforceCommand(ctx,actor,path,data) {
   return json({clientSecret:secret,previousValidUntil:now+overlap,message:`New client secret, shown once: ${secret}. The previous secret works until ${new Date(now+overlap).toISOString()}.`});
  }
  if(path==='/company-apps/update') {
+  if(actor.kind!=='service')fail('configuration_preview_required',409);
   const current=await app(data.id),settings=appSettings(ctx,data);if(current.protocol!=='saml')fail('not_a_saml_app',409);
   if(actor.kind==='service') {
    if(!data.metadata&&!Object.hasOwn(data,'signingCertificate'))settings.signingCertificates=current.spCertificates;
@@ -236,10 +239,10 @@ export async function workforceModel(ctx) {
  return {
   idp:{entityId:idpEntity(ctx),metadataUrl:`${ctx.origin}/saml/metadata`,ssoUrl:`${ctx.origin}/saml/sso`,sloUrl:`${ctx.origin}/saml/slo`},
   samlKeys:keys.map(k=>({kid:k.kid,state:k.state,createdAt:k.created_at,activatedAt:k.activated_at})),
-  companyApps:apps.map(row=>{const a=appOf(row),c=connectors.find(x=>x.app_id===a.id);const o=oidc.find(x=>x.app_id===a.id);return {id:a.id,name:a.name,mapping:{version:a.mapping_version,versions:mappings.filter(m=>m.app_id===a.id)},protocol:a.protocol,oidc:o?{clientId:o.client_id,authMethod:o.auth_method,redirectUris:JSON.parse(o.redirect_uris),postLogoutRedirectUris:JSON.parse(o.post_logout_redirect_uris),requirePkce:Boolean(o.require_pkce),subjectType:o.subject_type,legacyFlows:Boolean(o.legacy_flows),frontchannelLogoutUri:o.frontchannel_logout_uri,backchannelLogoutUri:o.backchannel_logout_uri,idTokenAlg:o.id_token_alg,liveSecrets:o.live_secrets,previousSecretUntil:o.overlap_until}:null,recipe:a.recipe,entityId:a.entity_id,acs:a.acs,slo:a.slo,nameIdFormat:a.name_id_format,sign:a.sign,digest:a.digest,encryption:a.encryption,idpInitiated:Boolean(a.idp_initiated),version:a.version,status:a.disabled_at?'removed':'active',metadata:spMetadata(a),
+  companyApps:await Promise.all(apps.map(async row=>{const a=appOf(row),c=connectors.find(x=>x.app_id===a.id);const o=oidc.find(x=>x.app_id===a.id);return {configuration:a.protocol==='saml'?configurationOf(a):null,revisions:a.protocol==='saml'?await revisionHistory(ctx,a.id):[],id:a.id,name:a.name,mapping:{version:a.mapping_version,versions:mappings.filter(m=>m.app_id===a.id)},protocol:a.protocol,oidc:o?{clientId:o.client_id,authMethod:o.auth_method,redirectUris:JSON.parse(o.redirect_uris),postLogoutRedirectUris:JSON.parse(o.post_logout_redirect_uris),requirePkce:Boolean(o.require_pkce),subjectType:o.subject_type,legacyFlows:Boolean(o.legacy_flows),frontchannelLogoutUri:o.frontchannel_logout_uri,backchannelLogoutUri:o.backchannel_logout_uri,idTokenAlg:o.id_token_alg,liveSecrets:o.live_secrets,previousSecretUntil:o.overlap_until}:null,recipe:a.recipe,entityId:a.entity_id,acs:a.acs,slo:a.slo,nameIdFormat:a.name_id_format,sign:a.sign,digest:a.digest,encryption:a.encryption,idpInitiated:Boolean(a.idp_initiated),version:a.version,status:a.disabled_at?'removed':'active',metadata:spMetadata(a),
    assignments:assignments.filter(x=>x.app_id===a.id).map(x=>({type:x.principal_type,id:x.principal_id,label:x.label,role:x.role})),
    provisioning:c?{baseUrl:c.base_url,deprovision:c.deprovision,groups:Boolean(c.push_groups),lastSuccessAt:c.last_success_at,lastError:c.last_error,lastReconciledAt:c.last_reconciled_at,rotatedAt:c.rotated_at}:null,
-   obligations:obligations.filter(o=>o.app_id===a.id).map(o=>({...o,overdue:o.state!=='verified'&&now-o.event_at>ESCALATE_AFTER}))};}),
+   obligations:obligations.filter(o=>o.app_id===a.id).map(o=>({...o,overdue:o.state!=='verified'&&now-o.event_at>ESCALATE_AFTER}))};})),
   groups:groups.map(gr=>({...gr,members:members.filter(m=>m.group_id===gr.id).map(m=>({id:m.id,email:m.email}))})),
   bookmarks:await all(ctx,'SELECT b.*,g.name AS group_name FROM auth_launcher_bookmarks b JOIN auth_groups g ON g.id=b.group_id ORDER BY b.name'),
   catalog:catalog(),

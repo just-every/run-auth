@@ -1,3 +1,4 @@
+import {REVISION_ACTIONS,revisionCommand} from '../catalog/revisions.mjs';
 import {requireVerifiedDomain} from '../domains/ownership.mjs';
 // Human-only adapter over the existing native command implementations. Each
 // action is named here with explicit permission and compound resource checks;
@@ -17,7 +18,7 @@ import {requireHardware,assertPermission,roleGuard,permitted} from './policy.mjs
 import {contains} from './permissions.mjs';
 import {commit} from './commit.mjs';
 
-const APP_COMMANDS=['/company-apps/create','/company-apps/update','/company-apps/remove','/oidc-apps/create','/oidc-apps/update','/oidc-apps/rotate-secret','/catalog/add','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect'];
+const APP_COMMANDS=[...REVISION_ACTIONS,'/company-apps/create','/company-apps/update','/company-apps/remove','/oidc-apps/create','/oidc-apps/update','/oidc-apps/rotate-secret','/catalog/add','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect'];
 const ASSIGN_COMMANDS=['/company-apps/assign','/company-apps/unassign'];
 const GROUP_COMMANDS=['/groups/create','/groups/delete','/groups/rule'];
 export const ROLE_COMMANDS=Object.freeze([...APP_COMMANDS,...ASSIGN_COMMANDS,...GROUP_COMMANDS,'/people/suspend','/people/restore','/policy/domain-rule','/identity-providers/availability']);
@@ -96,7 +97,9 @@ export async function roleCommand(ctx,s,data) {
  const params=data.params??{};if(!params||typeof params!=='object'||Array.isArray(params))fail('invalid_role_command');
  if(params.id!==undefined&&params.appId!==undefined&&params.id!==params.appId)fail('conflicting_resource_ids');
  if(params.id!==undefined&&params.groupId!==undefined&&params.id!==params.groupId)fail('conflicting_resource_ids');
- const state=await roleState(ctx,s),permission=commandAuthority(state,action,params),actor=actorFor(ctx,s,state,action,params,permission);
+ const state=await roleState(ctx,s),permission=commandAuthority(state,action,params);
+ if(REVISION_ACTIONS.includes(action))return revisionCommand(ctx,s,action,params);
+ const actor=actorFor(ctx,s,state,action,params,permission);
  if(action==='/oidc-apps/update')return updateOidc(ctx,actor,params);
  if(action==='/provisioning/disconnect') {
   const appId=String(params.appId??''),g=actor.guard;

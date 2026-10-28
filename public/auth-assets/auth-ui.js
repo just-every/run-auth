@@ -16,6 +16,10 @@
     }
   }
   const friendlyErrors = {
+    configuration_preview_changed: 'The app changed or this review expired. Reload and preview the current settings again.',
+    role_authority_changed: 'Your authority or the app changed. Reload and review again.',
+    app_changed: 'The app changed. Reload and preview the current settings again.',
+    configuration_preview_required: 'Preview and approve this configuration in Settings.',
     domain_not_verified: 'Prove ownership of this exact domain on Sign-in methods first.',
     domain_already_claimed: 'Another employer holds this domain. Contact your installation owner.',
     domain_challenge_incorrect: 'The TXT record does not match yet. Check its exact name and value, then try again.',
@@ -453,6 +457,32 @@
       if (submitter) submitter.disabled = false
       return
     }
+    const configuration = event.target.closest('form[data-configuration-form]')
+    if (configuration) {
+      event.preventDefault()
+      const panel = configuration.closest('[data-configuration]'), result = panel.querySelector('[data-configuration-result]')
+      const approve = panel.querySelector('[data-configuration-approve]'), confirm = panel.querySelector('[data-configuration-confirm]')
+      approve.disabled = true; confirm.checked = false
+      const payload = Object.fromEntries(new FormData(configuration))
+      if (!('targetVersion' in payload)) payload.idpInitiated = new FormData(configuration).has('idpInitiated')
+      try {
+        const review = await requestJSON(configuration.action, payload)
+        panel.querySelector('[data-configuration-title]').textContent = review.rollback === null ? 'Review configuration' : `Review rollback to version ${review.rollback}`
+        panel.querySelector('[data-configuration-before]').textContent = JSON.stringify(review.before, null, 2)
+        panel.querySelector('[data-configuration-proposed]').textContent = JSON.stringify(review.proposed, null, 2)
+        panel.querySelector('[data-configuration-notes]').textContent = review.notes.join(' ')
+        panel.querySelector('[data-configuration-review]').hidden = false
+        result.textContent = `Preview of version ${review.version}. No settings changed and no request was sent to the app.`
+        confirm.onchange = () => { approve.disabled = !confirm.checked }
+        approve.onclick = async () => {
+          if (!confirm.checked) return
+          approve.disabled = true
+          try { await requestJSON('/api/auth/catalog/approve', { appId: payload.appId, preview: review.preview, confirm: true }); window.location.reload() }
+          catch (error) { confirm.onchange = null; result.textContent = error.message }
+        }
+      } catch (error) { panel.querySelector('[data-configuration-review]').hidden = true; result.textContent = error.message }
+      return
+    }
     const mapping = event.target.closest('form[data-mapping-form]')
     if (mapping) {
       event.preventDefault()
@@ -593,6 +623,13 @@
       if (submitter) submitter.disabled = false
     }
   })
+
+  document.querySelectorAll('[data-configuration-form]').forEach(form => form.addEventListener('input', () => {
+    const panel = form.closest('[data-configuration]')
+    panel.querySelector('[data-configuration-review]').hidden = true
+    panel.querySelector('[data-configuration-approve]').disabled = true
+    panel.querySelector('[data-configuration-confirm]').onchange = null
+  }))
 
   document.querySelectorAll('[data-mapping-form]').forEach(form => form.addEventListener('input', () => { form.querySelector('[data-mapping-save]').disabled = true }))
 
