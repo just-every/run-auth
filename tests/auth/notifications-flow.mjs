@@ -132,4 +132,106 @@ export async function notificationsSafety(t) {
  await post('/notifications/settings',policy);const recent=(await r.mails()).filter(mail=>mail.subject==='Auth sign-in from a new browser').length;
  await signIn(r,employee.key,old.device);assert.equal((await r.mails()).filter(mail=>mail.subject==='Auth sign-in from a new browser').length,recent+1);
  owner=await signInAgain(r,owner,'security-owner@example.com');
+ await roleGrantNotices(t);
+}
+
+async function roleGrantNotices(t) {
+ const r=await openRuntime();t.after(()=>r.close());
+ const address=n=>['synthetic-auth-'+n,'example.com'].join('@');
+ let owner=await passkeyPerson(r,'synthetic-auth-1',address(1),'owner');
+ const employee=await passkeyPerson(r,'synthetic-auth-2',address(2),'member');
+ for(let n=3;n<=12;n++)await passkeyPerson(r,'synthetic-auth-'+n,address(n),'member');
+ const post=async(path,data,status=200,extra={})=>{const response=await r.call('/api/auth'+path,{method:'POST',cookie:owner.cookie,data,...extra});assert.equal(response.status,status,path+' '+await response.clone().text());return response.json();};
+ const count=async table=>(await r.db.prepare('SELECT count(*) AS n FROM '+table).first()).n;
+ const notices=async()=>(await r.mails()).filter(mail=>mail.subject==='Auth administrator role granted');
+ const preview=(n,roleId='app-administrator')=>post('/roles/preview',{kind:'grant',personId:'synthetic-auth-'+n,roleId,resources:{view:{apps:['*']},edit:{apps:['*']}}});
+ const apply=plan=>post('/roles/apply',{previewId:plan.previewId});
+ const followup=async()=>(await(await r.call('/api/auth/followup',{cookie:owner.cookie})).json()).obligations;
+ const intent=id=>r.db.prepare('SELECT * FROM auth_security_notice_intents WHERE id=?').bind(id).first();
+ // Required events exist before setup; consent controls transport, not custody.
+ const unconfigured=await apply(await preview(2));assert.equal((await notices()).length,0);
+ assert.equal((await intent(unconfigured.operationId)).state,'blocked');
+ assert.ok((await followup()).some(ob=>ob.source_id==='security-notice:'+unconfigured.operationId&&ob.state==='open'&&ob.last_error==='notification_channel_setup_required'));
+ await post('/notifications/settings',{...policy,newDevice:false});
+ await r.restart();await r.call('/',{action:'maintain'});
+ assert.equal((await notices()).length,1);assert.equal((await notices())[0].to,address(2));
+ assert.equal((await intent(unconfigured.operationId)).state,'accepted');
+ assert.ok((await followup()).some(ob=>ob.source_id==='security-notice:'+unconfigured.operationId&&ob.state==='completed'));
+ const builtIn=await preview(3);assert.equal((await notices()).length,1,'preview sends nothing');
+ assert.equal(await count('auth_security_notice_intents'),1,'preview records no intent');
+ const granted=await apply(builtIn),sent=(await notices()).at(-1);
+ assert.equal((await notices()).length,2);assert.equal(sent.to,address(3));assert.match(sent.text,/App administrator/);assert.ok(reportLink(sent));
+ const bound=await intent(granted.operationId);assert.equal(bound.grant_id,granted.plan.id);assert.equal(bound.recipient_email,address(3));
+ assert.equal((await r.db.prepare('SELECT source_id FROM auth_security_notifications WHERE id=?').bind(bound.notification_id).first()).source_id,granted.operationId);
+ await post('/roles/apply',{previewId:builtIn.previewId},409);assert.equal((await notices()).length,2,'replay sends nothing');
+ const custom=await post('/roles/preview',{kind:'role',role:{name:'Scoped native administrator',rank:40,permissions:['apps.view','apps.edit']}});
+ const designed=await apply(custom),customGrant=await apply(await preview(4,designed.plan.role.id));
+ assert.equal((await notices()).length,3);assert.equal((await notices()).at(-1).to,address(4));assert.match((await notices()).at(-1).text,/Scoped native administrator/);
+ assert.equal((await intent(customGrant.operationId)).state,'accepted');
+ const zeroRank=await apply(await preview(5,'app-owner'));assert.equal(await intent(zeroRank.operationId),null,'ordinary zero-rank role keeps its existing classification');assert.equal((await notices()).length,3);
+ const stale=await preview(6);await apply(await preview(7,'app-owner'));
+ await post('/roles/apply',{previewId:stale.previewId},409);assert.equal((await notices()).length,3,'stale preview sends nothing');
+ await post('/roles/preview',{kind:'grant',personId:'synthetic-auth-6',roleId:'owner',resources:{view:{apps:['*']},edit:{apps:['*']}}},403);
+ await post('/roles/apply',{previewId:stale.previewId},409,{cookie:employee.cookie});
+ assert.equal(await count('auth_security_notice_intents'),3,'refused grants record no intent');
+ // Loss of fresh proof inside the committing batch cannot leave a grant or mail.
+ const lost=await preview(6),grantCount=await count('auth_role_grants');
+ await post('/roles/apply',{previewId:lost.previewId},409,{factorRace:'UPDATE auth_sessions SET local_email_verified_at=0'});
+ assert.equal(await count('auth_role_grants'),grantCount);assert.equal(await count('auth_security_notice_intents'),3);assert.equal((await notices()).length,3);
+ owner=await signInAgain(r,owner,address(1));
+ // Failure of intent persistence rolls back the source action and its preview.
+ const rollback=await preview(6);
+ await r.db.prepare("CREATE TRIGGER synthetic_notice_abort BEFORE INSERT ON auth_security_notice_intents BEGIN SELECT RAISE(ABORT,'synthetic_notice_persistence_failure'); END;").run();
+ const aborted=await r.call('/api/auth/roles/apply',{method:'POST',cookie:owner.cookie,data:{previewId:rollback.previewId}});assert.equal(aborted.status,500);
+ assert.equal(await count('auth_role_grants'),grantCount);assert.equal((await r.db.prepare('SELECT consumed_at FROM auth_role_previews WHERE id=?').bind(rollback.previewId).first()).consumed_at,null);
+ await r.db.prepare('DROP TRIGGER synthetic_notice_abort').run();
+ // The commit survives a lost response; restart delivers its intent only once.
+ const interrupted=await preview(6);
+ const lostResponse=await r.call('/api/auth/roles/apply',{method:'POST',cookie:owner.cookie,data:{previewId:interrupted.previewId},roleNoticeFault:'after_grant'});assert.equal(lostResponse.status,500);
+ const pending=await r.db.prepare("SELECT * FROM auth_security_notice_intents WHERE grant_id=?").bind(interrupted.plan.id).first();assert.equal(pending.state,'pending');assert.equal((await notices()).length,3);
+ await r.restart();await Promise.all([r.call('/',{action:'maintain'}),r.call('/',{action:'maintain'})]);
+ assert.equal((await notices()).length,4);assert.equal((await intent(pending.id)).state,'accepted');
+ await post('/roles/apply',{previewId:interrupted.previewId},409);
+ // A changed mailbox never redirects a committed intent to an unbound address.
+ const moved=await preview(8);
+ assert.equal((await r.call('/api/auth/roles/apply',{method:'POST',cookie:owner.cookie,data:{previewId:moved.previewId},roleNoticeFault:'after_grant'})).status,500);
+ await post('/directory/edit',{personId:'synthetic-auth-8',email:address(18)});
+ await r.call('/',{action:'maintain'});assert.equal((await notices()).length,4);
+ const refused=await r.db.prepare('SELECT * FROM auth_security_notice_intents WHERE grant_id=?').bind(moved.plan.id).first();assert.equal(refused.state,'refused');assert.equal(refused.recipient_email,address(8));
+ // A provider refusal and an accepted send with lost bookkeeping stay visible,
+ // with no automatic retry after restart or duplicate maintenance.
+ const attempted=[];r.mailEdge=await edge(t,async(_req,body,res)=>{attempted.push(JSON.parse(body));res.writeHead(503);res.end();});
+ const failed=await apply(await preview(9));assert.equal(attempted.length,1);assert.equal((await intent(failed.operationId)).state,'failed');
+ r.mailEdge=undefined;
+ const uncertain=await preview(10);
+ assert.equal((await r.call('/api/auth/roles/apply',{method:'POST',cookie:owner.cookie,data:{previewId:uncertain.previewId},roleNoticeFault:'after_delivery'})).status,500);
+ const unknown=await r.db.prepare('SELECT * FROM auth_security_notice_intents WHERE grant_id=?').bind(uncertain.plan.id).first();assert.equal(unknown.state,'dispatching');assert.equal((await notices()).length,5);
+ await r.restart();await r.call('/',{action:'maintain'});await r.call('/',{action:'maintain'});
+ assert.equal((await notices()).length,5);assert.equal(attempted.length,1);
+ const outstanding=await followup();
+ assert.ok(outstanding.some(ob=>ob.source_id==='security-notice:'+failed.operationId&&ob.state==='open'&&ob.last_error==='security_mail_failed_or_unknown'));
+ assert.ok(outstanding.some(ob=>ob.source_id==='security-notice:'+unknown.id&&ob.state==='open'&&ob.last_error==='security_mail_outcome_unknown'));
+ // A person without a current verified work address retains an undeliverable
+ // intent; a request cannot supply an alternate recipient.
+ await post('/directory/edit',{personId:'synthetic-auth-12',email:address(22)});
+ const unverified=await apply(await preview(12));assert.equal((await intent(unverified.operationId)).recipient_email,null);assert.equal((await intent(unverified.operationId)).state,'refused');assert.equal((await notices()).length,5);
+ const foreign=await post('/organizations/create',{name:'Other notice employer'},201);
+ const foreignModel=await r.call('/org/'+foreign.id+'/api/auth/notifications',{cookie:owner.cookie});assert.equal(foreignModel.status,401);
+ const employer={origin:r.origin,get now(){return r.now;},mails:()=>r.mails(),call:(path,options)=>r.call('/org/'+foreign.id+path,options)};
+ const foreignOwner=await register(employer,await emailSession(employer,address(1)));
+ const foreignReports=await(await employer.call('/api/auth/notifications',{cookie:foreignOwner.cookie})).json();assert.deepEqual(foreignReports.reports,[]);
+ const foreignWork=await(await employer.call('/api/auth/followup',{cookie:foreignOwner.cookie})).json();assert.ok(!JSON.stringify(foreignWork.obligations).includes('security-notice:'));
+ const report=reportLink(sent);assert.equal((await r.call('/org/'+foreign.id+local(report))).status,410);
+ assert.equal((await r.call(local(report))).status,200);assert.equal((await r.call(local(report))).status,410);
+ // Erasure removes queued personal data and invalidates already issued reports.
+ const erased=await preview(11);
+ assert.equal((await r.call('/api/auth/roles/apply',{method:'POST',cookie:owner.cookie,data:{previewId:erased.previewId},roleNoticeFault:'after_grant'})).status,500);
+ await post('/erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true});
+ const erase=await post('/erasure/preview',{kind:'person',target:'synthetic-auth-11'});
+ await post('/erasure/confirm',{previewId:erase.id,confirmation:'ERASE',destinations:[]});
+ await r.restart();await r.call('/',{action:'maintain'});assert.equal((await notices()).length,5);
+ assert.equal(await r.db.prepare('SELECT id FROM auth_security_notice_intents WHERE grant_id=?').bind(erased.plan.id).first(),null);
+ const deliveredErase=await post('/erasure/preview',{kind:'person',target:'synthetic-auth-4'});
+ await post('/erasure/confirm',{previewId:deliveredErase.id,confirmation:'ERASE',destinations:[]});
+ assert.equal((await r.call(local(reportLink((await notices()).find(mail=>mail.to===address(4)))))).status,410);
 }

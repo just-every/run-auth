@@ -5,6 +5,7 @@ import {assertPermission,personInScope,roleGuard,requireHardware} from './policy
 import {customRole,resources,RESOURCE_KINDS,subset,contains} from './permissions.mjs';
 import {commit} from './commit.mjs';
 import {planEffects} from './effects.mjs';
+import {roleNoticeIntent,deliverNoticeIntent} from '../notifications/intents.mjs';
 
 function validateResources(state,scope) {
  const catalogs={people:new Set(state.dir.people.keys()),groups:new Set(state.dir.groups.map(g=>g.id)),apps:new Set(state.apps.map(a=>a.id)),cases:new Set(state.cases.map(c=>c.id))};
@@ -74,12 +75,15 @@ export async function apply(ctx,s,data) {
  current.effects=planEffects(state,current);
  if(JSON.stringify(current)!==JSON.stringify(plan))fail('role_preview_changed',409);
  const live=roleGuard(ctx,s,state),guard={clause:`${live.clause} AND EXISTS(SELECT 1 FROM auth_role_previews WHERE id=? AND consumed_at IS NULL AND expires_at>?)`,args:[...live.args,saved.id,ctx.now()]};
+ const operationId=random();
  const result=await commit(ctx,s,guard,'roles.'+plan.kind,plan.personId??plan.role?.id??plan.grantId,{previewId:saved.id,epoch:saved.epoch,plan},(g,p)=>{
   const statements=[p(`UPDATE auth_role_previews SET consumed_at=? WHERE id=? AND ${g.clause}`,ctx.now(),saved.id,...g.args)];
   if(plan.kind==='role')statements.push(p(`INSERT INTO auth_roles(id,name,rank,permissions,revision,created_by,created_at,updated_at) SELECT ?,?,?,?,?,?,?,? WHERE ${g.clause} ON CONFLICT(id) DO UPDATE SET name=excluded.name,rank=excluded.rank,permissions=excluded.permissions,revision=excluded.revision,updated_at=excluded.updated_at`,plan.role.id,plan.role.name,plan.role.rank,JSON.stringify(plan.role.permissions),plan.role.revision,s.person_id,ctx.now(),ctx.now(),...g.args));
   if(plan.kind==='grant')statements.push(p(`INSERT INTO auth_role_grants(id,person_id,role_id,role_revision,resources,granted_by,sponsor_grant_id,created_at) SELECT ?,?,?,?,?,?,?,? WHERE ${g.clause}`,plan.id,plan.personId,plan.roleId,plan.roleRevision,JSON.stringify(plan.resources),s.person_id,plan.sponsorGrantId,ctx.now(),...g.args));
   if(plan.kind==='revoke')statements.push(p(`UPDATE auth_role_grants SET revoked_at=?,revoked_by=? WHERE id=? AND ${g.clause}`,ctx.now(),s.person_id,plan.grantId,...g.args));
+  statements.push(...roleNoticeIntent(ctx,plan,operationId,g,p));
   return statements;
- });
+ },operationId);
+ await deliverNoticeIntent(ctx,operationId);
  return json({ok:true,...result,results:undefined,plan});
 }
