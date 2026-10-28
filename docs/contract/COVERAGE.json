@@ -1472,6 +1472,14 @@
       "to": "base",
       "ids": [
         "BASE-AUDIT-001"
+      ],
+      "also": [
+        {
+          "to": "clause",
+          "ids": [
+            "AUTH-AUDIT-001"
+          ]
+        }
       ]
     },
     {
@@ -1888,6 +1896,14 @@
       "to": "base",
       "ids": [
         "BASE-AUDIT-001"
+      ],
+      "also": [
+        {
+          "to": "clause",
+          "ids": [
+            "AUTH-ERASURE-001"
+          ]
+        }
       ]
     },
     {
@@ -1962,9 +1978,9 @@
       "file": "CONTRACT.md",
       "line": 421,
       "text": "Encryption, scoped access and rotation protect signing/connector secrets at rest and in transit; raw credentials and authentication links never enter model context, ordinary logs, public assets or portable archives.",
-      "to": "base",
+      "to": "clause",
       "ids": [
-        "BASE-SECRET-001"
+        "AUTH-RETENTION-001"
       ]
     },
     {
@@ -2149,9 +2165,9 @@
       "file": "CONTRACT.md",
       "line": 460,
       "text": "A resource that is not registered receives no token.",
-      "to": "base",
+      "to": "clause",
       "ids": [
-        "BASE-AGENT-004"
+        "AUTH-AGENT-006"
       ]
     },
     {
