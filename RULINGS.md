@@ -100,6 +100,18 @@ No arbitrary target, new assignment, administrator target, group change or docum
 
 My account revocation ends the next local request; completed changes are not undone and downstream sessions are not claimed revoked. Future task profiles inherit these consent, approval, audience, resource, proof and live-revocation obligations before shipping. **Native profile (ct 22 Oct 00:20Z):** The first native profile changes one existing direct app assignment through a DPoP-bound (RFC 9449), audience-restricted, one-use token valid for at most five minutes. The token names the person, the agent (RFC 8693 `act`) and the exact change (RFC 9396). It is issued only after the employee's passkey consent and approval by someone who holds that authority and is not the agent's custodian. Revoking in My account stops future use, says it does not undo a completed change, and offers a request to reverse it. The native profile remains restricted to its assignment target. AUTH-AGENT-006 ships a separate registered MCP/external-API POST profile, which inherits every obligation of this clause and its native profile: sender constraint, audience restriction, the five-minute one-use token, the `act` and exact `authorization_details`, passkey consent bound to the digest, a distinct employee, custodian and approver, a recheck at execution, attributed audit of every step and refusal, live endings, and My account revocation.
 
+### RL-9 — Owner-approved workforce scope
+
+Date: 2026-10-16 · Ruler: owner · Governs: AUTH-ENROLLMENT-001, AUTH-PASSWORD-001, AUTH-PASSWORD-002, AUTH-LEGACY-001 and the workforce Product target
+
+The old contract records the scope decision as follows:
+
+Target scope approved 16 October 2026. Auth is a full workforce identity and single sign-on provider for a US employer replacing **Okta Workforce Identity, Microsoft Entra ID or JumpCloud**: one company directory, passkey-first MFA, SAML/OIDC into the company’s SaaS and legacy apps, HR-driven provisioning/deprovisioning and governed access. It remains the one sign-in for the owner’s RER apps, an owner-run MIT product declaring `oidc-provider@1` without depending on that interface itself. USD, US employers and US employment/timezone norms are the first commercial context.
+
+The owner-approved workforce scope supersedes the earlier CIAM positioning in category research. Its useful table-stakes—SDKs, hosted/embedded flows, organizations, profile APIs, enterprise connections, token lifecycle and migration—are retained here as workforce/app interoperability, not used to turn Auth into a consumer application platform. No neighboring unowned category is absorbed.
+
+The retained workforce enrollment includes employer-enabled password compatibility alongside passkey-first sign-in. That explicit scope is the Auth delta superseding BASE-ACCESS-001; it confers no hardware-administration proof and bypasses no conditional-access control. No status changes.
+
 ### RL-101 — Unknown privilege classification fails closed
 
 Date: 2026-10-28 · Ruler: ct · Governs: AUTH-DECISIONS-001

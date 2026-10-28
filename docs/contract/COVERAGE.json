@@ -13,7 +13,16 @@
     {
       "file": "CONTRACT.md",
       "line": 3,
-      "text": "Target scope approved 16 October 2026. Auth is a full workforce identity and single sign-on provider for a US employer replacing **Okta Workforce Identity, Microsoft Entra ID or JumpCloud**: one company directory, passkey-first MFA, SAML/OIDC into the company\u2019s SaaS and legacy apps, HR-driven provisioning/deprovisioning and governed access. It remains the one sign-in for the owner\u2019s RER apps, an owner-run MIT product declaring `oidc-provider@1` without depending on that interface itself. USD, US employers and US employment/timezone norms are the first commercial context.",
+      "text": "Target scope approved 16 October 2026.",
+      "to": "rulings",
+      "ids": [
+        "RL-9"
+      ]
+    },
+    {
+      "file": "CONTRACT.md",
+      "line": 3,
+      "text": " Auth is a full workforce identity and single sign-on provider for a US employer replacing **Okta Workforce Identity, Microsoft Entra ID or JumpCloud**: one company directory, passkey-first MFA, SAML/OIDC into the company\u2019s SaaS and legacy apps, HR-driven provisioning/deprovisioning and governed access. It remains the one sign-in for the owner\u2019s RER apps, an owner-run MIT product declaring `oidc-provider@1` without depending on that interface itself. USD, US employers and US employment/timezone norms are the first commercial context.",
       "to": "section",
       "section": "intro"
     },
@@ -27,7 +36,10 @@
       "file": "CONTRACT.md",
       "line": 7,
       "text": "The owner-approved workforce scope supersedes the earlier CIAM positioning in category research. Its useful table-stakes\u2014SDKs, hosted/embedded flows, organizations, profile APIs, enterprise connections, token lifecycle and migration\u2014are retained here as workforce/app interoperability, not used to turn Auth into a consumer application platform. No neighboring unowned category is absorbed.",
-      "to": "changelog"
+      "to": "rulings",
+      "ids": [
+        "RL-9"
+      ]
     },
     {
       "file": "CONTRACT.md",
