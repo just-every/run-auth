@@ -97,7 +97,7 @@ export async function syncObligations(ctx) {
   }
   await ctx.db.batch([
    ctx.db.prepare("UPDATE auth_obligations SET state=?,stopped_at=?,next_action=COALESCE(?,next_action),last_error=?,claim_id=NULL,claimed_until=NULL WHERE id=? AND state='open'").bind(source.state,now,source.action??null,source.error??null,ob.id),
-   ctx.db.prepare('INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM auth_obligations WHERE id=? AND stopped_at=? AND state=?) AND NOT EXISTS(SELECT 1 FROM auth_obligation_history WHERE obligation_id=? AND event=?)').bind(random(),ob.id,source.state,now,ob.id,now,source.state,ob.id,source.state),
+   ctx.db.prepare('INSERT INTO auth_obligation_history(id,obligation_id,event,created_at,error) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM auth_obligations WHERE id=? AND stopped_at=? AND state=?) AND NOT EXISTS(SELECT 1 FROM auth_obligation_history WHERE obligation_id=? AND event=?)').bind(random(),ob.id,source.state,now,source.error??null,ob.id,now,source.state,ob.id,source.state),
   ]);
  }
 }

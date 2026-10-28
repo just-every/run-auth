@@ -634,6 +634,10 @@
       "sha256": "f87fa1bf844efa116e52b076f5cb59a31789c88453cc1132cfb7892b7f488f67",
       "executable": false
     },
+    "migrations/core/0077_auth_directory_freshness.sql": {
+      "sha256": "f54028ea9181bc2b92891b61c61505f8a2927bef02b56efc23955947d1f42139",
+      "executable": false
+    },
     "MOVE-IN.md": {
       "sha256": "6ae7c746b82f539f41885e5b2e61dc95928931b7985a21cf3b6d45a3de5b54af",
       "executable": false
@@ -1378,6 +1382,10 @@
       "sha256": "f6760e15008841a1485427554a2108c09ee782835896f134ef7a7295e2b7506f",
       "executable": false
     },
+    "src/auth/directory-sources/followup.mjs": {
+      "sha256": "e43c8b579de58b3986b4e7cd014d1688a240e818470cb1a521a8c9113d7a0268",
+      "executable": false
+    },
     "src/auth/directory-sources/google.mjs": {
       "sha256": "665420f777247450e246219021627c64be0648fe100c3c49dcad90b8610d67ef",
       "executable": false
@@ -1419,7 +1427,7 @@
       "executable": false
     },
     "src/auth/directory-sources/store.mjs": {
-      "sha256": "7257dccab6ecf75781acbb9f384b4f7750182049910660486c918d76c57bc021",
+      "sha256": "b1fd60e321ba8be2697fa7d5ee09cd1807ebf12599ea3dce2bedb015ae179146",
       "executable": false
     },
     "src/auth/domain-policy.mjs": {
@@ -1883,7 +1891,7 @@
       "executable": false
     },
     "src/auth/obligations/sources.mjs": {
-      "sha256": "e3e8ba034053bbce6969f5f304c1efde2d7aef3f503369babf47659df297cafe",
+      "sha256": "482e12917031be2d8254a762b5301ee6824d0c14641f1e50a981b3151905a8b6",
       "executable": false
     },
     "src/auth/obligations/task-sources.mjs": {
@@ -3399,7 +3407,7 @@
       "executable": false
     },
     "tests/auth/directory-source-flow.mjs": {
-      "sha256": "8ec4cd18990fc82ed516933b4abe38966e1cd42fd1ce455e2350b3c16303eed8",
+      "sha256": "f9e267f43896a08e9ca733a055eaae6f4fbe7208dae19f113de2a6e78fbcaaee",
       "executable": false
     },
     "tests/auth/directory.test.mjs": {
@@ -3875,7 +3883,7 @@
       "executable": false
     },
     "tests/integration/helpers/source-setup-journey.mjs": {
-      "sha256": "5faef8ffb691b56f3360c992f51c1fed319541cf593da4a80a94d56667def036",
+      "sha256": "c0fe25ca73a954c68d76c933f29a72f1d535b3532b9fcf345941cbc1424f6677",
       "executable": false
     },
     "tests/integration/helpers/temporary-pass-journey.mjs": {

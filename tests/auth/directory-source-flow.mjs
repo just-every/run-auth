@@ -56,7 +56,8 @@ export async function directorySourceFlow(t) {
  await r.call('/api/auth/directory/onboard',post({email:'synthetic-auth-189@example.com',name:'Synthetic unrelated',invite:false},owner.cookie)).then(response=>result(response,201));
  await write('approve',{sourceId:source.sourceId,snapshotId:source.snapshotId,digest:p.digest,confirm:true},409);
  assert.equal(await person(users[0].profile.email),null);
- const applied=await approve(source);assert.equal(applied.state,'completed');
+ p=await preview(source);r.now+=1000;await write('pull',{sourceId:source.sourceId},202);
+ const applied=await write('approve',{sourceId:source.sourceId,snapshotId:source.snapshotId,digest:p.digest,confirm:true});assert.equal(applied.state,'completed','liveness-only refresh preserves approval of the same exact content');
  const first=await person(users[0].profile.email),second=await person(users[1].profile.email);assert.ok(first&&second);assert.equal(first.status,'invited');
  assert.equal((await r.db.prepare("SELECT value FROM auth_person_fields WHERE person_id=? AND field='name' AND source='directory'").bind(first.id).first()).value,users[0].profile.displayName);
  const binding=await r.db.prepare("SELECT source_id FROM auth_person_sources WHERE source='directory' AND person_id=?").bind(first.id).first();assert.ok(binding.source_id.startsWith(source.sourceId+':'));
@@ -127,7 +128,7 @@ export async function directoryFreshnessFlow(t) {
   const send=(value,status=200)=>{res.writeHead(status,{'content-type':'application/scim+json'});res.end(JSON.stringify(value));};
   if(url.pathname==='/dns-query')return send({Status:0,Answer:url.searchParams.get('type')==='A'?[{type:1,data:'93.184.216.34'}]:[]});
   if(req.headers.authorization!=='Bearer synthetic-auth-203')return send({},401);
-  if(url.pathname==='/scim/Users'&&holdNext){holdNext=false;entered();await new Promise(done=>{release=done;});return send({},503);}
+  if(url.pathname==='/scim/Users'&&holdNext){const failed=holdNext!=='success';holdNext=false;entered();await new Promise(done=>{release=done;});if(failed)return send({},503);}
   if(outage)return send({},503);
   const users=empty?[]:[{schemas:['urn:ietf:params:scim:schemas:core:2.0:User'],id:'synthetic-auth-204',userName:address(204),displayName:'Synthetic directory worker',active:!inactive}];
   const rows=url.pathname==='/scim/Users'?users:[];
@@ -197,16 +198,21 @@ export async function directoryFreshnessFlow(t) {
  outage=true;await Promise.all([tick(),tick()]);assert.equal((await obligations(source.sourceId)).filter(ob=>ob.state==='open').length,1);
  await command('directory-sources/disable',{sourceId:source.sourceId,confirm:true});
  const disabled=(await obligations(source.sourceId)).find(ob=>ob.id===overdue.id);assert.equal(disabled.state,'cancelled');assert.equal(disabled.last_error,'directory_source_disabled');
+ assert.ok((await read()).history.some(event=>event.obligation_id===overdue.id&&event.event==='cancelled'&&event.error==='directory_source_disabled'));
  assert.equal((await r.call('/api/auth/directory-sources/pull',post({sourceId:source.sourceId},owner.cookie))).status,403);
  // A custodian's ended authority is permanent for this registered source.
  outage=false;const freshCustodian=await signInAgain(r,custodian,address(202)),owned=await create(freshCustodian);
  outage=true;await command('directory-sources/pull',{sourceId:owned.sourceId},502);const [ownedEpisode]=await obligations(owned.sourceId);assert.ok(ownedEpisode);
- await command('directory/edit',{personId:'synthetic-auth-202',state:'suspended'});
+ outage=false;const observedAt=(await model(owned.sourceId)).lastReadAt;r.now+=1000;
+ const inFlight=new Promise(done=>{entered=done;});holdNext='success';
+ const captured=r.call('/api/auth/directory-sources/pull',post({sourceId:owned.sourceId},owner.cookie));await inFlight;
+ await command('directory/edit',{personId:'synthetic-auth-202',state:'suspended'});release();await result(await captured,409);
+ assert.equal((await model(owned.sourceId)).lastReadAt,observedAt,'a captured unchanged read cannot refresh after custody is lost at commit');
  const before=seen.length;await Promise.all([tick(),tick()]);
  assert.equal((await r.call('/api/auth/directory-sources',{cookie:freshCustodian.cookie})).status,401);
  assert.equal((await r.call('/api/auth/directory-sources/pull',post({sourceId:owned.sourceId},owner.cookie))).status,403);assert.equal(seen.length,before,'ended custody makes no authenticated network call');
  const cancelled=(await obligations(owned.sourceId)).find(ob=>ob.id===ownedEpisode.id);assert.equal(cancelled.state,'cancelled');assert.equal(cancelled.last_error,'directory_source_authority_changed');
- assert.ok((await read()).history.some(event=>event.obligation_id===ownedEpisode.id&&event.event==='cancelled'));
+ assert.ok((await read()).history.some(event=>event.obligation_id===ownedEpisode.id&&event.event==='cancelled'&&event.error==='directory_source_authority_changed'));
  await command('directory/edit',{personId:'synthetic-auth-202',state:'active'});await r.restart();
  assert.equal((await r.call('/api/auth/directory-sources/pull',post({sourceId:owned.sourceId},owner.cookie))).status,403,'restored administrator cannot revive the old source credential');
  assert.deepEqual(await reminders(),[]);assert.equal((await applied()).n,0);

@@ -93,7 +93,7 @@ async function directoryFreshnessJourney({app,owner,page,shoot,sourceEdge}) {
  const followup=()=>page.locator(`[data-followup-id="${obligation.id}"]`);
  await expect(followup().locator('[data-followup-state]')).toHaveText('open');await expect(followup().getByRole('button',{name:'Send reminder early'})).toHaveCount(0);
  await app.pause();await app.resume();await page.reload();await expect(followup().locator('[data-followup-state]')).toHaveText('open');
- await shoot('directory-freshness-obligation',async width=>{if(width===1440){await expect(followup()).toContainText('Directory source request refused');await expect(followup().getByRole('link',{name:'Open directory source'})).toHaveAttribute('href',new RegExp(source.sourceId));}});
+ await shoot('directory-freshness-obligation',async width=>{if(width===1440){await expect(followup()).toContainText('directory source request refused');await expect(followup().getByRole('link',{name:'Open directory source'})).toHaveAttribute('href',new RegExp(source.sourceId));}});
  await followup().getByRole('link',{name:'Open directory source'}).click();await expect(card()).toBeVisible();
  sourceEdge.failure=false;await card().getByText('Source settings',{exact:true}).click();
  read=page.waitForResponse(response=>response.url().endsWith('/directory-sources/pull'));await card().getByRole('button',{name:'Read directory now'}).click();const recovered=await read;assert.equal(recovered.status(),202);const result=await recovered.json();assert.equal(result.replayed,true);assert.equal(result.snapshotId,source.snapshotId);

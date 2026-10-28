@@ -29,7 +29,7 @@ export async function directorySourceHolder(ctx,ob,personId) {
 export async function recordDirectoryFailure(ctx,source,error) {
  const guard=liveSourceGuard(source);
  // A delayed failed read cannot overwrite a newer authenticated observation.
- await run(ctx,`UPDATE auth_directory_sources SET last_error=?,last_failure_at=COALESCE(last_failure_at,?),next_poll_at=? WHERE id=? AND revision=? AND ${guard.clause}`,error,ctx.now(),ctx.now()+15*60000,source.id,source.revision,...guard.args);
+ await run(ctx,`UPDATE auth_directory_sources SET last_error=?,last_failure_at=COALESCE(last_failure_at,?),next_poll_at=? WHERE id=? AND revision=? AND observation_version=? AND ${guard.clause}`,error,ctx.now(),ctx.now()+15*60000,source.id,source.revision,source.observation_version,...guard.args);
 }
 export async function directorySourceHealth(ctx,source) {
  if(source.kind!=='scim'||source.mode!=='pull')return null;
