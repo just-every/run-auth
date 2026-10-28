@@ -2003,7 +2003,7 @@
       "executable": false
     },
     "src/auth/retention/maintenance.mjs": {
-      "sha256": "b8d6ffeb3e32cdb3bd2da4fe4c1cb4c36cfdfa420f021c500be5028512041de5",
+      "sha256": "65403d62ec36aa21fff9d526f84a858b06e3a88b8c3dbd258f3c28ba49c4cfeb",
       "executable": false
     },
     "src/auth/retention/plan.mjs": {
@@ -2135,7 +2135,11 @@
       "executable": false
     },
     "src/auth/session-control/index.mjs": {
-      "sha256": "5fb3206a44e7e1c98d397eb91f86359e9d505ad113287a666fd20d60353dc85c",
+      "sha256": "e40350f15014530429a0d99e6c9cc1096cac5328d5c25d36c7cd7423ced45b75",
+      "executable": false
+    },
+    "src/auth/session-control/retention.mjs": {
+      "sha256": "c9e4c6f009e93ad64ce823b78ebecd7b0ea02bcd4585cb7afee28e6175d7b0e0",
       "executable": false
     },
     "src/auth/session-control/statements.mjs": {
@@ -3643,7 +3647,7 @@
       "executable": false
     },
     "tests/auth/session-control-durable.mjs": {
-      "sha256": "728057006b07dabfc90e13bb691381f7b22b4ce0831a906f2085b28af332f929",
+      "sha256": "3ad7a156cf3809ec45a32f5e75f71f531e5a015fb23f024941eda74c06e157a5",
       "executable": false
     },
     "tests/auth/session-control-helpers.mjs": {

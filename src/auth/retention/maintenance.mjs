@@ -3,6 +3,7 @@ import {one,random} from '../core.mjs';
 import {retentionPolicy,PREVIEW_WINDOW} from './policy.mjs';
 import {CATALOG,tableQuote,entryId} from './catalog.mjs';
 import {retentionPlan,eligibility,matchSnapshot,snapshotColumns} from './plan.mjs';
+import {retainLogoutOutcomes} from '../session-control/retention.mjs';
 export async function queueRetention(ctx,policy=undefined,guard=null) {
  policy??=await retentionPolicy(ctx);
  const existing=await one(ctx,"SELECT * FROM auth_retention_runs WHERE status='queued'");if(existing)return existing;
@@ -36,6 +37,7 @@ export async function maintainRetention(ctx) {
    const identity=entry.key.map(c=>`t.${tableQuote(c)} IS json_extract(candidate.value,'$.row.${c}')`).join(' AND ');
    statements.push(ctx.db.prepare(`UPDATE ${table} AS t SET email=(SELECT json_extract(candidate.value,'$.expiredEmail') FROM json_each(?) candidate WHERE ${identity}),display_name='Expired profile' WHERE ${condition}`).bind(json,pending.id,claim,json));
   }else {
+   statements.push(...retainLogoutOutcomes(ctx,entry,condition,[pending.id,claim,json]));
    statements.push(...await expiryStatements(ctx,entry,planned,condition,[pending.id,claim,json],pending.id));
    statements.push(ctx.db.prepare(`DELETE FROM ${table} AS t WHERE ${condition}`).bind(pending.id,claim,json));
   }

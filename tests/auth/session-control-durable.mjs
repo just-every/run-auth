@@ -4,6 +4,8 @@ import {createLocalJWKSet,jwtVerify,decodeJwt} from 'jose';
 import {samlInstall} from './saml-helpers.mjs';
 import {command,operations,credentialsState,identityState} from './session-control-helpers.mjs';
 import {client} from './session-control-clients.mjs';
+import {signInAgain} from './agents-helpers.mjs';
+import {emailSession} from './runtime.mjs';
 
 export async function durableSessionControl(t) {
  const r=await samlInstall(t),received=[];let retryStatus=503;
@@ -68,9 +70,28 @@ export async function durableSessionControl(t) {
  assert.equal((await r.call('/api/auth/me',{cookie:r.ada})).status,401);
  const pendingCount=receipt.logout.pending,retryJtis=new Set(retryTokens.map(token=>token.jti));
  retryStatus=200;r.now+=61000;
- assert.equal((await r.call('/',{action:'maintain'})).status,200);
+ const maintenance=await r.call('/',{action:'maintain'});assert.equal(maintenance.status,200,await maintenance.clone().text());
  const retried=(await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId);
  assert.equal(retried.logout.pending,0);assert.equal(retried.logout.delivered,receipt.logout.delivered+pendingCount);
  assert.equal(retried.logout.failed,receipt.logout.failed);assert.equal(retried.logout.unavailable,receipt.logout.unavailable);
  for(const item of received.filter(item=>item.path==='/retry').slice(retryTokens.length))assert.ok(retryJtis.has(decodeJwt(item.token).jti),'durable retries keep each delivery identity');
+ // Authentication queues can expire before the accountable operation. Run the
+ // actual consent, preview and scheduled cleanup, then read the retained receipt.
+ const day=86400000,classes=Object.fromEntries(['profiles','sourceSnapshots','authentication','decisions','provisioning','audit','modelTraces','erasureReceipts'].map(name=>[name,{unit:'days',value:name==='authentication'?90:2555}]));
+ // Age the actual completed deliveries independently of unrelated session stores.
+ await r.db.prepare('UPDATE auth_oidc_logouts SET finished_at=? WHERE id LIKE ? AND finished_at IS NOT NULL').bind(r.now-91*day,result.operationId+':%').run();
+ await command(r,r.owner.cookie,'/api/auth/retention/settings',{confirm:true,classes});
+ const preview=await command(r,r.owner.cookie,'/api/auth/retention/preview',{});
+ assert.ok(preview.run.summary.authentication.stores.auth_oidc_logouts>0,'completed logout deliveries are selected for expiry');
+ r.now+=8*day;await r.restart();
+ const cleanupResponse=await r.call('/',{action:'maintain'});assert.equal(cleanupResponse.status,200,await cleanupResponse.clone().text());
+ await emailSession(r,'owner@example.com');r.owner=await signInAgain(r,r.owner,'owner@example.com');
+ const retention=await(await r.call('/api/auth/retention',{cookie:r.owner.cookie})).json();
+ const cleanup=retention.runs.find(run=>run.id===preview.run.id);
+ assert.equal(cleanup.status,'completed');assert.ok(cleanup.result['auth_oidc_logouts:authentication']>0,'the completed delivery evidence was really deleted');
+ const retained=(await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId);
+ assert.equal(retained.logout.failed,retried.logout.failed,'retention must not silently clear failed logout history');
+ assert.deepEqual(retained,retried,'retained delivery counts survive shorter queue retention');
+ await r.restart();await r.call('/',{action:'maintain'});
+ assert.deepEqual((await operations(r,r.owner.cookie,'ada')).find(op=>op.id===result.operationId),retried,'restart and repeated maintenance never lose or double-count outcomes');
 }

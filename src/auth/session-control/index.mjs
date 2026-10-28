@@ -8,9 +8,14 @@ import {endSessionStatements} from './statements.mjs';
 
 const PERMISSION='people.sessions.end';
 async function deliverySummary(ctx,operationId,unavailable=0) {
- const prefix=operationId+':%',rows=await all(ctx,`SELECT finished_at,outcome FROM auth_logout_deliveries WHERE id LIKE ? UNION ALL SELECT finished_at,outcome FROM auth_oidc_logouts WHERE id LIKE ?`,prefix,prefix);
+ // Read live and retained totals in one snapshot so concurrent expiry cannot
+ // omit or count the same outcome twice.
+ const prefix=operationId+':%',rows=await all(ctx,`SELECT finished_at,outcome,1 AS amount FROM auth_logout_deliveries WHERE id LIKE ?
+  UNION ALL SELECT finished_at,outcome,1 FROM auth_oidc_logouts WHERE id LIKE ?
+  UNION ALL SELECT 1,'delivered',COALESCE(json_extract(detail,'$.retainedLogout.delivered'),0) FROM auth_role_operations WHERE id=?
+  UNION ALL SELECT 1,'failed',COALESCE(json_extract(detail,'$.retainedLogout.failed'),0) FROM auth_role_operations WHERE id=?`,prefix,prefix,operationId,operationId);
  const summary={pending:0,delivered:0,failed:0,unavailable};
- for(const row of rows)summary[row.finished_at===null?'pending':row.outcome==='delivered'?'delivered':'failed']++;
+ for(const row of rows)summary[row.finished_at===null?'pending':row.outcome==='delivered'?'delivered':'failed']+=row.amount;
  return summary;
 }
 async function operationView(ctx,row) {
