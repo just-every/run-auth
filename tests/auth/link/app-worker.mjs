@@ -9,7 +9,7 @@ export default {
   // Miniflare's dispatch replaces Host with its loopback listener; a real edge keeps the addressed host.
   const headers=new Headers(request.headers);headers.set('host',new URL(request.url).host);request=new Request(request,{headers});
   const fetcher=(input,init)=>env.AUTH.fetch(new Request(input,init));
-  const auth=createOperatorAuth({db:env.DB,config,clientIp:()=>'192.0.2.20',fetch:fetcher,mailSender:{send:async()=>({id:'unused'})}});
+  const auth=createOperatorAuth({db:env.DB,config,clientIp:()=>'192.0.2.20',fetch:fetcher,mailSender:{send:async()=>({status:'accepted',id:'synthetic-auth-411'})}});
   const dependencies=createDependencies({db:env.DB,origin:ORIGIN,name:'App',provider:AUTH_ORIGIN,auth,fetch:fetcher});
   if(new URL(request.url).pathname==='/')return new Response('App home');
   return await dependencies.handle(request)??await createAuthHandler(auth)(request)??new Response(null,{status:404});

@@ -1,3 +1,4 @@
+import {scimBinding,approvedBinding} from '../lifecycle/binding.mjs';
 import {maintainFamilies} from '../tokens/lifecycle.mjs';
 import {syncObligations} from '../obligations/sources.mjs';
 import {computedValues,scimValues} from '../mapping/program.mjs';
@@ -96,6 +97,10 @@ async function applyPerson(ctx,connector,ob,wrote) {
  }
  if(!held||held.state==='deleted')return {verified:true,operation:'none'};
  const path=userPath(held.remote_id);
+ const current=await scim(ctx,connector,'GET',path);
+ if(current.status===404){await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'deleted');return {verified:true,operation:connector.deprovision==='delete'?'delete':'deactivate'};}
+ if(!ok(current))return retryable(current)?{retry:current}:{fail:current};
+ if(connector.deprovision!=='delete'&&current.body?.active===false){await saveAccount(ctx,appId,'person',ob.subject_id,held.remote_id,'inactive');return {verified:true,operation:'deactivate'};}
  if(connector.deprovision==='delete') {
   wrote();const removed=await scim(ctx,connector,'DELETE',path);
   if(!ok(removed)&&removed.status!==404)return retryable(removed)?{retry:removed}:{fail:removed};
@@ -131,6 +136,9 @@ async function applyGroup(ctx,connector,ob,wrote) {
   if(!ok(created)||!created.body?.id)return retryable(created)?{retry:created}:{fail:created};
   remote=created.body.id;operation='create';await saveAccount(ctx,appId,'group',group.id,remote,'active');
  } else {
+  const current=await scim(ctx,connector,'GET',groupPath(remote));
+  if(!ok(current))return retryable(current)?{retry:current}:{fail:current};
+  if(current.body?.displayName===group.name&&(current.body.members??[]).map(m=>m.value).sort().join()===members.join())return {verified:true,operation:'update'};
   wrote();const patched=await scim(ctx,connector,'PATCH',groupPath(remote),{schemas:[PATCH],Operations:[{op:'replace',value:{displayName:group.name,members:members.map(value=>({value}))}}]});
   if(!ok(patched))return retryable(patched)?{retry:patched}:{fail:patched};
  }
@@ -144,10 +152,11 @@ const delay=(ob,response)=>{const after=Number(response?.retryAfter);return Numb
 export async function dispatch(ctx,appId=null) {
  const due=await all(ctx,`SELECT * FROM auth_provisioning WHERE state='pending' AND next_attempt_at<=? AND (claimed_until IS NULL OR claimed_until<=?)${appId?' AND app_id=?':''} ORDER BY CASE subject_type WHEN 'person' THEN 0 ELSE 1 END,event_at LIMIT ${BATCH}`,ctx.now(),ctx.now(),...(appId?[appId]:[]));
  for(const row of due) {
-  const ob=await one(ctx,"UPDATE auth_provisioning SET claimed_until=? WHERE id=? AND state='pending' AND (claimed_until IS NULL OR claimed_until<=?) RETURNING *",ctx.now()+CLAIM,row.id,ctx.now());
+  const ob=await one(ctx,"UPDATE auth_provisioning SET claimed_until=? WHERE id=? AND state='pending' AND next_attempt_at<=? AND (claimed_until IS NULL OR claimed_until<=?) RETURNING *",ctx.now()+CLAIM,row.id,ctx.now(),ctx.now());
   if(!ob)continue;
   const connector=await connectorOf(ctx,ob.app_id);
   if(!connector){await run(ctx,"UPDATE auth_provisioning SET state='failed',last_error='connector_removed',claimed_until=NULL WHERE id=?",ob.id);continue;}
+  if(!await approvedBinding(ctx,ob.id,await scimBinding(connector))){await run(ctx,"UPDATE auth_provisioning SET state='blocked',last_error='approved_connector_changed',claimed_until=NULL WHERE id=?",ob.id);continue;}
   let wroteAt=ob.dispatched_at;const wrote=()=>{wroteAt??=ctx.now();};
   const outcome=await (ob.subject_type==='person'?applyPerson:applyGroup)(ctx,connector,ob,wrote).catch(error=>({retry:{status:0},error:String(error?.message||'error').slice(0,120)}));
   const now=ctx.now(),status=(outcome.retry??outcome.fail)?.status??null,error=outcome.error??outcome.block??(outcome.fail||outcome.retry?`http_${status}`:null);

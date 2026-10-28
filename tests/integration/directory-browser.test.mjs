@@ -1,3 +1,4 @@
+import {lifecyclePeer} from '../auth/lifecycle-peer.mjs';
 import {hrFileJourney} from './helpers/hr-file-journey.mjs';
 import {identityPairsJourney} from './helpers/identity-pairs-journey.mjs';
 import {test} from 'node:test';
@@ -12,7 +13,9 @@ import {captureViews} from './helpers/capture-views.mjs';
 const views=[[1440,'light'],[1440,'dark'],[390,'light'],[390,'dark']];
 
 test('directory journey: an administrator onboards a worker, edits and bulk-moves people with a preview, sets a group rule, terminates and rehires, at desktop/mobile in both themes',{timeout:180000},async t=>{
- const app=await openApp();let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
+ const peers=await Promise.all([lifecyclePeer(t,'synthetic-auth-421'),lifecyclePeer(t,'synthetic-auth-422')]);
+ const hosts=['https://browser-lifecycle-a.example.com','https://browser-lifecycle-b.example.com'];
+ const app=await openApp({outboundService:request=>{const url=new URL(request.url),index=hosts.indexOf(url.origin);return fetch(index<0?request:new Request(peers[index].url+url.pathname+url.search,request));}});let browser;t.after(async()=>{await browser?.close();await app.close();});await app.claim();
  browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic','--no-sandbox'],executablePath:process.env.AUTH_CHROMIUM||undefined});
  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),primary=page;
  page.setDefaultTimeout(30000);page.setDefaultNavigationTimeout(30000);
@@ -92,10 +95,35 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  const fed=await context.request.post(app.origin+'/api/auth/directory/source',{data:{source:'hr',records:[{sourceId:'E-1',personId:erinId,fields:{name:'Erin Park-Lee'}}]},headers:{origin:app.origin}});assert.equal(fed.status(),200);
  await mine.reload();await expect(mine.getByText('Managed by your HR system')).toBeVisible();await expect(mine.getByLabel('Name',{exact:true})).toHaveCount(0);await expect(mine.getByRole('heading',{name:'Erin Park-Lee'})).toBeVisible();
  await shoot('account',mine);
+ // Two independently hosted account peers expose an outage in the approved plan.
+ const lifecyclePost=async(path,data,code=200)=>{const response=await context.request.post(app.origin+'/api/auth/'+path,{data,headers:{origin:app.origin}});assert.equal(response.status(),code,await response.text());return response.json();};
+ for(let i=0;i<peers.length;i++) {
+  const native=await lifecyclePost('company-apps/create',{name:'Lifecycle application '+(i+1),entityId:hosts[i]+'/saml',acsUrl:hosts[i]+'/acs'},201);
+  await lifecyclePost('company-apps/assign',{appId:native.id,principalType:'person',principalId:erinId});
+  await lifecyclePost('provisioning/connect',{appId:native.id,baseUrl:hosts[i]+'/scim/v2',token:peers[i].token,pushGroups:false},201);
+ }
+ peers[1].fail(1,503);
  // Terminate and rehire the active employee: her session ends, the account and id stay.
  const status=async()=>(await employee.request.get(app.origin+'/api/auth/me')).status();assert.equal(await status(),200);
  await row('Erin Park').getByRole('button',{name:'Edit Erin Park'}).click();await edit.getByLabel('State').selectOption('terminated');
- await saved(()=>edit.getByRole('button',{name:'Save changes'}).click());
+ await edit.getByRole('button',{name:'Save changes'}).click();
+ await expect(edit.locator('[data-leaver-preview]')).toContainText('Plan custodian: approving administrator');
+ assert.equal(await status(),200,'preview has no termination effect');
+ await shoot('leaver-approval');
+ await saved(()=>edit.getByRole('button',{name:'Approve leaver plan'}).click());
+ const planCard=page.locator('[data-leaver-plan]').first();await planCard.locator('summary').first().click();
+ await expect.poll(async()=>{await page.reload();const card=page.locator('[data-leaver-plan]').first();await card.evaluate(node=>{node.open=true});return card.textContent();}).toContain('http_503');
+ await expect(planCard).toContainText('Unresolved');await shoot('leaver-unresolved');
+ const beforeRestart=(await (await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).json()).plans[0];
+ await app.pause();await app.resume();await page.reload();await planCard.locator('summary').first().click();
+ await expect(planCard).toContainText('http_503');await shoot('leaver-interrupted');
+ const resumed=(await (await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).json()).plans[0];assert.equal(resumed.id,beforeRestart.id);
+ const failed=resumed.steps.find(step=>step.kind==='scim'&&step.state==='failed');assert.ok(failed);
+ const affected=(await (await context.request.get(app.origin+'/api/auth/company-apps')).json()).companyApps.find(native=>native.name===failed.app);assert.ok(affected);
+ await lifecyclePost('provisioning/retry',{appId:affected.id});await page.reload();await planCard.locator('summary').first().click();
+ await expect(planCard).toContainText('remote_readback_verified');
+ const recovered=(await (await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).json()).plans[0];assert.ok(recovered.steps.filter(step=>step.kind==='scim').every(step=>step.state==='verified'));assert.equal(recovered.fullyOffboarded,false);
+ await shoot('leaver-recovered');
  await expect(row('Erin Park')).toContainText('Terminated');assert.equal(await status(),401);
  await row('Erin Park').getByRole('button',{name:'Edit Erin Park'}).click();await edit.getByLabel('State').selectOption('active');
  await saved(()=>edit.getByRole('button',{name:'Save changes'}).click());
@@ -107,6 +135,17 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
   const box=await edit.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width,`edit dialog fits ${width}px`);
   await page.screenshot({path:join(directory,`directory-edit-${width}.png`)});await edit.getByRole('button',{name:'Cancel'}).click();}
  await hrFileJourney({app,context,page,shoot});
+ // History refuses foreign employers, weak proof and a reader after sign-out.
+ const independent=await lifecyclePost('organizations/create',{name:'Independent plan reader'},201);
+ assert.equal((await context.request.get(app.origin+'/org/'+independent.id+'/api/auth/lifecycle/plans?personId='+erinId)).status(),401);
+ const weak=await browser.newContext();
+ assert.equal((await weak.request.post(app.origin+'/auth/identity/email/request',{data:{email:app.vars.OWNER_EMAIL},headers:{origin:app.origin}})).status(),202);
+ const weakLink=await app.link();assert.equal((await weak.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:weakLink.searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
+ assert.equal((await weak.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).status(),403);await weak.close();
+ assert.equal((await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).status(),200);
+ assert.equal((await context.request.post(app.origin+'/api/auth/signout',{data:{},headers:{origin:app.origin}})).status(),200);
+ assert.equal((await context.request.get(app.origin+'/api/auth/lifecycle/plans?personId='+erinId)).status(),401);
+ await page.goto(app.origin+'/app/people');await expect(page).toHaveURL(/\/signin/);await shoot('leaver-reader-revoked');
  assert.deepEqual(errors,[]);
 });
 
