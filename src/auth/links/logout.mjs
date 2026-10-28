@@ -55,8 +55,9 @@ async function attempt(ctx,d) {
 
 export async function deliverLogouts(ctx,ids=null) {
  const now=ctx.now();
- const due=ids?await all(ctx,`SELECT * FROM auth_logout_deliveries WHERE finished_at IS NULL AND id IN (${ids.map(()=>'?').join(',')})`,...ids)
-  :await all(ctx,'SELECT * FROM auth_logout_deliveries WHERE finished_at IS NULL AND next_attempt_at<=? ORDER BY next_attempt_at LIMIT 50',now);
+ const source="SELECT d.*,w.episode_id AS timing_episode_id FROM auth_logout_deliveries d LEFT JOIN auth_timing_work w ON w.work_id=d.id AND w.channel='backchannel'";
+ const due=ids?await all(ctx,`${source} WHERE finished_at IS NULL AND id IN (${ids.map(()=>'?').join(',')})`,...ids)
+  :await all(ctx,source+' WHERE finished_at IS NULL AND next_attempt_at<=? ORDER BY next_attempt_at LIMIT 50',now);
  for(const d of due) {
   const result=await attempt(ctx,d),attempts=d.attempts+1,next=now+(RETRY[Math.min(attempts-1,RETRY.length-1)]);
   const expired=!result.finished&&next>d.created_at+HORIZON;

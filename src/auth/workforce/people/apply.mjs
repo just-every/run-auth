@@ -16,11 +16,11 @@ import {emit,personSubject} from '../../events/store.mjs';
 const EVENTS={suspend:'person.suspended',terminate:'person.terminated',restore:'person.restored',rehire:'person.restored'};
 const REASONS={suspend:'person_suspended',terminate:'person_terminated',restore:'person_restored',rehire:'person_restored'};
 
-function stateStatements(ctx,g,id,change) {
+function stateStatements(ctx,g,id,change,at=ctx.now()) {
  const claim=`id=? AND role!='owner'`;
  if(change.kind==='suspend')return [ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE ${claim} AND status='active' AND ${g.clause}`).bind(id,...g.args)];
  if(change.kind==='terminate')return [
-  ctx.db.prepare(`INSERT INTO auth_people(person_id,terminated_at) SELECT ?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM oa_operators WHERE ${claim} AND status IN ('active','inactive')) ON CONFLICT(person_id) DO UPDATE SET terminated_at=excluded.terminated_at`).bind(id,ctx.now(),...g.args,id),
+  ctx.db.prepare(`INSERT INTO auth_people(person_id,terminated_at) SELECT ?,? WHERE ${g.clause} AND EXISTS(SELECT 1 FROM oa_operators WHERE ${claim} AND status IN ('active','inactive')) ON CONFLICT(person_id) DO UPDATE SET terminated_at=excluded.terminated_at`).bind(id,at,...g.args,id),
   ctx.db.prepare(`UPDATE oa_operators SET status='inactive' WHERE ${claim} AND status IN ('active','inactive') AND ${g.clause}`).bind(id,...g.args),
  ];
  return [ctx.db.prepare(`UPDATE oa_operators SET status='active' WHERE id=? AND status='inactive' AND ${g.clause}`).bind(id,...g.args)];
@@ -35,8 +35,8 @@ function entryStatements(ctx,g,actorId,dir,e,episode) {
   ctx.db.prepare(`DELETE FROM auth_emails WHERE person_id=? AND ${g.clause}`).bind(e.personId,...g.args),
   ctx.db.prepare(`UPDATE oa_operators SET email=?,version=version+1 WHERE id=? AND ${g.clause}`).bind(e.emailChange.to,e.personId,...g.args));
  if(e.bind&&!dir.sourceIds.has(`${e.bind.source}:${e.personId}`))statements.push(ctx.db.prepare(`INSERT INTO auth_person_sources(source,source_id,person_id,bound_by,bound_at) SELECT ?,?,?,?,? WHERE ${g.clause}`).bind(e.bind.source,e.bind.sourceId,e.personId,actorId,ctx.now(),...g.args));
- if(episode)statements.push(...terminationStatements(ctx,g,e.personId,episode));
- if(e.state){const s=stateStatements(ctx,g,e.personId,e.state);stateAt=statements.length+s.length-1;statements.push(...s);}
+ if(episode)statements.push(...terminationStatements(ctx,g,e.personId,episode,actorId));
+ if(e.state){const s=stateStatements(ctx,g,e.personId,e.state,episode?.at);stateAt=statements.length+s.length-1;statements.push(...s);}
  if(e.state?.kind==='rehire')statements.push(endEpisodes(ctx,g,e.personId));
  for(const gr of e.groups.added)statements.push(addRuleMember(ctx,g,gr.id,e.personId,actorId));
  for(const gr of e.groups.removed)statements.push(dropRuleMember(ctx,g,gr.id,e.personId));
@@ -51,7 +51,9 @@ async function afterwards(ctx,actorId,e,bulk) {
   if(e.state.kind==='suspend')await fencePerson(ctx,id);
   await emit(ctx,EVENTS[e.state.kind],subject,{});
   if(e.state.kind==='terminate'){
-   await maintainFamilies(ctx);await deliverLogouts(ctx);await dispatch(ctx);
+   await maintainFamilies(ctx);
+   const work=Promise.all([deliverLogouts(ctx),dispatch(ctx)]);
+   if(ctx.waitUntil)ctx.waitUntil(work);else await work;
   }else await personChanged(ctx,id,REASONS[e.state.kind]);
  }
  if(e.emailChange){await fencePerson(ctx,id);await personChanged(ctx,id,'person_email_changed');}

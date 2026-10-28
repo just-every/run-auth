@@ -119,6 +119,18 @@ export async function refreshLifecycle(t) {
  const refreshAudit=(await (await r.call('/api/auth/activity',{cookie:r.owner.cookie})).json()).find(row=>row.event==='erasure_credentials_revoked'&&row.subject_id===erasureResult.reference);
  assert.ok(refreshAudit);assert.ok(JSON.parse(refreshAudit.detail).counts.refreshTokens>0,'erasure counts the removed live refresh authority');
  const suspended=await connect({deviceName:'Suspended worker tablet'});await command('people/suspend',{personId:'ada'});assert.equal((await rawRefresh(suspended.tokens.refresh_token)).status,400);assert.equal((await check(suspended.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===suspended.tokens.grant_id));
+ // Directory termination uses the same real issued-token doors, and rehire
+ // cannot revive the old browser or device authority after a Worker restart.
+ const leaver='synthetic-auth-211',leaverAddress=leaver+'@'+'example.com';await r.person(leaver,leaverAddress);
+ const leaverSession=await (await import('./runtime.mjs')).emailSession(r,leaverAddress);
+ await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:leaver,role:'reader'});
+ const leaverGrant=await connect({who:leaverSession,deviceName:'Terminated worker tablet'});
+ assert.equal((await check(leaverGrant.tokens.access_token)).status,200);
+ await command('directory/edit',{personId:leaver,state:'terminated'});
+ assert.equal((await rawRefresh(leaverGrant.tokens.refresh_token)).status,400);assert.equal((await check(leaverGrant.tokens.access_token)).status,401);
+ await r.restart();await command('directory/edit',{personId:leaver,state:'active'});
+ assert.equal((await r.call('/api/auth/me',{cookie:leaverSession})).status,401);
+ assert.notEqual((await rawRefresh(leaverGrant.tokens.refresh_token)).status,200);assert.equal((await check(leaverGrant.tokens.access_token)).status,401);
  // A second active worker proves app removal independently of suspension.
  await command('resource-apis/assign',{apiId:api.id,principalType:'person',principalId:'bob',role:'reader'});
  const removed=await connect({who:r.bob,deviceName:'Bob’s field tablet'});await command('company-apps/remove',{id:app.id});assert.notEqual((await rawRefresh(removed.tokens.refresh_token)).status,200);assert.equal((await check(removed.tokens.access_token)).status,401);assert.ok(delivered.some(c=>c.sid===removed.tokens.grant_id));

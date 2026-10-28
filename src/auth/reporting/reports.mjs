@@ -9,8 +9,8 @@ import {timingPeriod,episodeProjection,timingSummary} from '../timing/report.mjs
 export const REPORTS = '/api/auth/reports';
 const COLUMNS = {
  'mfa-enrollment':['mfaCompliant','factorTypes','factors','passwordOnly','policy'],
- 'terminated-people':['episodeId','terminationEffectiveAt','leaverEventAt','localDenialAt','dispatchedAt','fullDeprovisionAt','observedDeprovisionAt','remoteVerifiedAt','apps','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
- 'joiner-leaver-timeliness':['episodeId','terminationEffectiveAt','leaverEventAt','localDenialAt','dispatchedAt','fullDeprovisionAt','observedDeprovisionAt','remoteVerifiedAt','apps','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
+ 'terminated-people':['episodeId','terminationEffectiveAt','leaverEventAt','localDenialAt','dispatchedAt','fullDeprovisionAt','observedDeprovisionAt','remoteVerifiedAt','inventoryCoverage','apps','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
+ 'joiner-leaver-timeliness':['episodeId','terminationEffectiveAt','leaverEventAt','localDenialAt','dispatchedAt','fullDeprovisionAt','observedDeprovisionAt','remoteVerifiedAt','inventoryCoverage','apps','unresolvedApps','unresolvedOutsideScope','sourceObservedAt','timingQualification'],
  'administrators':['grants'],
  'dormant-accounts':['lastSignInAt','lastSignInDoor','dormantDays','observation','apps'],
  'connector-health':['appId','app','kind','lastSuccessfulSyncAt','lastReconciledAt','status','openFailures','observation'],
@@ -102,7 +102,7 @@ export async function reportsRead(ctx, request, path) {
       const unresolved = work.filter(row => !['verified', 'superseded'].includes(row.state));
       const hidden = unresolved.some(row => !visibleApp(row.app_id));
       return {...common(person), terminationEffectiveAt: iso(person.terminatedAt), leaverEventAt: work.length ? iso(Math.min(...work.map(row => row.event_at))) : unknown,
-        episodeId:unknown,localDenialAt: unknown, fullDeprovisionAt: unknown,dispatchedAt:unknown,observedDeprovisionAt:unknown,apps:[],
+        episodeId:unknown,localDenialAt: unknown, fullDeprovisionAt: unknown,dispatchedAt:unknown,observedDeprovisionAt:unknown,inventoryCoverage:unknown,apps:[],
         remoteVerifiedAt: work.length && work.every(row=>row.state==='verified'&&row.verified_at!==null) ? iso(Math.max(...work.map(row => row.verified_at))) : unknown,
         unresolvedApps: [...new Set(unresolved.filter(row => visibleApp(row.app_id)).map(row => row.name))],
         unresolvedOutsideScope: hidden ? unknown : false, sourceObservedAt: unknown, timingQualification: 'unmeasured'};
@@ -156,12 +156,12 @@ export async function reportsRead(ctx, request, path) {
       observation: 'Native SCIM only; upstream/compliance/other connectors unqualified'}));
     directoryCount = null;
   }
-  const result = {report: name, asOf: iso(asOf), employer: ctx.organizationId ?? 'root', filters: {group, workerType, department},
+  const result = {report: name, asOf: iso(asOf), employer: ctx.organizationId ?? 'root', filters: {group, workerType, department,...(period?{start:iso(period.start),end:iso(period.end)}:{})},
     rowCount: rows.length, directoryCount, columns:['asOf',...(summary?['summary']:[]),...(name==='connector-health'?[]:PERSON_COLUMNS),...COLUMNS[name]], rows, gaps, epoch: state.epoch,...(summary?{summary}:{}),
     ...(period?{scopeAsOf:iso(ctx.now()),scopeQualification:'Current authorized directory filters; historical membership and profile reconstruction unknown'}:{})};
   await assertRead(ctx, s, state.epoch);
-  if (exporting) await commit(ctx, s, roleGuard(ctx, s, state), 'reports.export', null, {report: name, asOf, rowCount: rows.length, filters: result.filters});
-  const headers = {'cache-control':'no-store', 'x-auth-report-count': String(rows.length), 'x-auth-report-as-of': iso(asOf)};
+  if (exporting) await commit(ctx, s, roleGuard(ctx, s, state), 'reports.export', null, {report: name, asOf, rowCount: rows.length, filters: result.filters,...(summary?{summary}:{})});
+  const headers = {'cache-control':'no-store', 'x-auth-report-count': String(rows.length), 'x-auth-report-as-of': iso(asOf),...(summary?{'x-auth-timing-summary':JSON.stringify(summary)}:{})};
   if (format === 'csv') return new Response(csv(result), {headers: {...headers, 'content-type':'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="auth-${name}.csv"`}});
   return json(result, 200, {...headers, ...(exporting ? {'content-disposition': `attachment; filename="auth-${name}.json"`} : {})});
 }

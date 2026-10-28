@@ -38,8 +38,10 @@ The native slice exposes these facts without inferring missing evidence:
   policy and supported factor qualification exist.
 - Terminated people include effective termination, native leaver/provisioning
   event and remote read-back times where present, and names of unresolved
-  apps within scope. Local-denial and full-deprovision timing stay unknown;
-  queue completion cannot prove every downstream door ended.
+  apps within scope. New directory terminations retain their native denial time and captured app
+  inventory in the guarded inactive-state transaction. Legacy missing denial
+  facts and full-deprovision timing stay unknown; queue completion cannot prove
+  every downstream door ended.
 - Administrators include live built-in and published custom administrator
   grants and effective privileged app roles. Grant provenance is shown where
   retained and within scope; unmeasured last-use/provenance stays unknown.
@@ -56,3 +58,54 @@ AUTH-REPORTS-001 stays partial: the exact 15 passkey/push, 3 password-only and
 reconciliation, every connector, scheduled email, scoped machine exports and
 compliance/Evidence delivery remain unproved. No outbound delivery or new
 retention schedule is enabled by reading or exporting a report.
+
+## Native leaver periods
+
+The `joiner-leaver-timeliness` report accepts UTC ISO timestamps `start`, `end`
+and `asOf`. The period includes its start and excludes its end, spans at most
+366 days and ends no later than its as-of time; future as-of times are refused.
+The default period is the 30 days ending at capture. The current reader's live
+resource scope and directory filters always apply; `scopeAsOf` identifies that
+scope capture. Historical membership and profile reconstruction remain unknown.
+There is one row per retained termination episode, including earlier episodes
+of a rehired person. `directoryCount` counts distinct visible people and
+`rowCount` counts episodes. Pre-upgrade terminations with no episode appear
+with unknown evidence when their retained termination date falls in the period.
+Missing historical events cannot be reconstructed or silently claimed covered.
+
+Each episode names its `episodeId`. Its `apps` inventory retains each affected
+app's captured name and channel, event time, native denial time, first actual
+dispatch time and remote verification time. The native denial timestamp records
+the guarded directory commit; it is not an observation of extension, device or
+network enforcement. Back-channel HTTP acceptance has its own `acceptedAt` and
+never becomes remote readback. SCIM verification requires an actual inactive or
+absent readback of the captured managed account. A queue with no known account,
+a provider write acknowledgment, a removed connector or an unsupported app
+remains unverified. Unresolved names survive subsequent profile edits and
+connector removal. Rehire ends correlation to the old episode; a later leaver
+creates a separate episode and cannot close the old missing evidence.
+
+The Activity audit records `lifecycle_timing_committed` atomically with the
+inactive-state transaction and `lifecycle_timing_observed` atomically with each
+retained observation. Their details carry the episode, app where applicable,
+four timestamps and the source work reference, so an authorized administrator
+can reconcile the report with the audit. As-of reports omit observations later
+than the requested cut-off, even if those observations exist at read time.
+
+`summary` reports the episode denominator, `nativeObservedComplete`,
+`nativeWithinOneHour`, `nativeWithin24Hours`, native shares and `unknownEpisodes`.
+Native completion means that the entire captured inventory has actual SCIM
+readback. Hidden, unsupported, empty or otherwise unobserved inventories cannot
+enter a completed numerator. All-surface full-deprovision counts and each row's
+`fullDeprovisionAt` remain unknown. This measurement does not qualify live SaaS
+or devices, source-origin timing, joiners, movers or daily reconciliation.
+JSON contains the summary; CSV repeats it as a JSON cell and the
+`x-auth-timing-summary` header preserves it for an empty export too. Export audit
+receipts include the period and summary. The same audit read and separate export
+authority, fresh email and employer isolation gates apply.
+
+Timing stores are installation-local evidence, excluded from portable archives.
+They confer no authority, enable no outbound consent and add no retention
+schedule. Erasing app evidence leaves inventory coverage unknown and cannot complete a
+smaller inventory. Person erasure removes episodes and their inventory; restoring an
+archive cannot supply missing timing observations or revive access.

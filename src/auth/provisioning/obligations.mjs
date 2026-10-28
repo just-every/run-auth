@@ -20,10 +20,11 @@ const kick=(ctx,appId)=>{const work=dispatch(ctx,appId);if(ctx.waitUntil)ctx.wai
 export async function queue(ctx,appId,subjects,reason) {
  if(!subjects.length||!await connectorOf(ctx,appId))return;
  const now=ctx.now();
- await ctx.db.batch(subjects.flatMap(([type,id])=>[
+ await ctx.db.batch(subjects.flatMap(([type,id])=>{const workId=random();return [
   ctx.db.prepare("UPDATE auth_provisioning SET state='superseded' WHERE app_id=? AND subject_type=? AND subject_id=? AND state IN ('pending','failed','blocked')").bind(appId,type,id),
-  ctx.db.prepare(`INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at,timing_episode_id) VALUES(?,?,?,?,?,?,'pending',?,${type==='person'?currentEpisode:'NULL'})`).bind(random(),appId,type,id,reason,now,now,...(type==='person'?[id]:[])),
- ]));
+  ctx.db.prepare("INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at) VALUES(?,?,?,?,?,?,'pending',?)").bind(workId,appId,type,id,reason,now,now),
+  ...(type==='person'?[ctx.db.prepare(`INSERT INTO auth_timing_work(work_id,channel,episode_id) SELECT ?,'scim',id FROM auth_timing_episodes WHERE id=${currentEpisode}`).bind(workId,id)]:[]),
+ ];}));
  await syncObligations(ctx);
  await kick(ctx,appId);
 }
@@ -147,6 +148,7 @@ export async function dispatch(ctx,appId=null) {
  for(const row of due) {
   const ob=await one(ctx,"UPDATE auth_provisioning SET claimed_until=? WHERE id=? AND state='pending' AND (claimed_until IS NULL OR claimed_until<=?) RETURNING *",ctx.now()+CLAIM,row.id,ctx.now());
   if(!ob)continue;
+  ob.timing_episode_id=(await one(ctx,"SELECT episode_id FROM auth_timing_work WHERE work_id=? AND channel='scim'",ob.id))?.episode_id;
   const connector=await connectorOf(ctx,ob.app_id);
   if(!connector){await run(ctx,"UPDATE auth_provisioning SET state='failed',last_error='connector_removed',claimed_until=NULL WHERE id=?",ob.id);continue;}
   let wroteAt=ob.dispatched_at;const wrote=()=>{wroteAt??=ctx.now();};

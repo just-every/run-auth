@@ -131,7 +131,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "8cd8282971839b7267500bc4041728ea6d9c5dc4285f840d58d33043caf7cf8e",
+      "sha256": "b2fb5f10c43006db1642e8b22151fdf9a5cf751357b6cb15f27edcd0c40d5ca2",
       "executable": false
     },
     "AGENTS.md": {
@@ -171,7 +171,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "9fdef79849e70048b2b7b01b51287dbf168567453509448750e6de18c2d44df3",
+      "sha256": "cf0953d708e6654f44ba72868be8c195f45fddf170bdb26dc373771d3d746a61",
       "executable": false
     },
     "deploy-site.json": {
@@ -259,7 +259,7 @@
       "executable": false
     },
     "docs/identity-reports.md": {
-      "sha256": "5b8ff5a050ab94f746424f8416fcf2f35b19933120227c1ef0af536091a30403",
+      "sha256": "4c2c896c4d7010d6d59301837ae2e09c5098e952c9d46392b2d6f582b14fac22",
       "executable": false
     },
     "docs/inline-hooks.md": {
@@ -640,6 +640,10 @@
     },
     "migrations/core/0077_auth_role_notice_intents.sql": {
       "sha256": "bf4ce6f71fc936e41f5623726e52c81d9ced2243a715d90b5df9548c8f3af014",
+      "executable": false
+    },
+    "migrations/core/0078_auth_timing.sql": {
+      "sha256": "9146a8c895c140ff7f575504262e474bb33523d2ab59d16ca08ed25f6d198eaf",
       "executable": false
     },
     "MOVE-IN.md": {
@@ -1727,7 +1731,7 @@
       "executable": false
     },
     "src/auth/links/logout.mjs": {
-      "sha256": "95a908025a1356573de5b24650e7be443f4399043ad0f86ecf7253999bd5ea07",
+      "sha256": "214aa0e36870d7e68a8a033adb873faa85be2c469180fa653649dce3db71292a",
       "executable": false
     },
     "src/auth/links/rer-approval.mjs": {
@@ -1967,7 +1971,7 @@
       "executable": false
     },
     "src/auth/provisioning/obligations.mjs": {
-      "sha256": "f75387cde33df674eb94a2acb4101c40524fd0f949e17b08fb60c3da1fa9126d",
+      "sha256": "9dfe213f47033930e9cf7e70dff62c5510c331913c00bf29830ae7ab97fdec14",
       "executable": false
     },
     "src/auth/provisioning/scim.mjs": {
@@ -1991,7 +1995,7 @@
       "executable": false
     },
     "src/auth/reporting/reports.mjs": {
-      "sha256": "e327d34055eaaf4848253d14cd4fa6908b51f8627eecef5d7a994c4edc28d214",
+      "sha256": "077aa84e785ba48e31e12be7d1430679f0b7552350e6fca094728c55df2268f3",
       "executable": false
     },
     "src/auth/requests/index.mjs": {
@@ -2155,7 +2159,7 @@
       "executable": false
     },
     "src/auth/stores.mjs": {
-      "sha256": "cdae6e7a90568c30cfcc5f6eb8dca7a252219fcdb5dbf792c99755d9f7b9f044",
+      "sha256": "dedb44f6513550f9b921d7047941d1401fc10dbde565e6eb532982984f746dec",
       "executable": false
     },
     "src/auth/temporary-passes/authority.mjs": {
@@ -2192,6 +2196,14 @@
     },
     "src/auth/tenancy/storage.mjs": {
       "sha256": "c55c660b9511fa8b5ddb3c992cc9e12a61a832496cd0cd97cc0cbf190b490f04",
+      "executable": false
+    },
+    "src/auth/timing/episodes.mjs": {
+      "sha256": "c9feedb0c45dc96448d9040329f381829fb8a0d7d4555141de375fe18506b605",
+      "executable": false
+    },
+    "src/auth/timing/report.mjs": {
+      "sha256": "9737bca2cf2049a80b24017c5691df71e3243a7b888e734b5166a402cef366cd",
       "executable": false
     },
     "src/auth/tokens/authority.mjs": {
@@ -2243,7 +2255,7 @@
       "executable": false
     },
     "src/auth/workforce/people/apply.mjs": {
-      "sha256": "515d715ef5653c52123b877655e43d46875d5eeb7fc5760949c59bfda2186360",
+      "sha256": "59f709ac0e958d5bc1da3ceca1e52b9cf80ce81ca4297b7bd371b220a9d25def",
       "executable": false
     },
     "src/auth/workforce/people/evaluate.mjs": {
@@ -3483,7 +3495,7 @@
       "executable": false
     },
     "tests/auth/link/app-worker.mjs": {
-      "sha256": "2ceb990932cff4e46225fe367be37a676bf94d76c9549db075d8909737426f4e",
+      "sha256": "5415b46bed5f004c7e6f113a6d6b555f413bd1198441ac25ddd00e29d66a6340",
       "executable": false
     },
     "tests/auth/link/auth-worker.mjs": {
@@ -3507,7 +3519,7 @@
       "executable": false
     },
     "tests/auth/linking.test.mjs": {
-      "sha256": "cc36702e4ce509414dcec4bff5a64547eae9387e241be852ca05d687407139ea",
+      "sha256": "e16769506ae2341a182831f147790925e6608fb86e22539ecbfcb32b61b9a66d",
       "executable": false
     },
     "tests/auth/local-email.test.mjs": {
@@ -3575,7 +3587,7 @@
       "executable": false
     },
     "tests/auth/refresh-flow.mjs": {
-      "sha256": "2867c4c65977555de09a62c71512e15799a1c569ce4b3c3c6a4f0461db2fe9ad",
+      "sha256": "796aa5248f77eeb96b3499a7f0d245555bf1ff449b729a7fd16935c41167b797",
       "executable": false
     },
     "tests/auth/registration.test.mjs": {
@@ -3648,6 +3660,10 @@
     },
     "tests/auth/terraform-provider.test.mjs": {
       "sha256": "7bd6b49e87618620c62b31589cf860c4e7f9e8911df019a3d3eda1afc485af3d",
+      "executable": false
+    },
+    "tests/auth/timing-flow.mjs": {
+      "sha256": "aa1fdc8ee85b51e8af0e1b13e321b0c17862cd736b1df03fb2bccb521b291976",
       "executable": false
     },
     "tests/auth/upstream-helpers.mjs": {

@@ -1,9 +1,9 @@
 // Capture the inventory and effects under the same authority as the inactive
 // state write. No post-commit callback is needed to discover the work on restart.
-import {random,run} from '../core.mjs';
+import {random} from '../core.mjs';
 const FENCE='https://runeditrun.com/events/identity-fence';
 
-export function terminationStatements(ctx,g,personId,{id,at}) {
+export function terminationStatements(ctx,g,personId,{id,at},actorId) {
  const statement=(sql,...args)=>ctx.db.prepare(sql).bind(...args);
  const exists='EXISTS(SELECT 1 FROM auth_timing_episodes WHERE id=?)';
  return [
@@ -21,13 +21,23 @@ export function terminationStatements(ctx,g,personId,{id,at}) {
    WHERE x.person_id=? AND ${exists}`,id,personId,id),
   statement(`UPDATE auth_provisioning SET state='superseded' WHERE subject_type='person' AND subject_id=?
    AND state IN ('pending','failed','blocked') AND ${exists}`,personId,id),
-  statement(`INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at,timing_episode_id)
-   SELECT lower(hex(randomblob(16))),app_id,'person',?,'person_terminated',?,'pending',?,?
-   FROM auth_timing_apps WHERE episode_id=? AND channel='scim'`,personId,at,at,id,id),
-  statement(`INSERT INTO auth_logout_deliveries(id,client_id,person_id,event,jti,next_attempt_at,created_at,timing_episode_id)
-   SELECT lower(hex(randomblob(16))),c.id,?,?,lower(hex(randomblob(16))),?,?,?
+  statement(`INSERT INTO auth_provisioning(id,app_id,subject_type,subject_id,reason,event_at,state,next_attempt_at)
+   SELECT 'timing:'||episode_id||':scim:'||app_id,app_id,'person',?,'person_terminated',?,'pending',?
+   FROM auth_timing_apps WHERE episode_id=? AND channel='scim'`,personId,at,at,id),
+  statement(`INSERT INTO auth_timing_work(work_id,channel,episode_id)
+   SELECT 'timing:'||episode_id||':scim:'||app_id,'scim',episode_id FROM auth_timing_apps WHERE episode_id=? AND channel='scim'`,id),
+  statement(`INSERT INTO auth_logout_deliveries(id,client_id,person_id,event,jti,next_attempt_at,created_at)
+   SELECT 'timing:'||a.episode_id||':backchannel:'||c.id,c.id,?,?,lower(hex(randomblob(16))),?,?
    FROM auth_timing_apps a JOIN auth_clients c ON c.id=a.app_id
-   WHERE a.episode_id=? AND a.channel='backchannel' AND c.disabled_at IS NULL AND c.logout_uri IS NOT NULL`,personId,FENCE,at,at,id,id),
+   WHERE a.episode_id=? AND a.channel='backchannel' AND c.disabled_at IS NULL AND c.logout_uri IS NOT NULL`,personId,FENCE,at,at,id),
+  statement(`INSERT INTO auth_timing_work(work_id,channel,episode_id)
+   SELECT 'timing:'||a.episode_id||':backchannel:'||c.id,'backchannel',a.episode_id
+   FROM auth_timing_apps a JOIN auth_clients c ON c.id=a.app_id
+   WHERE a.episode_id=? AND a.channel='backchannel' AND c.disabled_at IS NULL AND c.logout_uri IS NOT NULL`,id),
+  statement(`INSERT INTO auth_activity(actor_id,event,subject_id,created_at)
+   SELECT ?,'lifecycle_timing_committed',?,? WHERE ${exists}`,actorId,personId,at,id),
+  statement(`INSERT INTO auth_activity_details(activity_id,detail) SELECT last_insert_rowid(),? WHERE ${exists}`,
+   JSON.stringify({episodeId:id,personId,eventAt:at,localDenialAt:at,observation:'guarded inactive-state commit'}),id),
  ];
 }
 
@@ -40,19 +50,37 @@ export const currentEpisode=`(SELECT e.id FROM auth_timing_episodes e JOIN oa_op
  JOIN auth_people d ON d.person_id=p.id WHERE e.person_id=? AND p.status='inactive'
  AND e.ended_at IS NULL AND d.terminated_at=e.event_at ORDER BY e.event_at DESC LIMIT 1)`;
 
+function observationAudit(ctx,episodeId,appId,channel,evidenceId) {
+ const exists=`EXISTS(SELECT 1 FROM auth_timing_episodes e JOIN auth_timing_apps a ON a.episode_id=e.id
+  WHERE e.id=? AND a.app_id=? AND a.channel=? AND e.ended_at IS NULL)`;
+ return [
+  ctx.db.prepare(`INSERT INTO auth_activity(actor_id,event,subject_id,created_at)
+   SELECT NULL,'lifecycle_timing_observed',person_id,? FROM auth_timing_episodes WHERE id=? AND ${exists}`)
+   .bind(ctx.now(),episodeId,episodeId,appId,channel),
+  ctx.db.prepare(`INSERT INTO auth_activity_details(activity_id,detail)
+   SELECT last_insert_rowid(),json_object('episodeId',e.id,'personId',e.person_id,'appId',a.app_id,'channel',a.channel,
+    'eventAt',e.event_at,'localDenialAt',e.local_denial_at,'dispatchedAt',a.dispatched_at,
+    'acceptedAt',a.accepted_at,'remoteVerifiedAt',a.verified_at,'evidenceId',?)
+   FROM auth_timing_episodes e JOIN auth_timing_apps a ON a.episode_id=e.id
+   WHERE e.id=? AND a.app_id=? AND a.channel=? AND e.ended_at IS NULL`).bind(evidenceId,episodeId,appId,channel),
+ ];
+}
+
 export async function observeProvisioning(ctx,ob,{dispatchedAt,verifiedAt,operation}) {
  if(!ob.timing_episode_id||ob.subject_type!=='person')return;
- await run(ctx,`UPDATE auth_timing_apps SET dispatched_at=COALESCE(dispatched_at,?),
+ await ctx.db.batch([ctx.db.prepare(`UPDATE auth_timing_apps SET dispatched_at=COALESCE(dispatched_at,?),
   verified_at=COALESCE(verified_at,CASE WHEN remote_id IS NOT NULL AND remote_id=(SELECT remote_id FROM auth_scim_accounts
    WHERE app_id=? AND subject_type='person' AND subject_id=?) THEN ? ELSE NULL END) WHERE episode_id=? AND app_id=? AND channel='scim'
   AND EXISTS(SELECT 1 FROM auth_timing_episodes e WHERE e.id=episode_id AND e.ended_at IS NULL)
-  `,dispatchedAt,ob.app_id,ob.subject_id,['delete','deactivate'].includes(operation)?verifiedAt:null,ob.timing_episode_id,ob.app_id);
+  `).bind(dispatchedAt,ob.app_id,ob.subject_id,['delete','deactivate'].includes(operation)?verifiedAt:null,ob.timing_episode_id,ob.app_id),
+  ...observationAudit(ctx,ob.timing_episode_id,ob.app_id,'scim',ob.id)]);
 }
 
 export async function observeLogout(ctx,d,{dispatchedAt,acceptedAt=null}) {
  if(!d.timing_episode_id)return;
  // A back-channel HTTP receipt establishes acceptance, never remote readback.
- await run(ctx,`UPDATE auth_timing_apps SET dispatched_at=COALESCE(dispatched_at,?),accepted_at=COALESCE(accepted_at,?)
+ await ctx.db.batch([ctx.db.prepare(`UPDATE auth_timing_apps SET dispatched_at=COALESCE(dispatched_at,?),accepted_at=COALESCE(accepted_at,?)
   WHERE episode_id=? AND app_id=? AND channel='backchannel'
-  AND EXISTS(SELECT 1 FROM auth_timing_episodes e WHERE e.id=episode_id AND e.ended_at IS NULL)`,dispatchedAt,acceptedAt,d.timing_episode_id,d.client_id);
+  AND EXISTS(SELECT 1 FROM auth_timing_episodes e WHERE e.id=episode_id AND e.ended_at IS NULL)`).bind(dispatchedAt,acceptedAt,d.timing_episode_id,d.client_id),
+  ...observationAudit(ctx,d.timing_episode_id,d.client_id,'backchannel',d.id)]);
 }

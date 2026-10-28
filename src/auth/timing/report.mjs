@@ -23,12 +23,12 @@ export function episodeProjection(episode,inventory,visibleApp,asOf) {
   dispatchedAt:iso(observed(row.dispatched_at,asOf)),acceptedAt:iso(observed(row.accepted_at,asOf)),
   remoteVerifiedAt:iso(observed(row.verified_at,asOf)),
   observation:observed(row.verified_at,asOf)!==null?'remote readback':row.channel==='backchannel'&&observed(row.accepted_at,asOf)!==null?'back-channel accepted; remote state unknown':'unverified'}));
- const complete=!hidden&&all.length>0&&all.every(row=>row.channel==='scim'&&observed(row.verified_at,asOf)!==null);
+ const complete=episode.inventory_complete===1&&!hidden&&all.length>0&&all.every(row=>row.channel==='scim'&&observed(row.verified_at,asOf)!==null);
  const completedAt=complete?Math.max(episode.local_denial_at,...all.map(row=>row.verified_at)):null;
  return {episodeId:episode.id,leaverEventAt:iso(episode.event_at),localDenialAt:iso(episode.local_denial_at),
   dispatchedAt:!hidden&&all.length&&all.every(row=>observed(row.dispatched_at,asOf)!==null)?iso(Math.max(...all.map(row=>row.dispatched_at))):unknown,
   remoteVerifiedAt:iso(completedAt),observedDeprovisionAt:iso(completedAt),fullDeprovisionAt:unknown,
-  apps:facts,unresolvedApps:[...new Set(facts.filter(row=>row.remoteVerifiedAt===unknown).map(row=>row.app))],
+  apps:facts,inventoryCoverage:episode.inventory_complete===1?'captured native inventory':'unknown after evidence erasure',unresolvedApps:[...new Set(facts.filter(row=>row.remoteVerifiedAt===unknown).map(row=>row.app))],
   unresolvedOutsideScope:hidden?unknown:false,sourceObservedAt:unknown,
   timingQualification:'native committed denial and captured app observations; all-surface qualification unknown'};
 }

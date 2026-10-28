@@ -6,7 +6,7 @@ import {AUTH_ORIGIN,APP_ORIGIN} from './link/origins.mjs';
 import {emailSession} from './runtime.mjs';
 import {register} from './webauthn.mjs';
 import {scriptedApps} from './link/scripted-app.mjs';
-import {mint,file,approve,proposal,passkeyPerson} from './agents-helpers.mjs';
+import {mint,file,approve,proposal,passkeyPerson,signInAgain} from './agents-helpers.mjs';
 
 const INTERFACE='oidc-provider@1',APP_SETUP='app-setup-token-0123456789abcdef';
 
@@ -53,6 +53,29 @@ test('an app links with a one-use token, signs a person in through Auth, and Sig
  assert.equal((await everywhere.json()).apps,1);
  assert.equal((await r.send(APP_ORIGIN+'/auth/session')).status,401,'the app session ended with the back-channel logout');
  assert.equal((await r.call('/api/auth/me',{cookie:owner.cookie})).status,401);
+ // A directory termination fences the real linked app. Its HTTP acceptance
+ // is retained separately from unknown remote readback and full deprovision.
+ const administrator=await signInAgain(r,owner,'owner'+'@'+'example.com');
+ r.jar[APP_ORIGIN].clear();r.jar[AUTH_ORIGIN].set(...administrator.cookie.split('='));
+ assert.ok((await r.follow(APP_ORIGIN+'/auth/oidc/auth/start',{method:'POST',json:{returnTo:'/'}})).status<400);
+ const invited=await r.send(APP_ORIGIN+'/auth/invite',{method:'POST',json:{email:'synthetic-auth-210'+'@'+'example.com',displayName:'Measured worker',role:'member'}});assert.equal(invited.status,202,await invited.clone().text());
+ const worker=await passkeyPerson(r,'synthetic-auth-210','synthetic-auth-210'+'@'+'example.com','member');
+ r.jar[APP_ORIGIN].clear();r.jar[AUTH_ORIGIN].set(...worker.cookie.split('='));
+ const employeeSignIn=await r.follow(APP_ORIGIN+'/auth/oidc/auth/start',{method:'POST',json:{returnTo:'/'}});assert.ok(employeeSignIn.status<400,await employeeSignIn.clone().text());
+ assert.equal((await r.send(APP_ORIGIN+'/auth/session')).status,200);
+ const terminated=await r.call('/api/auth/directory/edit',{method:'POST',cookie:administrator.cookie,data:{personId:'synthetic-auth-210',state:'terminated'}});
+ assert.equal(terminated.status,200,await terminated.clone().text());
+ assert.equal((await r.call('/api/auth/me',{cookie:worker.cookie})).status,401);
+ assert.equal((await r.send(APP_ORIGIN+'/auth/session')).status,401,'the linked app refuses its fenced employee session');
+ const measured=await r.call('/api/auth/reports/terminated-people',{cookie:administrator.cookie});assert.equal(measured.status,200);
+ const row=(await measured.json()).rows.find(row=>row.personId==='synthetic-auth-210');
+ const app=row.apps.find(app=>app.channel==='backchannel');assert.ok(app);
+ assert.notEqual(app.dispatchedAt,'unknown');assert.notEqual(app.acceptedAt,'unknown');assert.equal(app.remoteVerifiedAt,'unknown');
+ assert.equal(row.fullDeprovisionAt,'unknown');assert.ok(row.unresolvedApps.length>0);
+ await r.db.prepare('DELETE FROM auth_logout_deliveries WHERE id IN (SELECT work_id FROM auth_timing_work WHERE episode_id=?)').bind(row.episodeId).run();
+ await r.send(AUTH_ORIGIN+'/__test/maintain');
+ const retained=(await(await r.call('/api/auth/reports/terminated-people',{cookie:administrator.cookie})).json()).rows.find(item=>item.episodeId===row.episodeId);
+ assert.equal(retained.apps[0].acceptedAt,app.acceptedAt,'retained observations outlive the transient delivery queue');assert.equal(retained.remoteVerifiedAt,'unknown');
 });
 
 // An install with an owner and scripted apps; links by token as `rer setup` does.

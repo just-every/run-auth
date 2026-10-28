@@ -26,7 +26,7 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
-  'auth_timing_episodes', 'auth_timing_apps',
+  'auth_timing_episodes', 'auth_timing_apps', 'auth_timing_work',
   'auth_security_notice_intents',
   'auth_factor_policies',
   'auth_automation_runs', 'auth_automation_steps',
