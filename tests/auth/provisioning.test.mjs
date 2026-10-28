@@ -246,7 +246,8 @@ test('app erasure removes connector custody and protected organization reset ret
  const orgKeys=await (await selected.call('/oidc/jwks')).json();assert.ok(orgKeys.keys.length);
  await command(selected,owner.cookie,'erasure/preview',{kind:'organization',target:org.id},403);
  const stale=await command(selected,owner.cookie,'erasure/reset-preview',{});
- await command(selected,owner.cookie,'company-apps/update',{id:subsidiaryApp.id,name:'Subsidiary CRM renamed',entityId:'https://subsidiary-crm.example.com',acsUrl:'https://subsidiary-crm.example.com/acs'});
+ const appReview=await command(selected,owner.cookie,'catalog/preview',{appId:subsidiaryApp.id,version:1,settings:{name:'Subsidiary CRM renamed'}});
+ await command(selected,owner.cookie,'catalog/approve',{appId:subsidiaryApp.id,preview:appReview.preview,confirm:true});
  await command(selected,owner.cookie,'erasure/reset-consent',{previewId:stale.id,confirmation:'AUTHORIZE DELETION',destinations:['https://scim.example.com'],confirmRemoteDeletion:true},409);
  const consent=async()=>{
   const plan=await command(selected,owner.cookie,'erasure/reset-preview',{});assert.ok(plan.remote.some(x=>x.partner==='https://scim.example.com'));

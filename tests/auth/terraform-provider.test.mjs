@@ -81,7 +81,12 @@ for(const cli of ['terraform','tofu'])test(`${cli} installs the Auth provider an
  await command(['plan','-input=false','-no-color','-detailed-exitcode']);
  // The same authenticated command used by the Apps UI changes live settings.
  const appID=values['auth_saml_app.payroll'].id;
- const ui=await r.call('/api/auth/company-apps/update',post({id:appID,name:'Payroll UI change',entityId:'https://payroll.example.com/saml',acsUrl:'https://payroll.example.com/acs'},owner.cookie));assert.equal(ui.status,200,await ui.clone().text());
+ const reviewUi=async name=>{
+  const live=(await (await r.call('/api/auth/company-apps',{cookie:owner.cookie})).json()).companyApps.find(app=>app.id===appID);
+  const preview=await r.call('/api/auth/catalog/preview',post({appId:appID,version:live.version,settings:{name}},owner.cookie));assert.equal(preview.status,200,await preview.clone().text());
+  const ui=await r.call('/api/auth/catalog/approve',post({appId:appID,preview:(await preview.json()).preview,confirm:true},owner.cookie));assert.equal(ui.status,200,await ui.clone().text());
+ };
+ await reviewUi('Payroll UI change');
  await command(['plan','-input=false','-no-color','-detailed-exitcode','-out=drift.plan'],2);
  const drift=JSON.parse(await command(['show','-json','drift.plan']));
  const changed=drift.resource_changes.find(row=>row.address==='auth_saml_app.payroll');assert.equal(changed.change.before.name,'Payroll UI change');assert.equal(changed.change.after.name,'Payroll');assert.deepEqual(changed.change.actions,['update']);
@@ -99,7 +104,7 @@ for(const cli of ['terraform','tofu'])test(`${cli} installs the Auth provider an
  // A saved plan must not silently approve a subsequent UI revision.
  await writeFile(join(dir,'main.tf'),header+resources('Reviewed rename')+renamedImport);
  await command(['plan','-input=false','-no-color','-out=stale.plan']);
- assert.equal((await r.call('/api/auth/company-apps/update',post({id:appID,name:'Concurrent UI edit',entityId:'https://payroll.example.com/saml',acsUrl:'https://payroll.example.com/acs'},owner.cookie))).status,200);
+ await reviewUi('Concurrent UI edit');
  const beforeStale=JSON.parse(await command(['show','-json','stale.plan'])).prior_state.values;
  const liveBeforeStale=await r.db.prepare('SELECT * FROM auth_apps WHERE id=?').bind(appID).first();
  const at=requests.length;await command(['apply','-input=false','-no-color','stale.plan'],1);

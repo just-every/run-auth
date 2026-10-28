@@ -24,7 +24,7 @@ async function serviceProvider(t,authOrigin) {
   let body='';for await(const chunk of req)body+=chunk;
   if(req.url==='/login'){res.writeHead(302,{location:await saml.getAuthorizeUrlAsync('',undefined,{})});return res.end();}
   if(req.url==='/acs'&&req.method==='POST') {
-   try {const {profile}=await saml.validatePostResponseAsync(Object.fromEntries(new URLSearchParams(body)));res.writeHead(200,{'content-type':'text/html'});res.end(`<!doctype html><title>Expenses</title><h1>Signed in as ${profile.email} (${profile.role})</h1><p>Cost center ${profile.cost_center??'none'}</p>`);}
+   try {const {profile}=await saml.validatePostResponseAsync(Object.fromEntries(new URLSearchParams(body)));res.writeHead(200,{'content-type':'text/html'});res.end(`<!doctype html><title>Expenses</title><h1>Signed in as ${profile.email??profile.nameID} (${profile.role??'assigned'})</h1><p>Cost center ${profile.cost_center??'none'}</p>`);}
    catch(error){res.writeHead(403,{'content-type':'text/plain'});res.end('Refused: '+error.message);}
    return;
   }
@@ -72,7 +72,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  const directory=process.env.AUTH_SCREENSHOTS||'test-results/auth-journeys';await mkdir(directory,{recursive:true});
  page.on('dialog',dialog=>dialog.accept());
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- const shoot=async(target,name)=>captureViews({page:target,views,errors,capture:async(target,width,theme)=>{
+ const shoot=async(target,name)=>captureViews({page:target,views,errors,workers:1,capture:async(target,width,theme)=>{
   await expect(target.locator('h1')).toBeVisible();
   const results=await new AxeBuilder({page:target}).analyze();
   assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`${width} ${theme} ${name}`);
@@ -107,7 +107,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  const catalogSp=await serviceProvider(t,app.origin);
  await catalogConfigurationJourney({app,context,page,employeePage,sp:catalogSp,views,errors,capture:async(target,width,theme,name)=>{
   assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${name} fits ${width}px`);
-  await target.screenshot({path:join(directory,`company-apps-${name}-${width}-${theme}.png`),fullPage:true});
+  await target.locator('section[aria-labelledby^="company-app-"]',{has:target.locator('[data-configuration][open]')}).screenshot({path:join(directory,`company-apps-${name}-${width}-${theme}.png`)});
  }});
 
  // The app's own metadata, pasted on the Apps page.

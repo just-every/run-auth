@@ -642,6 +642,10 @@
       "sha256": "bf4ce6f71fc936e41f5623726e52c81d9ced2243a715d90b5df9548c8f3af014",
       "executable": false
     },
+    "migrations/core/0078_auth_catalog_revisions.sql": {
+      "sha256": "716d49759f345127cf2466e13772470f48c2381c6440d824aebf60b1deb94fff",
+      "executable": false
+    },
     "MOVE-IN.md": {
       "sha256": "6ae7c746b82f539f41885e5b2e61dc95928931b7985a21cf3b6d45a3de5b54af",
       "executable": false
@@ -763,7 +767,7 @@
       "executable": false
     },
     "public/auth-assets/auth-ui.js": {
-      "sha256": "a4ba467a68ef49bb13ba53c12783a7281ed1206e94009695846d1278f71815d6",
+      "sha256": "42a386d5c437ecfeaa1b9a837808f8893a95f46a4a7f492ebfe68a3139ea16b7",
       "executable": false
     },
     "public/auth-assets/auth.css": {
@@ -1336,6 +1340,10 @@
     },
     "src/auth/catalog/recipes.mjs": {
       "sha256": "2b3e6878344aff5614027f02ca4d90e906a7acc5e115d86e88ad7de78cc0c941",
+      "executable": false
+    },
+    "src/auth/catalog/revisions.mjs": {
+      "sha256": "41d377ce7f9b19e971340c8172591b104e81d93b76ea7b9d001aba8fd7bcb18a",
       "executable": false
     },
     "src/auth/core.d.mts": {
@@ -3226,6 +3234,10 @@
       "sha256": "636c6a98c7d1f91751fdfa6ebbb57b61cd4c9c3ffc45a0a396b7cd17ea6178bb",
       "executable": false
     },
+    "src/ui/pages/catalog-configuration.ts": {
+      "sha256": "864479f870193fdee8e7846a5edd7e13021ab4561729066fb5b25327e8b87584",
+      "executable": false
+    },
     "src/ui/pages/company-apps.ts": {
       "sha256": "924dc4b421de6dbf47e926f62df74b77187bccb8c7fbae0744cabee5156c3c36",
       "executable": false
@@ -3388,6 +3400,10 @@
     },
     "tests/auth/campaign-flow.mjs": {
       "sha256": "bf81ddb2a0e34ce6c42ba3349476421ef63cf1793ce91d4dd3b3bf08ce8026a2",
+      "executable": false
+    },
+    "tests/auth/catalog-revisions-flow.mjs": {
+      "sha256": "c434c9a3c4ef01160c98f095d7c78f53e4f6ca228a0853a043fc51025142261f",
       "executable": false
     },
     "tests/auth/catalog.test.mjs": {
@@ -3563,7 +3579,7 @@
       "executable": false
     },
     "tests/auth/provisioning.test.mjs": {
-      "sha256": "106a44386542739e9e6c4f1b8fe3e5426c7986ae1a93170ce650fc18eee6d806",
+      "sha256": "adf7a2a2ec33f3c7a92ca56a812033a489b3c745b859cc5840daacec245cd870",
       "executable": false
     },
     "tests/auth/recovery-cases-flow.mjs": {
@@ -3647,7 +3663,7 @@
       "executable": false
     },
     "tests/auth/terraform-provider.test.mjs": {
-      "sha256": "7bd6b49e87618620c62b31589cf860c4e7f9e8911df019a3d3eda1afc485af3d",
+      "sha256": "155679d4daf93c546af6a0114aa5e2e97997ba55820929620f1df5264b3e82c0",
       "executable": false
     },
     "tests/auth/upstream-helpers.mjs": {
@@ -3807,7 +3823,7 @@
       "executable": false
     },
     "tests/integration/company-apps-browser.test.mjs": {
-      "sha256": "88587cd9c8509b8436616632314474e29c0294fec219fb32223506d4285b10d6",
+      "sha256": "d77971e49bf93a48ee307b399f436e9ba90a1d8f37362ca47263dc1652e8ad5d",
       "executable": false
     },
     "tests/integration/continuity-drill.mjs": {
@@ -3835,7 +3851,11 @@
       "executable": false
     },
     "tests/integration/helpers/capture-views.mjs": {
-      "sha256": "4022dcd45f57fe38dff68fe6996d9d8b761bcda01de7339de13cc958f88b2867",
+      "sha256": "0be09b927a053c4ee6131d584738a3a5f3148ceafd811eaaf64c296d5f878170",
+      "executable": false
+    },
+    "tests/integration/helpers/catalog-configuration-journey.mjs": {
+      "sha256": "1be266eab39f84cd7b247df2d6f7628c72870f70541a5d82ad95622693457411",
       "executable": false
     },
     "tests/integration/helpers/delegation-journey.mjs": {

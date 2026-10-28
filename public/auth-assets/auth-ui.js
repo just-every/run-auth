@@ -468,8 +468,11 @@
       try {
         const review = await requestJSON(configuration.action, payload)
         panel.querySelector('[data-configuration-title]').textContent = review.rollback === null ? 'Review configuration' : `Review rollback to version ${review.rollback}`
-        panel.querySelector('[data-configuration-before]').textContent = JSON.stringify(review.before, null, 2)
-        panel.querySelector('[data-configuration-proposed]').textContent = JSON.stringify(review.proposed, null, 2)
+        const changed = Object.keys(review.proposed).filter(key => JSON.stringify(review.before[key]) !== JSON.stringify(review.proposed[key]))
+        const values = config => JSON.stringify(Object.fromEntries(changed.map(key => [key, config[key]])), null, 2)
+        panel.querySelector('[data-configuration-before]').textContent = changed.length ? values(review.before) : 'No setting changes.'
+        panel.querySelector('[data-configuration-proposed]').textContent = changed.length ? values(review.proposed) : 'No setting changes.'
+        panel.querySelector('[data-configuration-complete]').textContent = JSON.stringify(review.proposed, null, 2)
         panel.querySelector('[data-configuration-notes]').textContent = review.notes.join(' ')
         panel.querySelector('[data-configuration-review]').hidden = false
         result.textContent = `Preview of version ${review.version}. No settings changed and no request was sent to the app.`

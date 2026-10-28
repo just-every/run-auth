@@ -91,6 +91,11 @@ export async function configurationAuthority(t) {
   assert.deepEqual(await snapshot(r,appId),before);
  }
  r.owner=await signInAgain(r,r.owner,address('owner'));
+ await success(await r.admin('erasure/policy',{confirm:true,automaticDeletion:false,honorLegalHolds:true}));
+ const erase=await success(await r.admin('erasure/preview',{kind:'person',target:'synthetic-auth-3'}));
+ await success(await r.admin('erasure/confirm',{previewId:erase.id,confirmation:'ERASE',destinations:[]}));
+ assert.equal((await post(r,holder.cookie,'approve',{appId,preview:scoped.preview,confirm:true})).status,401,'erased actors cannot replay a capture');
+ assert.equal((await snapshot(r,appId)).app.version,version);
  const removed=await success(await post(r,r.owner.cookie,'preview',{appId,version}));
  await success(await r.admin('company-apps/remove',{id:appId}));
  assert.equal((await post(r,r.owner.cookie,'approve',{appId,preview:removed.preview,confirm:true})).status,404);
