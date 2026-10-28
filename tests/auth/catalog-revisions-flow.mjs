@@ -13,17 +13,18 @@ const snapshot=async(r,id)=>({app:await r.db.prepare('SELECT * FROM auth_apps WH
 export async function configurationLifecycle(t) {
  const r=await samlInstall(t),cookie=r.owner.cookie;
  const added=await success(await r.admin('/api/auth/catalog/add',{recipe:'slack',workspace:'synthetic-auth-1',token:'synthetic-auth-901'}),201);
- await success(await r.admin('/api/auth/company-apps/assign',{appId:added.id,principalType:'person',principalId:'ada',role:'editor'}));
  let outbound=0;
  const edge=createServer((req,res)=>{outbound++;res.writeHead(503);res.end();});await new Promise(done=>edge.listen(0,'127.0.0.1',done));t.after(()=>new Promise(done=>edge.close(done)));
  r.edges={'https://api.slack.com':`http://127.0.0.1:${edge.address().port}`};
+ await success(await r.admin('/api/auth/company-apps/assign',{appId:added.id,principalType:'person',principalId:'ada',role:'editor'}));
+ const beforeOutbound=outbound;assert.ok(beforeOutbound>0,'assignment uses the test-owned connector edge');
  const certs=await idpCertificates(r);
  const peer=()=>{const sp=serviceProvider(r,{entity:'https://slack.com',idpCerts:certs,assertion:false,format:null});sp.options.callbackUrl='https://synthetic-auth-1.slack.com/sso/saml';return sp;};
  const login=async expected=>{const sp=peer(),out=await posted(await signIn(r,sp,r.ada));const {profile}=await sp.validatePostResponseAsync({SAMLResponse:out.SAMLResponse});assert.equal(profile.UserEmail,undefined);assert.equal(profile['User.Email'],address('ada'));assert.equal(profile.full_name,expected);return profile.nameID;};
  const original=await login(undefined),before=await snapshot(r,added.id);
  const preview=await success(await post(r,cookie,'preview',{appId:added.id,version:1,settings:{attributes:'User.Email=email\nfull_name=name',nameIdFormat:'emailAddress',token:'synthetic-auth-ignored'}}));
  assert.deepEqual(await snapshot(r,added.id),before,'preview writes neither settings, history nor audit');
- assert.equal(outbound,0,'preview makes no outbound call');
+ assert.equal(outbound,beforeOutbound,'preview makes no outbound call');
  assert.equal(preview.proposed.nameIdFormat,'emailAddress');assert.ok(!JSON.stringify(preview).includes('synthetic-auth-ignored'));
  assert.equal(await login(undefined),original,'preview did not alter SAML');
  assert.equal((await post(r,cookie,'approve',{appId:added.id,preview:preview.preview})).status,400);
@@ -41,7 +42,7 @@ export async function configurationLifecycle(t) {
  assert.equal(await login(undefined),original,'rollback restores native SAML behaviour');
  const restored=await snapshot(r,added.id);assert.equal(restored.app.version,3);assert.equal(restored.revisions.length,3);assert.equal(restored.revisions.find(v=>v.version===3).rolled_back_from,1);assert.deepEqual(restored.assignments,before.assignments);assert.deepEqual(restored.connector,before.connector);
  const projected=JSON.stringify({history:await success(await post(r,cookie,'history',{appId:added.id})),events:(await r.db.prepare("SELECT detail FROM auth_activity_details WHERE activity_id IN (SELECT id FROM auth_activity WHERE event='catalog.configuration.approved')").all()).results});
- assert.ok(!projected.includes(before.connector.sealed_token));assert.ok(!projected.includes('synthetic-auth-ignored'));assert.ok(!projected.includes('sealed_token'));assert.ok(!projected.includes('synthetic-auth-901'));assert.equal(outbound,0,'approval and rollback do not dispatch provisioning');
+ assert.ok(!projected.includes(before.connector.sealed_token));assert.ok(!projected.includes('synthetic-auth-ignored'));assert.ok(!projected.includes('sealed_token'));assert.ok(!projected.includes('synthetic-auth-901'));assert.equal(outbound,beforeOutbound,'approval and rollback do not dispatch provisioning');
  const oldWrite=await r.admin('/api/auth/company-apps/update',{id:added.id,version:3,entityId:'https://slack.com',acsUrl:'https://synthetic-auth-1.slack.com/sso/saml'});assert.equal(oldWrite.status,409);
  await r.restart();assert.equal(await login(undefined),original);
 }

@@ -3403,7 +3403,7 @@
       "executable": false
     },
     "tests/auth/catalog-revisions-flow.mjs": {
-      "sha256": "281098c94e2616424c6b4ebe976156ae01ef2073687b938ce7be76e690481e4f",
+      "sha256": "4a588bdfc54ac9319a8f1e6880e91b9cdb2fe9db8d94a03893c65d18de5e8d20",
       "executable": false
     },
     "tests/auth/catalog.test.mjs": {
