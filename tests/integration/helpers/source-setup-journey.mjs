@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {expect} from '@playwright/test';
 import {join} from 'node:path';
+import {samlCredential,samlSigner,samlRequest} from '../../auth/federation-saml-peer.mjs';
 
 export async function sourceSetupJourney({app,providerEdge,owner,page,shoot,directory,accessible,sourceEdge}) {
  const json=async(response,status=200)=>{if(response.status()!==status)assert.fail(await response.text());return response.json();};
@@ -35,6 +36,7 @@ export async function sourceSetupJourney({app,providerEdge,owner,page,shoot,dire
  await page.getByRole('button',{name:'Activate upstream',exact:true}).click();await expect(page.locator(`[data-federation-setup="${setup.id}"]`)).toContainText('active');await shoot('federation-active');
  await page.goto(app.origin+'/app/methods');await expect(page.locator('.data-row strong').filter({hasText:/^Delegated company$/})).toBeVisible();await shoot('federation-methods');
  await page.goto(app.origin+'/signin');await expect(page.getByRole('button',{name:'Continue with Delegated company',exact:true})).toBeVisible();await shoot('federation-signin');
+ await samlRotationJourney({app,owner,page,shoot});
  await page.goto(app.origin+'/app/move-in');await page.getByText('Connect a directory source',{exact:true}).click();
  await page.getByLabel('Source name',{exact:true}).fill('Engineering directory');
  await page.getByLabel('Directory provider',{exact:true}).selectOption('scim');
@@ -101,4 +103,59 @@ async function directoryFreshnessJourney({app,owner,page,shoot,sourceEdge}) {
  const people=await(await owner.request.get(app.origin+'/api/auth/people')).json();assert.equal(people.some(row=>row.email===['synthetic-auth-206','example.com'].join('@')),false,'recovery never approves staged people');
  await page.goto(app.origin+'/app/activity');await expect(followup().locator('[data-followup-state]')).toHaveText('completed');await shoot('directory-freshness-history');
  await post('directory-sources/disable',{sourceId:source.sourceId,confirm:true});
+}
+
+async function samlRotationJourney({app,owner,page,shoot}) {
+ const subject='synthetic-auth-campaign-0',old=await samlCredential(Date.now(),'synthetic-auth-320'),next=await samlCredential(Date.now(),'synthetic-auth-321');
+ const provider={id:'rotation-company',preset:'saml',label:'Rotation company',issuer:'https://rotation.example.com/entity',ssoUrl:'https://rotation.example.com/sso',certificates:[old.certificate,next.certificate],subjectEmails:{[subject]:['campaign.worker0','example.com'].join('@')}};
+ let credential=old;
+ const callback=app.origin+'/auth/saml/'+provider.id+'/callback',entityId=app.origin+'/federation/saml/'+provider.id;
+ await page.route(provider.ssoUrl+'?**',async route=>{
+  const started=samlRequest(new URL(route.request().url())),body=await samlSigner({issuer:provider.issuer,entityId,callback,credential,now:Date.now})(started,{subject});
+  await route.fulfill({contentType:'text/html',body:`<!doctype html><title>Test identity provider</title><form method="post" action="${callback}"><input type="hidden" name="RelayState" value="${started.relay}"><input type="hidden" name="SAMLResponse" value="${body}"><button>Prove rotation employee</button></form>`});
+ });
+ const preview=async id=>{const response=await owner.request.get(app.origin+'/api/auth/federation?federation='+id);assert.equal(response.status(),200);return (await response.json()).preview;};
+ const prepare=async(certificates,label)=>{
+  await page.goto(app.origin+'/app/move-in');await page.getByText('Configure an upstream',{exact:true}).click();
+  await page.getByLabel('Verified employer domain',{exact:true}).fill('example.com');
+  await page.getByLabel('Private provider configuration',{exact:true}).fill(JSON.stringify({...provider,certificates}));
+  await page.getByLabel('I approve preparing this exact upstream and subject map',{exact:true}).check();
+  const prepared=page.waitForResponse(response=>response.url().endsWith('/federation/create'));
+  await page.getByRole('button',{name:'Prepare upstream',exact:true}).click();assert.equal((await prepared).status(),201);
+  await expect(page).toHaveURL(/\?federation=/);const id=new URL(page.url()).searchParams.get('federation');
+  await expect(page.getByRole('region',{name:'Federation mapping preview'})).toBeVisible();
+  await shoot(label);return id;
+ };
+ const test=async(id,label)=>{
+  await page.locator(`[data-federation-setup="${id}"]`).getByLabel('Representative immutable subject').fill(subject);
+  await page.getByRole('button',{name:'Test representative sign-in',exact:true}).click();
+  await page.getByRole('button',{name:'Prove rotation employee',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Activate upstream',exact:true})).toBeVisible();
+  const who=await owner.request.get(app.origin+'/api/auth/me');assert.equal((await who.json()).user.email,app.vars.OWNER_EMAIL,'SAML representative test preserves the owner session');
+  await shoot(label);return preview(id);
+ };
+ const activate=async(id,label)=>{
+  await page.getByLabel('I approve this tested upstream and these exact subject mappings',{exact:true}).check();
+  await page.getByRole('button',{name:'Activate upstream',exact:true}).click();
+  await expect(page.locator(`[data-federation-setup="${id}"]`)).toContainText('active');await shoot(label);
+ };
+ const disable=async(id,label)=>{
+  await page.locator(`[data-federation-setup="${id}"]`).getByRole('button',{name:'Disable upstream',exact:true}).click();
+  await expect(page.locator(`[data-federation-setup="${id}"]`)).toContainText('disabled');await shoot(label);
+ };
+ const original=await prepare(provider.certificates,'saml-overlap-draft'),draft=await preview(original),reviewed=await test(original,'saml-overlap-tested');
+ assert.deepEqual(reviewed.trust.certificates,provider.certificates);assert.deepEqual(reviewed.people,draft.people);
+ await activate(original,'saml-overlap-active');
+ await disable(original,'saml-overlap-disabled');
+ credential=next;
+ const replacement=await prepare([next.certificate],'saml-replacement-draft'),stale=await preview(replacement),approved=await test(replacement,'saml-replacement-tested');
+ assert.deepEqual(approved.people,reviewed.people,'replacement retains the exact reviewed immutable subject association');
+ assert.deepEqual(approved.trust.certificates,[next.certificate],'replacement retires the old certificate');
+ const refused=await owner.request.post(app.origin+'/api/auth/federation/activate',{headers:{origin:app.origin},data:{id:replacement,digest:stale.digest,revision:stale.revision,confirm:true}});assert.equal(refused.status(),409,'a draft review cannot activate a tested replacement');
+ assert.equal((await preview(replacement)).state,'tested');
+ await activate(replacement,'saml-replacement-active');
+ await app.pause();await app.resume();await page.reload();
+ await expect(page.locator(`[data-federation-setup="${replacement}"]`)).toContainText('active');
+ assert.deepEqual((await preview(replacement)).people,approved.people,'approved trust and bindings survive restart');
+ await disable(replacement,'saml-replacement-disabled');
 }
