@@ -32,3 +32,13 @@ An agent may prepare Auth administration; a person decides. An administrator min
 ## Lander-Regenerate
 
 CONTRACT.md owns status, evidence and gaps. After changing a clause's metadata, run `node ./scripts/contract-docs.mjs write CLAUSE-ID` and `node ./scripts/contract-docs.mjs check CLAUSE-ID`. This preserves legacy acceptance journeys and untouched evidence, updates the selected generated metadata, and regenerates docs/CLAIMS.md. Run `node ./scripts/edition-authoring/cli.mjs lock` last, then `pnpm check:sources`.
+
+Lander-Regenerate: node ./scripts/contract-docs.mjs write
+
+## Shared agent door
+
+`src/agent-door` adapts the bounded registry declared by `agent-surface.json` to
+Auth's native people and directory services. Read `docs/shared-agent-door.md`.
+Never use Base bootstrap cookies as Auth sessions, reconcile Business people by
+email after binding, or expose secret-bearing native models. The signed roster
+binds existing admitted identities only and does not mint or widen them.

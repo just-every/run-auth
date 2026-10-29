@@ -2,7 +2,7 @@
 
 Generated from CONTRACT.md. Acceptance journeys remain in ACCEPTANCE.md.
 
-Done: 38; partial: 37; missing: 17; total: 92.
+Done: 38; partial: 50; missing: 17; total: 105.
 
 | Clause | Title | Status |
 | --- | --- | --- |
@@ -98,3 +98,16 @@ Done: 38; partial: 37; missing: 17; total: 92.
 | AUTH-AGENT-004 | Person-bound delegated agent identities | done |
 | AUTH-AGENT-005 | Verify revocation everywhere | partial |
 | AUTH-AGENT-006 | External and MCP delegated task identities | done |
+| BASE-AGENT-001 | One MCP door per seed | partial |
+| BASE-AGENT-002 | The seed's jobs are tools, through the UI's own actions | partial |
+| BASE-AGENT-003 | Records are resources | partial |
+| BASE-AGENT-004 | Business identity and short-lived, audience-bound tokens | partial |
+| BASE-AGENT-005 | An agent acts as a person in a role, never more | partial |
+| BASE-AGENT-006 | Every action declares its risk class | partial |
+| BASE-AGENT-007 | The company's policy decides, at one chokepoint | partial |
+| BASE-AGENT-008 | Truthful attribution | partial |
+| BASE-AGENT-009 | Every agent action is audited with its class and decision | partial |
+| BASE-AGENT-010 | Agents can follow changes | partial |
+| BASE-AGENT-011 | Limits are policy, and Pause stops everything | partial |
+| BASE-AGENT-012 | Writes are idempotent and conflict-safe | partial |
+| BASE-AGENT-013 | Manifest, docs and the conformance journey | partial |

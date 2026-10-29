@@ -26,6 +26,9 @@ const groups = {
  ],
  // Installation custody/configuration is re-established at the destination.
  local: [
+  'agent_door_state','agent_door_agents','agent_door_audit','agent_door_calls',
+  'agent_door_approvals','agent_door_reviews','agent_door_events','agent_door_usage',
+  'bs_settings','bs_overrides','bs_logo','bs_team','bs_audit','bs_assert',
   'auth_security_notice_intents',
   'auth_factor_policies',
   'auth_automation_runs', 'auth_automation_steps',
@@ -95,14 +98,14 @@ const groups = {
   'rer_portability_import_leases', 'rer_portability_recovery_audit', 'rer_migrations',
  ],
 };
-const globalOnly = new Set(['auth_organizations', 'auth_domain_claims', 'oc_owner_claims']);
+const globalOnly = new Set(['agent_door_state','agent_door_agents','agent_door_audit','agent_door_calls','agent_door_approvals','agent_door_reviews','agent_door_events','agent_door_usage','bs_settings','bs_overrides','bs_logo','bs_team','bs_audit','bs_assert','auth_organizations', 'auth_domain_claims', 'oc_owner_claims']);
 export const STORE_REGISTRY = Object.freeze(Object.fromEntries(Object.entries(groups).flatMap(([classification, names]) =>
  names.map(name => [name, Object.freeze({name, classification, portable: classification === 'portable', scoped: !globalOnly.has(name)})]))));
 
 export class StoreRegistryError extends Error {
  constructor(code, store) { super(code); this.code = code; this.store = store; }
 }
-export const managedStore = name => typeof name === 'string' && /^(?:auth_|oa_|rer_|oc_|org_)/i.test(name);
+export const managedStore = name => typeof name === 'string' && /^(?:auth_|oa_|rer_|oc_|org_|agent_door_|bs_)/i.test(name);
 
 export function registeredOrganizations(records = []) {
  if (!Array.isArray(records)) throw new StoreRegistryError('invalid_store_namespace');

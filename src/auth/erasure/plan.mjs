@@ -1,3 +1,4 @@
+import {assertAgentCustody} from './agent-custody.mjs';
 import {privatePairStore} from './pair-erasure.mjs';
 import {followupReferences,followupErasure} from '../obligations/erasure.mjs';
 import {fail,hash,random} from '../core.mjs';
@@ -12,6 +13,7 @@ const staging=new Set(['rer_portability_jobs','rer_portability_parts','rer_porta
 const values=(stores,name)=>stores.get(name)?.rows||[];
 const text=v=>typeof v==='string'&&v.length>0;
 export async function planErasure(ctx,kind,target,reference='erased:'+random()) {
+ await assertAgentCustody(ctx);
  if(!['person','app','organization','installation'].includes(kind))fail('invalid_erasure_kind');
  if(typeof target!=='string'||!target||target.length>512)fail('invalid_erasure_target');
  if(kind==='organization'&&ctx.organizationId!=='root'&&!ctx.installationAuthority&&!ctx.organizationOwnerConsent)fail('installation_owner_required',403);

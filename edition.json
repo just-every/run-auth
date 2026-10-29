@@ -20,7 +20,11 @@
           "package.json",
           "rer-project.json",
           "rer-setup.json",
-          "packaging.json"
+          "packaging.json",
+          "src/agent-door",
+          "src/server.ts",
+          "src/auth.server.ts",
+          "agent-surface.json"
         ]
       }
     },
@@ -33,7 +37,8 @@
           "src/base",
           "src/modules",
           "src/server.dev.ts",
-          "scripts/installer"
+          "scripts/installer",
+          "src/foundation"
         ],
         "origin": {
           "repository": "https://github.com/runeditrun/base.git",
@@ -66,6 +71,10 @@
           {
             "path": "scripts/installer",
             "originPath": "foundation/template/scripts/installer"
+          },
+          {
+            "path": "src/foundation",
+            "originPath": "foundation"
           }
         ]
       }
