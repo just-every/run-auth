@@ -7,13 +7,12 @@ const HOLDERS: Record<string, string> = {
   hr: 'Managed by your HR system',
   directory: 'Managed by your company directory',
   manual: 'Set by an administrator',
-  not_editable: 'Changed by an administrator',
 }
 
 const control = (field: ProfileField): string => {
   const id = `profile-${field.key.replace('.', '-')}`
   const value = field.value ?? ''
-  if (!field.editable) return `<div class="field"><span class="form-label">${escape(field.label)}</span><span class="field-value">${escape(value) || '<span class="muted">Not set</span>'}</span><span class="data-meta">${escape(HOLDERS[field.protectedBy ?? 'not_editable'] ?? HOLDERS.not_editable)}</span></div>`
+  if (!field.editable) return `<div class="field"><span class="form-label">${escape(field.label)}</span><span class="field-value">${escape(value) || '<span class="muted">Not set</span>'}</span>${HOLDERS[field.protectedBy ?? ''] ? `<span class="data-meta">${escape(HOLDERS[field.protectedBy ?? ''])}</span>` : ''}</div>`
   if (field.type === 'choice') return `<div class="field"><label for="${id}">${escape(field.label)}</label><select id="${id}" name="${escape(field.key)}"><option value="">Not set</option>${(field.choices ?? []).map(c => `<option value="${escape(c)}"${c === value ? ' selected' : ''}>${escape(c)}</option>`).join('')}</select></div>`
   if (field.type === 'boolean') return `<div class="field"><label for="${id}">${escape(field.label)}</label><select id="${id}" name="${escape(field.key)}"><option value="">Not set</option><option value="true"${value === 'true' ? ' selected' : ''}>Yes</option><option value="false"${value === 'false' ? ' selected' : ''}>No</option></select></div>`
   return `<div class="field"><label for="${id}">${escape(field.label)}</label><input id="${id}" name="${escape(field.key)}" type="${field.type === 'date' ? 'date' : 'text'}" maxlength="160" value="${escape(value)}"></div>`

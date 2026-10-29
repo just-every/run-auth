@@ -58,7 +58,7 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  await expect(page.getByRole('heading',{name:'Finish setup'})).toBeVisible();
  assert.equal((await context.request.get(origin+'/api/auth/me')).status(),200,'RER_OPEN fragment establishes Auth session');
  await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Finish setup'}).click();await expect(page).toHaveURL(origin+'/app');
- await page.goto(origin+'/app/methods');await expect(page.getByRole('button',{name:'Register a passkey'})).toHaveCount(0);await expect(page.getByRole('link',{name:'Confirm your email',exact:true})).toBeVisible();
+ await page.goto(origin+'/app/methods');await expect(page.getByRole('button',{name:'Register a passkey'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Confirm my email',exact:true})).toBeVisible();
  const proof=await context.request.post(origin+'/auth/identity/email/request',{data:{email:'owner@example.com',returnTo:'/setup'},headers:{origin}});assert.equal(proof.status(),202);
  const listing=await(await request('/__dev/outbox',{'x-rer-dev-key':key})).text();const message=listing.match(/href="(\/__dev\/outbox\?message=[^"]+)"/)?.[1];assert.ok(message);
  const detail=await(await request(message.replaceAll('&amp;','&'),{'x-rer-dev-key':key})).text();const link=detail.match(/href="([^"]*\/auth\/identity\/email\/confirm\?token=[^"]+)"/)?.[1];assert.ok(link);
