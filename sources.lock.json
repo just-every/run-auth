@@ -815,6 +815,10 @@
       "sha256": "4dd1641b0056ff7e153112f53ffcbe89e7517ad142c8b063de93723fb64876f7",
       "executable": false
     },
+    "public/auth-assets/docs-code.js": {
+      "sha256": "e8fa326a06f6ae59b9219fcafd6bd2f49ff945d3c1f1318a4f2986206b9575ea",
+      "executable": false
+    },
     "public/auth-assets/erasure-ui.js": {
       "sha256": "91a8946b2fee09c312edb243a2b8d6f620593bdef726da245ca85423811ea73b",
       "executable": false
@@ -3484,7 +3488,7 @@
       "executable": false
     },
     "src/site/docs/DocsArticle.tsx": {
-      "sha256": "06f1ad7034c1147e1dd39df5e0ad88a08947344f9616611d8fc148f343413278",
+      "sha256": "77dd972ce15fb758c3f5f558a028b8806a3f76237f7c1e961ec43707b8bb5bc2",
       "executable": false
     },
     "src/site/docs/DocsIndex.tsx": {
@@ -3536,7 +3540,7 @@
       "executable": false
     },
     "src/site/pages.tsx": {
-      "sha256": "47a7a9984f7b437b78d2b6e20cdd509811bbff6ba99b7b7241154698c783f525",
+      "sha256": "0735cff2e031fed3c4e51f97cdf6986d77ea87af17ef769e7c45a629bb958e92",
       "executable": false
     },
     "src/site/run.ts": {

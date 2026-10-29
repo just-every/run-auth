@@ -27,6 +27,7 @@ export function DocsArticle({ slug }: { slug: string }) {
           {next ? <a className="docs-next" href={`/docs/${next.slug}`}><span>Next</span><strong>{next.title}</strong></a> : null}
         </article>
       </div>
+      <script src="/auth-assets/docs-code.js" defer />
     </SiteFrame>
   )
 }

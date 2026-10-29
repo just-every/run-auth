@@ -38,6 +38,6 @@ export function sitePages({ styles, contract }: SiteContext): SiteBuild {
       ...docsPages.map(page => ({ path: `/docs/${page.slug}`, html: document(`${page.title} · Auth docs`, page.summary, <DocsArticle slug={page.slug} />) })),
       { path: '/404', html: siteNotFoundHtml(identity, run, contract) },
     ],
-    assets: ['rer-theme.css', 'fonts', 'brand'],
+    assets: ['rer-theme.css', 'fonts', 'brand', 'auth-assets/docs-code.js'],
   }
 }
