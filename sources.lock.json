@@ -140,11 +140,11 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "ccb8989e3055d5ddefa0f01b7cf2cd302687ae86d7493067701e719c165d8a53",
+      "sha256": "920892eee6c0e141d5742917015e3f1f17690f0ff337c16a8eb47029b2102fcb",
       "executable": false
     },
     "agent-surface.json": {
-      "sha256": "dc7b0fe15c52f94d583648cfbd1d82bcd4e9e7d549d76cf4a91c1473cfe3baf7",
+      "sha256": "d17d832a25995dc44762ba62553027a04fc947917ef01e842f3e52ec7ca12a4b",
       "executable": false
     },
     "AGENTS.md": {
@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "8323719eccf3fd7985a6cc98968750e80da99c2428266b06714224d793aa1e18",
+      "sha256": "2d36f7b96f8b6a473e17bea54637a6c0441993c59130bb159dbe2b4e4d5c2444",
       "executable": false
     },
     "deploy-demo.json": {
@@ -312,7 +312,7 @@
       "executable": false
     },
     "docs/shared-agent-door.md": {
-      "sha256": "acd590db6b4ec8d8b03cfa720c28a28a1c0d517be93358956d623644d9be814d",
+      "sha256": "4ae223cbf306ace8bdee8bf39db53a1efc69d70b75f2f3222a1b856f8956adc6",
       "executable": false
     },
     "docs/sign-in.md": {
@@ -1151,6 +1151,10 @@
       "sha256": "f0d7aa1af4e50e5012e20a91b26df5bcb9bb33bcd51ae42561dde7491ecc1e82",
       "executable": false
     },
+    "src/agent-door/group-boundary.mjs": {
+      "sha256": "254cb0a755221005a18d8a1d17bbef9c07724314f9fa47c3797a41a84211b403",
+      "executable": false
+    },
     "src/agent-door/index.ts": {
       "sha256": "ae23437e8aa18d34c049fd03cf1a85a222343f4204ad8920dfe66ff2a9533b79",
       "executable": false
@@ -1160,7 +1164,7 @@
       "executable": false
     },
     "src/agent-door/native.mjs": {
-      "sha256": "7c2a424de3d33612fc9a8cd1df1782c1e0267e5ab566397f528e885a915db2ec",
+      "sha256": "760623c7b17f214d71343db5dd106ce10d5ddb4a1a9e17e8e07ffa7b20f9041d",
       "executable": false
     },
     "src/agent-door/people.ts": {
@@ -1172,7 +1176,7 @@
       "executable": false
     },
     "src/agent-door/tools.ts": {
-      "sha256": "2506874f6bec0f8d6d42738feec5f72b03c820ec174cea41bb15ef8870b83c0d",
+      "sha256": "1c096c43085dc4144e4e9559844b65a85613a01a37aa0f989af0201898fc99ee",
       "executable": false
     },
     "src/auth.server.ts": {

@@ -17,7 +17,7 @@ subscription or downstream reconciliation surface.
 The read tools carry `standard`; membership changes carry `access`, with direction
 computed by the server. An empty group does not grant access. A membership touching
 a configured SCIM connector refuses with `connector_door_required`; any other
-app-assigned group refuses with `app_assignment_door_required`. Rule-driven groups also refuse with `dynamic_group_door_required`. These are native
+app-assigned group refuses with `app_assignment_door_required`. Rule-driven groups also refuse with `dynamic_group_door_required`. Active claim or subject mappings that read a group also refuse with `app_mapping_door_required`, even without a group assignment. A group-list projection or computed group lookup can read every group, so membership changes wait for the native app door while it is active. These are native
 app-access and computed-membership jobs beyond this internal-group subset, including indirect outside
 exposure. Refusal happens before queueing provider work. No money, paid account, regulated profile data, credential, issuer,
 provider, recovery, installation or identity-admission action is exposed. There is

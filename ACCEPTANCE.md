@@ -505,7 +505,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 6. The seed's embedded agents appear in the audit as calls to the same tools.
 
 <!-- contract-status:BASE-AGENT-002 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — CORE registry is bounded to identity inspection and internal groups; remaining native tool families in the ct identity-steward table are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — CORE registry is bounded to identity inspection and internal groups; remaining native tool families in the ct identity-steward table are undeclared. Group-dependent app claim and subject mappings remain outside the core membership boundary.
 <!-- /contract-status -->
 
 **BASE-AGENT-003 — Records are resources (partial).**
@@ -559,7 +559,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 5. An injection fixture yields no out-of-grant call and no change of class: record text asking for a wider action, or claiming that a recipient is internal.
 
 <!-- contract-status:BASE-AGENT-005 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Conformance proves sponsor self-widening refusal and ordinary narrowing; wider native authority families and multi-sponsor fixtures are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md`; production native-door proof: a mapped reader-to-admin removal leaves membership and the reader claim unchanged — Conformance proves sponsor self-widening refusal and ordinary narrowing; wider native authority families and multi-sponsor fixtures are undeclared. Membership changes that can affect a custom claim or subject mapping refuse in the core subset.
 <!-- /contract-status -->
 
 **BASE-AGENT-006 — Every action declares its risk class (partial).**

@@ -72,7 +72,8 @@
         "AUTH-DIRECTORY-001",
         "AUTH-ROLES-001",
         "BASE-AGENT-002",
-        "BASE-AGENT-006"
+        "BASE-AGENT-006",
+        "AUTH-MAPPING-001"
       ]
     },
     {
@@ -86,7 +87,8 @@
         "AUTH-DIRECTORY-001",
         "AUTH-ROLES-001",
         "BASE-AGENT-002",
-        "BASE-AGENT-006"
+        "BASE-AGENT-006",
+        "AUTH-MAPPING-001"
       ],
       "widens": false,
       "narrowing": {

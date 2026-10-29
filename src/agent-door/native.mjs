@@ -4,6 +4,7 @@ import {readAdmin} from '../auth/admin-api/reads.mjs';
 import {writeAdmin} from '../auth/admin-api/commands.mjs';
 import {epoch,transactionPrincipal} from '../auth/admin-api/concurrency.mjs';
 import {ToolRefusal} from '../modules/agent-door/index.ts';
+import {mappedGroup} from './group-boundary.mjs';
 
 // This is a native machine principal, never an invented person or session. The
 // same command, rank, field ownership and role/resource fences serve REST/UI.
@@ -39,7 +40,7 @@ export async function write(native,ctx,path,method,data,scope) {
    // Preserve the internal-group boundary in the native committing transaction,
    // including a human assignment racing classification and execution.
    const guard=actor.guard,groupId=decodeURIComponent(internal[1]);
-   actor={...actor,guard:{clause:`(${guard.clause}) AND EXISTS(SELECT 1 FROM auth_groups WHERE id=? AND rule IS NULL) AND NOT EXISTS(SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?)`,args:[...guard.args,groupId,groupId]}};
+   actor={...actor,guard:{clause:`(${guard.clause}) AND EXISTS(SELECT 1 FROM auth_groups WHERE id=? AND rule IS NULL) AND NOT EXISTS(SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?) AND NOT ${mappedGroup}`,args:[...guard.args,groupId,groupId,groupId]}};
   }
   const tx=transactionPrincipal(native,actor,await epoch(native));
   const response=await writeAdmin(native,tx,path,method,data);
@@ -82,6 +83,7 @@ export async function internalGroup(native,ctx,id) {
  if(g.rule!==null)throw new ToolRefusal('dynamic_group_door_required');
  if(await one(native,"SELECT 1 FROM auth_app_assignments a JOIN auth_scim_connectors c ON c.app_id=a.app_id WHERE a.principal_type='group' AND a.principal_id=?",id))throw new ToolRefusal('connector_door_required');
  if(await one(native,"SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?",id))throw new ToolRefusal('app_assignment_door_required');
+ if(await one(native,'SELECT 1 WHERE '+mappedGroup,id))throw new ToolRefusal('app_mapping_door_required');
 }
 
 export async function nativeAdmission(native,p) {
