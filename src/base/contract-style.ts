@@ -95,7 +95,7 @@ const PHONE = '@media(max-width:760px){main{padding:0 16px}'
   + 'tr.clause{margin-top:8px;padding:14px 16px;border:1px solid var(--site-line);border-radius:14px;background:var(--rer-surface,#fff);display:grid;grid-template-columns:1fr auto;grid-template-areas:"id status" "title title" "ev ev";gap:6px 10px;align-items:center}'
   + 'tr.clause td{padding:0;border:0}.id{grid-area:id;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px}.id a{font-size:14px}.kind{display:inline;font-size:14px}.kind::before{content:"· "/""}.status{grid-area:status}.title{grid-area:title;font-size:17px;font-weight:600;line-height:1.3}.ev{grid-area:ev}.ev:empty{display:none}.gap{font-size:14px}'
   + '.empty td{padding:18px 0}.judging dl{grid-template-columns:1fr;gap:0}.judging dl>div{padding:14px 0}.judging dl>div+div{border-top:1px solid var(--site-line)}.judging dd{font-size:16px}'
-  + '.foot{flex-direction:column;justify-content:center;text-align:center}.foot-brand{flex-direction:column;gap:8px}}'
+  + '.foot{flex-direction:column;justify-content:center;text-align:center}.foot-brand{flex-direction:column;gap:8px}.foot .brand,.foot nav a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}}'
 
 const PRINT = '@media print{.search,.chips,.live,.empty{display:none!important}tbody.area[hidden]{display:table-row-group!important}tr.clause[hidden]{display:table-row!important}.areas{position:static;max-height:none;overflow:visible}}'
 

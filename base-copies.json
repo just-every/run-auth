@@ -469,7 +469,7 @@
       },
       "acknowledged": {
         "src/base/contract-style.ts": {
-          "sha256": "1012e5477ae1ab10f09a979f0dc4db5d2402ba37ac22b63c161d773dcab70df6",
+          "sha256": "13ec2154bf6f616afae23c0d6e0e295184c7ac81ec0029b4fc813d9a3ff1c77c",
           "mode": "100644"
         }
       }
@@ -575,7 +575,7 @@
       },
       "acknowledged": {
         "src/base/run-site.ts": {
-          "sha256": "62759c202a14ee1dbbfbd415236de9d5a2502fba27306bc8d22d3018880a11b8",
+          "sha256": "e43f811374968a6a4a453b710c5e69349c128e9a5bfd04ce8d7029b34e0ffcfd",
           "mode": "100644"
         }
       }

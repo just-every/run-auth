@@ -73,7 +73,7 @@ const BASE = '*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-
   + '.bar nav a:hover,.bar nav a[aria-current=page]{text-decoration:underline;text-underline-offset:4px}.bar nav a[aria-current=page]{text-decoration-color:var(--site-accent);text-decoration-thickness:2px}'
   + 'h1{font:600 64px/1.08 var(--rer-font-heading,var(--rer-font-body,inherit));letter-spacing:-.03em;color:var(--site-ink);text-wrap:balance}'
   + '.sub{margin-top:24px;color:var(--site-body);font-size:21px;text-wrap:pretty}'
-  + '@media(max-width:760px){body{font-size:16px;--art:180px}.bar{padding:18px 16px 0}.brand{font-size:23px;gap:9px}.brand img{width:32px;height:32px}.bar nav{gap:22px;font-size:15px}.bar nav a{min-height:24px}h1{font-size:38px;line-height:1.12}.sub{font-size:16.5px;margin-top:16px}}'
+  + '@media(max-width:760px){body{font-size:16px;--art:180px}.bar{padding:12px 16px 0}.brand{font-size:23px;gap:9px}.brand img{width:32px;height:32px}.bar nav{gap:22px;font-size:15px}.bar .brand,.bar nav a{display:inline-flex;align-items:center;min-height:44px}.bar nav a{justify-content:center;min-width:44px}h1{font-size:38px;line-height:1.12}.sub{font-size:16.5px;margin-top:16px}}'
 
 const HOME = 'main{max-width:1360px;margin:0 auto;padding:0 56px calc(var(--art) + 40px);text-align:center}.hero{padding-top:18vh;display:flex;flex-direction:column;align-items:center}.hero h1{max-width:20ch}.hero .sub{max-width:640px}'
   + '.actions{margin-top:40px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:16px 28px}'
@@ -81,7 +81,7 @@ const HOME = 'main{max-width:1360px;margin:0 auto;padding:0 56px calc(var(--art)
   + 'background:linear-gradient(180deg,color-mix(in srgb,var(--site-accent) 90%,white),var(--site-accent));color:var(--site-accent-ink);font-size:19px;font-weight:600;'
   + 'box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 14px 28px -16px color-mix(in srgb,var(--site-ink) 70%,transparent)}.btn svg{width:19px;height:19px}'
   + '.link{font-weight:500;text-decoration:underline;text-underline-offset:4px}'
-  + '@media(max-width:760px){main{padding:0 16px calc(var(--art) + 40px)}.hero{padding-top:96px}.btn{min-height:56px;font-size:18px}}'
+  + '@media(max-width:760px){main{padding:0 16px calc(var(--art) + 40px)}.hero{padding-top:96px}.btn{min-height:56px;font-size:18px}.link{display:inline-flex;align-items:center;min-height:44px}}'
 
 // Keep overflow visible so a layout defect cannot be clipped away; the header's
 // bar and nav reflow in BASE when a seed's wordmark and links need more room.
@@ -104,8 +104,8 @@ const RUN = 'body{--art:max(20vh,150px);overflow-x:visible}main{max-width:1360px
   + '.code{margin-top:12px}.facts{font-size:13px;margin-top:28px}}'
   // The command keeps its own room: beside the Copy button while the block is wide enough for both, and under it
   // (button on a row of its own above the text) as soon as it is not, whatever the page width or command length.
-  + '@container (max-width:700px){.code pre{padding:52px 20px 18px;font-size:15px;line-height:1.7}.copy{top:10px;right:10px;transform:none;min-height:32px;padding:0 12px;font-size:13px}}'
-  + '@container (max-width:480px){.code pre{padding:46px 14px 14px;font-size:13px}.copy{top:8px;right:8px}}'
+  + '@container (max-width:700px){.code pre{padding:64px 20px 18px;font-size:15px;line-height:1.7}.copy{top:10px;right:10px;transform:none;min-height:44px;min-width:44px;justify-content:center;padding:0 14px;font-size:13px}}'
+  + '@container (max-width:480px){.code pre{padding:60px 14px 14px;font-size:13px}.copy{top:8px;right:8px}}'
 
 const COPY_SCRIPT = "document.addEventListener('click',async event=>{const button=event.target.closest('.copy');if(!button)return;try{await navigator.clipboard.writeText(button.dataset.copy);const label=button.querySelector('span');label.textContent='Copied';setTimeout(()=>{label.textContent='Copy'},1600)}catch{}})"
 const ARROW = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg>'
