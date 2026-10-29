@@ -55,8 +55,8 @@ multiple-sponsor journeys, provider jobs, SaaS onboarding, sign-in repair,
 certification and workforce-week journeys are undeclared here. No full target
 completion, hosted acceptance or external provider result follows from this core.
 
-The runtime and conformance CLI are both pinned to Base’s rer-v0.2.86 source,
-`f96363bf919ea3e7ed1837daba6894810a50e4a6`. Verification claims only a fresh
+The runtime and conformance CLI are both pinned to Base’s released rer-v0.2.87 source,
+`5381ab872b5ab4de80e811bcb4b1a803dd713e0f`. Verification claims only a fresh
 production build with actual migrations and the signed claim, email and native
 passkey lifecycle in `tests/agent-door/initialize-owner.mjs`.
 
