@@ -5,7 +5,7 @@ const {readFile,writeFile}=fs.promises;
 const mode=process.argv[2];
 if(!['write','check'].includes(mode))throw new Error('Use write or check followed by clause ids');
 const contract=await readFile('CONTRACT.md','utf8'),acceptance=await readFile('ACCEPTANCE.md','utf8');
-const rows=[...contract.matchAll(/^\| `?([^`|]+?)`? \| ([^|]+) \| ([^|]+) \| (done|partial|missing) \| (.*?) \| (.*?) \|$/gm)].map(([,id,title,kind,status,evidence,gap])=>({id,title:title.trim(),kind:kind.trim(),status,evidence,gap}));
+const rows=[...contract.matchAll(/^\| `?([^`|]+?)`? \| ([^|]+) \| ([^|]+) \| (done|partial|missing) \|(.*?)\|(.*?)\|$/gm)].map(([,id,title,kind,status,evidence,gap])=>({id,title:title.trim(),kind:kind.trim(),status,evidence:evidence.trim(),gap:gap.trim()}));
 const selected=new Set([...process.argv.slice(3),...[...acceptance.matchAll(/<!-- contract-status:([^ ]+) -->/g)].map(m=>m[1])]);
 let result=acceptance;
 for(const id of selected) {
@@ -18,7 +18,13 @@ for(const id of selected) {
  } else {
   const start=result.indexOf('**'+id+' — '),next=result.indexOf('\n**',start+3),section=result.slice(start,next<0?undefined:next);
   const old=section.match(/^Existing evidence(?: and limits)?: [^\n]*/m)?.[0];
-  if(start<0||!old)throw new Error('Missing legacy evidence section '+id);
+  if(start<0) {
+   const definition=contract.match(new RegExp('^#### '+id+' — [^\\n]+\\n[\\s\\S]*?(?=^#### |^### |^## |$(?![\\s\\S]))','m'))?.[0];
+   if(!definition)throw new Error('Missing contract definition '+id);
+   result+='\n**'+id+' — '+row.title+' ('+row.status+').**\n\n'+definition.replace(/^#### [^\n]+\n/,'').trim()+'\n\n'+generated+'\n';
+   continue;
+  }
+  if(!old)throw new Error('Missing legacy evidence section '+id);
   // Older entries store evidence and gaps on separate lines. Generate both
   // from the Status row while preserving the acceptance journey above them.
   const updated=section.replace(old,generated).replace(/^Remaining gaps: [^\n]*\n?/m,'');
@@ -36,6 +42,7 @@ for(const id of selected) {
 }
 const count=status=>rows.filter(r=>r.status===status).length;
 const claims='# Auth implementation claims\n\nGenerated from CONTRACT.md. Acceptance journeys remain in ACCEPTANCE.md.\n\n'+`Done: ${count('done')}; partial: ${count('partial')}; missing: ${count('missing')}; total: ${rows.length}.\n\n`+'| Clause | Title | Status |\n| --- | --- | --- |\n'+rows.map(r=>`| ${r.id} | ${r.title} | ${r.status} |`).join('\n')+'\n';
+result=result.replace(/\d+ clauses: \*\*\d+ done \/ \d+ partial \/ \d+ missing\*\*/,`${rows.length} clauses: **${count('done')} done / ${count('partial')} partial / ${count('missing')} missing**`);
 const summary=contract.replace(/^\| (Published|Target and push further|All) \| \d+ \| \d+ \| \d+ \| \d+ \|$/gm,(_,label)=>{
  const selected=rows.filter(row=>label==='All'||(label==='Published'?row.kind==='published':row.kind!=='published'));
  return '| '+label+' | '+['done','partial','missing'].map(status=>selected.filter(row=>row.status===status).length).join(' | ')+' | '+selected.length+' |';

@@ -1,3 +1,4 @@
+import {assertAgentCustody} from './agent-custody.mjs';
 import {pairErasureWork,privatePairStore} from './pair-erasure.mjs';
 import {installationFence} from './portability.mjs';
 import {batchWithInstallation} from '../tenancy/storage.mjs';
@@ -15,6 +16,7 @@ import {auditCommitments} from './audit.mjs';
 import {revocationAudit} from './revocations.mjs';
 
 export async function commitErasure(ctx,s,plan,previewId,destinations=[]) {
+ await assertAgentCustody(ctx);
  if(plan.holds.length)fail('erasure_legal_hold',409);
  if(!plan.policy?.configured)fail('erasure_policy_configuration_required',409);
  const pairWork=await pairErasureWork(ctx,plan);

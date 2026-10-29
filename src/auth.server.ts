@@ -22,6 +22,7 @@ export interface Bindings {
  RER_DEV_ORIGIN?: string
  RER_DEV_KEY?: string
  RER_DEV_IDENTITY?: string
+ RER_BUSINESS_TRUST?: string
  RER_INSTALLATION_ID?: string
  RER_MANAGEMENT_ORIGIN?: string
  OWNER_EMAIL: string

@@ -6,6 +6,9 @@ const schemas = new WeakMap();
 const statements = new WeakMap();
 const databaseScopes = new WeakMap();
 const BATCH_SIZE = 50;
+// These guards protect installation-local door/binding evidence, which never
+// belongs to an isolated employer's schema or erasure transaction.
+const rootOnlyTriggers = new Set(['auth_agent_custody_erasure', 'auth_agent_binding_erasure']);
 const tenantTable = name => /^(?:auth_|oa_|rer_)/i.test(name)
  && !['auth_organizations','auth_domain_claims'].includes(name.toLowerCase());
 const quoted = name => '"' + name.replaceAll('"', '""') + '"';
@@ -98,7 +101,7 @@ async function currentSchema(db, namespace) {
   "SELECT type,name,tbl_name,sql FROM sqlite_master WHERE type IN ('table','index','trigger') AND sql IS NOT NULL AND (lower(tbl_name) GLOB 'auth_*' OR lower(tbl_name) GLOB 'oa_*' OR lower(tbl_name) GLOB 'rer_*' OR substr(lower(name),1,?)=?) ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' THEN 1 ELSE 2 END,rowid"
  ).bind(namespace.length, namespace).all();
  const tableNames = new Set(results.filter(row => row.type === 'table' && tenantTable(row.name)).map(row => row.name.toLowerCase()));
- const objects = results.filter(row => tableNames.has(row.tbl_name.toLowerCase()));
+ const objects = results.filter(row => tableNames.has(row.tbl_name.toLowerCase()) && !rootOnlyTriggers.has(row.name));
  const names = new Map(objects.map(row => [row.name.toLowerCase(), namespace + row.name]));
  const existing = new Set(results.map(row => row.name.toLowerCase()));
  const missing = objects.filter(row => !existing.has((namespace + row.name).toLowerCase()));

@@ -16,7 +16,7 @@ function checked(tables,organizations=[],scoped=false) {
     const parent=resolveStore(reference.table,organizations);
     if(scoped&&parent.namespace)fail('erasure_namespace_metadata_required',503);
    }
-   return !store.namespace;
+   return !store.namespace&&!store.name.startsWith('agent_door_')&&!store.name.startsWith('bs_');
   });
  }catch(error) {
   if(error instanceof StoreRegistryError)fail('erasure_unknown_store',503);

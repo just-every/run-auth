@@ -11,6 +11,8 @@ import { maintainAuth } from './auth/index.mjs'
 import { lobbyResponse } from './base/lobby'
 import { setupStateResponse } from './base/setup-state'
 import { identity } from './identity'
+import { authAgentDoor } from './agent-door/index.ts'
+import { authBusiness } from './agent-door/business.ts'
 
 const api = new Hono<{ Bindings: Bindings }>()
 api.get('/health', (context) => context.json({ status: 'ok', ...deploymentHealth(context.env) }))
@@ -23,9 +25,14 @@ export function createWorker(options: { allowDevSession?: (request: Request, env
     if (asset) return asset
     // The installed homepage: Base's Lobby at / and the public claim state it reads.
     const bindings = runtimeBindings(env)
+    const businessResponse = await authBusiness(bindings).handle(request)
+    if (businessResponse) return businessResponse
+    const agentResponse = await authAgentDoor(bindings).handle(request)
+    if (agentResponse) return agentResponse
     const state = await setupStateResponse(request, bindings)
     if (state) return state
-    const lobby = await lobbyResponse(request, bindings, identity)
+    const deployment = await authBusiness(bindings).resolve('display_name', identity.deployment)
+    const lobby = await lobbyResponse(request, bindings, { ...identity, deployment: String(deployment) })
     if (lobby) return lobby
     const claim = await ownerClaimResponse(request, env)
     if (claim) return claim

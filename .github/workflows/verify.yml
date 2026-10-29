@@ -124,6 +124,9 @@ jobs:
         run: pnpm run build
       - if: matrix.shard == 'app'
         run: pnpm run typecheck && pnpm run test:runtime && pnpm run test:email-link && pnpm run test:site
+      - name: Verify declared Auth agent door against production
+        if: matrix.shard == 'app'
+        run: node node_modules/@runeditrun/rer/cli/agent-door.mjs .
       - if: matrix.shard == 'protocol'
         run: pnpm run test:auth:protocol
       - if: matrix.shard == 'workforce'
