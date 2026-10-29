@@ -37,6 +37,11 @@ export async function maintainRetention(ctx) {
    statements.push(ctx.db.prepare(`UPDATE ${table} AS t SET email=(SELECT json_extract(candidate.value,'$.expiredEmail') FROM json_each(?) candidate WHERE ${identity}),display_name='Expired profile' WHERE ${condition}`).bind(json,pending.id,claim,json));
   }else {
    statements.push(...await expiryStatements(ctx,entry,planned,condition,[pending.id,claim,json],pending.id));
+   if(entry.table==='auth_role_cases') {
+    // Capability custody ends with precisely the closed cases selected by the
+    // guarded preview. Enrollment secrets never enter the retention export.
+    statements.push(ctx.db.prepare(`DELETE FROM auth_recovery_enrollments WHERE case_id IN (SELECT t.id FROM ${table} AS t WHERE ${condition})`).bind(pending.id,claim,json));
+   }
    statements.push(ctx.db.prepare(`DELETE FROM ${table} AS t WHERE ${condition}`).bind(pending.id,claim,json));
   }
   statements.push(ctx.db.prepare(`UPDATE auth_retention_runs SET result=json_set(result,?,changes()) WHERE id=? AND status='queued' AND claim_id=?`).bind('$.'+entryId(entry),pending.id,claim));
