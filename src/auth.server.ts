@@ -6,9 +6,11 @@ import { createOperatorAuth, createAuthHandler, devGate, devNotFound, type AuthC
 import { operatorMail } from './mail.server.mjs'
 import { createD1DevelopmentOutbox, createDevelopmentOutboxHandler } from './modules/mail/src/development/index.mjs'
 import { createAuthRuntime, type AuthRuntimeOptions } from './auth/index.mjs'
-import { renderAuthPage, renderSignInPage, type AuthPage } from './ui/index'
+import { renderAuthPage, renderNotFoundPage, renderSignInPage, type AuthPage } from './ui/index'
+import { pageAvailable } from './ui/shell'
 import { localReturnTo } from './ui/helpers'
 import { session } from './auth/core.mjs'
+import { FRAME_SOURCES, framedPage } from './auth/page-frame.mjs'
 import branding from './branding.json'
 
 const theme = { href: '/rer-theme.css', productName: branding.name, accentColor: branding.primaryColor }
@@ -71,6 +73,11 @@ export async function openSessionResponse(request: Request, original: Bindings, 
  if (!await session(identityAuth(env, allowDevSession, work => execution.waitUntil(work)).context, request)) return null
  return redirect('/app')
 }
+// An address outside the app that nothing answers: Auth's card, and the way back.
+export const notFoundDocument = (request: Request, response: Response): Response =>
+ response.status === 404 && ['GET', 'HEAD'].includes(request.method) && response.headers.get('content-type')?.includes('text/html')
+  ? new Response(framedPage('Page not found — Auth', '<h1>Page not found</h1><p>There is nothing at this address.</p><a class="primary-button signin-action" href="/">Back to Auth</a>'), { status: 404, headers: { ...privateHeaders, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': `default-src 'none'; ${FRAME_SOURCES}; form-action 'none'; frame-ancestors 'none'; base-uri 'none'` } })
+  : response
 const pages = new Set<AuthPage>(['people', 'move-in', 'agents', 'apps', 'methods', 'activity', 'account', 'organizations', 'roles', 'permissions', 'erasure'])
 
 export async function authResponse(request: Request, original: Bindings, execution: ExecutionContext, allowDevSession?: AuthRuntimeOptions['allowDevSession']): Promise<Response | null> {
@@ -114,11 +121,14 @@ export async function authResponse(request: Request, original: Bindings, executi
   const providers = (await auth.upstreamProviders()).filter(provider => provider.visible)
   return html(renderSignInPage({ issuer: env.AUTH_ORIGIN, returnTo: url.searchParams.get('returnTo') ?? '/setup', providers, notice: url.searchParams.get('reproof') === '1' ? 'A recent email confirmation is required. Check your email and open its link in this browser.' : undefined }), request.method, providers.flatMap(provider => provider.authorizationOrigins))
  }
+ // My account has one address.
+ if (path === '/app/account' || path === '/app/') return redirect('/app' + url.search)
  const page = path === '/app' || path === '/' || path === '/setup' ? 'account' : path.slice('/app/'.length) as AuthPage
- if (!pages.has(page)) return devNotFound()
- const model = await auth.model(request, page)
+ const known = pages.has(page)
+ const model = await auth.model(request, known ? page : 'account')
  if (page === 'methods' && model.user) model.providers = (await auth.upstreamProviders()).filter(provider => provider.visible)
  if (!env.AUTH_ORGANIZATION_ID && !model.user && path === '/setup' && request.method === 'POST') return firstRunResponse(request, env, { getSession: async () => null }, { theme })
+if (!known && !model.user) return cardDocument('Page not found', 'There is nothing at this address.', { href: '/', label: 'Back to Auth' }, 404, request.method)
  if (!model.user) return redirect(`/signin?returnTo=${encodeURIComponent(path === '/' ? '/setup' : path + url.search)}`)
  // The shared first-run form consumes Auth's real person, never a Base session.
  // It deliberately permits first email enrollment: administrative actions still
@@ -126,8 +136,9 @@ export async function authResponse(request: Request, original: Bindings, executi
  const accounts = { getSession: async () => ({ operator: { id: model.user.id, role: model.user.role, displayName: model.user.name, email: model.user.email } }) }
  const setup = env.AUTH_ORGANIZATION_ID ? null : await firstRunResponse(request, env, accounts, { theme })
  if (setup) return setup
- if (path === '/') return redirect('/app/account')
- if (['people', 'move-in', 'agents', 'apps', 'activity', 'permissions', 'erasure'].includes(page) && !model.isAdmin && !(page === 'activity' && model.canReadAudit)) return new Response(renderAuthPage({ ...model, page: 'account', notice: 'Sign in with your passkey to administer Auth.' }), { status: 403, headers: html('', 'GET').headers })
- const response = html(renderAuthPage(model), request.method)
- return model.activityError ? new Response(response.body, { status: model.activityError.status, headers: response.headers }) : response
+ if (path === '/') return redirect('/app')
+ const withStatus = (status: number | undefined, body: string) => { const response = html(body, request.method); return status ? new Response(response.body, { status, headers: response.headers }) : response }
+ if (!known) return withStatus(404, renderNotFoundPage(model))
+ if (!pageAvailable(model, page)) return withStatus(403, renderAuthPage(model))
+ return withStatus(model.activityError?.status, renderAuthPage(model))
 }

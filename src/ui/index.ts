@@ -3,7 +3,7 @@ import { renderPermissionsPage } from './pages/permissions.js'
 import { renderErasurePage } from './pages/erasure.js'
 import { renderOrganizationsPage } from './pages/organizations.js'
 import type { AuthPage, AuthPageModel, SignInPageModel } from './model.js'
-import { pageCopy, renderShell } from './shell.js'
+import { pageAvailable, pageCopy, renderShell, unavailablePage } from './shell.js'
 import { renderPeoplePage } from './pages/people.js'
 import { renderMoveInPage } from './pages/move-in.js'
 import { renderAgentsPage } from './pages/agents.js'
@@ -39,5 +39,8 @@ export function renderAuthPage(model: AuthPageModel): string {
     csrf: model.csrf,
   })
   const page = Object.hasOwn(pageCopy, model.page) ? model.page as AuthPage : 'account'
-  return renderShell(model, page, pageRenderers[page](model))
+  return renderShell(model, page, pageAvailable(model, page) ? pageRenderers[page](model) : unavailablePage(model, page))
 }
+
+// An address inside the app that nothing answers: the app frame, and the way back.
+export const renderNotFoundPage = (model: AuthPageModel): string => renderShell(model, 'not-found', '<a class="primary-button" href="/app">Back to My account</a>')

@@ -157,7 +157,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  await expect(isolatedPage.locator('[data-role-form=role]')).toHaveCount(0);
  await expect(isolatedPage.locator('[data-role-form=grant]')).toBeVisible();
  await shoot('isolated-administrator-roles',isolatedPage);await isolatedAdmin.close();
- await page.getByRole('button',{name:'Switch to Installation'}).click();await expect(page).toHaveURL(app.origin+'/app/account');
+ await page.getByRole('button',{name:'Switch to Installation'}).click();await expect(page).toHaveURL(app.origin+'/app');
  await post('/api/auth/people/invite',{email:'synthetic-auth-30@example.com',name:'Historical Invitation'},201);
  const historicalPerson=(await (await context.request.get(app.origin+'/api/auth/people')).json()).find(p=>p.email==='synthetic-auth-30@example.com');assert.ok(historicalPerson);
  for(const email of ['synthetic-auth-31@example.com','synthetic-auth-32@example.com'])await post('/api/auth/directory/edit',{personId:historicalPerson.id,email});

@@ -27,6 +27,7 @@
 .signin-card .provider-list { display: grid; gap: 12px; margin-top: 28px; }
 .signin-card .provider-form { margin: 0; }
 .signin-card .provider-form .secondary-button { width: 100%; min-height: 52px; margin: 0; background: transparent; color: var(--rer-text); border: 1.5px solid var(--rer-text); font-weight: 500; }
+.signin-card > .signin-action { display: flex; width: 100%; margin-top: 28px; min-height: 52px; font-size: 16px; }
 .signin-divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; font-size: 14px; color: var(--rer-muted); }
 .signin-divider::before, .signin-divider::after { content: ""; flex: 1; height: 1px; background: var(--rer-border); }
 .signin-host { margin-top: 36px; text-align: center; font-size: 14px; color: var(--rer-muted); }

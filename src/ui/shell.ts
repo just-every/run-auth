@@ -1,6 +1,6 @@
 import type { AuthNotice, AuthPage, AuthPageModel } from './model.js'
 import { iconDefinitions } from './icons.js'
-import { asArray, escape, fullName, hostLabel, icon, initials } from './helpers.js'
+import { asArray, escape, fullName, hasAdminRole, hostLabel, icon, initials } from './helpers.js'
 
 const navItems: Array<{ page: AuthPage; label: string; symbol: string; admin?: boolean; href: string }> = [
   { page: 'permissions', label: 'API permissions', symbol: 'lock', admin: true, href: '/app/permissions' },
@@ -12,7 +12,7 @@ const navItems: Array<{ page: AuthPage; label: string; symbol: string; admin?: b
   { page: 'roles', label: 'Roles', symbol: 'shield', href: '/app/roles' },
   { page: 'methods', label: 'Sign-in methods', symbol: 'key', href: '/app/methods' },
   { page: 'activity', label: 'Activity', symbol: 'clock', admin: true, href: '/app/activity' },
-  { page: 'account', label: 'My account', symbol: 'gear', href: '/app/account' },
+  { page: 'account', label: 'My account', symbol: 'gear', href: '/app' },
 ]
 
 // Administration stays out of a member's menu; Organizations appears once there is more than one to choose.
@@ -21,6 +21,25 @@ const inMenu = (model: AuthPageModel, page: AuthPage, admin?: boolean): boolean 
   if (page === 'roles') return Boolean(model.isAdmin || model.roles?.ownGrants.length)
   if (page === 'activity') return Boolean(model.isAdmin || model.canReadAudit || model.roles?.ownGrants.some(grant => grant.permissions.includes('audit.view')))
   return !admin || Boolean(model.isAdmin)
+}
+
+const adminOnly: AuthPage[] = ['people', 'move-in', 'agents', 'apps', 'activity', 'permissions', 'erasure']
+
+// Whether this person may open the page: administrator pages need a passkey session; Roles also opens for delegated scopes.
+export const pageAvailable = (model: AuthPageModel, page: AuthPage): boolean => {
+  if (page === 'roles') return Boolean(model.isAdmin || model.roles)
+  if (page === 'activity') return Boolean(model.isAdmin || model.canReadAudit)
+  return !adminOnly.includes(page) || Boolean(model.isAdmin)
+}
+
+// One line and one way forward: an administrator without a passkey session signs in with one, anyone else goes back.
+export const unavailablePage = (model: AuthPageModel, page: AuthPage): string => {
+  const user = model.user ?? model.me
+  if (!user || !hasAdminRole(user)) return '<section class="availability availability-action"><strong>This page is for administrators.</strong><a class="secondary-button" href="/app">Back to My account</a></section>'
+  const action = asArray(model.passkeys ?? model.methods).length
+    ? `<button class="primary-button" type="button" data-passkey-authenticate data-return-to="/app/${page}">Sign in with a passkey</button>`
+    : '<a class="primary-button" href="/app/methods">Register a passkey</a>'
+  return `<section class="availability availability-action"><strong>Administrator access is paused.</strong>${action}</section>`
 }
 
 export const pageCopy: Record<AuthPage, { title: string; subtitle: string }> = {
@@ -53,19 +72,16 @@ export const brandLockup = (tag: 'div' | 'a' = 'div'): string =>
 
 const themeToggle = `<button class="icon-button" type="button" data-theme-toggle data-tooltip="Color theme" aria-label="Toggle color theme" aria-pressed="false">${icon('theme')}</button>`
 
-export const renderShell = (model: AuthPageModel, page: AuthPage, content: string): string => {
+export const renderShell = (model: AuthPageModel, page: AuthPage | 'not-found', content: string): string => {
   const user = model.user ?? model.me ?? null
-  const copy = page === 'organizations' && (model.organizations?.memberships.length ?? 0) < 2 ? { ...pageCopy[page], subtitle: 'Start another employer directory.' } : pageCopy[page]
+  const copy = page === 'not-found' ? { title: 'Page not found', subtitle: 'There is nothing at this address.' } : page === 'organizations' && (model.organizations?.memberships.length ?? 0) < 2 ? { ...pageCopy[page], subtitle: 'Start another employer directory.' } : pageCopy[page]
   const currentName = user ? fullName(user) : 'Signed out'
   const host = escape(hostLabel(model.issuer))
   const nav = navItems.filter(item => inMenu(model, item.page, item.admin)).map(item =>
     `<a href="${item.href}"${item.page === page || (page === 'move-in' && item.page === 'people') ? ' class="active" aria-current="page"' : ''}>${icon(item.symbol)}<span>${item.label}</span></a>`
   ).join('')
   const accountBadge = user
-    ? `<a class="initials account-initials" data-tooltip="My account" href="/app/account" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
+    ? `<a class="initials account-initials" data-tooltip="My account" href="/app" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
     : ''
-  const pageContent = model.isAdmin || page === 'activity' && model.canReadAudit || !['people', 'move-in', 'agents', 'apps', 'activity'].includes(page)
-    ? content
-    : '<section class="availability"><strong>Administrator access required.</strong><p>Sign in with a passkey on an administrator account to view this page.</p></section>'
-  return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav><section class="issuer" aria-label="Issuer host"><div><p>Issuer host</p><span class="issuer-host">${host}</span></div><img class="issuer-door" src="/brand/door-small.webp" alt="" width="38" height="56"></section></aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}<span class="tenant" title="Active organization">${escape(model.organizations?.current.name ?? host)}</span>${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${pageContent}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
+  return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav><section class="issuer" aria-label="Issuer host"><div><p>Issuer host</p><span class="issuer-host">${host}</span></div><img class="issuer-door" src="/brand/door-small.webp" alt="" width="38" height="56"></section></aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}<span class="tenant" title="Active organization">${escape(model.organizations?.current.name ?? host)}</span>${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${content}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
 }

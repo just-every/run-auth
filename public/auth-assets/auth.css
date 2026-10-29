@@ -133,6 +133,7 @@ select:not([multiple],[size]:not([size="1"])):disabled { --rer-select-ink: color
 .availability { padding: 20px 24px; border-radius: 18px; border: 1px solid var(--rer-border); background: var(--rer-surface); }
 .availability strong { display: block; font-size: 17px; }
 .availability p { color: var(--rer-muted); margin-top: 4px; }
+.availability-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
 
 /* Empty states: a quiet line in a panel, or the door with a message and a hint for a page with nothing yet. */
 .empty-state p { color: var(--rer-muted); font-size: 15px; }

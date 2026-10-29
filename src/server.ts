@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { dispatch } from './base/dispatch'
 import { staticAssetResponse } from './base/static-assets'
 import { deploymentHealth } from './base/deployment-health'
-import { authResponse, identityAuth, openSessionResponse, runtimeBindings, type Bindings } from './auth.server'
+import { authResponse, identityAuth, notFoundDocument, openSessionResponse, runtimeBindings, type Bindings } from './auth.server'
 import { ownerClaimResponse } from './owner-claim.server'
 import { isPrivatePath } from './private-paths'
 
@@ -40,7 +40,7 @@ export function createWorker(options: { allowDevSession?: (request: Request, env
     if (claim) return claim
     const auth = await authResponse(request, env, execution, options.allowDevSession ? r => options.allowDevSession!(r, env) : undefined)
     if (auth) return auth
-    return dispatch(request, () => api.fetch(request, env, execution), () => start.fetch(request))
+    return notFoundDocument(request, await dispatch(request, () => api.fetch(request, env, execution), () => start.fetch(request)))
   },
   async scheduled(_controller, env) { await maintainAuth(identityAuth(env).context) },
 } satisfies ExportedHandler<Bindings> }

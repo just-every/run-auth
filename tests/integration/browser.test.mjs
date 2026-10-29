@@ -84,7 +84,7 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  const invited=await context.request.post(app.origin+'/api/auth/people/invite',{data:{email:'restricted@company.example'},headers:{origin:app.origin}});assert.equal(invited.status(),201);
  assert.equal((await member.request.post(app.origin+'/auth/identity/email/request',{data:{email:'restricted@company.example'},headers:{origin:app.origin}})).status(),202);
  const memberLink=await app.link();assert.equal((await member.request.post(app.origin+'/auth/identity/email/confirm',{data:{token:memberLink.searchParams.get('token')},headers:{origin:app.origin}})).status(),200);
- assert.equal((await member.request.get(app.origin+'/app/account',{maxRedirects:0})).status(),200);
+ assert.equal((await member.request.get(app.origin+'/app',{maxRedirects:0})).status(),200);
  const proveDomain=async domain=>{
   const ownershipChallenge=await context.request.post(app.origin+'/api/auth/domains/challenge',{data:{domain},headers:{origin:app.origin}});
   assert.equal(ownershipChallenge.status(),201);
@@ -96,7 +96,7 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  await page.goto(app.origin+'/app/people');
  await rules.getByLabel('Email domain',{exact:true}).fill('company.example');await rules.locator('#required-provider').selectOption('company');
  await rules.getByRole('button',{name:'Require provider',exact:true}).click();await expect(rules.locator('.domain-rule')).toHaveCount(1);
- assert.equal((await member.request.get(app.origin+'/app/account',{maxRedirects:0})).status(),303);await member.close();
+ assert.equal((await member.request.get(app.origin+'/app',{maxRedirects:0})).status(),303);await member.close();
  for(const width of [1440,390])for(const theme of ['light','dark']){
   await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:theme});
   for(const section of ['people','apps','methods','activity','account']){

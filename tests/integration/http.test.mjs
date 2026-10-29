@@ -19,7 +19,7 @@ test('emitted Auth protects private documents and Base authority seams; email pr
  assert.equal(confirmed.status,303);assert.equal(confirmed.headers.get('location'),'/app/methods?from=oidc');const cookie=cookieOf(confirmed);
  const me=await(await app.get('/api/auth/me',{cookie})).json();assert.equal(me.user.email,app.vars.OWNER_EMAIL);assert.equal(me.isAdmin,false);
  const finished=await fetch(app.origin+'/setup',{method:'POST',redirect:'manual',headers:{origin:app.origin,'content-type':'application/x-www-form-urlencoded',cookie},body:'confirm=yes'});assert.equal(finished.status,303);
- assert.equal((await app.get('/app/account',{cookie})).status,200);
+ assert.equal((await app.get('/app',{cookie})).status,200);
  assert.equal((await app.get('/app/people',{cookie})).status,403);
  assert.equal((await app.post('/api/auth/people/invite',{email:'intruder@example.com'},cookie)).status,403);
  // These inherited routes bypass Auth passkey policy if exposed by the seed.

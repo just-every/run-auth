@@ -137,14 +137,14 @@ test('security settings: prove and revoke employer ownership, preview affected w
  assert.equal((await worker.request.post(app.origin+'/auth/identity/email/request',{headers:{origin:app.origin},data:{email:employee}})).status(),202);
  const workerLink=await app.link();
  assert.equal((await worker.request.post(app.origin+'/auth/identity/email/confirm',{headers:{origin:app.origin},data:{token:workerLink.searchParams.get('token')}})).status(),200);
- assert.equal((await worker.request.get(app.origin+'/app/account',{maxRedirects:0})).status(),200);
+ assert.equal((await worker.request.get(app.origin+'/app',{maxRedirects:0})).status(),200);
  await page.reload();
  await expect(page.getByRole('row').filter({hasText:employee})).toContainText('Erin Park');
  await domainSnapshots('verified');
  page.once('dialog',dialog=>dialog.accept());
  await successfulAction(page,'/api/auth/domains/revoke',card().getByRole('button',{name:'Revoke ownership'}));
  await domainSnapshots('revoked');
- assert.equal((await worker.request.get(app.origin+'/app/account',{maxRedirects:0})).status(),303,'revoked ownership blocks an affected worker session');
+ assert.equal((await worker.request.get(app.origin+'/app',{maxRedirects:0})).status(),303,'revoked ownership blocks an affected worker session');
  assert.equal((await context.request.get(app.origin+'/api/auth/people')).status(),200,'the owner retains administration while the affected worker is blocked');
 
  await page.goto(app.origin+'/app/account');
