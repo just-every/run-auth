@@ -7,6 +7,7 @@ import { identityAuth } from '../auth.server'
 /** Auth's identity admission is authoritative; a Base bootstrap cookie is never a session here. */
 export function authPeople(env: Bindings): PeopleAdapter {
   const native = identityAuth(env).context
+  const policyRoles = new WeakMap<Person, 'owner' | 'editor' | null>()
   async function person(id: string): Promise<Person | null> {
     const row = await env.DB.prepare('SELECT id,email,display_name AS name,role,status FROM oa_operators WHERE id=?').bind(id).first<Person & { status: string }>()
     if (!row || row.status !== 'active' || !await nativeAdmission(native, row)) return null
@@ -14,7 +15,9 @@ export function authPeople(env: Bindings): PeopleAdapter {
     if (!proof || proof.verified_at + 30 * 86400000 <= Date.now() || !await env.DB.prepare('SELECT 1 FROM auth_passkeys WHERE person_id=?').bind(id).first()) return null
     // Business credentials do not supply the proof of a required upstream IdP.
     if (row.role !== 'owner' && await env.DB.prepare('SELECT 1 FROM oa_domain_rules WHERE domain=?').bind(row.email.split('@')[1]).first()) return null
-    return { id: row.id, email: row.email, name: row.name, role: row.role, active: true }
+    const current = { id: row.id, email: row.email, name: row.name, role: row.role, active: true }
+    policyRoles.set(current, (await member(current))?.role ?? null)
+    return current
   }
   const owner = () => env.DB.prepare("SELECT p.id FROM oa_bootstrap b JOIN oa_operators p ON p.id=b.claim_id WHERE p.role='owner'").first<{ id: string }>()
   async function member(p: Person) {
@@ -26,7 +29,7 @@ export function authPeople(env: Bindings): PeopleAdapter {
   }
   return {
     person, businessMember: member,
-    businessRole: p => p.role === 'owner' ? 'owner' : null,
+    businessRole: p => policyRoles.get(p) ?? (p.role === 'owner' ? 'owner' : null),
     async sponsor({ sub }) {
       const settings = await env.DB.prepare('SELECT owner_id FROM bs_settings WHERE singleton=1 AND stopped=0').first<{ owner_id: string | null }>()
       if (!settings) return null
@@ -35,6 +38,8 @@ export function authPeople(env: Bindings): PeopleAdapter {
       return row?.operator_id ? person(row.operator_id) : null
     },
     async session(request) {
+      const url = new URL(request.url)
+      if (url.origin !== env.AUTH_ORIGIN || request.headers.has('host') && request.headers.get('host')?.toLowerCase() !== url.host.toLowerCase()) return null
       const current = await session(native, request)
       if (!current || !JSON.parse(current.amr).includes('hwk')) return null
       return person(current.person_id)

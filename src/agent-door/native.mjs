@@ -8,7 +8,8 @@ import {ToolRefusal} from '../modules/agent-door/index.ts';
 // This is a native machine principal, never an invented person or session. The
 // same command, rank, field ownership and role/resource fences serve REST/UI.
 export async function principal(native,ctx,scopes) {
- const state=await ownerState(native,ctx.person.id),guard=ownerSnapshotGuard(state);
+ const state=await ownerState(native,ctx.person.id),ownerGuard=ownerSnapshotGuard(state);
+ const guard=ctx.consent?{clause:`(${ownerGuard.clause}) AND EXISTS(SELECT 1 FROM bs_settings binding WHERE binding.singleton=1 AND binding.stopped=0 AND ((binding.owner_id IS NOT NULL AND EXISTS(SELECT 1 FROM oa_bootstrap WHERE claim_id=?)) OR EXISTS(SELECT 1 FROM bs_team WHERE operator_id=? AND state='active' AND business_id IS NOT NULL)))`,args:[...ownerGuard.args,ctx.person.id,ctx.person.id]}:ownerGuard;
  const assertAuthority=async()=>{if(!await one(native,`SELECT 1 WHERE ${guard.clause}`,...guard.args))fail('role_authority_changed',409);};
  return {kind:'service',id:ctx.agent.id,actorId:ctx.actor?.label??`${ctx.agent.name} for ${ctx.person.name}`,ownerId:ctx.person.id,
   ownerState:state,guard,scopes,resources:{people:['*'],groups:['*'],apps:['*']},revision:state.epoch,
@@ -37,8 +38,8 @@ export async function write(native,ctx,path,method,data,scope) {
   if(internal) {
    // Preserve the internal-group boundary in the native committing transaction,
    // including a human assignment racing classification and execution.
-   const guard=actor.guard;
-   actor={...actor,guard:{clause:`(${guard.clause}) AND NOT EXISTS(SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?)`,args:[...guard.args,decodeURIComponent(internal[1])]}};
+   const guard=actor.guard,groupId=decodeURIComponent(internal[1]);
+   actor={...actor,guard:{clause:`(${guard.clause}) AND EXISTS(SELECT 1 FROM auth_groups WHERE id=? AND rule IS NULL) AND NOT EXISTS(SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?)`,args:[...guard.args,groupId,groupId]}};
   }
   const tx=transactionPrincipal(native,actor,await epoch(native));
   const response=await writeAdmin(native,tx,path,method,data);
@@ -69,14 +70,16 @@ export async function group(native,ctx,id) {return read(native,ctx,'/groups/'+en
 export async function membership(native,ctx,id) {
  const [groupId,personId,...extra]=String(id).split('/');
  if(!groupId||!personId||extra.length)throw new ToolRefusal('resource_unavailable');
- await group(native,ctx,groupId);
+ const g=await group(native,ctx,groupId);
+ if(g.rule!==null)throw new ToolRefusal('dynamic_group_door_required');
  await read(native,ctx,'/people/'+encodeURIComponent(personId),'people.read');
  return {groupId,personId,present:Boolean(await one(native,'SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id=?',groupId,personId))};
 }
 // Group edits touching an external connector belong to a later provider-edge
 // family. Refuse before classification/preparation rather than enqueueing work.
 export async function internalGroup(native,ctx,id) {
- await group(native,ctx,id);
+ const g=await group(native,ctx,id);
+ if(g.rule!==null)throw new ToolRefusal('dynamic_group_door_required');
  if(await one(native,"SELECT 1 FROM auth_app_assignments a JOIN auth_scim_connectors c ON c.app_id=a.app_id WHERE a.principal_type='group' AND a.principal_id=?",id))throw new ToolRefusal('connector_door_required');
  if(await one(native,"SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?",id))throw new ToolRefusal('app_assignment_door_required');
 }

@@ -7,7 +7,7 @@ The transport supports MCP 2026-07-28 and 2025-11-25. Text in directory records,
 app metadata and imported names is untrusted data, never authority.
 
 This adoption declares a bounded core: inspect redacted identities and internal
-groups, create an empty group, add or remove an existing identity’s internal
+static groups, create an empty group, add or remove an existing identity’s internal
 membership, inspect the sponsor’s launcher and read scoped redacted activity.
 `auth.workspace.snapshot` fingerprints the visible native records for verification.
 `auth.groups.grants` inspects one membership. `auth.events.list` is the shared
@@ -17,8 +17,8 @@ subscription or downstream reconciliation surface.
 The read tools carry `standard`; membership changes carry `access`, with direction
 computed by the server. An empty group does not grant access. A membership touching
 a configured SCIM connector refuses with `connector_door_required`; any other
-app-assigned group refuses with `app_assignment_door_required`. These are native
-app-access jobs beyond this internal-group subset, including indirect outside
+app-assigned group refuses with `app_assignment_door_required`. Rule-driven groups also refuse with `dynamic_group_door_required`. These are native
+app-access and computed-membership jobs beyond this internal-group subset, including indirect outside
 exposure. Refusal happens before queueing provider work. No money, paid account, regulated profile data, credential, issuer,
 provider, recovery, installation or identity-admission action is exposed. There is
 no provider cost registration; spend is `none`. There is no agent Undo because
@@ -29,7 +29,7 @@ the native machine API. A Business token is never a human session or passkey.
 Signed Business settings bind `owner_id` to the installation’s setup owner id and
 team ids to already admitted native people. The roster cannot create, activate,
 promote or invite an identity. Conflicting roles or unavailable identities do not
-bind. Subsequent address changes never select another native id. A local admin
+bind. Omitted roster entries retain inactive bindings; subsequent address changes never select another native id. Removed or stopped bindings narrow current scopes and fence pending execution in the native transaction. A local admin
 promotion does not make someone a Business policy editor. An owner must have
 completed Auth’s email and passkey lifecycle before agent admission; Base’s setup
 cookie alone is insufficient. A required upstream provider is not satisfied by a

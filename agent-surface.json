@@ -423,7 +423,10 @@
   ],
   "verification": {
     "owner": {
-      "initializer": "tests/agent-door/initialize-owner.mjs"
+      "initializer": "tests/agent-door/initialize-owner.mjs",
+      "bindings": {
+        "AUTH_ENCRYPTION_KEY": "sessionSecret"
+      }
     },
     "replayAdmission": {
       "prepare": [
