@@ -58,6 +58,10 @@ input:where(:not([type=checkbox], [type=radio], [type=hidden], [type=file])), se
   border: 1px solid var(--input-border); border-radius: 12px;
   background: var(--rer-surface); color: var(--rer-text); font-size: 15px;
 }
+/* Focus shows on the field's own border: it thickens to 2px inside the same box, with no second ring. */
+input:where(:not([type=checkbox], [type=radio], [type=hidden], [type=file])):focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; border-color: var(--rer-focus); box-shadow: inset 0 0 0 1px var(--rer-focus);
+}
 textarea { min-height: 0; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 input::placeholder { color: color-mix(in srgb, var(--rer-muted) 80%, transparent); }
 input[type=file] { width: 100%; padding: 10px 0; font-size: 14px; }
