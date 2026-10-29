@@ -3,17 +3,25 @@ import { iconDefinitions } from './icons.js'
 import { asArray, escape, fullName, hostLabel, icon, initials } from './helpers.js'
 
 const navItems: Array<{ page: AuthPage; label: string; symbol: string; admin?: boolean; href: string }> = [
-  { page: 'roles', label: 'Roles', symbol: 'key', href: '/app/roles' },
-  { page: 'permissions', label: 'API permissions', symbol: 'apps', admin: true, href: '/app/permissions' },
-  { page: 'erasure', label: 'Erasure', symbol: 'gear', admin: true, href: '/app/erasure' },
-  { page: 'organizations', label: 'Organizations', symbol: 'apps', href: '/app/organizations' },
+  { page: 'permissions', label: 'API permissions', symbol: 'lock', admin: true, href: '/app/permissions' },
+  { page: 'erasure', label: 'Erasure', symbol: 'eraser', admin: true, href: '/app/erasure' },
+  { page: 'organizations', label: 'Organizations', symbol: 'building', href: '/app/organizations' },
   { page: 'people', label: 'People', symbol: 'user', admin: true, href: '/app/people' },
   { page: 'agents', label: 'Agents', symbol: 'robot', admin: true, href: '/app/agents' },
   { page: 'apps', label: 'Apps', symbol: 'apps', admin: true, href: '/app/apps' },
+  { page: 'roles', label: 'Roles', symbol: 'shield', href: '/app/roles' },
   { page: 'methods', label: 'Sign-in methods', symbol: 'key', href: '/app/methods' },
   { page: 'activity', label: 'Activity', symbol: 'clock', admin: true, href: '/app/activity' },
   { page: 'account', label: 'My account', symbol: 'gear', href: '/app/account' },
 ]
+
+// Administration stays out of a member's menu; Organizations appears once there is more than one to choose.
+const inMenu = (model: AuthPageModel, page: AuthPage, admin?: boolean): boolean => {
+  if (page === 'organizations') return (model.organizations?.memberships.length ?? 0) > 1
+  if (page === 'roles') return Boolean(model.isAdmin || model.roles?.ownGrants.length)
+  if (page === 'activity') return Boolean(model.isAdmin || model.canReadAudit || model.roles?.ownGrants.some(grant => grant.permissions.includes('audit.view')))
+  return !admin || Boolean(model.isAdmin)
+}
 
 export const pageCopy: Record<AuthPage, { title: string; subtitle: string }> = {
   roles: { title: 'Roles', subtitle: 'Delegate administration with separate view and edit scopes.' },
@@ -47,10 +55,10 @@ const themeToggle = `<button class="icon-button" type="button" data-theme-toggle
 
 export const renderShell = (model: AuthPageModel, page: AuthPage, content: string): string => {
   const user = model.user ?? model.me ?? null
-  const copy = pageCopy[page]
+  const copy = page === 'organizations' && (model.organizations?.memberships.length ?? 0) < 2 ? { ...pageCopy[page], subtitle: 'Start another employer directory.' } : pageCopy[page]
   const currentName = user ? fullName(user) : 'Signed out'
   const host = escape(hostLabel(model.issuer))
-  const nav = navItems.filter(item => !item.admin || model.isAdmin || item.page === 'activity' && (model.canReadAudit || model.roles?.ownGrants.some(grant => grant.permissions.includes('audit.view')))).map(item =>
+  const nav = navItems.filter(item => inMenu(model, item.page, item.admin)).map(item =>
     `<a href="${item.href}"${item.page === page || (page === 'move-in' && item.page === 'people') ? ' class="active" aria-current="page"' : ''}>${icon(item.symbol)}<span>${item.label}</span></a>`
   ).join('')
   const accountBadge = user
