@@ -70,7 +70,7 @@ export const documentHead = (title: string): string => `<meta charset="utf-8"><m
 export const brandLockup = (tag: 'div' | 'a' = 'div'): string =>
   `<${tag} class="brand"${tag === 'a' ? ' href="/app"' : ''}><img class="brand-mark" src="/brand/mark.svg" alt="" width="32" height="32"><span class="brand-text"><strong>Auth</strong><span class="brand-line">Identity for your business</span></span></${tag}>`
 
-const themeToggle = `<button class="icon-button" type="button" data-theme-toggle data-tooltip="Color theme" aria-label="Toggle color theme" aria-pressed="false">${icon('theme')}</button>`
+const themeToggle = `<button class="icon-button" type="button" data-theme-toggle data-tooltip="Color theme" aria-label="Color theme" aria-pressed="false">${icon('theme')}</button>`
 
 // The active organization: plain text, or a link to the switcher when there is more than one to choose.
 const tenantName = (model: AuthPageModel, host: string): string => {
@@ -89,13 +89,12 @@ const ownerBlock = (model: AuthPageModel): string => {
 export const renderShell = (model: AuthPageModel, page: AuthPage | 'not-found', content: string): string => {
   const user = model.user ?? model.me ?? null
   const copy = page === 'not-found' ? { title: 'Page not found', subtitle: 'There is nothing at this address.' } : page === 'organizations' && (model.organizations?.memberships.length ?? 0) < 2 ? { ...pageCopy[page], subtitle: 'Start another employer directory.' } : pageCopy[page]
-  const currentName = user ? fullName(user) : 'Signed out'
   const host = escape(hostLabel(model.issuer))
   const nav = navItems.filter(item => inMenu(model, item.page, item.admin)).map(item =>
     `<a href="${item.href}"${item.page === page || (page === 'move-in' && item.page === 'people') ? ' class="active" aria-current="page"' : ''}>${icon(item.symbol)}<span>${item.label}</span></a>`
   ).join('')
   const accountBadge = user
-    ? `<a class="initials account-initials" data-tooltip="My account" href="/app" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
+    ? `<a class="initials account-initials" data-tooltip="My account" href="/app" aria-label="My account">${escape(initials(user.name) || '•')}</a>`
     : ''
   return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav>${ownerBlock(model)}</aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}${tenantName(model, host)}${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${content}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
 }

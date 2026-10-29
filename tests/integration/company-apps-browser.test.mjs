@@ -211,7 +211,7 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  loaded=page.waitForEvent('load');await approval.getByRole('button',{name:'Approve request with passkey'}).click();await loaded;
  const approved=(await (await employee.request.get(app.origin+'/api/auth/requests')).json()).requests.find(r=>r.app_id===archive.id);assert.equal(approved.state,'approved');
  await employeePage.reload();await requestTile.getByRole('button',{name:'Add favorite',exact:true}).click();await expect(requestTile.getByRole('button',{name:'Remove favorite'})).toBeVisible();
- const theme=employeePage.getByRole('button',{name:'Toggle color theme'});
+ const theme=employeePage.getByRole('button',{name:'Color theme'});
  await employeePage.clock.pauseAt(await employeePage.evaluate(()=>Date.now()+1000));await theme.hover();
  await employeePage.clock.runFor(150);assert.equal(await employeePage.getByRole('tooltip').isVisible(),false);
  await employeePage.clock.runFor(200);await expect(employeePage.getByRole('tooltip')).toHaveText('Color theme');

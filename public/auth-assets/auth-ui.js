@@ -282,10 +282,7 @@
   const resolvedTheme = () => root.dataset.theme || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   const updateThemeButton = () => {
     const dark = resolvedTheme() === 'dark'
-    for (const button of document.querySelectorAll('[data-theme-toggle]')) {
-      button.setAttribute('aria-pressed', String(dark))
-      button.title = dark ? 'Dark theme' : 'Light theme'
-    }
+    for (const button of document.querySelectorAll('[data-theme-toggle]')) button.setAttribute('aria-pressed', String(dark))
   }
   updateThemeButton()
   // On a phone the nav is one scrolling row: bring the current page's link into view.

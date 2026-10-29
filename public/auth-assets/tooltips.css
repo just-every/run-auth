@@ -1,2 +1,2 @@
-.auth-tooltip { position: fixed; z-index: 10000; pointer-events: none; max-width: calc(100vw - 16px); padding: 6px 9px; border-radius: 5px; background: #172329; color: #fff; font-size: 12px; line-height: 1.4; box-shadow: 0 2px 8px #0003; }
+.auth-tooltip { position: fixed; z-index: 10000; pointer-events: none; max-width: calc(100vw - 16px); padding: 6px 9px; border-radius: 5px; background: #172329; color: #fff; font-size: 13px; line-height: 1.4; box-shadow: 0 2px 8px #0003; }
 .auth-tooltip[hidden] { display: none; }
