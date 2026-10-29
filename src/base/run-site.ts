@@ -148,14 +148,14 @@ export function runPageHtml(identity: EditionIdentity, run: RunData, contract?: 
   checkIdentity(identity); checkRunData(run)
   const name = escape(run.name), source = escape(run.repository.replace(/^https:\/\//, ''))
   const hosted = run.hosted.map(option => `<li class="step option"><div class="body"><h2>${escape(option.title)}</h2><p>${escape(option.body)}</p><p class="go"><a href="${escape(option.href)}">${escape(option.action)}</a></p></div></li>`).join('')
-  const body = `${homepage?.html ?? header(identity, run, contract)}<main><div class="intro"><h1>Run ${name} on your computer.</h1><p class="sub">100% free and open source. Two lines, and ${name} opens in your browser.</p></div>`
+  const body = `${homepage?.html ?? header(identity, run, contract)}<main><div class="intro"><h1>Run ${name} on your computer.</h1><p class="sub">Two lines, and ${name} opens in your browser.</p></div>`
     + `<ol class="steps"><li class="step"><span class="num" aria-hidden="true">1</span><div class="body"><h2>Install rer</h2>${codeBlock([installRer], 'Install rer')}`
     + `<p class="note">It installs rer for you alone, with its own Node if you have no Node 22 or later. The installer does not edit your shell files itself. If it ends with a line to run, run it before step 2: it puts rer on your PATH now and appends the same setting to your shell's startup file (for example ~/.zshrc) for new terminals.</p></div></li>`
     + `<li class="step"><span class="num" aria-hidden="true">2</span><div class="body"><h2>Start ${name}</h2>${codeBlock([rerStart(run)], `Start ${run.name}`)}`
     + `<p class="note">rer gets ${name}, installs everything, makes you the owner and prints a link that opens ${name} signed in. To start it again later: ${inlineCode(`cd ${run.folder} && rer dev`)}</p>`
     + `<p class="alt">Already have Node 22 or later? ${inlineStart(run)} does both steps in one line.</p></div></li>${hosted}</ol>`
     + `<footer class="facts"><p>${escape(run.requirements)}</p><p>Source: <a href="${escape(run.repository)}">${source}</a> · ${escape(run.licence)} license</p></footer></main>`
-  return document(identity, `Run ${run.name}`, `Run ${run.name} on your computer. 100% free and open source.`, RUN, body, COPY_SCRIPT, homepage?.styles)
+  return document(identity, `Run ${run.name}`, `Run ${run.name} on your computer.`, RUN, body, COPY_SCRIPT, homepage?.styles)
 }
 
 /** Base's composed homepage for a seed without an approved one: its primary action is Run <Seed>. */
