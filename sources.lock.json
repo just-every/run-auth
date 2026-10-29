@@ -140,7 +140,7 @@
       "executable": false
     },
     "ACCEPTANCE.md": {
-      "sha256": "71110530415f78e9b6b55b6f3b6061857dcb5e3082afb03c083cb4791febc583",
+      "sha256": "ccb8989e3055d5ddefa0f01b7cf2cd302687ae86d7493067701e719c165d8a53",
       "executable": false
     },
     "agent-surface.json": {
@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "5a2e903293a70e33b4a21f504a350f21495a3ba84ded2cd1e4151f7ba9611e6f",
+      "sha256": "8323719eccf3fd7985a6cc98968750e80da99c2428266b06714224d793aa1e18",
       "executable": false
     },
     "deploy-demo.json": {
@@ -240,7 +240,7 @@
       "executable": false
     },
     "docs/CLAIMS.md": {
-      "sha256": "c44632281dbf52782e25462af6e9ae045c4fa381e67f863682372b0634acdea0",
+      "sha256": "f9a069147fffb865bd45aaa4b10f16e02afc157a5688fd294f2849325592d34a",
       "executable": false
     },
     "docs/continuity-drills.md": {

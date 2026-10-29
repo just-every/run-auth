@@ -2,7 +2,7 @@
 
 Generated from CONTRACT.md. Acceptance journeys remain in ACCEPTANCE.md.
 
-Done: 38; partial: 50; missing: 17; total: 105.
+Done: 37; partial: 51; missing: 17; total: 105.
 
 | Clause | Title | Status |
 | --- | --- | --- |
@@ -87,7 +87,7 @@ Done: 38; partial: 50; missing: 17; total: 105.
 | AUTH-OPS-001 | Operate a company identity service | partial |
 | AUTH-RECOVERY-002 | Emergency continuity and recovery drills | done |
 | AUTH-RECOVERY-003 | Same-day help-desk recovery for employees | partial |
-| AUTH-ERASURE-001 | Authorized erasure with retained accountability | done |
+| AUTH-ERASURE-001 | Authorized erasure with retained accountability | partial |
 | AUTH-ERASURE-002 | Per-person erasure across separate organization identities | partial |
 | AUTH-ERASURE-003 | Erasure revokes everything | partial |
 | AUTH-RETENTION-001 | Explicit retention and secret custody | partial |
