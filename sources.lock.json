@@ -4216,7 +4216,7 @@
       "executable": false
     },
     "tests/integration/continuity-drill.mjs": {
-      "sha256": "b80296e9cabd076431b493a68d57cbf9cdc15de202f2c68490540bc49340ee4a",
+      "sha256": "f3f1651525f39c30833fecb34b8aab174f2eb842d1eb2ad8959a1ecebdb48913",
       "executable": false
     },
     "tests/integration/dev.test.mjs": {
@@ -4228,7 +4228,7 @@
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
-      "sha256": "a3f5304b81bd664b2ab8581b8e2f7888381d1316931c7978a137fc71a679532a",
+      "sha256": "ddb78c1f2917c0699079af318c24d5934225afb320964b83bbf60f22b553bb01",
       "executable": false
     },
     "tests/integration/helpers/access-review-journey.mjs": {

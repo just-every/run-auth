@@ -8,6 +8,9 @@ import {openApp,cookieOf} from './runtime.mjs';
 import {register,authenticate} from '../auth/webauthn.mjs';
 
 const execute=promisify(execFile),root=fileURLToPath(new URL('../../',import.meta.url));
+// A copied checkout owns its operation lease, independently of rer verify.
+const commandEnv={...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',RER_SERVER_JOURNEY:'1'};
+delete commandEnv.RER_LOCAL_OPERATION;
 const ownerEmail='synthetic-auth-10@emergency.example.com',workerEmail='synthetic-auth-11@company.example.com';
 const varsText=vars=>Object.entries(vars).map(([key,value])=>`${key}=${value}`).join('\n')+'\n';
 const checkoutFiles=['package.json','edition.json','rer-project.json','rer-setup.json','wrangler.jsonc','scripts','src','public','migrations','deploy.json','composition.lock.json','.node-version','OPERATIONS.json','OPERATIONS.md','ACCEPTANCE.md','RUN-LOCALLY.md','SEED-COMMAND-CONTRACT.md','AUTH-COMMANDS.md','pnpm-lock.yaml'];
@@ -26,7 +29,7 @@ export async function continuityDrill(t) {
  const worker=await register(runtime,await app.signIn('/app/account',workerEmail));
  const run=async(entry,args,label)=>{
   let result;
-  try {result={...(await execute(process.execPath,[entry,...args],{cwd:app.directory,env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',RER_SERVER_JOURNEY:'1'},maxBuffer:8*1024*1024})),code:0};}
+  try {result={...(await execute(process.execPath,[entry,...args],{cwd:app.directory,env:commandEnv,maxBuffer:8*1024*1024})),code:0};}
   catch(error){result={code:error.code,stdout:error.stdout||'',stderr:error.stderr||''};}
   // Never attach CLI logs, URLs, cookies or private configuration to failures.
   assert.equal(result.code,0,label+' must succeed');return result.stdout+'\n'+result.stderr;

@@ -7,6 +7,9 @@ import {fileURLToPath} from 'node:url';
 import {openApp,cookieOf} from './runtime.mjs';
 import {register,authenticate} from '../auth/webauthn.mjs';
 const execute=promisify(execFile),root=fileURLToPath(new URL('../../',import.meta.url));
+// A copied checkout owns its operation lease, independently of rer verify.
+const commandEnv={...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',RER_SERVER_JOURNEY:'1'};
+delete commandEnv.RER_LOCAL_OPERATION;
 const varsText=vars=>Object.entries(vars).map(([key,value])=>`${key}=${value}`).join('\n')+'\n';
 
 export async function erasurePortability(t) {
@@ -21,7 +24,7 @@ export async function erasurePortability(t) {
  const factor=await register(runtime,await app.signIn('/app/account','worker@northwind.example.com'));await register(runtime,factor.cookie);
  const cli=async(args,expected=0)=>{
   let result;
-  try {result={...(await execute(process.execPath,[join(root,'node_modules/@runeditrun/rer/global/rer.mjs'),...args],{cwd:app.directory,env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false',RER_SERVER_JOURNEY:'1'},maxBuffer:8*1024*1024})),code:0};}
+  try {result={...(await execute(process.execPath,[join(root,'node_modules/@runeditrun/rer/global/rer.mjs'),...args],{cwd:app.directory,env:commandEnv,maxBuffer:8*1024*1024})),code:0};}
   catch(error){result={code:error.code,stdout:error.stdout||'',stderr:error.stderr||''};}
   // Commands must never print generated private configuration. Keep only the
   // contract diagnostic in assertion output, without its arbitrary log body.
