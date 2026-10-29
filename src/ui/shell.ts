@@ -1,6 +1,6 @@
 import type { AuthNotice, AuthPage, AuthPageModel } from './model.js'
 import { iconDefinitions } from './icons.js'
-import { asArray, escape, fullName, hasAdminRole, hostLabel, icon, initials } from './helpers.js'
+import { actionUnavailable, asArray, csrfField, escape, fullName, hasAdminRole, hostLabel, icon, initials } from './helpers.js'
 
 const navItems: Array<{ page: AuthPage; label: string; symbol: string; admin?: boolean; href: string }> = [
   { page: 'permissions', label: 'API permissions', symbol: 'lock', admin: true, href: '/app/permissions' },
@@ -72,6 +72,14 @@ export const brandLockup = (tag: 'div' | 'a' = 'div'): string =>
 
 const themeToggle = `<button class="icon-button" type="button" data-theme-toggle data-tooltip="Color theme" aria-label="Toggle color theme" aria-pressed="false">${icon('theme')}</button>`
 
+// The signed-in person at the foot of the menu, with the only places to end a session.
+const ownerBlock = (model: AuthPageModel): string => {
+  const user = model.user ?? model.me
+  if (!user) return ''
+  const everywhere = actionUnavailable(model, 'account.signout-everywhere') ? '' : `<button class="quiet-button" type="button" data-open-dialog="signout-everywhere-dialog">Sign out everywhere</button><dialog class="toolbar-dialog" id="signout-everywhere-dialog" aria-labelledby="signout-everywhere-title"><h2 id="signout-everywhere-title">Sign out everywhere?</h2><p>This ends every Auth session for your account and signs you out of your linked apps.</p><form method="post" action="/api/auth/signout-everywhere" data-auth-action data-redirect="/signin">${csrfField(model.csrf)}<div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog>Cancel</button><button class="primary-button" type="submit">Sign out everywhere</button></div></form></dialog>`
+  return `<section class="owner" aria-label="Signed in as ${escape(fullName(user))}"><div class="owner-person"><span class="initials">${escape(initials(user.name) || '•')}</span><div><strong>${escape(fullName(user))}</strong><span class="data-meta" title="${escape(user.email)}">${escape(user.email)}</span></div></div><div class="owner-actions"><form method="post" action="/api/auth/signout" data-auth-action data-redirect="/signin">${csrfField(model.csrf)}<button class="secondary-button" type="submit">Sign out</button></form>${everywhere}</div></section>`
+}
+
 export const renderShell = (model: AuthPageModel, page: AuthPage | 'not-found', content: string): string => {
   const user = model.user ?? model.me ?? null
   const copy = page === 'not-found' ? { title: 'Page not found', subtitle: 'There is nothing at this address.' } : page === 'organizations' && (model.organizations?.memberships.length ?? 0) < 2 ? { ...pageCopy[page], subtitle: 'Start another employer directory.' } : pageCopy[page]
@@ -83,5 +91,5 @@ export const renderShell = (model: AuthPageModel, page: AuthPage | 'not-found', 
   const accountBadge = user
     ? `<a class="initials account-initials" data-tooltip="My account" href="/app" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
     : ''
-  return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav><section class="issuer" aria-label="Issuer host"><div><p>Issuer host</p><span class="issuer-host">${host}</span></div><img class="issuer-door" src="/brand/door-small.webp" alt="" width="38" height="56"></section></aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}<span class="tenant" title="Active organization">${escape(model.organizations?.current.name ?? host)}</span>${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${content}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
+  return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav>${ownerBlock(model)}</aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}<span class="tenant" title="Active organization">${escape(model.organizations?.current.name ?? host)}</span>${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${content}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
 }

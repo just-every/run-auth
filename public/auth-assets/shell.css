@@ -20,15 +20,19 @@
 .sidebar nav a.active { background: var(--petrol-pale); color: var(--petrol-deep); font-weight: 600; }
 .sidebar nav svg { width: 20px; height: 20px; }
 
-.issuer {
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 48px;
-  padding: 18px 16px 14px 20px; border: 1px solid var(--rer-border); border-radius: 16px; background: var(--rer-surface);
+.owner {
+  display: grid; gap: 14px; margin-top: 48px; padding: 16px;
+  border: 1px solid var(--rer-border); border-radius: 16px; background: var(--rer-surface);
 }
-.sidebar .issuer { margin-top: auto; }
-.issuer > div { min-width: 0; padding-bottom: 4px; }
-.issuer p { font-size: 13px; color: var(--rer-muted); }
+.owner .initials { width: 36px; height: 36px; }
+.sidebar .owner, .owner { margin-top: auto; }
+.owner-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.owner-person > div { display: grid; min-width: 0; }
+.owner-person strong, .owner-person .data-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.owner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.owner-actions form { margin: 0; }
+.owner-actions .secondary-button { min-height: 40px; padding: 0 18px; }
 .issuer-host { display: block; font-size: 15px; overflow-wrap: anywhere; }
-.issuer-door { width: auto; height: 56px; flex: none; }
 
 .app-page {
   min-width: 0; padding: 40px; border-radius: 18px; background: var(--rer-surface); border: 1px solid var(--rer-border);
@@ -50,19 +54,22 @@
 .account-initials:hover { background: color-mix(in srgb, var(--invited) 80%, var(--rer-text)); }
 
 @media (max-width: 1023px) {
-  .app { display: block; padding: 0 0 48px; }
-  .sidebar { position: static; min-height: 0; padding: 0 20px; }
-  .sidebar-top { align-items: center; min-height: 64px; margin: 0; border-bottom: 1px solid var(--rer-border); }
+  .app { display: flex; flex-direction: column; padding: 0 0 48px; }
+  .sidebar { display: contents; }
+  .sidebar-top { align-items: center; min-height: 64px; margin: 0 20px; border-bottom: 1px solid var(--rer-border); }
   .sidebar-top .icon-button { display: inline-grid; }
   .brand { align-items: center; gap: 10px; }
   .brand-mark { width: 30px; height: 30px; margin: 0; }
   .brand strong { font-size: 24px; }
   .sidebar .brand-line { display: none; }
-  .sidebar nav { display: flex; gap: 6px; overflow-x: auto; margin: 14px -20px 0; padding: 0 20px 4px; scrollbar-width: none; }
+  .sidebar nav { display: flex; gap: 6px; overflow-x: auto; margin: 14px 0 0; padding: 0 20px 4px; scrollbar-width: none; }
   .sidebar nav::-webkit-scrollbar { display: none; }
   .sidebar nav a { flex: none; min-height: 40px; padding: 0 16px; border-radius: 999px; font-size: 15px; }
   .sidebar nav svg { display: none; }
-  .issuer { display: none; }
+  .sidebar-top { order: 0; }
+  .sidebar nav { order: 1; }
+  .app-page { order: 2; }
+  .sidebar .owner { order: 3; margin: 8px 20px 0; }
   .app-page { padding: 24px 20px 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
   .heading { flex-direction: column; gap: 16px; margin-bottom: 24px; }
   .heading h1 { font-size: 28px; }

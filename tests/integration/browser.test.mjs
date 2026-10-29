@@ -60,7 +60,7 @@ test('real Auth pages: browser email, first setup, hardware passkey, people and 
  await page.getByRole('button',{name:'Register a passkey'}).click();
  const result=await registered.catch(async()=>{throw new Error('Passkey registration failed: '+await page.locator('[data-auth-status]').allTextContents()+JSON.stringify(errors));});assert.equal(result.status(),200);
  await page.waitForTimeout(500);
- await page.goto(app.origin+'/app/account');await page.getByRole('button',{name:'Sign out of this session'}).click();await expect(page).toHaveURL(app.origin+'/signin');
+ await page.goto(app.origin+'/app/account');await page.getByRole('button',{name:'Sign out',exact:true}).click();await expect(page).toHaveURL(app.origin+'/signin');
  await page.getByRole('button',{name:'Continue with a passkey'}).click();await expect(page).toHaveURL(app.origin+'/app');
  assert.equal((await context.request.get(app.origin+'/api/auth/people')).status(),200);
  assert.equal((await context.request.post(app.origin+'/api/auth/keys/stage',{data:{},headers:{origin:app.origin}})).status(),403,'passkey sign-in alone carries no fresh local email proof');
