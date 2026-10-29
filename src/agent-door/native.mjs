@@ -32,7 +32,14 @@ export async function read(native,ctx,path,scope,query={}) {
 }
 export async function write(native,ctx,path,method,data,scope) {
  try {
-  const actor=await principal(native,ctx,[scope]);
+  let actor=await principal(native,ctx,[scope]);
+  const internal=/^\/groups\/([^/]+)\/members\/[^/]+$/.exec(path);
+  if(internal) {
+   // Preserve the internal-group boundary in the native committing transaction,
+   // including a human assignment racing classification and execution.
+   const guard=actor.guard;
+   actor={...actor,guard:{clause:`(${guard.clause}) AND NOT EXISTS(SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?)`,args:[...guard.args,decodeURIComponent(internal[1])]}};
+  }
   const tx=transactionPrincipal(native,actor,await epoch(native));
   const response=await writeAdmin(native,tx,path,method,data);
   if(!response.ok)throw new ToolRefusal('native_refused');

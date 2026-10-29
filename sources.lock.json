@@ -1156,7 +1156,7 @@
       "executable": false
     },
     "src/agent-door/native.mjs": {
-      "sha256": "a30e56abc898bd0c8b1f83638a88ee34e634c4cc7dfe229a2d13cd5f108c9395",
+      "sha256": "65a27c4d0367870cdee32d170ee1287d0d4f048a961b6b89eea345699ded3cf6",
       "executable": false
     },
     "src/agent-door/people.ts": {
