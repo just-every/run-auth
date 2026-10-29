@@ -429,6 +429,13 @@
       "prepare": [
         "create"
       ]
-    }
+    },
+    "reviewers": [
+      {
+        "label": "worker",
+        "email": "agent-worker@example.com",
+        "initializer": "tests/agent-door/initialize-worker.mjs"
+      }
+    ]
   }
 }

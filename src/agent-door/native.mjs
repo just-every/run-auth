@@ -15,10 +15,12 @@ export async function principal(native,ctx,scopes) {
   permits:()=>true,ownerAllows:(permission,target)=>ownerPermits(state,permission,target),
   assertAuthority,prepareAuthority:assertAuthority};
 }
-export async function read(native,ctx,path,scope) {
+export async function read(native,ctx,path,scope,query={}) {
  try {
   const actor=await principal(native,ctx,[scope]);
-  const response=await readAdmin(native,actor,path,new URL(native.origin+'/api/auth/admin/v1'+path));
+  const url=new URL(native.origin+'/api/auth/admin/v1'+path);
+  for(const [key,value] of Object.entries(query))if(value!==undefined)url.searchParams.set(key,String(value));
+  const response=await readAdmin(native,actor,path,url);
   if(!response||!response.ok)throw new ToolRefusal('resource_unavailable');
   const value=await response.json();
   if(path==='/people'||path.startsWith('/people/')) {
@@ -41,9 +43,18 @@ export async function write(native,ctx,path,method,data,scope) {
 }
 export async function snapshot(native,ctx) {
  const out={};
+ async function collection(path,scope) {
+  const items=[];let offset=0;
+  do {
+   const value=await read(native,ctx,path,scope,{limit:100,offset});
+   items.push(...value.items);offset=value.nextOffset;
+  }while(offset!==null);
+  return items;
+ }
  for(const [family,scope] of [['people','people.read'],['groups','groups.read'],['apps','apps.read'],['assignments','assignments.read']]) {
-  const value=await read(native,ctx,'/'+family,scope);
-  out[family]=await hash(JSON.stringify(value));
+  const items=await collection('/'+family,scope);
+  if(family==='groups')for(const group of items)group.members=await collection('/groups/'+encodeURIComponent(group.id)+'/members','groups.read');
+  out[family]=await hash(JSON.stringify(items));
  }
  return out;
 }

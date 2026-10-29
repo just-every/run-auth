@@ -485,7 +485,7 @@ Back-Channel Logout OP can pass only with client_secret_basic for the test clien
 6. An oversized body returns 413 with no effect.
 
 <!-- contract-status:BASE-AGENT-001 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Shared transport exercised in the 1018-point production-door journey; UI parity, generated /docs/agents and full native job coverage remain undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Shared transport exercised in the 1019-point production-door journey; UI parity, generated /docs/agents and full native job coverage remain undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-002 — The seed's jobs are tools, through the UI's own actions (partial).**
@@ -503,7 +503,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 6. The seed's embedded agents appear in the audit as calls to the same tools.
 
 <!-- contract-status:BASE-AGENT-002 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — CORE registry is bounded to identity inspection and internal groups; remaining native tool families in the ct identity-steward table are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — CORE registry is bounded to identity inspection and internal groups; remaining native tool families in the ct identity-steward table are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-003 — Records are resources (partial).**
@@ -521,7 +521,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 6. Customer-sourced text carries the untrusted marker.
 
 <!-- contract-status:BASE-AGENT-003 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Resources family is partial: redacted people/groups/apps only; organization, request, review, obligation, task and native-event resources are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Resources family is partial: redacted people/groups/apps only; organization, request, review, obligation, task and native-event resources are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-004 — Business identity and short-lived, audience-bound tokens (partial).**
@@ -540,7 +540,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 7. After unpairing, Business tokens are refused and the seed's own sign-in still works.
 
 <!-- contract-status:BASE-AGENT-004 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Multi-sponsor family and its role/visibility journeys are undeclared; owner-bound subject admission is implemented with Auth email/passkey admission, but full team lifecycle proof is outstanding.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Multi-sponsor family and its role/visibility journeys are undeclared; owner-bound subject admission is implemented with Auth email/passkey admission, but full team lifecycle proof is outstanding.
 <!-- /contract-status -->
 
 **BASE-AGENT-005 — An agent acts as a person in a role, never more (partial).**
@@ -557,7 +557,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 5. An injection fixture yields no out-of-grant call and no change of class: record text asking for a wider action, or claiming that a recipient is internal.
 
 <!-- contract-status:BASE-AGENT-005 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Conformance proves sponsor self-widening refusal and ordinary narrowing; wider native authority families and multi-sponsor fixtures are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Conformance proves sponsor self-widening refusal and ordinary narrowing; wider native authority families and multi-sponsor fixtures are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-006 — Every action declares its risk class (partial).**
@@ -575,7 +575,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 6. A refused call's audit row still records its computed classes.
 
 <!-- contract-status:BASE-AGENT-006 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Only standard/access effects are declared; provider, money, commitment, accounts, gated, security, destructive, sensitive and live effect families are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Only standard/access effects are declared; provider, money, commitment, accounts, gated, security, destructive, sensitive and live effect families are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-007 — The company's policy decides, at one chokepoint (partial).**
@@ -595,7 +595,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 8. A policy document with a bad signature or another Business's id is rejected, and the door keeps the last valid revision.
 
 <!-- contract-status:BASE-AGENT-007 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Core policy, approval, Pause and revocation journey is green; optional provider/spend and full native job families are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Core policy, approval, Pause and revocation journey is green; optional provider/spend and full native job families are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-008 — Truthful attribution (partial).**
@@ -614,7 +614,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 7. Mail an agent sends to an outside address names `"<agent> for <person>"` as its sender.
 
 <!-- contract-status:BASE-AGENT-008 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Native group Activity records agent for sponsor and named approvers; outbound, native Undo and other mutation families are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Native group Activity records agent for sponsor and named approvers; outbound, native Undo and other mutation families are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-009 — Every agent action is audited with its class and decision (partial).**
@@ -633,7 +633,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 7. The Agents page works at 1440 and 390 with no serious or critical axe findings.
 
 <!-- contract-status:BASE-AGENT-009 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Core audit reconciles all declared calls with differs_from_policy zero; wider native job families are undeclared. Native erasure retains a closed custody exception after pairing.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Core audit reconciles all declared calls with differs_from_policy zero; wider native job families are undeclared. Native erasure retains a closed custody exception after pairing.
 <!-- /contract-status -->
 
 **BASE-AGENT-010 — Agents can follow changes (partial).**
@@ -651,7 +651,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 6. `approval.pending`, `approval.decided`, `review.flagged` and `policy.adopted` carry the class and decision and nothing the subscriber may not read.
 
 <!-- contract-status:BASE-AGENT-010 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Events/subscriptions family is undeclared beyond the built-in retained door event reader; native lifecycle handoff, subscription revocation and erasure replay proof remain gaps.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Events/subscriptions family is undeclared beyond the built-in retained door event reader; native lifecycle handoff, subscription revocation and erasure replay proof remain gaps.
 <!-- /contract-status -->
 
 **BASE-AGENT-011 — Limits are policy, and Pause stops everything (partial).**
@@ -670,7 +670,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 7. An agent token cannot resume.
 
 <!-- contract-status:BASE-AGENT-011 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Long-jobs and provider capacity families are undeclared; core Pause, scopes and rate/body capacity use the shared door.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Long-jobs and provider capacity families are undeclared; core Pause, scopes and rate/body capacity use the shared door.
 <!-- /contract-status -->
 
 **BASE-AGENT-012 — Writes are idempotent and conflict-safe (partial).**
@@ -687,7 +687,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 5. A job handle used by another person's token reads as not found.
 
 <!-- contract-status:BASE-AGENT-012 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Core replay/changed-key and current-admission conformance passes; long-job continuation and uncertain provider outcome families are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Core replay/changed-key and current-admission conformance passes; long-job continuation and uncertain provider outcome families are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-013 — Manifest, docs and the conformance journey (partial).**
@@ -704,5 +704,5 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 5. A stranger agent given only the seed URL completes the specialist journey through MCP.
 
 <!-- contract-status:BASE-AGENT-013 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1018/1018 PASS (29 October 2026); `docs/shared-agent-door.md` — Declared subset journey passes all 1018 points; full ct workforce-week, specialist stranger completion and generated on-site agent guide remain undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.86 production-door conformance: 1019/1019 PASS (29 October 2026); `docs/shared-agent-door.md` — Declared subset journey passes all 1019 points; full ct workforce-week, specialist stranger completion and generated on-site agent guide remain undeclared.
 <!-- /contract-status -->

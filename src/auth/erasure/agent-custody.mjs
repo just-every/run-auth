@@ -8,6 +8,6 @@ export async function assertAgentCustody(ctx) {
  if(ctx.organizationId&&ctx.organizationId!=='root')return;
  const installed=await one(ctx,"SELECT 1 FROM sqlite_master WHERE type='table' AND name='agent_door_audit'");
  if(!installed)return;
- const retained=await one(ctx,`SELECT 1 FROM agent_door_audit UNION ALL SELECT 1 FROM agent_door_calls UNION ALL SELECT 1 FROM agent_door_approvals UNION ALL SELECT 1 FROM agent_door_reviews UNION ALL SELECT 1 FROM bs_team UNION ALL SELECT 1 FROM bs_settings WHERE owner_id IS NOT NULL LIMIT 1`);
+ const retained=await one(ctx,`SELECT 1 WHERE EXISTS(SELECT 1 FROM agent_door_audit) OR EXISTS(SELECT 1 FROM agent_door_calls) OR EXISTS(SELECT 1 FROM agent_door_approvals) OR EXISTS(SELECT 1 FROM agent_door_reviews) OR EXISTS(SELECT 1 FROM bs_team) OR EXISTS(SELECT 1 FROM bs_settings WHERE owner_id IS NOT NULL)`);
  if(retained)fail('agent_custody_review_required',409);
 }
