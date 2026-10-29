@@ -86,7 +86,7 @@ test('directory journey: an administrator onboards a worker, edits and bulk-move
  // The employee's own profile: she edits her name; then the HR system takes it and the page says so.
  const mine=await employee.newPage();await mine.goto(app.origin+'/app/account');
  await mine.getByLabel('Name',{exact:true}).fill('Erin P. Park');
- const edited=mine.waitForEvent('load');await mine.getByRole('button',{name:'Save profile'}).click();await edited;
+ await expect(mine.getByText('Saved',{exact:true})).toBeVisible();await mine.reload();
  await expect(mine.getByLabel('Name',{exact:true})).toHaveValue('Erin P. Park');await expect(mine.getByRole('heading',{name:'Erin P. Park'})).toBeVisible();
  const erinId=(await (await context.request.get(app.origin+'/api/auth/directory?q=erin@northwind')).json()).people[0].id;
  const fed=await context.request.post(app.origin+'/api/auth/directory/source',{data:{source:'hr',records:[{sourceId:'E-1',personId:erinId,fields:{name:'Erin Park-Lee'}}]},headers:{origin:app.origin}});assert.equal(fed.status(),200);

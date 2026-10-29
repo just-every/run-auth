@@ -22,4 +22,36 @@
       button.disabled = false
     }
   })
+
+  // The profile saves as it changes; each field says Saved beside its label.
+  const form = document.querySelector('form[data-profile-autosave]')
+  if (!form) return
+  let timer, saving = false, dirty = false, fieldOfSave
+  const note = field => field?.closest('.field')?.querySelector('[data-save-state]')
+  const save = async () => {
+    clearTimeout(timer)
+    if (saving || !dirty || !form.checkValidity()) return
+    saving = true
+    const field = fieldOfSave
+    try {
+      while (dirty) {
+        dirty = false
+        const values = Object.fromEntries(new FormData(form))
+        const response = await fetch(organizationPath(form.getAttribute('action')), { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify(values) })
+        if (!response.ok) throw new Error('Not saved')
+        for (const label of document.querySelectorAll('[data-person-name]')) if (values.name?.trim()) label.textContent = values.name.trim()
+      }
+      if (note(field)) note(field).textContent = 'Saved'
+    } catch {
+      dirty = true
+      if (note(field)) note(field).textContent = 'Not saved. Edit to try again.'
+    } finally { saving = false }
+  }
+  form.addEventListener('input', event => {
+    dirty = true; fieldOfSave = event.target
+    for (const state of form.querySelectorAll('[data-save-state]')) state.textContent = ''
+    clearTimeout(timer); timer = setTimeout(save, 700)
+  })
+  form.addEventListener('change', event => { dirty = true; fieldOfSave = event.target; void save() })
+  form.addEventListener('submit', event => { event.preventDefault(); void save() })
 })()
