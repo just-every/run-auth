@@ -147,17 +147,6 @@
         "AUTH-AUDIT-001",
         "BASE-AGENT-002"
       ]
-    },
-    {
-      "name": "auth.events.list",
-      "scope": "events:read",
-      "readOnly": true,
-      "classes": [
-        "standard"
-      ],
-      "clauses": [
-        "BASE-AGENT-010"
-      ]
     }
   ],
   "notTools": [
@@ -198,11 +187,6 @@
       ],
       "reason": "connector"
     }
-  ],
-  "resources": [
-    "auth://people/{id}",
-    "auth://groups/{id}",
-    "auth://apps/{id}"
   ],
   "witness": {
     "tool": "auth.workspace.snapshot",
@@ -408,19 +392,6 @@
           }
         }
       ]
-    },
-    {
-      "id": "events",
-      "tool": "auth.events.list",
-      "args": {},
-      "expect": [
-        {
-          "class": "standard",
-          "facts": {
-            "measure": 1
-          }
-        }
-      ]
     }
   ],
   "verification": {
@@ -442,5 +413,12 @@
         "initializer": "tests/agent-door/initialize-worker.mjs"
       }
     ]
-  }
+  },
+  "capabilities": [
+    "tools",
+    "policy",
+    "pause",
+    "audit",
+    "idempotency"
+  ]
 }
