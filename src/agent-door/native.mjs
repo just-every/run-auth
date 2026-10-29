@@ -23,7 +23,7 @@ export async function read(native,ctx,path,scope,query={}) {
   const response=await readAdmin(native,actor,path,url);
   if(!response||!response.ok)throw new ToolRefusal('resource_unavailable');
   const value=await response.json();
-  if(path==='/people'||path.startsWith('/people/')) {
+  if(path==='/people'||path.startsWith('/people/')||/^\/groups\/[^/]+\/members$/.test(path)) {
    const project=({id,email,name,state})=>({id,email,name,state});
    return Array.isArray(value.items)?{...value,items:value.items.map(project)}:project(value);
   }
@@ -71,6 +71,7 @@ export async function membership(native,ctx,id) {
 export async function internalGroup(native,ctx,id) {
  await group(native,ctx,id);
  if(await one(native,"SELECT 1 FROM auth_app_assignments a JOIN auth_scim_connectors c ON c.app_id=a.app_id WHERE a.principal_type='group' AND a.principal_id=?",id))throw new ToolRefusal('connector_door_required');
+ if(await one(native,"SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?",id))throw new ToolRefusal('app_assignment_door_required');
 }
 
 export async function nativeAdmission(native,p) {

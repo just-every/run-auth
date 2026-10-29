@@ -312,7 +312,7 @@
       "executable": false
     },
     "docs/shared-agent-door.md": {
-      "sha256": "a2a582a4303746288f3fd61d16a4eec260d91ce83adccb7e1e9513f08395a36e",
+      "sha256": "3dc93c151b9e8d22873c11c09ce32ae8175162bfcc17598f5023450cb9399a55",
       "executable": false
     },
     "docs/sign-in.md": {
@@ -1156,7 +1156,7 @@
       "executable": false
     },
     "src/agent-door/native.mjs": {
-      "sha256": "8dabe825c5197be4982ec65f01d79d0b2b54ebcf791bbce27736f0e8f1199a1d",
+      "sha256": "a30e56abc898bd0c8b1f83638a88ee34e634c4cc7dfe229a2d13cd5f108c9395",
       "executable": false
     },
     "src/agent-door/people.ts": {

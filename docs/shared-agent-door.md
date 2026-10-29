@@ -16,8 +16,10 @@ subscription or downstream reconciliation surface.
 
 The read tools carry `standard`; membership changes carry `access`, with direction
 computed by the server. An empty group does not grant access. A membership touching
-a configured SCIM connector refuses with `connector_door_required` before queueing
-provider work. No money, paid account, regulated profile data, credential, issuer,
+a configured SCIM connector refuses with `connector_door_required`; any other
+app-assigned group refuses with `app_assignment_door_required`. These are native
+app-access jobs beyond this internal-group subset, including indirect outside
+exposure. Refusal happens before queueing provider work. No money, paid account, regulated profile data, credential, issuer,
 provider, recovery, installation or identity-admission action is exposed. There is
 no provider cost registration; spend is `none`. There is no agent Undo because
 membership removal is a separate native action rather than a historical reversal.
