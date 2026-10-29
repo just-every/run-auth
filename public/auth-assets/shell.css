@@ -31,7 +31,8 @@
 .owner-person strong, .owner-person .data-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .owner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .owner-actions form { margin: 0; }
-.owner-actions .secondary-button { min-height: 40px; padding: 0 18px; }
+.owner-actions .secondary-button, .owner-actions .quiet-button { min-height: 44px; padding: 0 18px; }
+.owner-actions .quiet-button { padding: 0 4px; }
 .issuer-host { display: block; font-size: 15px; overflow-wrap: anywhere; }
 
 .app-page {
@@ -59,14 +60,17 @@
   .app { display: flex; flex-direction: column; padding: 0 0 48px; }
   .sidebar { display: contents; }
   .sidebar-top { align-items: center; min-height: 64px; margin: 0 20px; border-bottom: 1px solid var(--rer-border); }
-  .sidebar-top .icon-button { display: inline-grid; }
+  .sidebar-top .icon-button { display: inline-grid; width: 44px; height: 44px; }
+  .sidebar .brand { min-height: 44px; }
   .brand { align-items: center; gap: 10px; }
   .brand-mark { width: 30px; height: 30px; margin: 0; }
   .brand strong { font-size: 24px; }
   .sidebar .brand-line { display: none; }
-  .sidebar nav { display: flex; gap: 6px; overflow-x: auto; margin: 14px 0 0; padding: 0 20px 4px; scrollbar-width: none; }
+  .sidebar nav { display: flex; gap: 6px; overflow-x: auto; margin: 14px 20px 0; padding: 0 0 4px; scrollbar-width: none; scroll-snap-type: x proximity; }
+  .sidebar nav[data-scrolls] { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-left, 0px), #000 calc(100% - var(--fade-right, 0px)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fade-left, 0px), #000 calc(100% - var(--fade-right, 0px)), transparent); }
   .sidebar nav::-webkit-scrollbar { display: none; }
-  .sidebar nav a { flex: none; min-height: 40px; padding: 0 16px; border-radius: 999px; font-size: 15px; }
+  .sidebar nav a { flex: none; min-height: 44px; padding: 0 16px; border-radius: 999px; font-size: 15px; scroll-snap-align: start; }
+  .sidebar nav a:last-child { scroll-snap-align: end; }
   .sidebar nav svg { display: none; }
   .sidebar-top { order: 0; }
   .sidebar nav { order: 1; }

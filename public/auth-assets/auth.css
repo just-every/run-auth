@@ -169,6 +169,7 @@ select:not([multiple],[size]:not([size="1"])):disabled { --rer-select-ink: color
 }
 @media (max-width: 599px) {
   .panel { padding: 20px 16px; border-radius: 16px; }
+  summary { padding-block: 11px; }
   .panel h2 { font-size: 20px; }
   .panel-header { flex-direction: column; align-items: stretch; gap: 14px; }
   .panel-header > form, .panel-header > .primary-button, .panel-header > .secondary-button, .panel-header > .danger-button,

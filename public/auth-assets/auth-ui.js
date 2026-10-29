@@ -285,8 +285,34 @@
     for (const button of document.querySelectorAll('[data-theme-toggle]')) button.setAttribute('aria-pressed', String(dark))
   }
   updateThemeButton()
-  // On a phone the nav is one scrolling row: bring the current page's link into view.
-  document.querySelector('.sidebar nav a.active')?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  // On a phone the nav is one scrolling row: open it on the current page's entry, whole at the left edge, with a fade when more follows.
+  const menu = document.querySelector('.sidebar nav')
+  if (menu) {
+    const left = entry => entry.getBoundingClientRect().left - menu.getBoundingClientRect().left + menu.scrollLeft
+    // Entries past an edge fade out, so a clipped one reads as more to scroll to.
+    const fade = () => {
+      const more = menu.scrollWidth > menu.clientWidth
+      if (!more) { delete menu.dataset.scrolls; return }
+      menu.dataset.scrolls = ''
+      const edge = menu.getBoundingClientRect(), cut = [...menu.children].map(entry => entry.getBoundingClientRect())
+      menu.style.setProperty('--fade-left', cut.some(box => box.left < edge.left - 1 && box.right > edge.left + 1) ? '28px' : '0px')
+      menu.style.setProperty('--fade-right', cut.some(box => box.left < edge.right - 1 && box.right > edge.right + 1) ? '28px' : '0px')
+    }
+    const open = () => {
+      const active = menu.querySelector('a.active')
+      if (active && menu.scrollWidth > menu.clientWidth) {
+        menu.scrollLeft = left(active)
+        // Start on a whole entry when that keeps the current one whole too.
+        const first = [...menu.children].find(entry => left(entry) + entry.offsetWidth > menu.scrollLeft + 1)
+        if (first && left(first) < menu.scrollLeft - 1 && left(active) + active.offsetWidth <= left(first) + menu.clientWidth) menu.scrollLeft = left(first)
+      }
+      fade()
+    }
+    menu.addEventListener('scroll', fade, { passive: true })
+    open()
+    // Fonts change the entries' widths: place the row again once they are in.
+    document.fonts?.ready.then(open)
+  }
   document.addEventListener('click', event => {
     const themeButton = event.target.closest('[data-theme-toggle]')
     if (themeButton) {
