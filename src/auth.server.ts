@@ -73,10 +73,13 @@ export async function openSessionResponse(request: Request, original: Bindings, 
  if (!await session(identityAuth(env, allowDevSession, work => execution.waitUntil(work)).context, request)) return null
  return redirect('/app')
 }
-// An address outside the app that nothing answers: Auth's card, and the way back.
+// Auth's card for a short document (a missing address, the privacy note): a title, one line and the way back.
+const cardDocument = (title: string, line: string, action: { href: string; label: string }, status: number, method: string) =>
+ new Response(method === 'HEAD' ? null : framedPage(`${title} — Auth`, `<h1>${title}</h1><p>${line}</p><a class="primary-button signin-action" href="${action.href}">${action.label}</a>`), { status, headers: { ...privateHeaders, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': `default-src 'none'; ${FRAME_SOURCES}; form-action 'none'; frame-ancestors 'none'; base-uri 'none'` } })
+// An address outside the app that nothing answers.
 export const notFoundDocument = (request: Request, response: Response): Response =>
  response.status === 404 && ['GET', 'HEAD'].includes(request.method) && response.headers.get('content-type')?.includes('text/html')
-  ? new Response(framedPage('Page not found — Auth', '<h1>Page not found</h1><p>There is nothing at this address.</p><a class="primary-button signin-action" href="/">Back to Auth</a>'), { status: 404, headers: { ...privateHeaders, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': `default-src 'none'; ${FRAME_SOURCES}; form-action 'none'; frame-ancestors 'none'; base-uri 'none'` } })
+  ? cardDocument('Page not found', 'There is nothing at this address.', { href: '/', label: 'Back to Auth' }, 404, request.method)
   : response
 const pages = new Set<AuthPage>(['people', 'move-in', 'agents', 'apps', 'methods', 'activity', 'account', 'organizations', 'roles', 'permissions', 'erasure'])
 
@@ -106,12 +109,13 @@ export async function authResponse(request: Request, original: Bindings, executi
  // Base claims the owner, but never authorizes Auth administration or enrollment.
  if (['/auth/bootstrap', '/auth/session', '/auth/signout'].includes(path)) return fontDocumentResponse(await createAuthHandler(operatorAuth(env))(request))
  const ownsIdentity = path.startsWith('/auth/') || path.startsWith('/oidc/') || path.startsWith('/saml/') || path.startsWith('/api/auth/') || ['/.well-known/openid-configuration', '/.well-known/rer-provider', '/.well-known/rer-dependencies'].includes(path)
- const ownsPage = path === '/' || path === '/signin' || path === '/setup' || path === '/app' || path.startsWith('/app/')
+ const ownsPage = path === '/' || path === '/signin' || path === '/privacy' || path === '/setup' || path === '/app' || path.startsWith('/app/')
  if (!ownsIdentity && !ownsPage) return null
  if (url.origin !== env.AUTH_ORIGIN || (request.headers.has('host') && request.headers.get('host')?.toLowerCase() !== url.host.toLowerCase())) return new Response(null, { status: 403, headers: privateHeaders })
  const auth = identityAuth(env, allowDevSession, work => execution.waitUntil(work))
  if (ownsIdentity) return await auth.fetch(request) ?? devNotFound()
  if (!['GET', 'HEAD'].includes(request.method) && path !== '/setup') return new Response(null, { status: 405, headers: { ...privateHeaders, allow: 'GET, HEAD' } })
+ if (path === '/privacy') return cardDocument('Privacy', 'To ask for erasure of an employer membership, contact that employer’s Auth owner. Each employer holds its memberships separately.', { href: '/signin', label: 'Back to sign in' }, 200, request.method)
  if (path === '/signin') {
   // Confirming an email or stepping up to a passkey are the reasons to meet the form while signed in.
   if (!url.searchParams.has('reproof') && !url.searchParams.has('stepup') && (await auth.model(request, 'account')).user) {

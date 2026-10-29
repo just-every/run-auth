@@ -26,7 +26,7 @@ export async function organizationResponse(ctx,response) {
  if(location)headers.set('location',publicPath(ctx,location));
  let body=response.body;
  if(headers.get('content-type')?.includes('text/html')) {
-  body=(await response.text()).replace(/\b(href|action)="(\/(?:app|signin|setup|auth\/|api\/|oidc\/|saml\/|__dev\/)[^"]*)"/g,(_,attribute,path)=>`${attribute}="${publicPath(ctx,path)}"`);
+  body=(await response.text()).replace(/\b(href|action)="(\/(?:app|signin|setup|privacy|auth\/|api\/|oidc\/|saml\/|__dev\/)[^"]*)"/g,(_,attribute,path)=>`${attribute}="${publicPath(ctx,path)}"`);
  }
  return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }

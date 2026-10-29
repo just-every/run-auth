@@ -15,7 +15,14 @@
       status.setAttribute('role', kind === 'error' ? 'alert' : 'status')
     }
   }
+  const passRefused = 'That pass was refused. It may be wrong, already used or expired. Ask your administrator or manager for a new one.'
   const friendlyErrors = {
+    temporary_pass_unavailable: passRefused,
+    temporary_pass_target_refused: passRefused,
+    temporary_pass_target_changed: passRefused,
+    temporary_pass_authority_changed: passRefused,
+    temporary_pass_person_mismatch: 'That pass belongs to a different account. Sign out, then enter it again.',
+    temporary_pass_rate_limited: 'Too many attempts. Wait an hour, or ask your administrator or manager for a new pass.',
     domain_not_verified: 'Prove ownership of this exact domain on Sign-in methods first.',
     domain_already_claimed: 'Another employer holds this domain. Contact your installation owner.',
     domain_challenge_incorrect: 'The TXT record does not match yet. Check its exact name and value, then try again.',

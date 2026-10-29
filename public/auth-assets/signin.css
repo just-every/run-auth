@@ -31,11 +31,12 @@
 .signin-divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; font-size: 14px; color: var(--rer-muted); }
 .signin-divider::before, .signin-divider::after { content: ""; flex: 1; height: 1px; background: var(--rer-border); }
 .signin-host { margin-top: 36px; text-align: center; font-size: 14px; color: var(--rer-muted); }
+.signin-host a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; }
 .signin-host strong { font-weight: 500; font-size: 15px; color: var(--rer-text); }
 
 @media (max-width: 700px) {
-  .app-signin { place-items: start center; padding: 160px 16px 32px; }
-  .signin-door { left: 20px; top: 24px; height: 176px; transform: none; }
+  .app-signin { place-items: start center; padding: 196px 16px 32px; }
+  .signin-door { left: 20px; top: 20px; height: 160px; transform: none; }
   .signin-card { padding: 32px 22px 28px; }
   .signin-card > .brand { margin-bottom: 24px; }
   .signin-card h1 { font-size: 34px; }
