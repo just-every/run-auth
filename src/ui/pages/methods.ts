@@ -29,7 +29,7 @@ export function renderMethodsPage(model: AuthPageModel): string {
   const temporaryNotice = amr.includes('tap') ? '<p>You are using a temporary access pass. Confirm your work email, then register your first passkey. This session cannot open apps and ends when enrollment completes.</p>' : ''
   const enrollment = canEnroll
     ? '<button class="primary-button" type="button" data-passkey-enroll>Register a passkey</button>'
-    : `<p>${passkeys.length ? 'Sign in with your existing passkey to register another.' : 'Confirm your email in this browser before registering your first passkey.'}</p><a class="primary-button" href="/signin?returnTo=%2Fapp%2Fmethods">${passkeys.length ? 'Sign in with your passkey' : 'Confirm your email'}</a>`
+    : `<p>${passkeys.length ? 'Sign in with your existing passkey to register another.' : 'Confirm your email in this browser before registering your first passkey.'}</p><a class="primary-button" href="/signin?${passkeys.length ? 'stepup' : 'reproof'}=1&returnTo=%2Fapp%2Fmethods">${passkeys.length ? 'Sign in with your passkey' : 'Confirm your email'}</a>`
   const currentUser = model.user ?? model.me
   const confirmEmail = `<form method="post" action="/auth/identity/email/request" data-auth-action data-email-request>${csrfField(model.csrf)}<input type="hidden" name="email" value="${escape(currentUser?.email)}"><input type="hidden" name="returnTo" value="/app/methods"><button class="secondary-button" type="submit">Confirm my email</button></form>`
   const authenticate = passkeys.length ? `<button class="secondary-button" type="button" data-passkey-authenticate data-return-to="/app/methods">${amr.includes('hwk') ? 'Confirm with a passkey' : 'Continue with a passkey'}</button>` : ''

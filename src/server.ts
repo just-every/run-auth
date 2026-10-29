@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { dispatch } from './base/dispatch'
 import { staticAssetResponse } from './base/static-assets'
 import { deploymentHealth } from './base/deployment-health'
-import { authResponse, identityAuth, runtimeBindings, type Bindings } from './auth.server'
+import { authResponse, identityAuth, openSessionResponse, runtimeBindings, type Bindings } from './auth.server'
 import { ownerClaimResponse } from './owner-claim.server'
 import { isPrivatePath } from './private-paths'
 
@@ -31,6 +31,8 @@ export function createWorker(options: { allowDevSession?: (request: Request, env
     if (agentResponse) return agentResponse
     const state = await setupStateResponse(request, bindings)
     if (state) return state
+    const open = new URL(request.url).pathname === '/' && await openSessionResponse(request, env, execution, options.allowDevSession ? r => options.allowDevSession!(r, env) : undefined)
+    if (open) return open
     const deployment = await authBusiness(bindings).resolve('display_name', identity.deployment)
     const lobby = await lobbyResponse(request, bindings, { ...identity, deployment: String(deployment) })
     if (lobby) return lobby

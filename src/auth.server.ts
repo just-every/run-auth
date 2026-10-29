@@ -7,6 +7,8 @@ import { operatorMail } from './mail.server.mjs'
 import { createD1DevelopmentOutbox, createDevelopmentOutboxHandler } from './modules/mail/src/development/index.mjs'
 import { createAuthRuntime, type AuthRuntimeOptions } from './auth/index.mjs'
 import { renderAuthPage, renderSignInPage, type AuthPage } from './ui/index'
+import { localReturnTo } from './ui/helpers'
+import { session } from './auth/core.mjs'
 import branding from './branding.json'
 
 const theme = { href: '/rer-theme.css', productName: branding.name, accentColor: branding.primaryColor }
@@ -62,6 +64,13 @@ export function identityAuth(original: Bindings, allowDevSession?: AuthRuntimeOp
 const privateHeaders = { 'cache-control': 'no-store', 'referrer-policy': 'strict-origin', 'x-content-type-options': 'nosniff', 'x-robots-tag': 'noindex, nofollow' }
 const redirect = (location: string) => new Response(null, { status: 303, headers: { ...privateHeaders, location } })
 const html = (body: string, method: string, authorizationOrigins: string[] = []) => new Response(method === 'HEAD' ? null : body, { headers: { ...privateHeaders, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self' ${authorizationOrigins.map(origin => new URL(origin).origin).join(' ')}; base-uri 'none'; frame-ancestors 'none'` } })
+// An open session never meets a sign-in prompt: / and /signin send it into the app.
+export async function openSessionResponse(request: Request, original: Bindings, execution: ExecutionContext, allowDevSession?: AuthRuntimeOptions['allowDevSession']): Promise<Response | null> {
+ if (!['GET', 'HEAD'].includes(request.method) || !request.headers.has('cookie')) return null
+ const env = runtimeBindings(original)
+ if (!await session(identityAuth(env, allowDevSession, work => execution.waitUntil(work)).context, request)) return null
+ return redirect('/app')
+}
 const pages = new Set<AuthPage>(['people', 'move-in', 'agents', 'apps', 'methods', 'activity', 'account', 'organizations', 'roles', 'permissions', 'erasure'])
 
 export async function authResponse(request: Request, original: Bindings, execution: ExecutionContext, allowDevSession?: AuthRuntimeOptions['allowDevSession']): Promise<Response | null> {
@@ -85,7 +94,7 @@ export async function authResponse(request: Request, original: Bindings, executi
   if (!response) return devNotFound()
   if (request.method !== 'GET' || !response.headers.get('content-type')?.includes('text/html')) return response
   const body = await response.text()
-  return new Response(body.replace('<body>', '<body><p><a href="/signin?returnTo=%2Fsetup">Request an Auth sign-in link in this browser</a></p>'), { status: response.status, headers: response.headers })
+  return new Response(body.replace('<body>', '<body><p><a href="/signin?reproof=1&returnTo=%2Fsetup">Request an Auth sign-in link in this browser</a></p>'), { status: response.status, headers: response.headers })
  }
  // Base claims the owner, but never authorizes Auth administration or enrollment.
  if (['/auth/bootstrap', '/auth/session', '/auth/signout'].includes(path)) return fontDocumentResponse(await createAuthHandler(operatorAuth(env))(request))
@@ -97,6 +106,11 @@ export async function authResponse(request: Request, original: Bindings, executi
  if (ownsIdentity) return await auth.fetch(request) ?? devNotFound()
  if (!['GET', 'HEAD'].includes(request.method) && path !== '/setup') return new Response(null, { status: 405, headers: { ...privateHeaders, allow: 'GET, HEAD' } })
  if (path === '/signin') {
+  // Confirming an email or stepping up to a passkey are the reasons to meet the form while signed in.
+  if (!url.searchParams.has('reproof') && !url.searchParams.has('stepup') && (await auth.model(request, 'account')).user) {
+   const returnTo = url.searchParams.get('returnTo')
+   return redirect(returnTo && returnTo !== '/setup' ? localReturnTo(returnTo) : '/app')
+  }
   const providers = (await auth.upstreamProviders()).filter(provider => provider.visible)
   return html(renderSignInPage({ issuer: env.AUTH_ORIGIN, returnTo: url.searchParams.get('returnTo') ?? '/setup', providers, notice: url.searchParams.get('reproof') === '1' ? 'A recent email confirmation is required. Check your email and open its link in this browser.' : undefined }), request.method, providers.flatMap(provider => provider.authorizationOrigins))
  }
