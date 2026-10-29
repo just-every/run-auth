@@ -72,6 +72,12 @@ export const brandLockup = (tag: 'div' | 'a' = 'div'): string =>
 
 const themeToggle = `<button class="icon-button" type="button" data-theme-toggle data-tooltip="Color theme" aria-label="Toggle color theme" aria-pressed="false">${icon('theme')}</button>`
 
+// The active organization: plain text, or a link to the switcher when there is more than one to choose.
+const tenantName = (model: AuthPageModel, host: string): string => {
+  const name = escape(model.organizations?.current.name ?? host)
+  return (model.organizations?.memberships.length ?? 0) > 1 ? `<a class="tenant" href="/app/organizations">${name}</a>` : `<span class="tenant-name">${name}</span>`
+}
+
 // The signed-in person at the foot of the menu, with the only places to end a session.
 const ownerBlock = (model: AuthPageModel): string => {
   const user = model.user ?? model.me
@@ -91,5 +97,5 @@ export const renderShell = (model: AuthPageModel, page: AuthPage | 'not-found', 
   const accountBadge = user
     ? `<a class="initials account-initials" data-tooltip="My account" href="/app" aria-label="My account for ${escape(currentName)}">${escape(initials(user.name) || '•')}</a>`
     : ''
-  return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav>${ownerBlock(model)}</aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}<span class="tenant" title="Active organization">${escape(model.organizations?.current.name ?? host)}</span>${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${content}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
+  return `<!doctype html><html lang="en"><head>${documentHead(`${copy.title} — Auth`)}</head><body>${iconDefinitions}<div class="app" data-auth-page="${page}"><aside class="sidebar"><div class="sidebar-top">${brandLockup('a')}${themeToggle}</div><nav aria-label="Main navigation">${nav}</nav>${ownerBlock(model)}</aside><main class="app-page"><header class="heading"><div><h1>${copy.title}</h1><p class="subtitle">${copy.subtitle}</p></div><div class="heading-tools">${themeToggle}${tenantName(model, host)}${accountBadge}</div></header><div class="page-content"><div class="notice-list">${modelNotices(model)}<div class="notice-panel" data-auth-status data-kind="info" role="status" aria-live="polite"></div></div>${content}</div></main></div><span class="visually-hidden" id="auth-page-title">${copy.title}</span></body></html>`
 }

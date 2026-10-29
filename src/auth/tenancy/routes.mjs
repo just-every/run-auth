@@ -5,18 +5,26 @@ import {organizationPath} from './context.mjs';
 
 export const TENANCY_READ='/api/auth/organizations';
 export const isTenancyAction=path=>['/organizations/create','/organizations/invite','/organizations/cancel-invitation','/organizations/switch'].includes(path);
+const FREE_MAIL=new Set(['gmail.com','googlemail.com','outlook.com','hotmail.com','live.com','yahoo.com','icloud.com','me.com','proton.me','protonmail.com']);
+// The installation is named after something real: the first owner's company domain, else the issuer's host.
+async function installationName(ctx,root) {
+ const owner=await root.prepare("SELECT email FROM oa_operators WHERE role='owner' AND status='active' ORDER BY created_at,id LIMIT 1").first();
+ const domain=owner?.email.split('@')[1]?.toLowerCase();
+ return domain&&!FREE_MAIL.has(domain)?domain:new URL(ctx.origin).host;
+}
 export async function tenancyModel(ctx,request,s) {
  s??=await requireSession(ctx,request);
  const root=ctx.rootDb??ctx.db,available=[];
  // Only a live membership session reveals an employer, never an email match.
  const organizations=(await root.prepare("SELECT id,name FROM auth_organizations WHERE status='active' ORDER BY created_at,id").all()).results;
- for(const org of [{id:'root',name:'Installation'},...organizations]) {
+ const rootName=await installationName(ctx,root);
+ for(const org of [{id:'root',name:rootName},...organizations]) {
   const db=org.id==='root'?root:(await organizationDatabase(root,org.id))?.db;
   if(!db)continue;
   const member=await session({...ctx,db,organizationId:org.id},request);
   if(member)available.push({...org,role:member.role,path:organizationPath(org.id)+'/app/account',active:org.id===(ctx.organizationId??'root')});
  }
- return {current:{id:ctx.organizationId??'root',name:ctx.organization?.name??'Installation'},memberships:available,canCreate:ctx.organizationId==='root'&&s.role==='owner'&&JSON.parse(s.amr).includes('hwk')};
+ return {current:{id:ctx.organizationId??'root',name:ctx.organization?.name??rootName},memberships:available,canCreate:ctx.organizationId==='root'&&s.role==='owner'&&JSON.parse(s.amr).includes('hwk')};
 }
 export async function tenancyRead(ctx,request) {const s=await requireSession(ctx,request);return json(await tenancyModel(ctx,request,s));}
 export async function tenancyAction(ctx,request,path,data) {
