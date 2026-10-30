@@ -9,7 +9,8 @@ import {authenticate} from './webauthn.mjs';
 const result=async(response,status=200)=>{assert.equal(response.status,status,await response.clone().text());return response.json();};
 const mapping={sourceId:'Employee ID',email:'Work email',name:'Name',department:'Department',state:'Status',effectiveAt:'Effective'};
 const csv=rows=>'Employee ID,Work email,Name,Department,Status,Effective\n'+rows.map(row=>row.join(',')).join('\n')+'\n';
-const keyPair=()=>utils.generateKeyPairSync('ed25519');
+// ssh2 1.17.0 truncates leading zero bytes in generated Ed25519 keys; use P-256 fixtures.
+const keyPair=()=>utils.generateKeyPairSync('ecdsa',{bits:256});
 const keyFingerprint=key=>fingerprint(utils.parseKey(key.public).getPublicSSH());
 async function fixture(t) {
  const {r,owner}=await ownerInstall(t),key=keyPair();

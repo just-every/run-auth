@@ -3888,7 +3888,7 @@
       "executable": false
     },
     "tests/auth/followup-decisions-flow.mjs": {
-      "sha256": "4c827ab6c309a1afd6f5d996df8e536e7847b952dc16b0e1d5f8ae3ecec6be36",
+      "sha256": "3769dcc5d679209565d8797940b3e627fbc983dc45e277feea1680f5ad018d58",
       "executable": false
     },
     "tests/auth/followup-flow.mjs": {
@@ -3908,7 +3908,7 @@
       "executable": false
     },
     "tests/auth/hr-file-flow.mjs": {
-      "sha256": "123cea0f8abb84e3ddbe39743c74cef1bbf045da18db926cfe7918b83b247479",
+      "sha256": "47db7a2268e4bd034ebba674ee599739e64ab174276e0463b732f3f2e4788b00",
       "executable": false
     },
     "tests/auth/identity-pairs-flow.mjs": {
@@ -4308,7 +4308,7 @@
       "executable": false
     },
     "tests/integration/helpers/hr-file-journey.mjs": {
-      "sha256": "edf6ce44fe4c76b14f55decf78a220393235b2af74223912c39235c1bbaaee90",
+      "sha256": "bf9b54cbdc586c5b64f9af898701074fce21af53423ee05bf8548311294091c5",
       "executable": false
     },
     "tests/integration/helpers/identity-pairs-journey.mjs": {

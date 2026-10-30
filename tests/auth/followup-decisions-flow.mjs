@@ -25,7 +25,8 @@ export async function followupDecisionsFlow(t) {
  await admin('/company-apps/assign',{appId:app.id,principalType:'person',principalId:'synthetic-auth-403',role:'reader'});
  const review=await admin('/reviews/create',{name:'Weekend access review',reviewerId:'synthetic-auth-402',periodStart:r.now-86400000,periodEnd:r.now,dueAt:Date.parse('2026-03-06T16:00:00Z')},201);
  const target=(await checked(await r.call('/api/auth/reviews',{cookie:owner.cookie}))).reviews.find(v=>v.id===review.id).items[0];
- const key=ssh2.utils.generateKeyPairSync('ed25519');
+ // ssh2 1.17.0 truncates leading zero bytes in generated Ed25519 keys; use P-256 fixtures.
+ const key=ssh2.utils.generateKeyPairSync('ecdsa',{bits:256});
  const fingerprint='SHA256:'+createHash('sha256').update(ssh2.utils.parseKey(key.public).getPublicSSH()).digest('base64').replace(/=+$/,'');
  const feed=await admin('/hr-feeds/create',{name:'Freshness follow-up fixture',schedule:'hourly',fingerprint,mapping:{sourceId:'ID',email:'Email',state:'State',effectiveAt:'Effective'},confirm:true},201);
  const settings={confirm:true,enabled:true,calendar:{timezone:['America','New_York'].join('/'),weekdays:[1,2,3,4,5],holidays:[],at:'09:00'},reminderBusinessDays:1,deadlineBusinessDays:2,recipients:['decider'],escalationRecipients:['synthetic-auth-401'],escalation:'repeat_until_resolved'};

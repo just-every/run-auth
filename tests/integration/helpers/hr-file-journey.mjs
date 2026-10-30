@@ -8,7 +8,8 @@ import ssh2 from 'ssh2';
 import {expect} from '@playwright/test';
 const root=fileURLToPath(new URL('../../../',import.meta.url));
 export async function hrFileJourney({app,context,page,shoot}) {
- const key=ssh2.utils.generateKeyPairSync('ed25519');
+ // ssh2 1.17.0 truncates leading zero bytes in generated Ed25519 keys; use P-256 fixtures.
+ const key=ssh2.utils.generateKeyPairSync('ecdsa',{bits:256});
  const fingerprint='SHA256:'+createHash('sha256').update(ssh2.utils.parseKey(key.public).getPublicSSH()).digest('base64').replace(/=+$/,'');
  const post=(path,data)=>context.request.post(app.origin+'/api/auth/'+path,{data,headers:{origin:app.origin}});
  const registered=await post('hr-feeds/create',{name:'Reviewed hourly HR delivery',schedule:'hourly',fingerprint,
