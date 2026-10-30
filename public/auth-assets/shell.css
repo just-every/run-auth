@@ -1,5 +1,5 @@
 /* The signed-in shell: a 272px sidebar beside one white panel at 1024px and up;
-   below that a top bar, a scrolling row of nav links and the page on paper. */
+   below that a top bar, a scrolling row of nav links and the page on the same white column. */
 .app { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 8px; min-height: 100vh; padding: 32px 40px 40px 0; }
 
 .sidebar { display: flex; flex-direction: column; padding: 8px 20px 0 32px; position: sticky; top: 32px; align-self: start; min-height: calc(100vh - 72px); }
@@ -36,7 +36,7 @@
 .issuer-host { display: block; font-size: 15px; overflow-wrap: anywhere; }
 
 .app-page {
-  min-width: 0; padding: 40px; border-radius: 18px; background: var(--rer-surface); border: 1px solid var(--rer-border);
+  min-width: 0; padding: 40px; border-radius: 18px; background: var(--main-column); border: 1px solid var(--rer-border);
   box-shadow: 0 1px 2px rgb(31 36 40 / .06), 0 12px 32px rgb(31 36 40 / .08);
 }
 .heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
@@ -76,7 +76,7 @@
   .sidebar nav { order: 1; }
   .app-page { order: 2; }
   .sidebar .owner { order: 3; margin: 8px 20px 0; }
-  .app-page { padding: 24px 20px 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .app-page { padding: 24px 20px 0; border: 0; border-radius: 0; box-shadow: none; background: var(--main-column-phone); }
   .heading { flex-direction: column; gap: 16px; margin-bottom: 24px; }
   .heading h1 { font-size: 28px; }
   .heading-tools { width: 100%; justify-content: space-between; }

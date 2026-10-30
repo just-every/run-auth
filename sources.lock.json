@@ -848,7 +848,7 @@
       "executable": false
     },
     "public/auth-assets/shell.css": {
-      "sha256": "7b688c082569b60694a38d607c2ad22944f74802bd09b1061a16c3526f1fa1d9",
+      "sha256": "d3d40e102b2d0bfadc3d3d30bea0d3139fb900cd1827a782167f3ce7eb4d5f8e",
       "executable": false
     },
     "public/auth-assets/signin.css": {
@@ -896,7 +896,7 @@
       "executable": false
     },
     "public/fonts/fonts.css": {
-      "sha256": "1235eaade5536544cc74c4cbe6310c15d77ca75e347fa79803b1c7275d2da745",
+      "sha256": "dd73368e0ac9ae536dd0277d06b38fe0b91355c68c0d5531de7b6ad50183d220",
       "executable": false
     },
     "public/fonts/README.md": {

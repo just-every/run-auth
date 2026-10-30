@@ -18,6 +18,8 @@
   --invited: #F1EEE7;
   --invited-text: #5B6268;
   --input-border: #B9B3A8;
+  --main-column: #FFFFFF;
+  --main-column-phone: #FFFFFF;
   color-scheme: light;
 }
 button, input, select, textarea { font-family: inherit; }
@@ -41,6 +43,8 @@ button, input, select, textarea { font-family: inherit; }
     --invited: #2A2F32;
     --invited-text: #C9CDD0;
     --input-border: #4A5358;
+    --main-column: var(--rer-surface);
+    --main-column-phone: transparent;
     color-scheme: dark;
   }
 }
@@ -63,6 +67,8 @@ button, input, select, textarea { font-family: inherit; }
   --invited: #2A2F32;
   --invited-text: #C9CDD0;
   --input-border: #4A5358;
+  --main-column: var(--rer-surface);
+  --main-column-phone: transparent;
   color-scheme: dark;
 }
 
