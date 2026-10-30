@@ -156,7 +156,7 @@
       "executable": false
     },
     "base-copies.json": {
-      "sha256": "894fb4c4a9c3e004576ddbd693bf1e18af116c366b18b5ecd762ab42c67e03ef",
+      "sha256": "f98849dcb4474de315fe1597f5119c7b5f15a41e3246626a75a4a99116a16924",
       "executable": false
     },
     "COMPANY-APPS.md": {
@@ -2380,7 +2380,7 @@
       "executable": false
     },
     "src/base/contract-style.ts": {
-      "sha256": "1012e5477ae1ab10f09a979f0dc4db5d2402ba37ac22b63c161d773dcab70df6",
+      "sha256": "13ec2154bf6f616afae23c0d6e0e295184c7ac81ec0029b4fc813d9a3ff1c77c",
       "executable": false
     },
     "src/base/deployment-health.ts": {
@@ -2436,7 +2436,7 @@
       "executable": false
     },
     "src/base/run-site.ts": {
-      "sha256": "62759c202a14ee1dbbfbd415236de9d5a2502fba27306bc8d22d3018880a11b8",
+      "sha256": "e43f811374968a6a4a453b710c5e69349c128e9a5bfd04ce8d7029b34e0ffcfd",
       "executable": false
     },
     "src/base/seed-contract.d.mts": {
@@ -3516,7 +3516,7 @@
       "executable": false
     },
     "src/site/docs/docs.css": {
-      "sha256": "c56320c774f6a828acb3afa65ded3769f561a2132dfb21073f6e6937fb6656d5",
+      "sha256": "f7b90f9d06a64ea9cd141c73488b0292f2875d043c221c5b87e9dc4041e0b13b",
       "executable": false
     },
     "src/site/docs/DocsArticle.tsx": {
@@ -3536,7 +3536,7 @@
       "executable": false
     },
     "src/site/landing/copy.ts": {
-      "sha256": "d63cf65f91cd5cdc6ab1f9ef94eddad7832b1a35463d9d2c3fcd1957cc250d97",
+      "sha256": "63c0c49ee9a2ab2547f4c13524e1a4e01def617ec498b57ac11b13c8b955a557",
       "executable": false
     },
     "src/site/landing/Details.tsx": {
@@ -3544,7 +3544,7 @@
       "executable": false
     },
     "src/site/landing/drawings.tsx": {
-      "sha256": "21f0953dc1582e87ff4892a6b1e7997ea5934891d2d46a92cebed61841b66e3a",
+      "sha256": "81c7ad65d437ae8617b049a1f34aec3af06030a81f122d13c53cdbe94c8e1619",
       "executable": false
     },
     "src/site/landing/Feature.tsx": {
@@ -3552,7 +3552,7 @@
       "executable": false
     },
     "src/site/landing/Hero.tsx": {
-      "sha256": "7be14b29d37b1cf7c90e41902e811bfb52ab59a62a0a9fbb4d537f6a5b696f7b",
+      "sha256": "d0a34e4cecb7e65315352fa0510a4a8e230b50aabd781a7022b1c94f0b40c061",
       "executable": false
     },
     "src/site/landing/icons.tsx": {
@@ -3560,7 +3560,7 @@
       "executable": false
     },
     "src/site/landing/landing.css": {
-      "sha256": "4ca69e0323c5a98a0f5f3ffe23617b449b954f2e93d307d6207704e608af7b0b",
+      "sha256": "580f994262afc45534b66f5af812cc74b59e30ae4287ebc0183c0fb906e2f55b",
       "executable": false
     },
     "src/site/landing/Landing.tsx": {
@@ -3584,7 +3584,7 @@
       "executable": false
     },
     "src/site/shell/site.css": {
-      "sha256": "6b2346946500cba7a4e2b41a8c01d884bdb3e0a612e93493db91bf31a804e85f",
+      "sha256": "6e8da45d60d2a462c774132fb826afe073c0ce84e3847faac8bb547c8512a8e8",
       "executable": false
     },
     "src/site/shell/SiteFooter.tsx": {

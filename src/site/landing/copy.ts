@@ -1,6 +1,6 @@
 // Every string on the run site's homepage, exactly as the approved spec gives it
-// (rer-consolidation evidence/gr-auth-style/SPEC.md §1, with the owner's 16 Oct
-// hero fix: the hero says "free" once).
+// (rer-consolidation evidence/gr-auth-style/SPEC.md §1). Since the owner's 28 Oct
+// decision "free" is a footnote (the closing line), never the hero, a lead or a section.
 
 export const hero = {
   title: ['Sign in', 'with a touch.'],
@@ -21,7 +21,7 @@ export const features: Feature[] = [
   { id: 'apps', eyebrow: 'Your apps', title: 'One sign-in for your apps.', body: 'Approve an app and your team signs in to it with Auth. Sign out everywhere reaches every app you linked.', side: 'right' },
   { id: 'people', eyebrow: 'People', title: 'Everyone in one place.', body: "Invite people, allow your company's domain and suspend access from one list.", side: 'left' },
   { id: 'move-in', eyebrow: 'Move in', title: 'Bring your team across.', body: 'Stage a user export from Google Workspace, Microsoft Entra, Auth0, Okta or JumpCloud, review it, then admit people as invitations.', side: 'right' },
-  { id: 'free', eyebrow: '100% free', title: '100% free.', body: 'Free as in code, free as in cost. MIT licensed, nothing to pay.', side: 'left' },
+  { id: 'open-source', eyebrow: 'Open source', title: 'Open source.', body: 'MIT licensed. Read, change and run every line of the source.', side: 'left' },
   { id: 'ownership', eyebrow: 'Ownership', title: 'Yours, start to finish.', body: 'Run Auth on your own computer. Your people, passkeys and apps stay in your installation, and export with you.', side: 'right' },
 ]
 

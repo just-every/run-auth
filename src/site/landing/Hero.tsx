@@ -14,7 +14,7 @@ export function Hero() {
       <div className="hero-copy">
         <h1>{hero.title[0]}<br />{hero.title[1]}</h1>
         <p className="hero-sub">{hero.sub}</p>
-        <p className="alternative">100% free, open source alternative to <strong>{hero.alternativeTo[0]}</strong>, <strong>{hero.alternativeTo[1]}</strong> and <strong>{hero.alternativeTo[2]}</strong></p>
+        <p className="alternative">An open source alternative to <strong>{hero.alternativeTo[0]}</strong>, <strong>{hero.alternativeTo[1]}</strong> and <strong>{hero.alternativeTo[2]}</strong></p>
         <RunActions />
       </div>
       <figure className="hero-art" aria-label={hero.figure}>
