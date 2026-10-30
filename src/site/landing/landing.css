@@ -61,7 +61,7 @@
 .feature h2 { max-width: 11ch; }
 .feature .feature-body { margin-top: 24px; max-width: 32em; }
 .feature-drawing { width: 100%; max-width: 540px; justify-self: center; }
-#free .feature-drawing, #ownership .feature-drawing { max-width: 600px; }
+#open-source .feature-drawing, #ownership .feature-drawing { max-width: 600px; }
 
 /* Also included */
 .details { padding: 80px 0; }
