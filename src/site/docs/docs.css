@@ -78,4 +78,7 @@
   .docs-prose h2 { margin-top: 36px; font-size: 24px; }
   .docs-prose .docs-code { padding: 16px; }
   .docs .site-footer { margin-top: 48px; }
+  .docs-home, .docs-toc a { display: flex; align-items: center; min-height: 44px; }
+  .docs-home { width: fit-content; gap: .25em; margin: -10px 0 14px; }
+  .docs-toc ul { gap: 0; }
 }
