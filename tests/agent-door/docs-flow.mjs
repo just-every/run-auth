@@ -78,6 +78,27 @@ export async function agentDocsFlow(t, siteGuide) {
     const servedNames = [...html.matchAll(/<p><code>(auth\.[a-z.]+)<\/code><\/p>/g)].map(match => match[1])
     assert.deepEqual(servedNames, listedNames, door + ' serves every production tool and no extra tool')
     for (const resource of templates.result.resourceTemplates) assert.ok(html.includes(resource.uriTemplate.replaceAll('&', '&amp;')), door + ' serves resource templates')
+    const sections = new Map([...html.matchAll(/<h3\b[\s\S]*?(?=<h[23]\b|$)/g)].flatMap(([section]) => {
+      const name = section.match(/<p><code>(auth\.[a-z.]+)<\/code><\/p>/)?.[1]
+      return name ? [[name, section]] : []
+    }))
+    const escaped = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+    for (const tool of listed.result.tools) {
+      const section = sections.get(tool.name)
+      assert.ok(section, door + ' has a job section for ' + tool.name)
+      assert.ok(section.includes('Scope: <code>' + tool._meta['com.runeditrun/scope'] + '</code>. Classes: ' +
+        tool._meta['com.runeditrun/classes'].map(cls => '<code>' + cls + '</code>').join(', ') + '.'),
+      door + ' attaches the exact scope and classes to ' + tool.name)
+      assert.ok(section.includes(escaped(JSON.stringify(tool.inputSchema, null, 2))), door + ' documents the production input bounds for ' + tool.name)
+      for (const [index, step] of app.surface.journey.entries()) if (step.tool === tool.name) {
+        for (const [item, expected] of step.expect.entries()) {
+          assert.ok(section.includes('<code>' + expected.class + '</code> with facts <code>' + escaped(JSON.stringify(expected.facts ?? {})) + '</code>'),
+            door + ' attaches the computed class facts to ' + tool.name)
+          assert.ok(section.includes('journey ' + step.id + ', JSON pointer /journey/' + index + '/expect/' + item),
+            door + ' links the exact class fixture for ' + tool.name)
+        }
+      }
+    }
   }
   for (const resource of templates.result.resourceTemplates) assert.ok(guide.includes('`' + resource.uriTemplate + '`'))
   for (const tool of listed.result.tools) {
@@ -109,6 +130,11 @@ export async function agentDocsFlow(t, siteGuide) {
     surface => surface.resources.push('auth://synthetic/{id}'),
     surface => surface.specialist = 'synthetic stale role',
     surface => surface.journey = surface.journey.filter(step => step.tool !== surface.tools[0].name),
+    surface => surface.journey.push({ ...surface.journey[0], id: 'synthetic-extra', tool: 'auth.synthetic.extra' }),
+    surface => surface.journey[1].id = surface.journey[0].id,
+    surface => delete surface.journey[0].id,
+    surface => surface.journey[0].expect = [],
+    surface => surface.journey[0].expect.push({ ...surface.journey[0].expect[0] }),
   ]) {
     const stale = structuredClone(app.surface); change(stale)
     assert.throws(() => validateGuideMetadata(stale, registry), /Agent guide:/)

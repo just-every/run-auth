@@ -10,6 +10,8 @@ Supported protocol versions: `2026-07-28`, `2025-11-25`. Native authority, scope
 
 ## Tools by job
 
+Each fixture below is executed through the production Worker by [agentDocsFlow](../tests/agent-door/docs-flow.mjs), loaded by [the run-site sanity journey](../tests/site/run-site.test.mjs) in Verify. It checks each tool’s computed classes and facts against the cited fixture. The shared conformance assertion is also named for each fixture.
+
 ### List events
 
 `auth.events.list`
