@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join, normalize, relative, resolve } from 'node:path'
+import { checkAgentGuide } from '../agent-docs.mjs'
 import { renderMarkdown } from './render.mjs'
 
 // `virtual:auth-docs`: the on-site docs, rendered from docs/site.json and the
@@ -56,8 +57,9 @@ export function docsSite() {
     name: 'auth:docs',
     configResolved(config) { root = config.root },
     resolveId(id) { return id === docsModuleId ? resolvedId : undefined },
-    load(id) {
+    async load(id) {
       if (id !== resolvedId) return
+      await checkAgentGuide(root)
       const built = buildDocs(root)
       for (const file of built.files) this.addWatchFile(file)
       return `export const sections = ${JSON.stringify(built.sections)};\nexport const pages = ${JSON.stringify(built.pages)};\n`
