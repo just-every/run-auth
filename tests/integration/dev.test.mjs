@@ -53,6 +53,9 @@ test('fresh rer setup chooses localhost; rer dev bridges only the gated real own
  }
  assert.ok(ready,'rer dev reports readiness');const origin=ready.url;assert.equal(new URL(origin).hostname,'localhost');
  const request=(path,headers={})=>fetch(origin+path,{headers,redirect:'manual'});
+ const publicGuide=await request('/docs/agents');assert.equal(publicGuide.status,200,'a fresh dev installation serves the public agent guide');
+ assert.equal(publicGuide.headers.get('set-cookie'),null);const guideHtml=await publicGuide.text();
+ for(const secret of secrets)assert.ok(!guideHtml.includes(secret),'public agent guide excludes private setup material');
  browser=await chromium.launch({headless:true,args:['--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});const context=await browser.newContext(),page=await context.newPage();
  try {await page.goto(ready.openUrl);}catch{throw new Error('The dev credential exchange did not open Auth');}
  await expect(page.getByRole('heading',{name:'Finish setup'})).toBeVisible();

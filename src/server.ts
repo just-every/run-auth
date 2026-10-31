@@ -11,6 +11,7 @@ import { maintainAuth } from './auth/index.mjs'
 import { lobbyResponse } from './base/lobby'
 import { setupStateResponse } from './base/setup-state'
 import { identity } from './identity'
+import { agentDocsResponse } from './agent-door/docs.ts'
 import { authAgentDoor } from './agent-door/index.ts'
 import { authBusiness } from './agent-door/business.ts'
 
@@ -23,6 +24,8 @@ export function createWorker(options: { allowDevSession?: (request: Request, env
     // A hosted deploy runs this Worker before its static assets; built files come from ASSETS.
     const asset = await staticAssetResponse(request, env)
     if (asset) return asset
+    const guide = agentDocsResponse(request)
+    if (guide) return guide
     // The installed homepage: Base's Lobby at / and the public claim state it reads.
     const bindings = runtimeBindings(env)
     const businessResponse = await authBusiness(bindings).handle(request)
