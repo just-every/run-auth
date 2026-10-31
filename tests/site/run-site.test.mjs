@@ -2,6 +2,7 @@ import { fileURLToPath as __rerTestEntryPath } from 'node:url';
 const __rerTestEntry = __rerTestEntryPath(import.meta.resolve('@runeditrun/rer/internal/global/rer.mjs'));
 const __rerTestEntryArgs = args => args[1] === 'dev' && !args.some(arg => ['--foreground', '--detach', '--stop', '--help'].includes(arg)) ? [...args, '--foreground'] : args;
 import {test} from 'node:test';
+import {agentDocsFlow} from '../agent-door/docs-flow.mjs';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {readFile} from 'node:fs/promises';
@@ -10,7 +11,7 @@ import {join} from 'node:path';
 // The run site (run-auth.com) through its public door: `rer build --site` builds the
 // homepage, /run and every docs page site.json lists, and the homepage sends
 // people to /run and /docs, never to an installed instance's routes.
-test('rer build --site writes the homepage, the Run page and every listed docs page',async()=>{
+test('rer build --site writes the homepage, the Run page and every listed docs page',async t=>{
  const root=join(import.meta.dirname,'..','..');
  const built=spawnSync(process.execPath,__rerTestEntryArgs([__rerTestEntry,'build','--site','--non-interactive']),{cwd:root,encoding:'utf8'});
  assert.equal(built.status,0,built.stderr+built.stdout);
@@ -20,6 +21,7 @@ test('rer build --site writes the homepage, the Run page and every listed docs p
  assert.match(home,/href="\/docs"/);
  assert.doesNotMatch(home,/href="\/(signin|setup|app)\b/);
  assert.match(await page('run.html'),/rer dev/);
+ await agentDocsFlow(t,await page('docs/agents.html'));
  const {sections}=JSON.parse(await readFile(join(root,'docs/site.json'),'utf8'));
  const index=await page('docs.html');
  for(const {slug,title} of sections.flatMap(section=>section.pages)){
