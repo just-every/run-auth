@@ -172,6 +172,13 @@ test('native group audit targets reconcile reads, held reads, effects and privat
    // An approved grant read observes current native membership, rather than
    // storing a private result when the request is first held.
    if(mode==='read-approval') {
+    for(const [name,args] of [['auth.groups.inspect',{id:g.id}],['auth.groups.grants',{id:pair}]]) {
+     const rejected=await pendingRead(c,name,args,target);
+     const decision=await c.decideApproval(rejected.answer,'reject');
+     assert.equal(decision.status,200);assert.equal(decision.body.approval.state,'rejected');
+     await observed(c,name,args,target,{code:'approval_rejected',requestState:rejected.answer.result.requestState});
+    }
+    assert.deepEqual(await native(),groups,'rejecting held reads changes no native records');
     const held=await pendingRead(c,'auth.groups.grants',{id:pair},target);
     await post('groups/add',{groupId:g.id,personId:worker.id});
     const current=(await native()).find(row=>row.id===g.id);
