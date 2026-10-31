@@ -219,6 +219,10 @@
       "sha256": "f4e5933d8c0334f4a8306d2cf763a10fb589470e4c037b21075f82603d262330",
       "executable": false
     },
+    "docs/agents.md": {
+      "sha256": "d101fbddb2bc7e0cfa841fe4c3db248bd15904b2da5998bc99a8d2a8622a3e07",
+      "executable": false
+    },
     "docs/apps.md": {
       "sha256": "b313b10d95b0c1803ed0e79fcb0f5e174f9c912fb6129dd5fc5d9d253dbc8a91",
       "executable": false
@@ -955,6 +959,10 @@
       "sha256": "0c37f1c799bac534e6dae16e757a21d4897095d77076e4c1b4e26d17650927c4",
       "executable": false
     },
+    "scripts/agent-docs.mjs": {
+      "sha256": "ed13989f78c7bac3ee72cb158a7becd427e726ae1b60c83ef675b5eaefdfefec",
+      "executable": false
+    },
     "scripts/agents/approved-probe.mjs": {
       "sha256": "ad8bd3c691ca2861f5ca74884c97db009811cda6455ca8644a00630290c6cccb",
       "executable": false
@@ -1131,6 +1139,10 @@
       "sha256": "1e074eea232aec55bce05567021d4f60c8b7af000234e43411d69be5c61beb57",
       "executable": false
     },
+    "scripts/site-docs/plugin.d.mts": {
+      "sha256": "639ca3dbcb3b5fe5060a35bb46dca8eeb34d2201b0559f68c72a6e2ef1290ffd",
+      "executable": false
+    },
     "scripts/site-docs/plugin.mjs": {
       "sha256": "ebc34375617116b6e862f9fd9b4447521e552dce8be96f09e1401ac52d8c97de",
       "executable": false
@@ -1149,6 +1161,10 @@
     },
     "src/agent-door/business.ts": {
       "sha256": "f0d7aa1af4e50e5012e20a91b26df5bcb9bb33bcd51ae42561dde7491ecc1e82",
+      "executable": false
+    },
+    "src/agent-door/docs.ts": {
+      "sha256": "78efa05aa1915decede622299cdc1fe27c0316397b35371351f3601261f493ec",
       "executable": false
     },
     "src/agent-door/group-boundary.mjs": {
@@ -3771,6 +3787,10 @@
       "sha256": "3020b58a006e15ded9e8d0ca1f8552a5389981c47d7f9569f64857c4bffc46f7",
       "executable": false
     },
+    "tests/agent-door/docs-flow.mjs": {
+      "sha256": "a3d0866d0facd0f1e1335f925787a91abfdf5174d81c32b007d04d00d8e792a1",
+      "executable": false
+    },
     "tests/agent-door/initialize-owner.mjs": {
       "sha256": "eeced061cc8dbfb21c65e7c48d5108098e3281cd4b52d44ee80e8f52921181b3",
       "executable": false
@@ -4368,7 +4388,7 @@
       "executable": false
     },
     "tests/site/run-site.test.mjs": {
-      "sha256": "e54d907960b839510e6e31f13a237f8b298e2a3c08b5f55023e1d57a901aaabd",
+      "sha256": "41afcb1968ea3c485f327c6ec143fd5d982e751b90eddf950856ca38f134e05c",
       "executable": false
     },
     "tsconfig.json": {
