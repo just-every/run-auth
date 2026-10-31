@@ -45,9 +45,10 @@ export function buildDocs(root) {
   for (const anchor of anchors) if (!pages.find(page => page.slug === anchor.slug)?.ids.includes(anchor.id)) problems.push(`/docs/${anchor.page}: link to missing heading /docs/${anchor.slug}#${anchor.id}`)
   if (problems.length) throw new Error(`The docs have broken links:\n${problems.join('\n')}`)
   return {
+    repository,
     sections: site.sections.map(section => ({ title: section.title, pages: section.pages.map(({ slug, title, summary }) => ({ slug, title, summary })) })),
     pages: pages.map(({ slug, title, summary, html, toc }) => ({ slug, title, summary, html, toc })),
-    files: [join(docs, 'site.json'), ...pages.map(page => page.file)],
+    files: [join(root, 'package.json'), join(docs, 'site.json'), ...pages.map(page => page.file)],
   }
 }
 
@@ -62,7 +63,7 @@ export function docsSite() {
       await checkAgentGuide(root)
       const built = buildDocs(root)
       for (const file of built.files) this.addWatchFile(file)
-      return `export const sections = ${JSON.stringify(built.sections)};\nexport const pages = ${JSON.stringify(built.pages)};\n`
+      return `export const repository = ${JSON.stringify(built.repository)};\nexport const sections = ${JSON.stringify(built.sections)};\nexport const pages = ${JSON.stringify(built.pages)};\n`
     },
   }
 }
