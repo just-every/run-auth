@@ -106,6 +106,32 @@ test('group creation matches native names, empty state, audit and duplicate refu
    assert.deepEqual(await agent.state(),before);assert.deepEqual(await agent.events(),audit);
    assert.deepEqual(await native.state(),nativeBefore);assert.deepEqual(await native.events(),nativeAudit);
   }
+  if(held) {
+   // A human can create the requested name while its approval is pending.
+   // Approval must not bypass the command's current duplicate validation.
+   const name=groupNames('pending').create.padEnd(80,'n'),args={name,idempotency_key:randomUUID()};
+   const before=await agent.state(),audit=await agent.events();
+   const pending=await agent.c.tool('auth.groups.create',args);
+   assert.equal(pending.result?.resultType,'input_required');
+   assert.deepEqual(await agent.state(),before);assert.deepEqual(await agent.events(),audit);
+   const {approval}=await agent.c.personJson('/agents/api/approvals/'+encodeURIComponent(pending.result._meta[APPROVAL].id));
+   assert.deepEqual(approval.summary.items,[name]);
+   for(const install of [native,agent]) {
+    const created=await install.owner.call('/api/auth/groups/create',{name});
+    assert.equal(created.status,201);assert.equal((await created.json()).name,name);
+   }
+   const current=await agent.state(),currentAudit=await agent.events();
+   assert.equal((await agent.c.decideApproval(pending)).ok,true);
+   const refused=await agent.c.tool('auth.groups.create',args,{requestState:pending.result.requestState});
+   assert.equal(refused.result?.isError,true);assert.equal(errorCode(refused),'group_exists');
+   const nativeBefore=await native.state(),nativeAudit=await native.events();
+   const nativeRefused=await native.owner.call('/api/auth/groups/create',{name});
+   assert.equal(nativeRefused.status,409);assert.equal((await nativeRefused.json()).error,'group_exists');
+   assert.deepEqual(await native.state(),nativeBefore);assert.deepEqual(await native.events(),nativeAudit);
+   assert.deepEqual(await agent.state(),current);assert.deepEqual(await agent.events(),currentAudit);
+   assert.deepEqual(current.map(({name,members})=>({name,members})),nativeBefore.map(({name,members})=>({name,members})));
+   console.log('PROBE BASE-AGENT-002 held pending duplicate: native create while approval waits -> group_exists, unchanged groups and group_created events');
+  }
   assert.ok(agent.c.points.every(point=>point.ok));
  }
 });
