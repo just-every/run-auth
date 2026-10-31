@@ -17,7 +17,12 @@ const detailText = (detail?: string | null): string => {
   const item = (entry: unknown): string => typeof entry === 'string' ? entry
     : entry && typeof entry === 'object' && 'email' in entry ? `${String((entry as { email: unknown }).email)} (${asArray((entry as { reasons?: string[] }).reasons).map(reason => reason.replace(/_/g, ' ')).join(', ')})` : ''
   return Object.entries(parsed(detail)).filter(([, value]) => typeof value === 'string' ? value : Array.isArray(value) && value.length)
-    .map(([key, value]) => `${activityName(key)}: ${Array.isArray(value) ? value.map(item).join(', ') : String(value).replace(/_/g, ' ')}`).join('. ')
+    .map(([key, value]) => {
+      const text = Array.isArray(value) ? value.map(entry => key === 'approvers' && entry && typeof entry === 'object'
+        && 'id' in entry && typeof entry.id === 'string' && 'name' in entry && typeof entry.name === 'string'
+        ? entry.name : item(entry)).filter(Boolean).join(', ') : String(value).replace(/_/g, ' ')
+      return text ? `${key === 'approvers' ? 'Human approvers' : activityName(key)}: ${text}` : ''
+    }).filter(Boolean).join('. ')
 }
 const actor = (event: AuthActivity): string => event.service_name ? `Service app ${event.service_name}${event.service_owner_email ? ` · Accountable: ${event.service_owner_email}` : ''}` : event.actor_email ?? event.actorEmail
   ?? event.actor_id ?? (typeof parsed(event.detail).key === 'string' ? `Agent key ${parsed(event.detail).key}` : 'Actor unavailable')

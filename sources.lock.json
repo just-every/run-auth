@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "e7c85ff91aad9c896d136df7ef071db5a4b35c10fd919a08d6f279b0302d4d94",
+      "sha256": "0116454326966b96527154c8568381481128154da19bc62208cf61cc537fee4a",
       "executable": false
     },
     "deploy-demo.json": {
@@ -3632,7 +3632,7 @@
       "executable": false
     },
     "src/ui/pages/activity.ts": {
-      "sha256": "72616dce14425a1aa187a5ab1c9e4ae4415c906756ffda7eca7ac75f804a906e",
+      "sha256": "627096fe99126e9e2b1a35bdc6fe2afbba834b1cd3e1f67fc386584ce1e789d8",
       "executable": false
     },
     "src/ui/pages/admin-services.ts": {
@@ -3769,6 +3769,10 @@
     },
     "src/ui/shell.ts": {
       "sha256": "3020b58a006e15ded9e8d0ca1f8552a5389981c47d7f9569f64857c4bffc46f7",
+      "executable": false
+    },
+    "tests/agent-door/attribution.test.mjs": {
+      "sha256": "1d7e1db601df1c8c74422e490232561e52c41e1d738a7eae8ff17b2bd75e4950",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {
@@ -4260,7 +4264,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "060b00741b207cf83ded436fefbf0e8c0bbf34537391f8f782499a522887b67d",
+      "sha256": "3a8c55129ec87f84aa14afe65af3a35e9ea7ed29c39e3ce6562ebe3c90712384",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
@@ -4269,6 +4273,10 @@
     },
     "tests/integration/helpers/access-review-journey.mjs": {
       "sha256": "4a8ae8b5b9b41e3baa6c3a52f8b77cb2b93c4212ef64100eeb4e9dd2b4acd19d",
+      "executable": false
+    },
+    "tests/integration/helpers/agent-attribution-journey.mjs": {
+      "sha256": "74f660a928123f32478d3b7bbfe6afac5fcea47e7b881e02183cf6c241b284c2",
       "executable": false
     },
     "tests/integration/helpers/campaign-journey.mjs": {
