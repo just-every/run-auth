@@ -7,6 +7,7 @@ export function write(native: Native, ctx: ToolContext, path: string, method: st
 export function snapshot(native: Native, ctx: Context): Promise<Record<string, string>>
 export function group(native: Native, ctx: Context, id: string): Promise<{id: string; name: string}>
 export function membership(native: Native, ctx: Context, id: unknown): Promise<{groupId: string; personId: string; present: boolean}>
+export function membershipAuthority(native: Native, ctx: ToolContext, id: unknown): Promise<{groupId: string; personId: string; present: boolean}>
 export function internalGroup(native: Native, ctx: Context, id: string): Promise<void>
 export function nativeAdmission(native: Native, person: {id: string; email: string; role: string}): Promise<boolean>
 export function nativeLauncher(native: Native, personId: string): Promise<unknown[]>

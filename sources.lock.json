@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "e7c85ff91aad9c896d136df7ef071db5a4b35c10fd919a08d6f279b0302d4d94",
+      "sha256": "b46e3271a1a16be4588e8b59af501c59a9acf46de422db9d3030534da97da145",
       "executable": false
     },
     "deploy-demo.json": {
@@ -692,7 +692,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "a1ca64a4d04a993f97fc648f02e872532b1dabde510102b99352e969d1faf637",
+      "sha256": "68051340fd9696e45bb2b5c48029e5b2a6dcb19a5a200e7ce3e909948adf5414",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -1160,11 +1160,11 @@
       "executable": false
     },
     "src/agent-door/native.d.mts": {
-      "sha256": "a325ebde43ad9a7534dd9534a1cd90635d9a66d4d29ffbea46a9d3e24e020927",
+      "sha256": "1fe20bb97feada7e2a9d62aba12d7e477f9b5df254d804ea5a52a977c9d346ee",
       "executable": false
     },
     "src/agent-door/native.mjs": {
-      "sha256": "760623c7b17f214d71343db5dd106ce10d5ddb4a1a9e17e8e07ffa7b20f9041d",
+      "sha256": "3a184c5b7f3274a1604256899b38011754bcf8e0cb4cb62bffdc6ffee2f63a19",
       "executable": false
     },
     "src/agent-door/people.ts": {
@@ -1176,7 +1176,7 @@
       "executable": false
     },
     "src/agent-door/tools.ts": {
-      "sha256": "1c096c43085dc4144e4e9559844b65a85613a01a37aa0f989af0201898fc99ee",
+      "sha256": "fa65b81e9e8515526888e2d937d47144fb62549e3824c1e498992fdc39458af5",
       "executable": false
     },
     "src/auth.server.ts": {
@@ -3771,6 +3771,14 @@
       "sha256": "3020b58a006e15ded9e8d0ca1f8552a5389981c47d7f9569f64857c4bffc46f7",
       "executable": false
     },
+    "tests/agent-door/authority-fixture.mjs": {
+      "sha256": "80bcc52258971ccabdd233526f0429bc2c18e8902a0e07978620d23ec85ff7ae",
+      "executable": false
+    },
+    "tests/agent-door/authority.test.mjs": {
+      "sha256": "83a227cc24662310604d501c638d9923e95b8605e7c482ca015b52c13cd661cb",
+      "executable": false
+    },
     "tests/agent-door/initialize-owner.mjs": {
       "sha256": "eeced061cc8dbfb21c65e7c48d5108098e3281cd4b52d44ee80e8f52921181b3",
       "executable": false
@@ -3780,7 +3788,7 @@
       "executable": false
     },
     "tests/agent-door/native-person.mjs": {
-      "sha256": "d3afe624289fa214a60fa7b3cf1534b8828e550d81727c4ae670d9fcf75de9eb",
+      "sha256": "9c1d3e007509a2164326c6b664ab699104598677b0ce232b3730a765fd992cd1",
       "executable": false
     },
     "tests/auth/abuse.test.mjs": {
@@ -4260,7 +4268,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "060b00741b207cf83ded436fefbf0e8c0bbf34537391f8f782499a522887b67d",
+      "sha256": "e61c0b8ca08070afab6ec6c77c0684d3c63fdc95d52396a9a4acefd50a753723",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {
@@ -4269,6 +4277,10 @@
     },
     "tests/integration/helpers/access-review-journey.mjs": {
       "sha256": "4a8ae8b5b9b41e3baa6c3a52f8b77cb2b93c4212ef64100eeb4e9dd2b4acd19d",
+      "executable": false
+    },
+    "tests/integration/helpers/agent-authority-journey.mjs": {
+      "sha256": "a4adb1063ca3743c80c621a561db30090f18e49dcba4ab9d8938806a3f95ee93",
       "executable": false
     },
     "tests/integration/helpers/campaign-journey.mjs": {
@@ -4356,7 +4368,7 @@
       "executable": false
     },
     "tests/integration/runtime.mjs": {
-      "sha256": "d5104d3043a12d57ab40ce235df9d82a3e3a7e8a686587c348b9a6f1c8d84cd2",
+      "sha256": "4dca2c1e9af8a015b55c521c9807f2e15ffc201a8b8c0b3c28d873e5b2c44d96",
       "executable": false
     },
     "tests/integration/security-settings-browser.test.mjs": {

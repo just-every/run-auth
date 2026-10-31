@@ -1,6 +1,6 @@
 import { defineTool, ToolRefusal, type ToolDefinition, type ResourceDefinition } from '../modules/agent-door/index.ts'
 import { identityAuth, type Bindings } from '../auth.server'
-import { read, write, snapshot, group, membership, internalGroup, nativeLauncher } from './native.mjs'
+import { read, write, snapshot, group, membership, membershipAuthority, internalGroup, nativeLauncher } from './native.mjs'
 
 import { string, object, recordOrPage, identity, group as groupSchema, snapshot as snapshotSchema, membership as membershipSchema, createdGroup, launcher as launcherSchema, activity } from './schemas.ts'
 const pagination = { limit: { type: 'integer', minimum: 1, maximum: 100 }, offset: { type: 'integer', minimum: 0 } }
@@ -27,14 +27,14 @@ export function nativeTools(env: Bindings): ToolDefinition[] {
       async run(args, ctx) { const result = await write(native, ctx, '/groups', 'POST', { name: String(args.name).slice(0,60)+' '+ctx.operationId.slice(0,8) }, 'groups.manage'); ctx.emit('group.created', uri('groups', result.id)); return { result, resources: [{ uri: uri('groups', result.id), name: result.name }] } } }),
     defineTool({ name: 'auth.groups.add', title: 'Add a group member', description: 'Add one existing native identity to an internal static group outside app assignments and claim mappings that use groups; cannot widen the sponsor’s own access or dispatch connector work.', scope: 'directory:write', readOnly: false,
       inputSchema: object({ group_id: string, person_id: string }), outputSchema: membershipSchema, classes: ['access'], clauses: [...clauses, 'AUTH-MAPPING-001'],
-      async authority(args, ctx) { const m = await membership(native, ctx, `${args.group_id}/${args.person_id}`); return { subject: m.personId, widens: !m.present } },
+      async authority(args, ctx) { const m = await membershipAuthority(native, ctx, `${args.group_id}/${args.person_id}`); return { subject: m.personId, widens: !m.present } },
       async classify(args, ctx) { await internalGroup(native, ctx, String(args.group_id)); await membership(native, ctx, `${args.group_id}/${args.person_id}`); return [{ class: 'access', facts: { measure: 1, direction: 'widens' } }] },
       async target(args, ctx) { await group(native, ctx, String(args.group_id)); return { kind: 'group', id: String(args.group_id) } },
       async summary(args, ctx) { const g = await group(native, ctx, String(args.group_id)); const p = await read(native, ctx, '/people/'+encodeURIComponent(String(args.person_id)), 'people.read'); return { target: { id: String(args.person_id), name: p.name, email: p.email }, items: [g.name] } },
       async run(args, ctx) { await internalGroup(native, ctx, String(args.group_id)); const id = `${args.group_id}/${args.person_id}`; await write(native, ctx, `/groups/${encodeURIComponent(String(args.group_id))}/members/${encodeURIComponent(String(args.person_id))}`, 'PUT', {}, 'groups.manage'); ctx.emit('group.member_added', uri('groups', String(args.group_id))); return { result: { id }, resources: [{ uri: uri('groups', String(args.group_id)), name: 'Group' }] } } }),
     defineTool({ name: 'auth.groups.remove', title: 'Remove a group member', description: 'Remove an internal static-group membership outside app assignments and claim mappings that use groups; the closed target is the native group/person pair returned by add. Never adds a grant.', scope: 'directory:write', readOnly: false,
       inputSchema: object({ id: string }), outputSchema: membershipSchema, classes: ['access'], clauses: [...clauses, 'AUTH-MAPPING-001'], widens: false, narrowing: { effect: 'revoke', target: 'id' },
-      async authority(args, ctx) { const m = await membership(native, ctx, args.id); return { subject: m.personId, widens: false } },
+      async authority(args, ctx) { const m = await membershipAuthority(native, ctx, args.id); return { subject: m.personId, widens: false } },
       async classify(args, ctx) { const m = await membership(native, ctx, args.id); await internalGroup(native, ctx, m.groupId); return [{ class: 'access', facts: { measure: 1, direction: 'narrows' } }] },
       async target(args, ctx) { const m = await membership(native, ctx, args.id); return { kind: 'group', id: m.groupId } },
       async summary(args, ctx) { const m = await membership(native, ctx, args.id); const p = await read(native, ctx, '/people/'+encodeURIComponent(m.personId), 'people.read'); return { target: { id: m.personId, name: p.name, email: p.email }, items: [(await group(native, ctx, m.groupId)).name] } },
