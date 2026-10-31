@@ -5,6 +5,7 @@ import {authorityFixture,heldMembershipPolicy} from './authority-fixture.mjs';
 test('native membership authority survives cached success, held execution and restart without widening',{timeout:180000},async t=>{
  const f=await authorityFixture(t),{people:p,groups:g}=f;
  await f.policy();
+ const establishedEditor=await f.client(p.editor);
  const add=(who,group,person,key)=>f.call(who,'auth.groups.add',{group_id:group.id,person_id:person.id,idempotency_key:key});
  const remove=(who,group,person,key)=>f.call(who,'auth.groups.remove',{id:group.id+'/'+person.id,idempotency_key:key});
  const done=result=>{assert.equal(result.status,200);assert.equal(result.isError,false,JSON.stringify(result));};
@@ -14,6 +15,10 @@ test('native membership authority survives cached success, held execution and re
  // target in a non-editable group so adding it elsewhere cannot make the
  // subsequent removal an authorized action under the all-groups rule.
  await f.post(p.owner,'/api/auth/roles/group',{action:'add',groupId:g.outside.id,personId:p.outside.id});
+ // Native rank fences protect account administration. Ordinary membership
+ // edits remain authorized by their published verb and resource scope even
+ // when the target holds a higher-ranked role than the group editor.
+ const ranked=await f.change({kind:'grant',personId:p.worker.id,roleId:'security-policy-administrator',resources:{view:{people:[p.worker.id],groups:[g.first.id]},edit:{}}});
  // The same native membership action is allowed for owner and scoped editor,
  // denied for a reader, another group and a person outside the grant.
  for(const who of [p.owner,p.editor]) {
@@ -63,6 +68,7 @@ test('native membership authority survives cached success, held execution and re
  }
  assert.equal((await add(p.editor,g.first,p.editor,'held-self-widen'))._meta['com.runeditrun/error'].code,'self_escalation');
  assert.equal(await present(g.first,p.editor),false);
+ await f.change({kind:'revoke',grantId:ranked.id});
  // Moving the target into a group outside the edit scope ends authority even
  // though the editor's grants and its read access have not changed.
  await f.policy();
@@ -100,6 +106,7 @@ test('native membership authority survives cached success, held execution and re
  done(await f.call(p.editor,'auth.groups.inspect',{id:g.first.id}));
  refused(await add(p.editor,g.first,p.worker,'saved-add-again'));
  refused(await remove(p.editor,g.first,p.worker,'saved-remove'));
+ refused(await establishedEditor('auth.groups.add',{group_id:g.first.id,person_id:p.worker.id,idempotency_key:'saved-add-again'}));
  assert.equal(await present(g.first,p.worker),true);
  done(await add(p.editor,g.second,p.other,'second-still-authorized'));
  assert.equal(await present(g.second,p.other),true);
@@ -147,7 +154,10 @@ test('native membership authority survives cached success, held execution and re
  assert.equal((await f.get(p.editor,'/agents/api/approvals/'+pending._meta['com.runeditrun/approval'].id)).approval.state,'refused');
  assert.equal(await present(g.first,p.worker),true);assert.equal(await present(g.second,p.other),true);
  await f.post(p.owner,'/api/auth/people/suspend',{personId:p.editor.id});
+ assert.equal((await establishedEditor('auth.groups.inspect',{id:g.first.id})).status,401);
+ assert.equal((await establishedEditor('auth.groups.add',{group_id:g.first.id,person_id:p.worker.id,idempotency_key:'saved-add-again'})).status,401);
  assert.equal((await add(p.editor,g.first,p.worker,'after-suspension')).status,401);
  await f.app.pause();await f.app.resume();
+ assert.equal((await establishedEditor('auth.groups.remove',{id:g.second.id+'/'+p.other.id,idempotency_key:'held-remove'})).status,401);
  assert.equal((await add(p.editor,g.second,p.other,'after-restart-suspension')).status,401);
 });

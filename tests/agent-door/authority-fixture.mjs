@@ -65,18 +65,21 @@ export async function authorityFixture(t) {
   assert.equal(response.status,200,'signed policy '+await response.text());
   context.seq=envelope.payload.seq;context.revision=envelope.payload.revision;
  }
- async function call(person,name,args={}) {
+ async function client(person) {
   const token=await accessToken({...context,person,agentId:'synthetic-auth-agent-'+person.sub,consent:'synthetic-auth-consent-'+person.sub});
+  return async function call(name,args={}) {
   // Business tokens stay in the header, never in URLs or fixture diagnostics.
   const version='2026-07-28';
   const answer=await fetch(app.origin+'/mcp',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json','mcp-protocol-version':version,'mcp-method':'tools/call','mcp-name':name},body:JSON.stringify({jsonrpc:'2.0',id:randomUUID(),method:'tools/call',params:{name,arguments:args,_meta:{'io.modelcontextprotocol/protocolVersion':version}}})});
   const body=await answer.json();return {status:answer.status,...body.result,error:body.error};
+  };
  }
+ const call=async(person,name,args={})=>(await client(person))(name,args);
  const approve=async(person,pending)=>{
   const id=pending._meta['com.runeditrun/approval'].id;
   const {approval}=await get(person,'/agents/api/approvals/'+id);
   return post(person,'/agents/api/approvals/'+id+'/approve',{revision:approval.revision,summary_sha256:approval.summary_sha256});
  };
  const members=async()=>(await get(owner,'/api/auth/company-apps')).groups;
- return {app,people,groups,grants,get,post,change,policy,call,approve,members};
+ return {app,people,groups,grants,get,post,change,policy,call,client,approve,members};
 }

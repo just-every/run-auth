@@ -3772,11 +3772,11 @@
       "executable": false
     },
     "tests/agent-door/authority-fixture.mjs": {
-      "sha256": "80bcc52258971ccabdd233526f0429bc2c18e8902a0e07978620d23ec85ff7ae",
+      "sha256": "e2d20b9b9d7474c2fbf2865d27cf55ea6868fd6ccadbe27d7ac681c2b6fa0578",
       "executable": false
     },
     "tests/agent-door/authority.test.mjs": {
-      "sha256": "6c7b58b819ed37b9c23c15973b32adcf333936f111726a78c807e888c3c6cda7",
+      "sha256": "28939a91144484613e5bb87358db1c19dc942ce7cb4268fae121dce55950fe07",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {
