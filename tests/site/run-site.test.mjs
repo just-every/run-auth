@@ -21,7 +21,7 @@ test('rer build --site writes the homepage, the Run page and every listed docs p
  assert.match(home,/href="\/docs"/);
  assert.doesNotMatch(home,/href="\/(signin|setup|app)\b/);
  assert.match(await page('run.html'),/rer dev/);
- await agentDocsFlow(t);
+ await agentDocsFlow(t,await page('docs/agents.html'));
  const {sections}=JSON.parse(await readFile(join(root,'docs/site.json'),'utf8'));
  const index=await page('docs.html');
  for(const {slug,title} of sections.flatMap(section=>section.pages)){
