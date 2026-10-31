@@ -5,3 +5,7 @@ declare module 'virtual:auth-docs' {
   export const sections: { title: string; pages: { slug: string; title: string; summary: string }[] }[]
   export const pages: DocsPage[]
 }
+declare module '*.css?inline' {
+  const css: string
+  export default css
+}
