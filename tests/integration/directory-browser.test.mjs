@@ -372,3 +372,6 @@ import {accessReviewJourney} from './helpers/access-review-journey.mjs';
 test('access decision and review journey: ordinary manager proof, request approval, immutable certification and unfinished removal, and retention controls at 1440 and 390',{timeout:180000},accessReviewJourney);
 
 test('identity release journey: two independent passkeys, private administration, opaque employer follow-up and erasure contact at 1440 and 390',{timeout:420000},identityPairsJourney);
+
+import {agentAuthorityJourney} from './helpers/agent-authority-journey.mjs';
+test('agent membership authority journey: scoped delegation and refused held work at 1440 and 390 in both themes',{timeout:180000},agentAuthorityJourney);
