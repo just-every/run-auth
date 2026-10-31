@@ -85,6 +85,25 @@ test('native group audit targets reconcile reads, held reads, effects and privat
     if(!code){assert.equal(answer.decision?.disposition,mode==='autonomous'?'autonomous':pending?'approval':'review');assert.equal(answer.decision?.classes[0].facts.measure,1);}
     return answer;
    };
+   const pendingRead=async(who,name,args,expected)=>{
+    const answer=await observed(who,name,args,expected,{pending:true});
+    assert.equal(answer.result.structuredContent,undefined,'a held read publishes no record');
+    const handle=answer.result._meta[APPROVAL];assert.ok(handle?.id);
+    const {approval}=await who.personJson('/agents/api/approvals/'+handle.id);
+    assert.deepEqual(approval.summary.nativeTarget,expected);
+    return {who,name,args,answer,expected};
+   };
+   const refusePending=async({who,name,args,answer,expected})=>{
+    const result=await who.decideApproval(answer);
+    assert.equal(result.status,200);
+    assert.equal(result.body.approval.state,'refused','current native authority fences an already prepared read');
+    assert.equal(result.body.approval.code,'execution_failed');
+    const executions=(await rows()).filter(row=>row.decision_id===answer.decision.id&&row.id!==answer.decision.id);
+    assert.equal(executions.length,1);
+    assert.equal(executions[0].outcome,'refused');
+    assert.deepEqual(executions[0].resource,expected,'the execution audit retains only the target validated at preparation');
+    await observed(who,name,args,null,{code:'resource_unavailable',requestState:answer.result.requestState});
+   };
    const approvedReads=[];
    const complete=async(who,name,args,expected,options={})=>{
     const pending=mode==='read-approval'||mode==='held'&&options.write;
@@ -149,12 +168,31 @@ test('native group audit targets reconcile reads, held reads, effects and privat
    ])await observed(scoped,name,args,null,{code:'resource_unavailable'});
    assert.deepEqual(await native(),groups,'missing and out-of-scope reads have no native effects');
 
+   // An approved grant read observes current native membership, rather than
+   // storing a private result when the request is first held.
+   if(mode==='read-approval') {
+    const held=await pendingRead(c,'auth.groups.grants',{id:pair},target);
+    await post('groups/add',{groupId:g.id,personId:worker.id});
+    const current=(await native()).find(row=>row.id===g.id);
+    assert.deepEqual(current.members.map(p=>p.id),[worker.id]);
+    assert.equal((await c.decideApproval(held.answer)).body.approval.state,'executed');
+    const answer=await c.tool(held.name,held.args,{requestState:held.answer.result.requestState});
+    assert.equal(errorCode(answer),null);
+    assert.deepEqual(answer.result.structuredContent.grants,['group:'+current.id+':member:'+current.members[0].id]);
+    await post('groups/remove',{groupId:g.id,personId:worker.id});
+    assert.deepEqual(await native(),groups,'the person restores native membership after the held read');
+   }
+   const awaitingRevocation=[];
+   if(mode==='read-approval')for(const [name,args] of [['auth.groups.inspect',{id:g.id}],['auth.groups.grants',{id:pair}]])
+    awaitingRevocation.push(await pendingRead(scoped,name,args,target));
+
    // Revoke only this group's native read grant. Even an approved read receipt
    // must resolve current authority before returning its saved private result.
    await roleChange({kind:'grant',personId:readerRecord.id,roleId:'manager',resources:{view:{groups:[other.id],people:[worker.id]},edit:{}}});
    await roleChange({kind:'revoke',grantId:grant.id});
    for(const [name,args] of [['auth.groups.inspect',{id:g.id}],['auth.groups.grants',{id:pair}]])
     await observed(scoped,name,args,null,{code:'resource_unavailable'});
+   for(const saved of awaitingRevocation)await refusePending(saved);
    for(const saved of approvedReads)
     await observed(scoped,saved.name,saved.args,null,{code:'resource_unavailable',requestState:saved.requestState});
    const allowed=await complete(scoped,'auth.groups.inspect',{id:other.id},{kind:'group',id:other.id});
@@ -163,7 +201,11 @@ test('native group audit targets reconcile reads, held reads, effects and privat
 
    const removed=await post('groups/create',{name:'Synthetic removed group'},201);
    await complete(c,'auth.groups.inspect',{id:removed.id},{kind:'group',id:removed.id});
+   const awaitingDeletion=[];
+   if(mode==='read-approval')for(const [name,args] of [['auth.groups.inspect',{id:removed.id}],['auth.groups.grants',{id:removed.id+'/'+worker.id}]])
+    awaitingDeletion.push(await pendingRead(c,name,args,{kind:'group',id:removed.id}));
    await post('groups/delete',{id:removed.id});
+   for(const saved of awaitingDeletion)await refusePending(saved);
    await observed(c,'auth.groups.inspect',{id:removed.id},null,{code:'resource_unavailable'});
    await observed(c,'auth.groups.grants',{id:removed.id+'/'+worker.id},null,{code:'resource_unavailable'});
    assert.deepEqual(await native(),groups,'removed records never become inferred audit targets');
