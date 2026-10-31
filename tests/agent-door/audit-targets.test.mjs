@@ -71,13 +71,13 @@ test('native group audit targets reconcile reads, held reads, effects and privat
     for(;;){const page=await c.personJson('/agents/api/audit'+(cursor?'?after='+cursor:''));assert.equal(page.differs_from_policy,0);all.push(...page.rows);if(!page.cursor||page.cursor===cursor)break;cursor=page.cursor;}
     return all;
    };
-   const observed=async(who,name,args,expected,{code,pending=false,decision,requestState}={})=>{
+   const observed=async(who,name,args,expected,{code,pending=false,decision,requestState,outcome}={})=>{
     const before=new Set((await rows()).map(row=>row.id));
     const answer=await who.tool(name,args,{requestState});
     const added=(await rows()).filter(row=>!before.has(row.id)&&row.tool===name&&row.agent.id===who.agentId);
     assert.equal(added.length,1,'each call has one audit row');
     assert.deepEqual(added[0].resource,expected,'audit uses the independently read native target');
-    assert.equal(added[0].outcome,code?'refused':pending?'pending':'done');
+    assert.equal(added[0].outcome,outcome??(code?'refused':pending?'pending':'done'));
     assert.equal(added[0].code,code??null);
     assert.equal(errorCode(answer),code??null);
     if(decision)assert.equal(added[0].decision,decision);
@@ -176,7 +176,7 @@ test('native group audit targets reconcile reads, held reads, effects and privat
      const rejected=await pendingRead(c,name,args,target);
      const decision=await c.decideApproval(rejected.answer,'reject');
      assert.equal(decision.status,200);assert.equal(decision.body.approval.state,'rejected');
-     await observed(c,name,args,target,{code:'approval_rejected',requestState:rejected.answer.result.requestState});
+     await observed(c,name,args,target,{code:'approval_rejected',outcome:'replayed',requestState:rejected.answer.result.requestState});
     }
     assert.deepEqual(await native(),groups,'rejecting held reads changes no native records');
     const held=await pendingRead(c,'auth.groups.grants',{id:pair},target);
