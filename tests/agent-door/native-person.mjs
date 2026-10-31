@@ -19,7 +19,7 @@ export async function nativePerson({request,origin,email,mail,claim}) {
   let token;
   for(let i=0;i<20&&!token;i++) {
    const messages=await mail.read({after});
-   const match=(messages.at(-1)?.text??'').match(/https:\/\/[^\s]+\/auth\/identity\/email\/confirm\?token=([^\s]+)/);
+   const match=(messages.at(-1)?.text??'').match(/https?:\/\/[^\s]+\/auth\/identity\/email\/confirm\?token=([^\s]+)/);
    token=match?.[1];
    if(!token)await new Promise(resolve=>setTimeout(resolve,100));
   }
