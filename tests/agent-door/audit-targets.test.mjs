@@ -100,7 +100,8 @@ test('native group audit targets reconcile reads, held reads, effects and privat
     assert.equal(result.body.approval.code,'execution_failed');
     const executions=(await rows()).filter(row=>row.decision_id===answer.decision.id&&row.id!==answer.decision.id);
     assert.equal(executions.length,1);
-    assert.equal(executions[0].outcome,'refused');
+    assert.equal(executions[0].outcome,'failed');
+    assert.equal(executions[0].code,'execution_failed');
     assert.deepEqual(executions[0].resource,expected,'the execution audit retains only the target validated at preparation');
     await observed(who,name,args,null,{code:'resource_unavailable',requestState:answer.result.requestState});
    };

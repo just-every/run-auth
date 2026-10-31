@@ -3772,7 +3772,7 @@
       "executable": false
     },
     "tests/agent-door/audit-targets.test.mjs": {
-      "sha256": "8a4a91e84f66cf2c2ad5850c81562643393b3fc9365c37f4021e19a0b7baac7b",
+      "sha256": "517e5da538423f12d8e8c549c3d456b01029da83f13827b2129c3fdaec33bb3e",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {
