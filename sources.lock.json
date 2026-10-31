@@ -144,7 +144,7 @@
       "executable": false
     },
     "agent-surface.json": {
-      "sha256": "b20735ebf7e66b2467fb6e03aee7f7865a477bdff339463d646f9ec9d4ae38f8",
+      "sha256": "abc78f89aa6e0cc462b5a71efa3ebe5a928f08ace6d6c182ebdea95b17e67370",
       "executable": false
     },
     "AGENTS.md": {
@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "eda0175d5bbdb713d737f928ed1e4acb67d83f7df7a79262ad90fe2a5b0e81b0",
+      "sha256": "5b6e0449409c44f1f4705fb30e0e5398c0636ad52d6d050d1d2db5e6c6fcaaed",
       "executable": false
     },
     "deploy-demo.json": {
@@ -3772,7 +3772,7 @@
       "executable": false
     },
     "tests/agent-door/audit-targets.test.mjs": {
-      "sha256": "24dba340ae06378728d160cfacf6713fd09a4c4517aeff73de56a2b5517a1b1d",
+      "sha256": "288af08f31668cb9303590f0eeec77de6484e56a1fa2bb3d7fb19ca08b9f917c",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {
