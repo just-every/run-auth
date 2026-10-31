@@ -7,6 +7,7 @@ import {createAgentConformanceNetwork} from '../../node_modules/@runeditrun/rer/
 import {createProtocol,errorCode} from '../../node_modules/@runeditrun/rer/modules/agent-door/conformance/protocol.mjs';
 import {accessToken,autonomousPolicy,heldPolicy,seconds,signJws} from '../../node_modules/@runeditrun/rer/modules/agent-door/conformance/crypto.mjs';
 import {nativePerson} from './native-person.mjs';
+import {approvalGroupResults} from './untrusted-approval.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const UNTRUSTED='com.runeditrun/untrusted';
@@ -91,5 +92,6 @@ export async function untrustedGroupResults(t) {
   assert.deepEqual(await c.witness(),before,'successful-key replay creates no second group');
   t.diagnostic(`PROBE BASE-AGENT-003 6: ${phase} public MCP group create -> tool and resource markers true; policy unchanged; authority and read-only attempts refused without mutation; replay marked`);
  }
+ await approvalGroupResults(c,t);
  assert.ok(c.points.every(point=>point.ok),'signed policy adoption preserves its conformance assertions');
 }
