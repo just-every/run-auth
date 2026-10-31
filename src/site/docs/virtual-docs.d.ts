@@ -2,6 +2,11 @@
 declare module 'virtual:auth-docs' {
   export interface DocsHeading { id: string; text: string }
   export interface DocsPage { slug: string; title: string; summary: string; html: string; toc: DocsHeading[] }
+  export const repository: string
   export const sections: { title: string; pages: { slug: string; title: string; summary: string }[] }[]
   export const pages: DocsPage[]
+}
+declare module '*.css?inline' {
+  const css: string
+  export default css
 }

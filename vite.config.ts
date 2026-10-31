@@ -2,6 +2,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { docsSite } from './scripts/site-docs/plugin.mjs'
 
 // Only `vite dev` loads the local-only entry and the checkout's dev key; a build
 // keeps src/server.ts and never sees either (rer build checks its output).
@@ -13,4 +14,4 @@ const serve = { main: './src/server.dev.ts', vars: { ...local('RER_DEV_ORIGIN'),
 // key, installer state), export archives, settings or local data.
 const server = { fs: { allow: ['src', 'public', 'node_modules'], deny: ['**/.rer/**', '**/.seed/**', '**/exports/**', '**/*.rer'] } }
 
-export default defineConfig(({ command, isPreview }) => ({ server, plugins: [cloudflare({ inspectorPort: false, viteEnvironment: { name: 'ssr' }, persistState: { path: '.wrangler/state' }, ...(command === 'serve' && !isPreview ? { config: serve } : process.env.RER_DEV_ORIGIN ? { config: { vars: local('RER_DEV_ORIGIN') } } : {}) }), tanstackStart(), react()] }))
+export default defineConfig(({ command, isPreview }) => ({ server, plugins: [docsSite(), cloudflare({ inspectorPort: false, viteEnvironment: { name: 'ssr' }, persistState: { path: '.wrangler/state' }, ...(command === 'serve' && !isPreview ? { config: serve } : process.env.RER_DEV_ORIGIN ? { config: { vars: local('RER_DEV_ORIGIN') } } : {}) }), tanstackStart(), react()] }))
