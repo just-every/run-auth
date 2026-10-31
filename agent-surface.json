@@ -437,6 +437,31 @@
       }
     },
     {
+      "id": "grants-removed",
+      "tool": "auth.groups.grants",
+      "args": {
+        "id": {
+          "$from": "add",
+          "pointer": "/id"
+        }
+      },
+      "expect": [
+        {
+          "class": "standard",
+          "facts": {
+            "measure": 1
+          }
+        }
+      ],
+      "target": {
+        "kind": "group",
+        "id": {
+          "$from": "create",
+          "pointer": "/id"
+        }
+      }
+    },
+    {
       "id": "launcher",
       "tool": "auth.launcher.inspect",
       "args": {},

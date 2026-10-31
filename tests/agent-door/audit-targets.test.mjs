@@ -36,8 +36,8 @@ async function installation() {
   const reader=await nativePerson({request,origin,email:addresses[2],mail:mail[2]});
   const get=async path=>{const response=await request(origin+path,{headers:{cookie:owner.cookie()}});assert.equal(response.status,200,path);return response.json();};
   const people=(await get('/api/auth/directory')).people;
-  const worker=people.find(p=>p.email===addresses[1]),readerRecord=people.find(p=>p.email===addresses[2]);
-  assert.ok(worker?.id&&readerRecord?.id);
+  const ownerRecord=people.find(p=>p.email===addresses[0]),worker=people.find(p=>p.email===addresses[1]),readerRecord=people.find(p=>p.email===addresses[2]);
+  assert.ok(ownerRecord?.id&&worker?.id&&readerRecord?.id);
   const settings=await signed('rer-business-settings+jwt',{sub:signer.installationId,business,email:addresses[0],owner_id:sub,rev:1,values:{},logo:null,
    team:[{id:readerSub,email:addresses[2],name:'Riley Reader',role:'member',invite:1}]});
   const paired=await request(origin+'/api/rer/business-settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({settings})});
@@ -46,7 +46,7 @@ async function installation() {
    points:[],agentId:'synthetic-auth-'+randomUUID(),seq:0,revision:0,listed:new Map()});
   const c=context(owner.cookie(),addresses[0],sub),scoped=context(reader.cookie(),addresses[2],readerSub);
   const roleChange=async data=>{const preview=await post('roles/preview',data);return (await post('roles/apply',{previewId:preview.previewId})).plan;};
-  return {c,scoped,post,get,roleChange,worker,readerRecord,close};
+  return {c,scoped,post,get,roleChange,ownerRecord,worker,readerRecord,close};
  }catch(error){await close();throw error;}
 }
 
@@ -54,7 +54,7 @@ test('native group audit targets reconcile reads, held reads, effects and privat
  for(const mode of ['autonomous','held','read-approval']) {
   const f=await installation();
   try {
-   const {c,scoped,post,get,roleChange,worker,readerRecord}=f;
+   const {c,scoped,post,get,roleChange,ownerRecord,worker,readerRecord}=f;
    const policy=mode==='autonomous'?autonomousPolicy():heldPolicy();
    if(mode==='read-approval')policy.rules=policy.rules.filter(rule=>rule.class!=='standard');
    await c.adopt(policy);
@@ -62,26 +62,30 @@ test('native group audit targets reconcile reads, held reads, effects and privat
    // search only that page or derive a target from an unvalidated argument.
    for(let n=0;n<27;n++)await post('groups/create',{name:'Synthetic group '+String(n).padStart(2,'0')},201);
    const native=async()=>(await get('/api/auth/directory/groups')).groups;
-   const groups=await native(),g=groups.find(row=>row.name==='Synthetic group 26'),hidden=groups.find(row=>row.name==='Synthetic group 00');
-   assert.ok(g?.id&&hidden?.id);
+   const groups=await native(),g=groups.find(row=>row.name==='Synthetic group 26'),hidden=groups.find(row=>row.name==='Synthetic group 00'),other=groups.find(row=>row.name==='Synthetic group 25');
+   assert.ok(g?.id&&hidden?.id&&other?.id);
    const target={kind:'group',id:g.id};
-   await roleChange({kind:'grant',personId:readerRecord.id,roleId:'manager',resources:{view:{groups:[g.id],people:[worker.id]},edit:{}}});
+   const grant=await roleChange({kind:'grant',personId:readerRecord.id,roleId:'manager',resources:{view:{groups:[g.id],people:[worker.id]},edit:{}}});
    const rows=async()=>{
     const all=[];let cursor='';
     for(;;){const page=await c.personJson('/agents/api/audit'+(cursor?'?after='+cursor:''));assert.equal(page.differs_from_policy,0);all.push(...page.rows);if(!page.cursor||page.cursor===cursor)break;cursor=page.cursor;}
     return all;
    };
-   const observed=async(who,name,args,expected,{code,pending=false}={})=>{
+   const observed=async(who,name,args,expected,{code,pending=false,decision,requestState}={})=>{
     const before=new Set((await rows()).map(row=>row.id));
-    const answer=await who.tool(name,args);
+    const answer=await who.tool(name,args,{requestState});
     const added=(await rows()).filter(row=>!before.has(row.id)&&row.tool===name&&row.agent.id===who.agentId);
     assert.equal(added.length,1,'each call has one audit row');
     assert.deepEqual(added[0].resource,expected,'audit uses the independently read native target');
     assert.equal(added[0].outcome,code?'refused':pending?'pending':'done');
+    assert.equal(added[0].code,code??null);
     assert.equal(errorCode(answer),code??null);
+    if(decision)assert.equal(added[0].decision,decision);
+    if(code)assert.equal(answer.result?.structuredContent,undefined,'a refusal exposes no native result');
     if(!code){assert.equal(answer.decision?.disposition,mode==='autonomous'?'autonomous':pending?'approval':'review');assert.equal(answer.decision?.classes[0].facts.measure,1);}
     return answer;
    };
+   const approvedReads=[];
    const complete=async(who,name,args,expected,options={})=>{
     const pending=mode==='read-approval'||mode==='held'&&options.write;
     const nativeBefore=await native();
@@ -98,6 +102,7 @@ test('native group audit targets reconcile reads, held reads, effects and privat
     assert.deepEqual(execution.resource,expected);assert.equal(execution.outcome,'done');
     const retry=await who.tool(name,args,{requestState:answer.result.requestState});
     assert.equal(errorCode(retry),null);assert.ok(retry.result._meta['com.runeditrun/receipt']);
+    if(who===scoped&&!options.write)approvedReads.push({name,args,requestState:answer.result.requestState});
     return retry.result.structuredContent;
    };
    const page=await complete(c,'auth.groups.inspect',{},null);
@@ -106,6 +111,20 @@ test('native group audit targets reconcile reads, held reads, effects and privat
    assert.deepEqual(inspected,{id:g.id,name:g.name,rule:g.rule});
    const pair=g.id+'/'+worker.id;
    assert.deepEqual(await complete(c,'auth.groups.grants',{id:pair},target),{grants:[]});
+
+   // These decisions still name a validated native target, without performing
+   // the proposed membership change or inferring one for an unavailable read.
+   await observed(c,'auth.groups.add',{group_id:g.id,person_id:ownerRecord.id,idempotency_key:randomUUID()},target,{code:'self_escalation',decision:'self_escalation'});
+   const blocked=autonomousPolicy();blocked.rules=[{id:'all',class:'*',do:'blocked'}];
+   await c.adopt(blocked);
+   for(const [name,args] of [['auth.groups.inspect',{id:g.id}],['auth.groups.grants',{id:pair}]])
+    await observed(c,name,args,target,{code:'policy_blocked',decision:'blocked'});
+   await c.adopt(null);
+   for(const [name,args] of [['auth.groups.inspect',{id:g.id}],['auth.groups.grants',{id:pair}]])
+    await observed(c,name,args,target,{code:'policy_unset',decision:'unset'});
+   await observed(scoped,'auth.groups.inspect',{id:hidden.id},null,{code:'policy_unset',decision:'unset'});
+   await c.adopt(policy);
+   assert.deepEqual(await native(),groups,'refused decisions have no native effects');
    assert.deepEqual(await complete(scoped,'auth.groups.inspect',{id:g.id},target),inspected,'the scoped reader can read its granted group');
    assert.deepEqual(await complete(scoped,'auth.groups.grants',{id:pair},target),{grants:[]});
    const add={group_id:g.id,person_id:worker.id,idempotency_key:randomUUID()};
@@ -129,6 +148,25 @@ test('native group audit targets reconcile reads, held reads, effects and privat
     ['auth.groups.grants',{id:g.id+'/synthetic-auth-missing'}],['auth.groups.grants',{id:g.id+'/'+readerRecord.id}],
    ])await observed(scoped,name,args,null,{code:'resource_unavailable'});
    assert.deepEqual(await native(),groups,'missing and out-of-scope reads have no native effects');
+
+   // Revoke only this group's native read grant. Even an approved read receipt
+   // must resolve current authority before returning its saved private result.
+   await roleChange({kind:'grant',personId:readerRecord.id,roleId:'manager',resources:{view:{groups:[other.id],people:[worker.id]},edit:{}}});
+   await roleChange({kind:'revoke',grantId:grant.id});
+   for(const [name,args] of [['auth.groups.inspect',{id:g.id}],['auth.groups.grants',{id:pair}]])
+    await observed(scoped,name,args,null,{code:'resource_unavailable'});
+   for(const saved of approvedReads)
+    await observed(scoped,saved.name,saved.args,null,{code:'resource_unavailable',requestState:saved.requestState});
+   const allowed=await complete(scoped,'auth.groups.inspect',{id:other.id},{kind:'group',id:other.id});
+   assert.deepEqual(allowed,{id:other.id,name:other.name,rule:other.rule},'unrelated native read authority remains usable');
+   assert.deepEqual(await native(),groups,'refused receipt replays change no memberships');
+
+   const removed=await post('groups/create',{name:'Synthetic removed group'},201);
+   await complete(c,'auth.groups.inspect',{id:removed.id},{kind:'group',id:removed.id});
+   await post('groups/delete',{id:removed.id});
+   await observed(c,'auth.groups.inspect',{id:removed.id},null,{code:'resource_unavailable'});
+   await observed(c,'auth.groups.grants',{id:removed.id+'/'+worker.id},null,{code:'resource_unavailable'});
+   assert.deepEqual(await native(),groups,'removed records never become inferred audit targets');
 
    // A readable group can still fail native write classification after target
    // resolution. Keep that known target without weakening the app boundary.
