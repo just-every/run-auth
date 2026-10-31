@@ -220,7 +220,7 @@
       "executable": false
     },
     "docs/agents.md": {
-      "sha256": "d3ac73e332c4a733707f97c0872f6b0523594d5895818c7772c25cd9e4627442",
+      "sha256": "d101fbddb2bc7e0cfa841fe4c3db248bd15904b2da5998bc99a8d2a8622a3e07",
       "executable": false
     },
     "docs/apps.md": {
@@ -960,7 +960,7 @@
       "executable": false
     },
     "scripts/agent-docs.mjs": {
-      "sha256": "7c1caf00e0a52e10b9034b36302258551d642b4eef44b60fc5d673cd2e630114",
+      "sha256": "ed13989f78c7bac3ee72cb158a7becd427e726ae1b60c83ef675b5eaefdfefec",
       "executable": false
     },
     "scripts/agents/approved-probe.mjs": {
@@ -3788,7 +3788,7 @@
       "executable": false
     },
     "tests/agent-door/docs-flow.mjs": {
-      "sha256": "e7ea44d7817983d6c188a1c3e1e99926f5fd15678fe890ebddafa09095fe78f6",
+      "sha256": "a3d0866d0facd0f1e1335f925787a91abfdf5174d81c32b007d04d00d8e792a1",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {
@@ -4388,7 +4388,7 @@
       "executable": false
     },
     "tests/site/run-site.test.mjs": {
-      "sha256": "e54d907960b839510e6e31f13a237f8b298e2a3c08b5f55023e1d57a901aaabd",
+      "sha256": "41afcb1968ea3c485f327c6ec143fd5d982e751b90eddf950856ca38f134e05c",
       "executable": false
     },
     "tsconfig.json": {

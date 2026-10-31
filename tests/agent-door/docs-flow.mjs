@@ -55,7 +55,7 @@ export async function openGuideInstallation() {
 }
 
 // One sanity flow through a fresh production Worker, not an adapter test door.
-export async function agentDocsFlow(t) {
+export async function agentDocsFlow(t, siteGuide) {
   const guide = await checkAgentGuide(root), registry = await readAgentRegistry(root), vocabulary = await readDoorVocabulary(root)
   const app = await openGuideInstallation(); t.after(() => app.close())
   const get = (path = '/docs/agents', init) => app.request(app.hosted.origin + path, init)
@@ -72,7 +72,13 @@ export async function agentDocsFlow(t) {
   assert.deepEqual(listed.result.tools, registry.tools, 'guide uses the actual production tool descriptors and computed scopes')
   assert.deepEqual(templates.result.resourceTemplates.map(resource => resource.uriTemplate), registry.resources.map(resource => resource.uriTemplate))
   const names = [...guide.matchAll(/^`(auth\.[a-z.]+)`$/gm)].map(match => match[1])
-  assert.deepEqual(names, listed.result.tools.map(tool => tool.name), 'documented tool headings have neither extra nor missing tools')
+  const listedNames = listed.result.tools.map(tool => tool.name)
+  assert.deepEqual(names, listedNames, 'documented tool headings have neither extra nor missing tools')
+  for (const [door, html] of [['installation', original], ['run site', siteGuide]]) {
+    const servedNames = [...html.matchAll(/<p><code>(auth\.[a-z.]+)<\/code><\/p>/g)].map(match => match[1])
+    assert.deepEqual(servedNames, listedNames, door + ' serves every production tool and no extra tool')
+    for (const resource of templates.result.resourceTemplates) assert.ok(html.includes(resource.uriTemplate.replaceAll('&', '&amp;')), door + ' serves resource templates')
+  }
   for (const resource of templates.result.resourceTemplates) assert.ok(guide.includes('`' + resource.uriTemplate + '`'))
   for (const tool of listed.result.tools) {
     assert.ok(guide.includes('Scope: `' + tool._meta['com.runeditrun/scope'] + '`'))
@@ -100,6 +106,8 @@ export async function agentDocsFlow(t) {
     surface => surface.tools[0].scope = 'synthetic:stale',
     surface => surface.tools[0].classes = ['access'],
     surface => surface.resources.pop(),
+    surface => surface.resources.push('auth://synthetic/{id}'),
+    surface => surface.specialist = 'synthetic stale role',
     surface => surface.journey = surface.journey.filter(step => step.tool !== surface.tools[0].name),
   ]) {
     const stale = structuredClone(app.surface); change(stale)
