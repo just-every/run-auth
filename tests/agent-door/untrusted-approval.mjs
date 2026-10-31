@@ -75,7 +75,7 @@ export async function approvalGroupResults(c,t) {
  assert.equal(noWrite.status,403);assert.equal(errorCode(noWrite),'insufficient_scope');withheld(noWrite);
  await c.adopt(autonomousPolicy(),{revoked:{agents:[],consents:[c.consent]}});
  const revoked=await c.tool('auth.groups.create',args,{token});
- assert.equal(revoked.status,401);assert.equal(errorCode(revoked),'consent_revoked');withheld(revoked);
+ assert.equal(revoked.status,401);assert.equal(errorCode(revoked),'unauthenticated');withheld(revoked);
  const hidden=await c.mcp('resources/read',{uri:links[0].uri},{token});
  assert.equal(hidden.status,401);assert.equal(hidden.result?.contents,undefined);
  assert.deepEqual(await groups(c),after,'held, refused and revoked replays never repeat the native effect');
