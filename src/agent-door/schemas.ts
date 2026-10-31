@@ -9,5 +9,7 @@ export const recordOrPage = (record: JsonSchema) => ({ oneOf: [record, page(reco
 export const snapshot = object({ people: string, groups: string, apps: string, assignments: string })
 export const membership = object({ id: string })
 export const createdGroup = object({ id: string, name: { type: 'string' } })
+// Native validation owns trimming, length and its stable refusal code.
+export const createGroup = object({ name: { type: 'string' } })
 export const launcher = object({ tiles: { type: 'array', items: { type: 'object' } } })
 export const activity = page({ type: 'object' })

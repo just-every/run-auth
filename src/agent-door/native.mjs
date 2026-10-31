@@ -5,6 +5,12 @@ import {writeAdmin} from '../auth/admin-api/commands.mjs';
 import {epoch,transactionPrincipal} from '../auth/admin-api/concurrency.mjs';
 import {ToolRefusal} from '../modules/agent-door/index.ts';
 import {mappedGroup} from './group-boundary.mjs';
+import {groupName} from '../auth/workforce/routes.mjs';
+
+export function validatedGroupName(value) {
+ try {return groupName(value);}
+ catch(error){if(error instanceof AuthError)throw new ToolRefusal(error.message);throw error;}
+}
 
 // This is a native machine principal, never an invented person or session. The
 // same command, rank, field ownership and role/resource fences serve REST/UI.

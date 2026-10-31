@@ -23,6 +23,7 @@ const OWNER_ACTIONS=['/saml-keys/stage','/saml-keys/activate','/saml-keys/retire
 const ADMIN_ACTIONS=['/bookmarks/create','/bookmarks/remove','/oidc-apps/create','/oidc-apps/rotate-secret','/groups/create','/groups/delete','/groups/add','/groups/remove','/company-apps/create','/company-apps/update','/company-apps/remove','/company-apps/assign','/company-apps/unassign','/provisioning/connect','/provisioning/rotate','/provisioning/disconnect','/provisioning/test','/provisioning/preview','/provisioning/sync','/provisioning/retry','/provisioning/adopt','/catalog/add'];
 export const isWorkforceAction=path=>path==='/launcher/favorite'||OWNER_ACTIONS.includes(path)||ADMIN_ACTIONS.includes(path);
 const text=(value,max,code)=>{const v=String(value??'').trim();if(!v||v.length>max)fail(code);return v;};
+export const groupName=value=>text(value,80,'invalid_group_name');
 
 export async function workforceAction(ctx,request,path,data) {
  if(path==='/launcher/favorite')return launcherPreference(ctx,request,data);
@@ -63,7 +64,7 @@ export async function workforceCommand(ctx,actor,path,data) {
   await log('bookmark_removed',data.id,{});return json({ok:true});
  }
  if(path==='/groups/create') {
-  const id=random(),name=text(data.name,80,'invalid_group_name');
+  const id=random(),name=groupName(data.name);
   if(await one(ctx,'SELECT 1 FROM auth_groups WHERE name=?',name))fail('group_exists',409);
   if(!await held(await run(ctx,`INSERT INTO auth_groups(id,name,created_by,created_at) SELECT ?,?,?,? WHERE ${g}`,id,name,actor.actorId,ctx.now(),...ga)))fail('session_authority_changed',403);
   await log('group_created',id,{name});return json({id,name},201);

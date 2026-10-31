@@ -248,3 +248,44 @@ test('company apps journey: the owner adds a SAML app from its metadata, an Open
  await employee.close();
  assert.deepEqual(errors,[],'no browser runtime errors');
 });
+
+test('group creation parity: long native names and duplicate refusal remain visible at desktop and mobile in both themes',async t=>{
+ const app=await openApp();t.after(()=>app.close());await app.claim();
+ const browser=await chromium.launch({headless:true,executablePath:process.env.AUTH_CHROMIUM||undefined,args:['--no-sandbox','--use-mock-keychain','--password-store=basic']});t.after(()=>browser.close());
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+ const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
+ await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+ await page.goto(app.origin+'/signin?returnTo=%2Fsetup');
+ await page.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);await page.getByRole('button',{name:'Email me a sign-in link'}).click();
+ await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();
+ await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Finish setup'}).click();
+ await page.goto(app.origin+'/app/methods');const registered=page.waitForResponse(response=>response.url().endsWith('/passkeys/register/verify'));
+ await page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await registered).status(),200);
+ await page.goto(app.origin+'/app/apps');
+ const name='synthetic-auth-'.padEnd(80,'n'),form=page.locator('form[action="/api/auth/groups/create"]');
+ await form.getByLabel('Group name').fill(name);
+ let response=page.waitForResponse(response=>response.url().endsWith('/api/auth/groups/create'));
+ await form.getByRole('button',{name:'Create group'}).click();assert.equal((await response).status(),201);
+ const row=page.locator('section[aria-labelledby="groups-heading"] .data-row',{has:page.getByText(name,{exact:true})});
+ await expect(row).toHaveCount(1);await expect(row.getByText('No members',{exact:true})).toBeVisible();
+ const before=await(await context.request.get(app.origin+'/api/auth/company-apps')).json();
+ await form.getByLabel('Group name').fill(name);response=page.waitForResponse(response=>response.url().endsWith('/api/auth/groups/create'));
+ await form.getByRole('button',{name:'Create group'}).click();const duplicate=await response;assert.equal(duplicate.status(),409);assert.equal((await duplicate.json()).error,'group_exists');
+ await expect(page.locator('[data-auth-status]')).toHaveAttribute('role','alert');await expect(page.locator('[data-auth-status]')).not.toBeEmpty();
+ const after=await(await context.request.get(app.origin+'/api/auth/company-apps')).json();assert.deepEqual(after.groups,before.groups);
+ const themeButton=page.getByRole('button',{name:'Color theme'}).filter({visible:true}).first();
+ await themeButton.hover();await expect(page.getByRole('tooltip')).toHaveText('Color theme');await page.mouse.move(0,0);
+ await themeButton.focus();await expect(page.getByRole('tooltip')).toHaveText('Color theme');await themeButton.blur();
+ const directory=process.env.AUTH_SCREENSHOTS||'./test-results/auth-journeys';await mkdir(directory,{recursive:true});const errors=[];
+ await captureViews({page,views,errors,prepare:async target=>{
+  await form.getByLabel('Group name').fill(name);
+  const refused=target.waitForResponse(response=>response.url().endsWith('/api/auth/groups/create'));
+  await form.getByRole('button',{name:'Create group'}).click();await refused;
+  await expect(target.locator('[data-auth-status]')).toBeVisible();
+ },capture:async(target,width,theme)=>{
+  const results=await new AxeBuilder({page:target}).analyze();assert.deepEqual(results.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+  await target.screenshot({path:join(directory,`group-parity-${width}-${theme}.png`),fullPage:true});
+  assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`group name fits ${width}px`);
+ }});
+ assert.deepEqual(errors,[]);
+});

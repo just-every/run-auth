@@ -1,8 +1,8 @@
 import { defineTool, ToolRefusal, type ToolDefinition, type ResourceDefinition } from '../modules/agent-door/index.ts'
 import { identityAuth, type Bindings } from '../auth.server'
-import { read, write, snapshot, group, membership, internalGroup, nativeLauncher } from './native.mjs'
+import { read, write, snapshot, group, membership, internalGroup, nativeLauncher, validatedGroupName } from './native.mjs'
 
-import { string, object, recordOrPage, identity, group as groupSchema, snapshot as snapshotSchema, membership as membershipSchema, createdGroup, launcher as launcherSchema, activity } from './schemas.ts'
+import { string, object, recordOrPage, identity, group as groupSchema, snapshot as snapshotSchema, membership as membershipSchema, createGroup, createdGroup, launcher as launcherSchema, activity } from './schemas.ts'
 const pagination = { limit: { type: 'integer', minimum: 1, maximum: 100 }, offset: { type: 'integer', minimum: 0 } }
 const standard = () => [{ class: 'standard' as const, facts: { measure: 1 } }]
 const clauses = ['AUTH-DIRECTORY-001', 'AUTH-ROLES-001', 'BASE-AGENT-002', 'BASE-AGENT-006']
@@ -22,9 +22,9 @@ export function nativeTools(env: Bindings): ToolDefinition[] {
       inputSchema: object({ id: string, ...pagination }, []), outputSchema: recordOrPage(groupSchema), classes: ['standard'], clauses, classify: standard, untrusted: true,
       async run(args, ctx) { return { result: await read(native, ctx, args.id ? '/groups/'+encodeURIComponent(String(args.id)) : '/groups', 'groups.read', { limit: args.limit, offset: args.offset }) } } }),
     defineTool({ name: 'auth.groups.create', title: 'Create an empty group', description: 'Create an internal group through Auth’s native directory command. It grants no identity or app access.', scope: 'directory:write', readOnly: false,
-      inputSchema: object({ name: { type: 'string', minLength: 1, maxLength: 80 } }), outputSchema: createdGroup, classes: ['standard'], clauses, classify: standard,
-      summary: (args, ctx) => ({ items: [String(args.name).slice(0,60)+' '+ctx.operationId.slice(0,8)] }),
-      async run(args, ctx) { const result = await write(native, ctx, '/groups', 'POST', { name: String(args.name).slice(0,60)+' '+ctx.operationId.slice(0,8) }, 'groups.manage'); ctx.emit('group.created', uri('groups', result.id)); return { result, resources: [{ uri: uri('groups', result.id), name: result.name }] } } }),
+      inputSchema: createGroup, outputSchema: createdGroup, classes: ['standard'], clauses, classify: standard,
+      summary: args => ({ items: [validatedGroupName(args.name)] }),
+      async run(args, ctx) { const result = await write(native, ctx, '/groups', 'POST', { name: args.name }, 'groups.manage'); ctx.emit('group.created', uri('groups', result.id)); return { result, resources: [{ uri: uri('groups', result.id), name: result.name }] } } }),
     defineTool({ name: 'auth.groups.add', title: 'Add a group member', description: 'Add one existing native identity to an internal static group outside app assignments and claim mappings that use groups; cannot widen the sponsor’s own access or dispatch connector work.', scope: 'directory:write', readOnly: false,
       inputSchema: object({ group_id: string, person_id: string }), outputSchema: membershipSchema, classes: ['access'], clauses: [...clauses, 'AUTH-MAPPING-001'],
       async authority(args, ctx) { const m = await membership(native, ctx, `${args.group_id}/${args.person_id}`); return { subject: m.personId, widens: !m.present } },

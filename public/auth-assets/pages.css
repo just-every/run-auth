@@ -15,6 +15,8 @@
 .row-panel .panel-header > form, .row-panel .panel-header > button, .row-panel .panel-header > p { flex: none; }
 .row-panel .data-list, .row-panel > .empty-state { padding-top: 16px; border-top: 1px solid var(--rer-border); }
 .row-panel .data-row { grid-template-columns: minmax(0, 1fr) auto; }
+[aria-labelledby="groups-heading"] .data-row { grid-template-columns: minmax(0, 1fr); }
+[aria-labelledby="groups-heading"] .data-row strong { overflow-wrap: anywhere; }
 
 /* Sign-in methods: the two method cards carry a small door at the right. */
 .method-panel { padding-right: 112px; }
