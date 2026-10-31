@@ -3788,7 +3788,7 @@
       "executable": false
     },
     "tests/agent-door/docs-flow.mjs": {
-      "sha256": "bbb15c7a85793c269cf93643bd8d743143dd0c0f1aed695296c2497ca65cd8cb",
+      "sha256": "cb77d6f007429ea89c4d105f906e404c4604d05d860ef3c5fae6365f6d5eda03",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {
