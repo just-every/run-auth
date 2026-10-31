@@ -42,3 +42,8 @@ Auth's native people and directory services. Read `docs/shared-agent-door.md`.
 Never use Base bootstrap cookies as Auth sessions, reconcile Business people by
 email after binding, or expose secret-bearing native models. The signed roster
 binds existing admitted identities only and does not mint or widen them.
+
+The public agent guide is generated from the production registry factories and
+`agent-surface.json` class fixtures. After a registry or fixture change, run
+`node scripts/agent-docs.mjs write` and `node scripts/agent-docs.mjs check`.
+Both application and run-site builds refuse a stale guide.
