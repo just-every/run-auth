@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "b46e3271a1a16be4588e8b59af501c59a9acf46de422db9d3030534da97da145",
+      "sha256": "da54774e24ffd33332187137991bd6840a068e42a1ec802271acc63677552c21",
       "executable": false
     },
     "deploy-demo.json": {
@@ -312,7 +312,7 @@
       "executable": false
     },
     "docs/shared-agent-door.md": {
-      "sha256": "af1982a72f1869dae7389588e4a7b2720f17f95d60936c98d811e3f401547af7",
+      "sha256": "015a04ec4085b58dabc72a6453a616fde37eccc13d158549a05eeea9c2e6d8c0",
       "executable": false
     },
     "docs/sign-in.md": {
@@ -1164,7 +1164,7 @@
       "executable": false
     },
     "src/agent-door/native.mjs": {
-      "sha256": "3a184c5b7f3274a1604256899b38011754bcf8e0cb4cb62bffdc6ffee2f63a19",
+      "sha256": "2a3de48181e311c57edb99bf10a6215e450335151348e823511a7c815c992bee",
       "executable": false
     },
     "src/agent-door/people.ts": {
@@ -3776,7 +3776,7 @@
       "executable": false
     },
     "tests/agent-door/authority.test.mjs": {
-      "sha256": "83a227cc24662310604d501c638d9923e95b8605e7c482ca015b52c13cd661cb",
+      "sha256": "6c7b58b819ed37b9c23c15973b32adcf333936f111726a78c807e888c3c6cda7",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {
@@ -4280,7 +4280,7 @@
       "executable": false
     },
     "tests/integration/helpers/agent-authority-journey.mjs": {
-      "sha256": "a4adb1063ca3743c80c621a561db30090f18e49dcba4ab9d8938806a3f95ee93",
+      "sha256": "8c0bfebbcafc34c32644711bb3a75c460d584dfedf548df04c6169e702bf00ae",
       "executable": false
     },
     "tests/integration/helpers/campaign-journey.mjs": {

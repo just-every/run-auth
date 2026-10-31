@@ -57,7 +57,14 @@ export async function agentAuthorityJourney(t) {
  const readerCall=await f.call(p.reader,'auth.groups.add',{group_id:g.first.id,person_id:p.worker.id,idempotency_key:'reader-ui'});
  assert.equal(readerCall._meta['com.runeditrun/error'].code,'admin_service_owner_permission_required');
  await screen('reader',reader);
- const pending=await f.call(p.editor,'auth.groups.add',{group_id:g.first.id,person_id:p.worker.id,idempotency_key:'pending-ui'});
+ await f.policy();
+ const savedAdd={group_id:g.first.id,person_id:p.worker.id,idempotency_key:'saved-ui-add'};
+ const savedRemove={id:g.first.id+'/'+p.worker.id,idempotency_key:'saved-ui-remove'};
+ assert.equal((await f.call(p.editor,'auth.groups.add',savedAdd)).isError,false);
+ assert.equal((await f.call(p.editor,'auth.groups.remove',savedRemove)).isError,false);
+ assert.equal((await f.call(p.editor,'auth.groups.add',{...savedAdd,idempotency_key:'saved-ui-add-again'})).isError,false);
+ await f.policy(heldMembershipPolicy());
+ const pending=await f.call(p.editor,'auth.groups.remove',{id:savedRemove.id,idempotency_key:'pending-ui'});
  assert.equal(pending.resultType,'input_required');
  const approvalId=pending._meta['com.runeditrun/approval'].id;
  await editor.goto(app.origin+'/agents/approvals/'+approvalId);
@@ -74,8 +81,17 @@ export async function agentAuthorityJourney(t) {
  await expect(editor.locator('[data-approval-state]')).toHaveText('refused');
  await expect(editor.getByRole('button',{name:'Approve',exact:true})).toHaveCount(0);
  const membership=(await f.members()).find(group=>group.id===g.first.id);
- assert.equal(membership.members.some(person=>person.id===p.worker.id),false);
+ assert.equal(membership.members.some(person=>person.id===p.worker.id),true);
  const visible=await f.call(p.editor,'auth.groups.inspect',{id:g.first.id});assert.equal(visible.isError,false);
+ for(const [name,args] of [['auth.groups.add',savedAdd],['auth.groups.remove',savedRemove]]) {
+  const retry=await f.call(p.editor,name,args);
+  assert.equal(retry.isError,true);assert.equal(retry.structuredContent,undefined);
+  assert.equal(retry._meta['com.runeditrun/error'].code,'admin_service_owner_permission_required');
+ }
+ const separate=await f.call(p.editor,'auth.groups.add',{group_id:g.second.id,person_id:p.other.id,idempotency_key:'independent-ui-add'});
+ assert.equal(separate.resultType,'input_required');
+ assert.equal((await f.approve(p.editor,separate)).approval.state,'executed');
+ assert.equal((await f.members()).find(group=>group.id===g.second.id).members.some(person=>person.id===p.other.id),true);
  await screen('authority-ended',editor);
  await app.pause();await app.resume();await editor.reload();
  await expect(editor.locator('[data-approval-state]')).toHaveText('refused');

@@ -36,12 +36,20 @@ export async function read(native,ctx,path,scope,query={}) {
 export async function write(native,ctx,path,method,data,scope) {
  try {
   let actor=await principal(native,ctx,[scope]);
-  const internal=/^\/groups\/([^/]+)\/members\/[^/]+$/.exec(path);
+  const internal=/^\/groups\/([^/]+)\/members\/([^/]+)$/.exec(path);
   if(internal) {
    // Preserve the internal-group boundary in the native committing transaction,
    // including a human assignment racing classification and execution.
-   const guard=actor.guard,groupId=decodeURIComponent(internal[1]);
+   const guard=actor.guard,groupId=decodeURIComponent(internal[1]),personId=decodeURIComponent(internal[2]);
    actor={...actor,guard:{clause:`(${guard.clause}) AND EXISTS(SELECT 1 FROM auth_groups WHERE id=? AND rule IS NULL) AND NOT EXISTS(SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?) AND NOT ${mappedGroup}`,args:[...guard.args,groupId,groupId,groupId]}};
+   if(method==='PUT'&&personId===ctx.person.id) {
+    // An already-present self membership is inert. It must still exist when
+    // the native transaction commits, so a concurrent removal cannot turn
+    // that inert call into a new grant for its own sponsor.
+    if(!await one(native,'SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id=?',groupId,personId))throw new ToolRefusal('self_escalation');
+    const current=actor.guard;
+    actor={...actor,guard:{clause:`(${current.clause}) AND EXISTS(SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id=?)`,args:[...current.args,groupId,personId]}};
+   }
   }
   const tx=transactionPrincipal(native,actor,await epoch(native));
   const response=await writeAdmin(native,tx,path,method,data);

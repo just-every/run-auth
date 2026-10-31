@@ -42,6 +42,11 @@ is the approver and the agent remains the preparer. Native Activity uses
 `<agent> for <person>` and records the door operation id and named approvers.
 Repeated keys retain one effect, changed arguments conflict, and every retry
 passes current admission, scopes, revocation, Pause and policy again.
+Saved membership results and held work also recheck the current native edit
+permission and both target resources. A role revision or a person's move beyond
+the edit scope can end that authority while leaving reads and unrelated edits
+available. Removing the sponsor's own membership is allowed; an earlier inert
+addition cannot restore it after removal, including in the committing transaction.
 
 Use the `inspect-workforce` prompt to inspect the current people and groups, then
 propose only an internal membership change allowed by the sponsor’s native role.
