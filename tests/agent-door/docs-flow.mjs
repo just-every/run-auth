@@ -115,6 +115,25 @@ export async function agentDocsFlow(t, siteGuide) {
   }
   const discover = await c.mcp(['server', 'discover'].join('/'))
   assert.deepEqual(discover.result._meta['com.runeditrun/limits'], registry.limits)
+  const prompts = await c.mcp(['prompts', 'list'].join('/'))
+  assert.equal(prompts.status, 200)
+  assert.deepEqual(prompts.result.prompts.map(({ name }) => name), registry.prompts.map(({ name }) => name))
+  const events = outputs.get('events').events
+  assert.ok(events.length, 'event documentation is checked against retained effects')
+  const mismatch = await c.mcp(['server', 'discover'].join('/'), {}, { headers: { 'Mcp-Method': ['tools', 'list'].join('/') } })
+  assert.equal(mismatch.status, 400)
+  assert.equal(mismatch.message.error.message, 'HeaderMismatch')
+  for (const [door, html] of [['installation', original], ['run site', siteGuide]]) {
+    assert.ok(html.includes('<code>' + registry.specialist + '</code>'), door + ' names the current specialist')
+    for (const prompt of prompts.result.prompts) assert.ok(html.includes('<code>' + prompt.name + '</code>'), door + ' documents the declared specialist job')
+    for (const resource of registry.resources) assert.ok(html.includes('<code>' + resource.uriTemplate + '</code> — ' + resource.name +
+      '; scope <code>' + resource.scope + '</code>; classes ' + resource.classes.map(cls => '<code>' + cls + '</code>').join(', ') + '.'),
+      door + ' attaches scope and classes to the correct resource template')
+    for (const type of new Set(events.map(event => event.type))) assert.ok(html.includes('<li><code>' + type + '</code></li>'), door + ' documents emitted event types')
+    assert.ok(html.includes('Requests per minute per agent: <code>' + registry.limits.requestsPerMinute + '</code>'), door + ' documents the enforced request capacity')
+    assert.ok(html.includes('Maximum request body bytes: <code>' + registry.limits.maxBodyBytes + '</code>'), door + ' documents the enforced body capacity')
+    assert.ok(html.includes('<code>' + mismatch.message.error.message + '</code>'), door + ' documents the observed protocol error')
+  }
   const populated = await get('/docs/agents', { headers: { cookie: owner.cookie(), authorization: 'Bearer synthetic-auth-private-1' } })
   assert.equal(await populated.text(), original, 'signed-in populated installation returns the same public document')
   for (const value of [app.email, 'Avery Owner', 'synthetic-auth-private-1', ...outputs.values()].filter(value => typeof value === 'string')) assert.ok(!original.includes(value), 'no private record or credential in public guide')
