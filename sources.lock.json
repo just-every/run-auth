@@ -3776,7 +3776,7 @@
       "executable": false
     },
     "tests/agent-door/authority.test.mjs": {
-      "sha256": "28939a91144484613e5bb87358db1c19dc942ce7cb4268fae121dce55950fe07",
+      "sha256": "8dbfc6b927e644384bcd73630b7187b148fd3783b53a7e83e7c2ceb673c9252b",
       "executable": false
     },
     "tests/agent-door/initialize-owner.mjs": {

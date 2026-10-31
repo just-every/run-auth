@@ -103,13 +103,27 @@ test('native membership authority survives cached success, held execution and re
  // Keep reads and the independently granted second group while revoking only
  // the first group's edit authority. An old receipt is no longer authority.
  await f.change({kind:'revoke',grantId:f.grants.first.id});
- done(await f.call(p.editor,'auth.groups.inspect',{id:g.first.id}));
- refused(await add(p.editor,g.first,p.worker,'saved-add-again'));
- refused(await remove(p.editor,g.first,p.worker,'saved-remove'));
- refused(await establishedEditor('auth.groups.add',{group_id:g.first.id,person_id:p.worker.id,idempotency_key:'saved-add-again'}));
- assert.equal(await present(g.first,p.worker),true);
- done(await add(p.editor,g.second,p.other,'second-still-authorized'));
- assert.equal(await present(g.second,p.other),true);
+ for(const held of [false,true]) {
+  await f.policy(held?heldMembershipPolicy():undefined);
+  const before=await f.members();
+  done(await f.call(p.editor,'auth.groups.inspect',{id:g.first.id}));
+  for(const action of ['add','remove'])assert.equal((await p.editor.call('/api/auth/roles/group',{action,groupId:g.first.id,personId:p.worker.id})).status,403);
+  refused(await add(p.editor,g.first,p.worker,'saved-add-again'));
+  refused(await remove(p.editor,g.first,p.worker,'saved-remove'));
+  for(const [tool,args] of [
+   ['auth.groups.add',{group_id:g.first.id,person_id:p.worker.id,idempotency_key:'saved-add-again'}],
+   ['auth.groups.remove',{id:g.first.id+'/'+p.worker.id,idempotency_key:'saved-remove'}],
+  ]) {
+   const retry=await establishedEditor(tool,args);
+   refused(retry);assert.equal(retry._meta['com.runeditrun/approval'],undefined);
+  }
+  assert.deepEqual(await f.members(),before);
+  assert.equal(await present(g.first,p.worker),true);
+  const separate=await add(p.editor,g.second,p.other,'second-still-authorized-'+held);
+  if(held)assert.equal((await f.approve(p.editor,separate)).approval.state,'executed');else done(separate);
+  assert.equal(await present(g.second,p.other),true);
+  if(!held)await f.post(p.owner,'/api/auth/roles/group',{action:'remove',groupId:g.second.id,personId:p.other.id});
+ }
  // A role revision may remove the verb without revoking its resource grant.
  // A replacement read-only grant cannot turn a saved receipt into permission.
  const role=await f.change({kind:'role',role:{name:'Synthetic membership editor',rank:20,permissions:['roles.view','people.view','groups.view','groups.edit']}});
