@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "54d15e59fb48f1fc15acb50935c518b6f27df7716d1081375b001b2926b4f245",
+      "sha256": "6f271fad63a0c1a2e0d905465d075bd8a3b90e785b5f111323c92bcd49071384",
       "executable": false
     },
     "deploy-demo.json": {
@@ -3783,8 +3783,12 @@
       "sha256": "d3afe624289fa214a60fa7b3cf1534b8828e550d81727c4ae670d9fcf75de9eb",
       "executable": false
     },
+    "tests/agent-door/untrusted-approval.mjs": {
+      "sha256": "fd643b8f9e40ab078f946249a08067c673e19a781c5336463228cfef0a0faefd",
+      "executable": false
+    },
     "tests/agent-door/untrusted-results.mjs": {
-      "sha256": "f7ae8ad95366a65bb6679feead3e5c70f55a8b847888922a32e59946c7a13cb8",
+      "sha256": "9f1a604aea4ba3fa673fb0fe6de6a15fafaeab98385b06300e6ad9337c4c50d3",
       "executable": false
     },
     "tests/auth/abuse.test.mjs": {
