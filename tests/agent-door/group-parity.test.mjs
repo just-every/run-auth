@@ -67,6 +67,7 @@ test('group creation matches native names, empty state, audit and duplicate refu
   await native.c.adopt(policy);await agent.c.adopt(policy);
   assert.deepEqual(await native.state(),[]);assert.deepEqual(await agent.state(),[]);
   const phase=held?'held':'autonomous',names=groupNames(phase);
+  let replayAfterDelete;
   for(const name of [names.create.padEnd(61,'n'),names.injected.padEnd(80,'n'),'  '+groupNames(phase).create.slice(0,61).padEnd(61,'n')+'  ']) {
    const nativeResponse=await native.owner.call('/api/auth/groups/create',{name});assert.equal(nativeResponse.status,201);
    const nativeCreated=await nativeResponse.json();assert.equal(nativeCreated.name,name.trim());
@@ -95,6 +96,7 @@ test('group creation matches native names, empty state, audit and duplicate refu
    const uiRefused=await native.owner.call('/api/auth/groups/create',{name});assert.equal(uiRefused.status,409);assert.equal((await uiRefused.json()).error,'group_exists');
    assert.deepEqual(await native.state(),nativeBefore);assert.deepEqual(await native.events(),nativeAudit);
    assert.deepEqual(await agent.state(),before);assert.deepEqual(await agent.events(),audit);
+   replayAfterDelete={created,nativeCreated,args,options};
    console.log(`PROBE BASE-AGENT-002 ${phase} name-length=${name.trim().length}: native and MCP -> exact name, empty members, group_created; duplicate group_exists; replay unchanged`);
   }
   for(const name of ['', '   ', 'n'.repeat(81)]) {
@@ -132,6 +134,20 @@ test('group creation matches native names, empty state, audit and duplicate refu
    assert.deepEqual(current.map(({name,members})=>({name,members})),nativeBefore.map(({name,members})=>({name,members})));
    console.log('PROBE BASE-AGENT-002 held pending duplicate: native create while approval waits -> group_exists, unchanged groups and group_created events');
   }
+  // Replaying a successful create cannot undo a later native deletion.
+  const {created,nativeCreated,args,options}=replayAfterDelete;
+  for(const [install,id] of [[native,nativeCreated.id],[agent,created.id]]) {
+   const deleted=await install.owner.call('/api/auth/groups/delete',{id});
+   assert.equal(deleted.status,200);assert.equal((await deleted.json()).ok,true);
+   assert.equal((await install.state()).some(group=>group.id===id),false);
+  }
+  const afterDelete=await agent.state(),afterDeleteAudit=await agent.events();
+  const replay=await agent.c.tool('auth.groups.create',args,options);
+  assert.equal(replay.result?.isError,false);assert.deepEqual(replay.result?.structuredContent,created);
+  assert.deepEqual(await agent.state(),afterDelete,'successful-key replay cannot restore a deleted group');
+  assert.deepEqual(await agent.events(),afterDeleteAudit,'successful-key replay cannot emit another native creation');
+  assert.deepEqual(afterDelete.map(({name,members})=>({name,members})),(await native.state()).map(({name,members})=>({name,members})));
+  console.log(`PROBE BASE-AGENT-002 ${phase} replay after native deletion: successful key -> saved result, deleted group stays absent, no new group_created event`);
   assert.ok(agent.c.points.every(point=>point.ok));
  }
 });
