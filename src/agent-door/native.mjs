@@ -1,5 +1,6 @@
 import {AuthError,one,fail,hash,auditDetail} from '../auth/core.mjs';
-import {ownerState,ownerPermits,ownerSnapshotGuard} from '../auth/admin-api/scoped-authority.mjs';
+import {ownerState,ownerPermits,ownerSnapshotGuard,requireOwnerPermission} from '../auth/admin-api/scoped-authority.mjs';
+import {groupEffects} from '../auth/admin-api/resources.mjs';
 import {readAdmin} from '../auth/admin-api/reads.mjs';
 import {writeAdmin} from '../auth/admin-api/commands.mjs';
 import {epoch,transactionPrincipal} from '../auth/admin-api/concurrency.mjs';
@@ -35,12 +36,20 @@ export async function read(native,ctx,path,scope,query={}) {
 export async function write(native,ctx,path,method,data,scope) {
  try {
   let actor=await principal(native,ctx,[scope]);
-  const internal=/^\/groups\/([^/]+)\/members\/[^/]+$/.exec(path);
+  const internal=/^\/groups\/([^/]+)\/members\/([^/]+)$/.exec(path);
   if(internal) {
    // Preserve the internal-group boundary in the native committing transaction,
    // including a human assignment racing classification and execution.
-   const guard=actor.guard,groupId=decodeURIComponent(internal[1]);
+   const guard=actor.guard,groupId=decodeURIComponent(internal[1]),personId=decodeURIComponent(internal[2]);
    actor={...actor,guard:{clause:`(${guard.clause}) AND EXISTS(SELECT 1 FROM auth_groups WHERE id=? AND rule IS NULL) AND NOT EXISTS(SELECT 1 FROM auth_app_assignments WHERE principal_type='group' AND principal_id=?) AND NOT ${mappedGroup}`,args:[...guard.args,groupId,groupId,groupId]}};
+   if(method==='PUT'&&personId===ctx.person.id) {
+    // An already-present self membership is inert. It must still exist when
+    // the native transaction commits, so a concurrent removal cannot turn
+    // that inert call into a new grant for its own sponsor.
+    if(!await one(native,'SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id=?',groupId,personId))throw new ToolRefusal('self_escalation');
+    const current=actor.guard;
+    actor={...actor,guard:{clause:`(${current.clause}) AND EXISTS(SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id=?)`,args:[...current.args,groupId,personId]}};
+   }
   }
   const tx=transactionPrincipal(native,actor,await epoch(native));
   const response=await writeAdmin(native,tx,path,method,data);
@@ -75,6 +84,20 @@ export async function membership(native,ctx,id) {
  if(g.rule!==null)throw new ToolRefusal('dynamic_group_door_required');
  await read(native,ctx,'/people/'+encodeURIComponent(personId),'people.read');
  return {groupId,personId,present:Boolean(await one(native,'SELECT 1 FROM auth_group_members WHERE group_id=? AND person_id=?',groupId,personId))};
+}
+// The shared door invokes authority before replaying a saved result and again
+// before approved execution. Read access alone cannot authorize either path.
+// write() independently repeats the native checks and fences its transaction
+// with the exact role and directory epochs read for that committing principal.
+export async function membershipAuthority(native,ctx,id) {
+ try {
+  const member=await membership(native,ctx,id),actor=await principal(native,ctx,['groups.manage']);
+  await internalGroup(native,ctx,member.groupId);
+  await groupEffects(native,actor,member.groupId);
+  requireOwnerPermission(actor,'groups.edit',{groupId:member.groupId,personId:member.personId,write:true});
+  await actor.assertAuthority();
+  return member;
+ }catch(error){if(error instanceof AuthError)throw new ToolRefusal(error.message);throw error;}
 }
 // Group edits touching an external connector belong to a later provider-edge
 // family. Refuse before classification/preparation rather than enqueueing work.
