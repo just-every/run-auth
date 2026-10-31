@@ -50,6 +50,12 @@
       "title": "Reference",
       "pages": [
         {
+          "slug": "agents",
+          "title": "Agent guide",
+          "file": "agents.md",
+          "summary": "Supported identity steward tools, scopes, class fixtures and native authority boundaries."
+        },
+        {
           "slug": "admin-api",
           "title": "Machine administration API",
           "file": "admin-api.md",
