@@ -1,4 +1,3 @@
-import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID,webcrypto} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
@@ -56,7 +55,7 @@ function completed(answer,disposition) {
  return answer.result;
 }
 
-test('customer group names stay untrusted through completed tools and linked resources without changing policy or authority',async t=>{
+export async function untrustedGroupResults(t) {
  const c=await installation(t);
  for(const [phase,policy,disposition] of [['autonomous',autonomousPolicy(),'autonomous'],['held',heldPolicy(),'review']]) {
   await c.adopt(policy);
@@ -93,4 +92,4 @@ test('customer group names stay untrusted through completed tools and linked res
   t.diagnostic(`PROBE BASE-AGENT-003 6: ${phase} public MCP group create -> tool and resource markers true; policy unchanged; authority and read-only attempts refused without mutation; replay marked`);
  }
  assert.ok(c.points.every(point=>point.ok),'signed policy adoption preserves its conformance assertions');
-});
+}
