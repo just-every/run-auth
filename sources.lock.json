@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "098a9b138c59f6a92ff96b91f737d268b3cd5412d7c9d5bb39c5f99c0a282323",
+      "sha256": "c5a8772d23036b0e767a89ced8816ffc7f80ae477aae5660bb912c066f32fe9d",
       "executable": false
     },
     "deploy-demo.json": {
@@ -3788,7 +3788,7 @@
       "executable": false
     },
     "tests/agent-door/untrusted-results.mjs": {
-      "sha256": "bb597560bf9cd93f8b350b0926d81c11bef36b67f1bf0f3d36be0154dbb262f8",
+      "sha256": "9afd1136926669c3b94bbcbe1d632ab91e716059cca34cee12ad7b14cfaada0b",
       "executable": false
     },
     "tests/auth/abuse.test.mjs": {
