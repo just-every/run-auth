@@ -662,7 +662,7 @@ Auth owns the complete workforce identity job, including the private connectors,
 
 ## Status
 
-Judged from the code and tests at commit `4565fd3f48b1cfe6b518f27e168a215d9e549ac4` (17 October 2026).
+Judged from the code and tests at commit `4d1acc4b0a6bca857955d0f1ad80180620f6170a` (1 November 2026).
 
 AUTH-TENANCY-001, AUTH-ROLES-001, AUTH-GRANTS-001 and AUTH-ERASURE-001 pass at `64d257be` in Verify Auth `39703632411`, including their public HTTP/CLI assertions and 1440/390 browser journeys under the ratified CT policies (ct batch 9, 22 October). AUTH-TRANSFER-002 retains its complete inactive-restoration gap. AUTH-TENANCY-002 now additionally proves the missing positive same-upstream-subject journey through independently registered employer provider clients; its existing independent-proof and retained-record assertions remain intact.
 
