@@ -1,3 +1,4 @@
+import '../agent-door/untrusted-results.test.mjs';
 import {verifyDomains} from './domain-helpers.mjs';
 import {sdkAdminFlow,pythonAdminFlow,honoPermissionFlow} from './sdk-admin-flow.mjs';
 import {test} from 'node:test';

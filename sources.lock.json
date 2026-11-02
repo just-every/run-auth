@@ -184,7 +184,7 @@
       "executable": false
     },
     "CONTRACT.md": {
-      "sha256": "e7c85ff91aad9c896d136df7ef071db5a4b35c10fd919a08d6f279b0302d4d94",
+      "sha256": "f07a5ab031ae7a1500a2df0dba6cdd407124994e04c0c12c0128eb73d430587d",
       "executable": false
     },
     "deploy-demo.json": {
@@ -1176,7 +1176,7 @@
       "executable": false
     },
     "src/agent-door/tools.ts": {
-      "sha256": "1c096c43085dc4144e4e9559844b65a85613a01a37aa0f989af0201898fc99ee",
+      "sha256": "808b3888b73b0c33b7a88600daf4744fe72c6404667a5715b4b0e7605113f9e6",
       "executable": false
     },
     "src/auth.server.ts": {
@@ -3783,6 +3783,10 @@
       "sha256": "d3afe624289fa214a60fa7b3cf1534b8828e550d81727c4ae670d9fcf75de9eb",
       "executable": false
     },
+    "tests/agent-door/untrusted-results.test.mjs": {
+      "sha256": "9e66d8fca88b7e97c533480cb5595483ebfb46af999cd4d57235727e9fd0b5f2",
+      "executable": false
+    },
     "tests/auth/abuse.test.mjs": {
       "sha256": "bec5ca2d3e481baec5be506cdcd6c6d94aa3a8be5aa67afb21cf12eeb0c9e55e",
       "executable": false
@@ -3796,7 +3800,7 @@
       "executable": false
     },
     "tests/auth/agents-keys.test.mjs": {
-      "sha256": "9caacf798433aa5e1a6a5d2759746167f31f278554d2b5ac8cc48616ecdf00b5",
+      "sha256": "afa3d227b7f2c2821098127651c394dfe3d6ee2e8730a87598bf2f76307ab75a",
       "executable": false
     },
     "tests/auth/agents-proposals.test.mjs": {
