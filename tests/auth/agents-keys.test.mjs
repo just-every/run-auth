@@ -1,4 +1,4 @@
-import '../agent-door/untrusted-results.test.mjs';
+import {untrustedGroupResults} from '../agent-door/untrusted-results.mjs';
 import {verifyDomains} from './domain-helpers.mjs';
 import {sdkAdminFlow,pythonAdminFlow,honoPermissionFlow} from './sdk-admin-flow.mjs';
 import {test} from 'node:test';
@@ -301,6 +301,7 @@ test('machine directory and company-app commands share native lifecycle planning
  assert.equal((await call(`/assignments/${samlApp.id}/group/${group.id}`,'DELETE',undefined,await tag())).status,200);
  assert.equal((await call('/apps/'+samlApp.id,'DELETE',undefined,await tag())).status,200);
  assert.equal((await call('/groups/'+group.id,'DELETE',undefined,await tag())).status,200);
+ await untrustedGroupResults(t);
 });
 
 test('scoped credential custodians own exact automation whose tokens and native decisions track current permissions, dynamic resources and revocation',async t=>{
