@@ -523,7 +523,7 @@ Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/age
 6. Customer-sourced text carries the untrusted marker.
 
 <!-- contract-status:BASE-AGENT-003 -->
-Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.87 production-door conformance: 1024/1024 PASS (29 October 2026); `docs/shared-agent-door.md` — Resources family is partial: redacted people/groups/apps only; organization, request, review, obligation, task and native-event resources are undeclared.
+Existing evidence and limits: `agent-surface.json`; `src/agent-door`; `tests/agent-door/initialize-owner.mjs` — installed rer 0.2.87 production-door conformance: 1024/1024 PASS (29 October 2026); `docs/shared-agent-door.md`; `tests/auth/agents-keys.test.mjs` — machine directory and company-app commands share native lifecycle planning, dynamic membership, safe paginated reads and optimistic updates, extended by `tests/agent-door/untrusted-results.mjs` — untrustedGroupResults: autonomous and held policy, marked result and linked content, unchanged policy, refused self-escalation and missing write scope, marked successful replay — Resources family is partial: redacted people/groups/apps only; organization, request, review, obligation, task and native-event resources are undeclared.
 <!-- /contract-status -->
 
 **BASE-AGENT-004 — Business identity and short-lived, audience-bound tokens (partial).**
