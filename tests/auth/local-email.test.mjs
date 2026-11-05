@@ -31,6 +31,8 @@ test('domain changes require recent local proof on this session, including exist
  const r=await fixture(t);
  assert.equal((await change(r,r.owner.cookie)).status,200);
  r.now+=10*60000+1;
+ assert.equal((await r.call('/api/auth/automations',{cookie:r.owner.cookie})).status,200,'automation inventory is an administration read, not a proof-protected write');
+ assert.equal((await r.call('/api/auth/roles',{cookie:r.owner.cookie})).status,200,'role inventory shares the live read-authority fence');
  await refused(r,r.owner.cookie);
  const elsewhere=await emailSession(r,'owner@example.com');
  await refused(r,r.owner.cookie);
@@ -39,6 +41,7 @@ test('domain changes require recent local proof on this session, including exist
  await refused(r,sessionCookie(separate.response));
  await r.db.prepare('UPDATE auth_sessions SET local_email_verified_at=NULL').run();
  assert.equal((await r.call('/api/auth/people',{cookie:r.owner.cookie})).status,200,'older sessions keep ordinary administration');
+ assert.equal((await r.call('/api/auth/automations',{cookie:r.owner.cookie})).status,200,'sessions without local proof retain read access');
  await refused(r,r.owner.cookie);
  assert.equal((await r.db.prepare("SELECT provider_id FROM oa_domain_rules WHERE domain='company.example'").first()).provider_id,'company');
  assert.equal((await r.db.prepare('SELECT COUNT(*) AS n FROM auth_domains').first()).n,0);

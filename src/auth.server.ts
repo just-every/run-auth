@@ -9,7 +9,7 @@ import { createAuthRuntime, type AuthRuntimeOptions } from './auth/index.mjs'
 import { renderAuthPage, renderNotFoundPage, renderSignInPage, type AuthPage } from './ui/index'
 import { pageAvailable } from './ui/shell'
 import { localReturnTo } from './ui/helpers'
-import { session } from './auth/core.mjs'
+import { AuthError, session } from './auth/core.mjs'
 import { FRAME_SOURCES, framedPage } from './auth/page-frame.mjs'
 import branding from './branding.json'
 
@@ -129,7 +129,12 @@ export async function authResponse(request: Request, original: Bindings, executi
  if (path === '/app/account' || path === '/app/') return redirect('/app' + url.search)
  const page = path === '/app' || path === '/' || path === '/setup' ? 'account' : path.slice('/app/'.length) as AuthPage
  const known = pages.has(page)
- const model = await auth.model(request, known ? page : 'account')
+ let model
+ try { model = await auth.model(request, known ? page : 'account') }
+ catch (error) {
+  if (!(error instanceof AuthError) || ![401, 403, 409].includes(error.status)) throw error
+  return cardDocument('Access changed', 'Your sign-in or permissions changed while this page was loading. Return to your account and reopen the page. If access is still refused, sign in again or contact your administrator.', { href: '/app', label: 'Return to my account' }, error.status, request.method)
+ }
  if (page === 'methods' && model.user) model.providers = (await auth.upstreamProviders()).filter(provider => provider.visible)
  if (!env.AUTH_ORGANIZATION_ID && !model.user && path === '/setup' && request.method === 'POST') return firstRunResponse(request, env, { getSession: async () => null }, { theme })
 if (!known && !model.user) return cardDocument('Page not found', 'There is nothing at this address.', { href: '/', label: 'Back to Auth' }, 404, request.method)

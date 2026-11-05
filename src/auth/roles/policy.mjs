@@ -38,6 +38,14 @@ export function roleGuard(ctx,s,state) {
  const local=authority(ctx,s,[state.person.role]);
  return {clause:`${local.clause} AND EXISTS(SELECT 1 FROM auth_role_epoch WHERE id=1 AND epoch=?)`,args:[...local.args,state.epoch]};
 }
+// Read snapshots retain the same live session and role-epoch fences, without
+// the independent local-email freshness required by every committing write.
+export function roleReadGuard(ctx,s,state) {
+ return {clause:`EXISTS(SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=? AND a.person_version=p.version AND p.role=? AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?)`,args:[s.id,s.person_id,s.amr,s.person_version,state.person.role,ctx.now(),state.epoch]};
+}
+export async function assertReadAuthority(ctx,s,state) {
+ await assertGuard(ctx,roleReadGuard(ctx,s,state));
+}
 export function requireHardware(s) {
  if(!JSON.parse(s.amr).includes('hwk'))fail('passkey_admin_required',403);
 }
@@ -47,7 +55,7 @@ export async function requireRolePermission(ctx,s,permission,target={}) {
  if(write)requireLocalEmail(ctx,s);
  const state=await roleState(ctx,s);
  assertPermission(state,permission,{...target,write});
- const guard=roleGuard(ctx,s,state);
+ const guard=write?roleGuard(ctx,s,state):roleReadGuard(ctx,s,state);
  // Public callers append this guard to the committing SQL; merely calling this
  // function is not sufficient to protect a subsequent unguarded mutation.
  return {...guard,state};

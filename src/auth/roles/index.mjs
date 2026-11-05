@@ -1,7 +1,7 @@
 import {json,fail,requireSession,one} from '../core.mjs';
 import {roleState} from './state.mjs';
 import {PERMISSIONS,BUILTINS} from './permissions.mjs';
-import {requireHardware,permitted,assertPermission} from './policy.mjs';
+import {requireHardware,permitted,assertPermission,assertReadAuthority} from './policy.mjs';
 import {preview,apply} from './plans.mjs';
 import {resetFactors} from './factors.mjs';
 import {editProfile} from './profile.mjs';
@@ -35,12 +35,6 @@ export async function roleModel(ctx,s) {
  // grant has been revoked. Reads do not require fresh email proof.
  await assertReadAuthority(ctx,s,state);
  return model;
-}
-async function assertReadAuthority(ctx,s,state) {
- // Local-email authority is deliberately for writes. A read checks the current
- // version/methods, session lifetime and exact authority epoch without email age.
- const held=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),state.epoch);
- if(!held)fail('role_authority_changed',409);
 }
 function visiblePerson(state,p,permission) {
  if(!permitted(state,permission,{personId:p.id,write:false}))return null;

@@ -71,3 +71,48 @@ test('automation editor publishes two steps, previews a person without remote ch
  }
  assert.deepEqual(errors,[]);
 });
+
+test('administration reads survive expired email proof while writes and throttled email confirmation keep their security boundaries',async t=>{
+ const app=await openApp();t.after(()=>app.close());await app.claim();
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox','--use-mock-keychain','--password-store=basic'],executablePath:process.env.AUTH_CHROMIUM||undefined});t.after(()=>browser.close());
+ const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),cdp=await context.newCDPSession(page);
+ await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
+ const post=(path,data={})=>context.request.post(app.origin+path,{headers:{origin:app.origin},data});
+ await page.goto(app.origin+'/signin?returnTo=%2Fsetup');await page.getByLabel('Email address',{exact:true}).fill(app.vars.OWNER_EMAIL);
+ const requested=page.waitForResponse(r=>r.url().endsWith('/auth/identity/email/request'));await page.getByRole('button',{name:'Email me a sign-in link'}).click();assert.equal((await requested).status(),202);
+ await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();
+ await expect(page).toHaveURL(app.origin+'/setup');await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Finish setup'}).click();await expect(page).toHaveURL(app.origin+'/app');
+ await page.goto(app.origin+'/app/methods');
+ const registered=page.waitForResponse(r=>r.url().endsWith('/passkeys/register/verify'));await page.getByRole('button',{name:'Register a passkey'}).click();assert.equal((await registered).status(),200);
+ await expect.poll(async()=>(await context.request.get(app.origin+'/api/auth/automations')).status()).toBe(200);
+ // Passkey-only sign-in is the reported alternate trigger: ordinary reads must
+ // work even when this browser has no current local-email confirmation at all.
+ assert.equal((await post('/api/auth/signout')).status(),200);
+ await page.goto(app.origin+'/signin');await page.getByRole('button',{name:'Continue with a passkey'}).click();await expect(page).toHaveURL(app.origin+'/app');
+ assert.equal((await(await context.request.get(app.origin+'/api/auth/me')).json()).localEmailConfirmed,false);
+ for(const path of ['/app','/app/people','/app/move-in','/app/roles','/app/agents','/app/permissions','/app/activity','/app/erasure','/app/methods','/app/organizations','/app/apps','/api/auth/automations']){
+  assert.equal((await context.request.get(app.origin+path)).status(),200,path);
+ }
+ const apps=await page.goto(app.origin+'/app/apps');assert.equal(apps.status(),200);await expect(page.getByRole('heading',{level:1})).toBeVisible();
+ const refused=await post('/api/auth/people/invite',{email:'ravi@example.com'});assert.equal(refused.status(),403);assert.equal((await refused.json()).error,'local_email_step_up_required');
+ await page.goto(app.origin+'/app/methods');
+ // Initial sign-in used one of the five hourly confirmations. Complete every
+ // remaining link in this browser, then prove a blocked request is explicit.
+ for(let i=0;i<4;i++){
+  const response=page.waitForResponse(r=>r.url().endsWith('/auth/identity/email/request'));await page.getByRole('button',{name:'Confirm my email',exact:true}).click();assert.equal((await response).status(),202);
+  await page.goto((await app.link()).href);await page.getByRole('button',{name:'Continue to Auth'}).click();await expect(page).toHaveURL(app.origin+'/app/methods');
+ }
+ const blocked=page.waitForResponse(r=>r.url().endsWith('/auth/identity/email/request'));await page.getByRole('button',{name:'Confirm my email',exact:true}).click();const limited=await blocked;
+ assert.equal(limited.status(),429);assert.ok(Number(limited.headers()['retry-after'])>0);
+ await expect(page.locator('[data-auth-status]').first()).toContainText(/Too many email confirmation requests\. Try again in \d+ minutes?\. Your current email confirmation is not extended\./);
+ await expect(page.getByRole('button',{name:'Confirm with a passkey',exact:true})).toBeVisible();
+ // Reauthenticating with hardware is available before and after the mail
+ // refusal, but must never manufacture the independent email proof for writes.
+ assert.equal((await post('/api/auth/signout')).status(),200);
+ await page.goto(app.origin+'/signin');await page.getByRole('button',{name:'Continue with a passkey'}).click();await expect(page).toHaveURL(app.origin+'/app');
+ await page.goto(app.origin+'/app/methods');
+ const signed=page.waitForResponse(r=>r.url().endsWith('/passkeys/authenticate/verify'));await page.getByRole('button',{name:'Confirm with a passkey',exact:true}).click();assert.equal((await signed).status(),200);await expect(page).toHaveURL(app.origin+'/app/methods');
+ const me=await(await context.request.get(app.origin+'/api/auth/me')).json();assert.equal(me.localEmailConfirmed,false);
+ assert.equal((await post('/api/auth/people/invite',{email:'ravi@example.com'})).status(),403);
+ assert.equal((await context.request.get(app.origin+'/app/apps')).status(),200);
+});

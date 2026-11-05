@@ -24,6 +24,30 @@ Setup validates `rer-setup.json`, generates private settings, builds the Worker,
 
 First passkey enrollment begins with an Auth email-link session. An account with an existing passkey must use that passkey to enroll another. Email proof expires after 30 days; a passkey sign-in attempt then requests a new bound-browser email proof. Optional upstream sign-in still requires Auth email proof before first passkey enrollment and does not grant passkey administration.
 
+Administration reads, including Apps and its automation inventory, require current
+sign-in and permissions, but never a fresh email confirmation. They remain readable
+after the ten-minute confirmation expires or after a passkey-only sign-in. A role
+or session change during a page read returns an actionable authorization response;
+reopen the page with current access. People and audit exports record an action and
+retain their write requirements.
+
+Administration writes require both hardware-passkey authority and this browser's
+email confirmation from the last ten minutes, rechecked in the committing write.
+On Sign-in methods, **Confirm my email** sends the same-browser email link while
+retaining live passkey authority. **Confirm with a passkey** (or **Continue with a
+passkey** for an email session) supplies hardware proof and carries forward only
+the same person's still-fresh local email proof; it never renews that proof's age.
+TOTP, upstream sign-in and recovery do not replace the independent email proof.
+
+Email confirmation has fixed hourly limits of five requests per person and five
+per address, plus twenty per source, separate from the configurable Attack
+protection budgets. A signed-in person requesting their own address sees HTTP 429,
+the latest blocking limit's Retry-After, and a visible retry time. A blocked request
+sends no email and does not extend current proof. Other addresses retain the
+generic sign-in response to protect account privacy. If proof expires before the
+retry time, reads remain available but writes must wait for a completed email
+confirmation; signing in again with a passkey does not bypass this limit.
+
 Private local settings are mode-0600 `.dev.vars`; D1 lives in `.wrangler/state`. `AUTH_ENCRYPTION_KEY` is the generated wrapping secret. `AUTH_UPSTREAM_PROVIDERS` is an optional private JSON array of Base IdentityProviderConfig objects, restricted to Google, Microsoft and Okta. Each includes its id, preset and clientId, with the provider's issuer/tenant and private client authentication material. Microsoft and Okta require explicit subjectEmails mappings. Only safe visible provider labels and sign-in paths reach HTML. No live upstream credentials are included.
 
 ```sh
