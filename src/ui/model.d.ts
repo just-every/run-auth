@@ -67,6 +67,7 @@ export interface AuthPasskey {
 }
 
 export interface AuthActivity {
+  subject_label?: string
   eventId?: string
   actor_id?: string | null
   service_name?: string | null

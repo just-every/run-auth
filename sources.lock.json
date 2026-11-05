@@ -148,7 +148,7 @@
       "executable": false
     },
     "AGENTS.md": {
-      "sha256": "e1f6f947bb46e29cbb26edb326d2bca198a0d150ba012a20748f2b331a94c8b8",
+      "sha256": "c439fb6e04ab5a3508a4eb3c7cfe3061a3ef3586d9085f1b10351a3c7a15e766",
       "executable": false
     },
     "AUTH-COMMANDS.md": {
@@ -204,7 +204,7 @@
       "executable": false
     },
     "docs/activity.md": {
-      "sha256": "58d77d80c2d6ccd9f4eff1a2c0aaed9db036b1e959b634d24a4676dbad872a1f",
+      "sha256": "c604006b32e12483d5d4656e46df12d783c51e1b8208e4ba00b51cc4ec62624f",
       "executable": false
     },
     "docs/admin-api.md": {
@@ -212,7 +212,7 @@
       "executable": false
     },
     "docs/administrator-roles.md": {
-      "sha256": "16174a00145d6423cc30f151a5a747de68650a6d86b85213966e47789c65e68d",
+      "sha256": "29c1e8e8fd9dea89c0f74784d400d8ddd0ac74e5216c9ccad37df892abb9937b",
       "executable": false
     },
     "docs/agent-diagnostics.md": {
@@ -220,7 +220,7 @@
       "executable": false
     },
     "docs/apps.md": {
-      "sha256": "b313b10d95b0c1803ed0e79fcb0f5e174f9c912fb6129dd5fc5d9d253dbc8a91",
+      "sha256": "402260f0d9191fbe4d655a057845ba585fd341fe5dffbb33fa0c4716df4f176a",
       "executable": false
     },
     "docs/attribute-mapping.md": {
@@ -676,7 +676,7 @@
       "executable": false
     },
     "MOVE-IN.md": {
-      "sha256": "6ae7c746b82f539f41885e5b2e61dc95928931b7985a21cf3b6d45a3de5b54af",
+      "sha256": "ac20e91ae63e54657d6ea9a774a9503f256d28162530ed59c9b5fadc4670f2da",
       "executable": false
     },
     "ONBOARDING.md": {
@@ -692,7 +692,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "a1ca64a4d04a993f97fc648f02e872532b1dabde510102b99352e969d1faf637",
+      "sha256": "99c399b3e65900c71c804c451427d78ad5ef949b20c3d1b9cc4ba2b59352a339",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -796,7 +796,7 @@
       "executable": false
     },
     "public/auth-assets/auth-ui.js": {
-      "sha256": "4ce04f257ca638574804e72b212913b83cb161f5c74535627c80cafb6872b5f9",
+      "sha256": "a2676b785ea7a9e598fbc12ec7dfd31990cb779485ce10e152584a2f0f30bd47",
       "executable": false
     },
     "public/auth-assets/auth.css": {
@@ -824,7 +824,7 @@
       "executable": false
     },
     "public/auth-assets/pages.css": {
-      "sha256": "2cd8fc3a4c01efbe2e83d52416a1570f8e6b082d9db6dc62ba1152054f8cb0af",
+      "sha256": "cb41fa1de6fab2348c1e15d2d10006ff19110be19c7e83373f62a69170c3ad1a",
       "executable": false
     },
     "public/auth-assets/permissions-ui.js": {
@@ -844,7 +844,7 @@
       "executable": false
     },
     "public/auth-assets/roles-ui.js": {
-      "sha256": "57724e08a13c7c1ff75616a570239783eb0e79d2a36b635071766592528a889b",
+      "sha256": "5fad06ddd5f4aab3637179083cf1afec5f1c31d1318b4df0d5a97321c400ad93",
       "executable": false
     },
     "public/auth-assets/shell.css": {
@@ -1384,7 +1384,7 @@
       "executable": false
     },
     "src/auth/audit/query.mjs": {
-      "sha256": "bfee5b3b04cc63e897f912ccb5486eb6b4c1a5d08fe59c827b258fe229b084aa",
+      "sha256": "7f02b9e5f831911ee245b73ea0bffba1a35c3d2bb98e6e59b0f4483d0a0b3395",
       "executable": false
     },
     "src/auth/authorization-login.mjs": {
@@ -3600,7 +3600,7 @@
       "executable": false
     },
     "src/ui/helpers.ts": {
-      "sha256": "6f0ad500f765ed815541d33a9627469be731025ac48d5f161d801074d3333e97",
+      "sha256": "c4b0be7262bfb1699c5b860e2a347153596e7c6f0f77bdc467dbf6af2415184f",
       "executable": false
     },
     "src/ui/icons.ts": {
@@ -3612,7 +3612,7 @@
       "executable": false
     },
     "src/ui/model.d.ts": {
-      "sha256": "6e634f2a29a4618452b4ec9b1bf9c3e8d181dec1d17bafa1caf22e9439e1ae71",
+      "sha256": "4fb04728c41a3583d813652d6565cf041379847a43491608c28d80f4800f9784",
       "executable": false
     },
     "src/ui/pages/access-decisions.ts": {
@@ -3632,7 +3632,7 @@
       "executable": false
     },
     "src/ui/pages/activity.ts": {
-      "sha256": "72616dce14425a1aa187a5ab1c9e4ae4415c906756ffda7eca7ac75f804a906e",
+      "sha256": "ad76e19262d37cbfb8ecfdfafd17f32c0535297564cfb8b53c471dc8e785a7ad",
       "executable": false
     },
     "src/ui/pages/admin-services.ts": {
@@ -3640,11 +3640,11 @@
       "executable": false
     },
     "src/ui/pages/agents.ts": {
-      "sha256": "914cae7027754c3cfdb51ae4c3d187f1368e46401ed77e711f9b574e2e701c1f",
+      "sha256": "d3c90d84ef3cebc601abbcae4925f8bd24b9c4aee3ee4baf8b341924efad1a9a",
       "executable": false
     },
     "src/ui/pages/apps.ts": {
-      "sha256": "7d00dca45dc2925ce2a188a5833eeadbbb2f98cef94eb5d2a502339e6b081499",
+      "sha256": "c4d7af16aefe1a42d64905495d26ab6df3e2babd5469c53669e4a498b97b896e",
       "executable": false
     },
     "src/ui/pages/automations.ts": {
@@ -3652,7 +3652,7 @@
       "executable": false
     },
     "src/ui/pages/company-apps.ts": {
-      "sha256": "f61c260d35e73897619c50498732c381c87b81c6c02080e26a43e1bd9f84ee56",
+      "sha256": "9fb382cdd608719b179db6809b9d6c85473a7116ef0e76b62ac3de923e0d133b",
       "executable": false
     },
     "src/ui/pages/delegation.ts": {
@@ -3716,7 +3716,7 @@
       "executable": false
     },
     "src/ui/pages/move-in.ts": {
-      "sha256": "9e467dabf5306a742028b54c9c9584d4058c16e7f29cef2244c0a6ef725352d2",
+      "sha256": "1e1da58662f5ec1d71db6092c5327981c565f89cbdf1c2200f26123039ebaac1",
       "executable": false
     },
     "src/ui/pages/notifications.ts": {
@@ -3756,7 +3756,7 @@
       "executable": false
     },
     "src/ui/pages/roles.ts": {
-      "sha256": "97ec2e386dc23d81581b2b06c0d4bdb2ea6213425adbd249c2efec7fa3d268bd",
+      "sha256": "4cd6a63392959c9652229863b928ae0092ec46f8b120f206899f4c3c66dead43",
       "executable": false
     },
     "src/ui/pages/signin.ts": {
@@ -4239,6 +4239,10 @@
       "sha256": "f403d181c1bdae24cd4dab201bd23dfd127fdf758cb79ac3ed358ed580b12655",
       "executable": false
     },
+    "tests/integration/admin-feedback-browser.test.mjs": {
+      "sha256": "089c8ce8f9815a77ac15e5dfe4ee998820b62e06aebae6c5cbbae24652e3b1cf",
+      "executable": false
+    },
     "tests/integration/agents-browser.test.mjs": {
       "sha256": "5686872269f37ac5e8deedbc58efa3be0d91a38ac39db9c0cfa12c183213caa9",
       "executable": false
@@ -4264,7 +4268,7 @@
       "executable": false
     },
     "tests/integration/directory-browser.test.mjs": {
-      "sha256": "060b00741b207cf83ded436fefbf0e8c0bbf34537391f8f782499a522887b67d",
+      "sha256": "82249bb03b196ae5ef6d5cb2fde7f89cfc2fa8fe4c77831b81305628e2f4b2f8",
       "executable": false
     },
     "tests/integration/erasure-portability.mjs": {

@@ -119,6 +119,7 @@ test('organization and authority journey: switch employers, delegate a scoped re
  const hardware=async(context,page)=>{const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});page.on('dialog',dialog=>dialog.accept());};
  await hardware(context,page);
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ const applied=async action=>{const refreshed=page.waitForResponse(response=>response.request().method()==='GET'&&new URL(response.url()).pathname==='/app/roles');await action();await refreshed;await expect(page.locator('[data-role-apply]:visible')).toHaveCount(0);};
  const saved=async(action,target=page)=>{const loaded=target.waitForEvent('load',{timeout:30000});await action();await loaded;};
  const post=async(path,data,status=200,client=context)=>{const response=await client.request.post(app.origin+path,{data,headers:{origin:app.origin}});assert.equal(response.status(),status,path+' '+await response.text());return response.json();};
  const signIn=async(target,email,prefix='',setup=false)=>{
@@ -203,11 +204,11 @@ test('organization and authority journey: switch employers, delegate a scoped re
  await page.goto(app.origin+'/app/roles');
  const definition=page.locator('[data-role-form=role]');await definition.getByLabel('Role name').fill('Engineering support');await definition.getByText('Choose permissions',{exact:true}).click();
  for(const id of ['roles.view','people.view','people.factors.reset','cases.open','groups.view','apps.view','apps.assign','admin-api.manage','audit.view'])await definition.locator(`input[value="${id}"]`).check();
- await definition.getByRole('button',{name:'Preview role'}).click();await expect(definition.locator('[data-role-apply]')).toBeVisible();await shoot('role-preview');await saved(()=>definition.locator('[data-role-apply]').click());
+ await definition.getByRole('button',{name:'Preview role'}).click();await expect(definition.locator('[data-role-apply]')).toBeVisible();await shoot('role-preview');await applied(()=>definition.locator('[data-role-apply]').click());await expect(page.locator('[data-auth-status]').first()).toContainText('Custom role saved');
  const grant=page.locator('[data-role-form=grant]');await grant.getByLabel('Role holder').selectOption(helper.id);await grant.locator('[name=roleId]').selectOption({label:'Engineering support'});
  await grant.locator('[name="view.groups"]').selectOption(group.id);await grant.locator('[name="edit.groups"]').selectOption(group.id);
  await grant.locator('[name="view.apps"]').selectOption(appConfig.id);await grant.locator('[name="edit.apps"]').selectOption(appConfig.id);
- await grant.getByRole('button',{name:'Preview delegation'}).click();await expect(grant.locator('[data-role-preview]')).toContainText('sam@northwind.example.com');await expect(grant.locator('[data-role-preview]')).toContainText('people.factors.reset');await expect(grant.locator('[data-role-preview]')).toContainText(group.id);await shoot('delegation-preview');assert.equal((await roleNotices()).length,beforeGrantNotices);await saved(()=>grant.locator('[data-role-apply]').click());
+ await grant.getByRole('button',{name:'Preview delegation'}).click();await expect(grant.locator('[data-role-preview]')).toContainText('sam@northwind.example.com');await expect(grant.locator('[data-role-preview]')).toContainText('Reset non-administrator passkeys and revoke all sessions');await expect(grant.locator('[data-role-preview]')).toContainText('US engineering staff');await shoot('delegation-preview');assert.equal((await roleNotices()).length,beforeGrantNotices);await applied(()=>grant.locator('[data-role-apply]').click());await expect(page.locator('[data-auth-status]').first()).toContainText('Role delegated');
  const deliveredRoleNotices=await roleNotices();assert.equal(deliveredRoleNotices.length,beforeGrantNotices+1);
  const roleNotice=deliveredRoleNotices[0];assert.ok(roleNotice.includes('Engineering support'));
  const roleReport=roleNotice.match(/https?:\/\/[^\s<>"]+\/api\/auth\/notifications\/report\?token=[^\s<>"]+/)?.[0];assert.ok(roleReport);

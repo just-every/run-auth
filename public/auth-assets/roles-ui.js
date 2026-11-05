@@ -14,18 +14,25 @@
   list.className='bulk-entries'
   for(const effect of effects) {
    const item=document.createElement('li')
-   item.append(text('strong',effect.email || effect.personId),text('p',`Person ID: ${effect.personId}`))
+   const person = document.querySelector('[data-role-form="grant"] [name="personId"] option[value="'+CSS.escape(effect.personId)+'"]')
+   item.append(text('strong', person?.textContent || effect.email || 'Role holder'))
+   if (effect.email && person?.textContent !== effect.email) item.append(text('p', effect.email))
    for(const [label,actions] of [['Gains',effect.gained],['Loses',effect.lost]]) {
     for(const action of actions) {
-     const resource=action.resourceKind===undefined?'':` · ${action.resourceKind}: ${action.resourceId}`
-     item.append(text('p',`${label} ${action.permission}${resource}`))
+     const permissions = JSON.parse(document.querySelector('[data-roles]').dataset.permissionLabels)
+     const option = action.resourceKind && document.querySelector('[name="view.'+CSS.escape(action.resourceKind)+'"] option[value="'+CSS.escape(action.resourceId)+'"]')
+     const resource = action.resourceKind === undefined ? '' : ` · ${option?.textContent || 'Resource no longer available in this view'}`
+     item.append(text('p', `${label}: ${permissions[action.permission] || 'Administrator action'}${resource}`))
     }
    }
    list.append(item)
   }
   output.append(list)
  }
- for(const form of document.querySelectorAll('[data-role-form]')) {
+ const bound = new WeakSet()
+ const bind = () => { for(const form of document.querySelectorAll('[data-role-form]')) {
+  if (bound.has(form)) continue
+  bound.add(form)
   const apply=form.querySelector('[data-role-apply]'),placeholder=form.querySelector('[data-role-preview]'),output=document.createElement('div')
   for(const attribute of placeholder.attributes)output.setAttribute(attribute.name,attribute.value)
   placeholder.replaceWith(output)
@@ -41,8 +48,19 @@
     const preview=await post('preview',data),effects=preview.plan.effects || []
     renderEffects(output,effects)
     apply.hidden=false
-    apply.onclick=async()=>{apply.disabled=true;try{await post('apply',{previewId:preview.previewId});location.reload()}catch(error){output.textContent=error.message;apply.hidden=true;apply.disabled=false}}
+    apply.onclick=async()=>{
+     apply.disabled=true
+     try {
+      await post('apply',{previewId:preview.previewId})
+      const message = kind === 'role' ? 'Custom role saved. It is available to delegate now.' : kind === 'grant' ? 'Role delegated. Current grants are shown below.' : 'Role grant revoked. Current grants are shown below.'
+      document.dispatchEvent(new CustomEvent('auth:notice', {detail: message}))
+      try { await window.authRefreshSections(['[data-roles]']) }
+      catch(error) { output.textContent = message + ' ' + error.message; apply.hidden=true }
+     } catch(error) {output.textContent=error.message;apply.hidden=true;apply.disabled=false}
+    }
    }catch(error){output.textContent=error.message}
   })
- }
+ }}
+ bind()
+ document.addEventListener('auth:refreshed', bind)
 })()

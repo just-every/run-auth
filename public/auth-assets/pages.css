@@ -99,3 +99,17 @@
 @media (max-width: 599px) {
   .directory-fields { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* One-time credentials in request notices must fit a phone line too. */
+[data-auth-status] { min-width: 0; overflow-wrap: anywhere; }
+
+/* App identities and member addresses must wrap inside their actual grid tracks. */
+.apps-content { min-width: 0; overflow-wrap: anywhere; }
+.apps-content > * + *, [data-company-app-list] > * + * { margin-top: 24px; }
+.apps-content .data-row > *, .apps-content .button-row, .apps-content .button-row > *, .apps-content .field { min-width: 0; max-width: 100%; }
+.apps-content .button-row button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; padding-block: 10px; }
+
+[data-roles] > * + * { margin-top: 24px; }
+.activity-technical { margin-top: 8px; }
+.activity-technical dd { overflow-wrap: anywhere; }
+.activity-technical pre { white-space: pre-wrap; overflow-wrap: anywhere; }

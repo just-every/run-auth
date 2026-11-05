@@ -15,8 +15,25 @@
       status.setAttribute('role', kind === 'error' ? 'alert' : 'status')
     }
   }
+  window.authRefreshSections = async selectors => {
+    const response = await fetch(location.href, {credentials: 'same-origin', cache: 'no-store', headers: {accept: 'text/html'}})
+    if (!response.ok || response.redirected) throw new Error('The saved list could not be refreshed. Reload to see current data.')
+    const next = new DOMParser().parseFromString(await response.text(), 'text/html')
+    const replacements = selectors.map(selector => [document.querySelector(selector), next.querySelector(selector)])
+    if (replacements.some(([current, replacement]) => !current || !replacement)) throw new Error('The saved list could not be refreshed. Reload to see current data.')
+    for (const [current, replacement] of replacements) current.replaceWith(replacement)
+    document.dispatchEvent(new Event('auth:refreshed'))
+  }
+  document.addEventListener('auth:notice', event => showStatus(event.detail, 'success'))
   const passRefused = 'That pass was refused. It may be wrong, already used or expired. Ask your administrator or manager for a new one.'
   const friendlyErrors = {
+    invalid_client_origin: 'This address is not allowed for app linking. Enter an origin without a path, query or fragment. A local Auth install links only localhost or loopback apps; hosted installs require a public HTTPS origin.',
+    app_document_unavailable: 'Auth could not read the app’s link document. Check that the address is reachable and serves /.well-known/rer-dependencies as JSON, then check again. For a SAML or OpenID Connect app, use the company app forms below.',
+    app_document_invalid: 'This address serves an invalid Auth link document. Ask the app owner to repair its exact origin and callback settings, then check again.',
+    app_does_not_use_auth: 'This app does not declare Auth sign-in. Ask its owner to configure the Auth dependency, or add it using the SAML or OpenID Connect form below.',
+    app_callbacks_unsupported: 'This app declares unsupported sign-in callbacks. Ask its owner to update its Auth linking configuration, then check again.',
+    app_keys_unavailable: 'Auth could not read this app’s public link key. Ask its owner to check the published JWKS address, then check again.',
+    app_keys_invalid: 'This app’s public link key is invalid. Ask its owner to publish its supported public signing key, then check again.',
     temporary_pass_unavailable: passRefused,
     temporary_pass_target_refused: passRefused,
     temporary_pass_target_changed: passRefused,
@@ -456,7 +473,10 @@
         field.focus()
         field.select()
         mint.reset()
-        showStatus(`Key “${result.label}” minted. Copy it now: it is not shown again. Reload to see it in the list.`, 'success')
+        const message = `Key “${result.label}” minted. Copy it now: it is not shown again.`
+        showStatus(message, 'success')
+        try { await window.authRefreshSections(['[data-agent-key-list]']) }
+        catch (error) { showStatus(`${message} ${error.message}`, 'error') }
       } catch (error) {
         showStatus(error instanceof Error ? error.message : 'Auth could not mint a key.', 'error')
       }
@@ -611,6 +631,14 @@
         window.location.assign(organizationPath(localPath(form.dataset.redirect)))
         return
       }
+      if (form.dataset.refresh) {
+        const message = `App created. ${result.message || 'Request completed.'}`
+        showStatus(message, 'success')
+        try { await window.authRefreshSections([form.dataset.refresh]) }
+        catch (error) { showStatus(`${message} ${error.message}`, 'error') }
+        if (submitter) submitter.disabled = false
+        return
+      }
       if (form.dataset.reload === 'true') {
         showStatus('Request completed. Refreshing current data…', 'success')
         window.setTimeout(() => window.location.reload(), 350)
@@ -624,7 +652,7 @@
     }
   })
 
-  document.querySelectorAll('[data-mapping-form]').forEach(form => form.addEventListener('input', () => { form.querySelector('[data-mapping-save]').disabled = true }))
+  document.addEventListener('input', event => { const form = event.target.closest('[data-mapping-form]'); if (form) form.querySelector('[data-mapping-save]').disabled = true })
 
   const countdowns = Array.from(document.querySelectorAll('[data-campaign-cutover]'))
   if (countdowns.length) {

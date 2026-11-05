@@ -5,6 +5,8 @@ A hardware-passkey administrator or a delegated role with `audit.view` can query
 role endpoint `GET /api/auth/roles/audit` also uses this query. The older
 `GET /api/auth/activity` remains an administrator-only compatibility feed.
 
+Activity leads with readable events and named people, apps, groups, roles, preparer keys and move-in exports where the authorized current resource is available. Unavailable targets are not reconstructed from erased personal data. Expand **Technical details** for stable event, target and actor references and the recorded detail; API/export identifiers remain unchanged. Displayed history, passkey and move-in timestamps carry an explicit **UTC** label, including when the viewer’s browser is in another time zone. Activity’s date filters also use UTC.
+
 Queries accept an inclusive `from` and `to` in Unix milliseconds or a UTC date
 and time such as `2026-10-27T12:00`, an exact `person` reference, an exact `event`
 type, and a `limit` of 1 through 100 (default 50). Duplicate parameters and invalid

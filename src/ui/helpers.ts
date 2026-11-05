@@ -29,7 +29,7 @@ export const dateValue = (value: unknown): Date | null => {
 
 export const dateText = (value: unknown): string => {
   const date = dateValue(value)
-  return date ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date) : 'Not recorded'
+  return date ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(date) + ' UTC' : 'Not recorded'
 }
 
 export const timeElement = (value: unknown): string => {

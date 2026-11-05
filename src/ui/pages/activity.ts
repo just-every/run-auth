@@ -6,23 +6,25 @@ import { followupPanel } from './followup.js'
 import type { AuthActivity, AuthPageModel } from '../model.js'
 import { asArray, escape, timeElement } from '../helpers.js'
 
-const activityName = (event: string): string => event.replace(/[_.-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, char => char.toUpperCase())
+const activityName = (event: string): string => event.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_.-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, char => char.toUpperCase())
 const parsed = (detail?: string | null): Record<string, unknown> => {
   if (!detail) return {}
   try { const value = JSON.parse(detail); return value && typeof value === 'object' ? value : {} } catch { return {} }
 }
+const opaque = (value: string): boolean => /^[A-Za-z0-9_-]{24,}$|^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$|:activity:\d+$/i.test(value)
+
 // What was recorded with an entry: who a move-in undo removed and kept, or which
 // key filed a proposal, its target and the result.
 const detailText = (detail?: string | null): string => {
-  const item = (entry: unknown): string => typeof entry === 'string' ? entry
+  const item = (entry: unknown): string => typeof entry === 'string' ? opaque(entry) ? '' : entry
     : entry && typeof entry === 'object' && 'email' in entry ? `${String((entry as { email: unknown }).email)} (${asArray((entry as { reasons?: string[] }).reasons).map(reason => reason.replace(/_/g, ' ')).join(', ')})` : ''
-  return Object.entries(parsed(detail)).filter(([, value]) => typeof value === 'string' ? value : Array.isArray(value) && value.length)
+  return Object.entries(parsed(detail)).filter(([key, value]) => !/(?:^|_)(?:id|ids)$|(?:Id|Ids)$/.test(key) && (typeof value === 'string' ? value && !opaque(value) : Array.isArray(value) && value.length))
     .map(([key, value]) => `${activityName(key)}: ${Array.isArray(value) ? value.map(item).join(', ') : String(value).replace(/_/g, ' ')}`).join('. ')
 }
 const actor = (event: AuthActivity): string => event.service_name ? `Service app ${event.service_name}${event.service_owner_email ? ` · Accountable: ${event.service_owner_email}` : ''}` : event.actor_email ?? event.actorEmail
-  ?? event.actor_id ?? (typeof parsed(event.detail).key === 'string' ? `Agent key ${parsed(event.detail).key}` : 'Actor unavailable')
+  ?? (typeof parsed(event.detail).key === 'string' && !opaque(String(parsed(event.detail).key)) ? `Agent key ${parsed(event.detail).key}` : 'Actor no longer available')
 const activityRows = (events: AuthActivity[]): string => events.length
-  ? events.map(event => `<tr class="activity-row"><td><span class="activity-event">${escape(activityName(event.event))}</span>${event.subject_id ? `<span class="activity-subject">Target: ${escape(event.subject_id)}</span>` : ''}${event.eventId ? `<span class="activity-subject">${escape(event.eventId)}</span>` : ''}${detailText(event.detail) ? `<span class="activity-subject" data-activity-detail>${escape(detailText(event.detail))}</span>` : ''}</td><td><span class="mobile-label">Actor</span>${escape(actor(event))}</td><td><span class="mobile-label">Time</span>${timeElement(event.created_at ?? event.createdAt)}</td></tr>`).join('')
+  ? events.map(event => `<tr class="activity-row"><td><span class="activity-event">${escape(activityName(event.event))}</span>${event.subject_label ? `<span class="activity-subject">Target: ${escape(event.subject_label)}</span>` : ''}${detailText(event.detail) ? `<span class="activity-subject" data-activity-detail>${escape(detailText(event.detail))}</span>` : ''}<details class="activity-technical"><summary>Technical details</summary><dl><dt>Event reference</dt><dd>${escape(event.eventId ?? event.id)}</dd><dt>Target reference</dt><dd>${escape(event.subject_id ?? 'None')}</dd><dt>Actor reference</dt><dd>${escape(event.actor_id ?? 'None')}</dd></dl>${event.detail ? `<pre>${escape(event.detail)}</pre>` : ''}</details></td><td><span class="mobile-label">Actor</span>${escape(actor(event))}</td><td><span class="mobile-label">Time</span>${timeElement(event.created_at ?? event.createdAt)}</td></tr>`).join('')
   : '<tr><td colspan="3">No activity has been recorded.</td></tr>'
 
 export function renderActivityPage(model: AuthPageModel): string {

@@ -15,6 +15,8 @@ Auth connects company apps over SAML, OpenID Connect and SCIM (see [COMPANY-APPS
 
 If any of those matter, keep your provider. You can still use it to sign in to RER apps (see step 1 below).
 
+The primary review shows each person’s name, email, context and finding. Expand **Source identifier** on a row to inspect the export’s technical identifier. Staging and undo times are explicitly labeled UTC.
+
 ## What an export carries
 
 Auth reads the user list your provider exports, stages it for your review, and lets you admit people as ordinary invitations. From each row it keeps only:

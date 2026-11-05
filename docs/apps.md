@@ -8,6 +8,10 @@ An app you link lets your team sign in to it with Auth: one sign-in, and one pla
 
 The app then shows **Active**, with the interface version it reported.
 
+Check app explains a refused address separately from a link document that cannot be read, an invalid document, unsupported callbacks or missing public keys. Use the exact origin without a path, query or fragment. Local Auth links only localhost or loopback apps; hosted Auth requires a public HTTPS origin. If the document cannot be read, check reachability and `/.well-known/rer-dependencies` with the app owner. Ordinary SAML and OpenID Connect apps use the company app forms below.
+
+Creating an OpenID Connect company app refreshes Company apps immediately and keeps the one-time credentials visible for copying. Long group-member addresses wrap within Apps, including on phones.
+
 ## Link an app from its setup
 
 When you set up an app with `rer setup`, it can link itself with a **link token**. On **Apps**, enter the app's address under **Link token for rer setup** and choose **Create link token**. Copy the token into a private file and give its path to the app's setup as `RER_LINK_TOKEN_FILE`. The token works once, for that one address, for an hour; Auth shows it only once.

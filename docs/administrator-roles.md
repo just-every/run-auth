@@ -18,6 +18,8 @@ app changes, case changes and factor changes advance that epoch. A changed
 preview must be prepared again. D1 batches atomically claim an unpredictable
 operation marker, perform its guarded changes and store detailed activity.
 
+Creating a custom role shows a success notice and updates the delegation form without a page reload. Applying or revoking a grant refreshes current grants. A delegation preview names the holder, resources and actions using the current authorized page’s directory and permission labels. A resource missing from that view is identified as unavailable; an identifier never substitutes for its name.
+
 ## Published built-in roles
 
 The permission catalogue is returned by `GET /api/auth/roles` and exported in

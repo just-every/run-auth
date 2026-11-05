@@ -87,9 +87,25 @@ export async function auditPage(ctx,s,request,{exporting=false}={}) {
  const predicate=where.join(' AND ');
  const {total}=await one(ctx,`SELECT COUNT(*) AS total FROM auth_activity a WHERE ${predicate}`,...args);
  const rows=await all(ctx,`SELECT a.id,a.actor_id,a.event,a.subject_id,a.created_at,p.email AS actor_email,service.name AS service_name,custodian.email AS service_owner_email,d.detail FROM auth_activity a LEFT JOIN oa_operators p ON p.id=a.actor_id LEFT JOIN auth_admin_service_apps service ON a.actor_id='admin-service:'||service.id LEFT JOIN oa_operators custodian ON custodian.id=service.owner_id LEFT JOIN auth_activity_details d ON d.activity_id=a.id WHERE ${predicate} AND a.id<? ORDER BY a.id DESC LIMIT ?`,...args,cursor.before,limit+1);
+ // Presentation labels follow the same visibility decision as these events.
+ // Keep stable identifiers in the API/export for reconciliation.
+ const labels=new Map();
+ for(const p of state.dir.people.values())if(state.legacy||visible.has(p.id)) {
+  const label=p.name&&p.name!==p.email?`${p.name} (${p.email})`:p.email;
+  labels.set(p.id,label);labels.set(p.email,label);
+ }
+ for(const [kind,resources] of [['Group',state.dir.groups],['App',state.apps],['Recovery case',state.cases]])for(const resource of resources)if(state.legacy||visible.has(resource.id))labels.set(resource.id,resource.name?`${kind}: ${resource.name}`:`${kind} for ${labels.get(resource.person_id)??'employee'}`);
+ if(state.legacy) {
+  for(const role of state.roles.values())labels.set(role.id,`Role: ${role.name}`);
+  const targets=JSON.stringify(rows.map(row=>row.subject_id).filter(Boolean));
+  const named=await all(ctx,`SELECT id,'Preparer key: '||label AS label FROM auth_agent_keys WHERE id IN (SELECT value FROM json_each(?)) UNION ALL SELECT id,'Move-in export: '||file_name AS label FROM auth_import_batches WHERE id IN (SELECT value FROM json_each(?))`,targets,targets);
+  for(const item of named)labels.set(item.id,item.label);
+  const proposals=await all(ctx,'SELECT id,kind,target FROM auth_agent_proposals WHERE id IN (SELECT value FROM json_each(?))',targets);
+  for(const proposal of proposals)labels.set(proposal.id,`${proposal.kind.replace(/_/g,' ')} proposal · ${labels.get(proposal.target)??(/@|^https?:\/\/|^[\w-]+(?:\.[\w-]+)+$/.test(proposal.target)?proposal.target:'resource no longer available')}`);
+ }
  const events=rows.map(row=>{
   const eventId=`${ctx.organizationId??'root'}:activity:${row.id}`;
-  return state.legacy?{...row,eventId}:{id:row.id,eventId,event:row.event,actor_id:row.actor_id,subject_id:state.dir.people.get(row.subject_id)?.id??[...state.dir.people.values()].find(p=>p.email===row.subject_id)?.id??row.subject_id,created_at:row.created_at};
+  return state.legacy?{...row,eventId,subject_label:labels.get(row.subject_id)}:{id:row.id,eventId,event:row.event,actor_id:row.actor_id,subject_label:labels.get(row.subject_id),subject_id:state.dir.people.get(row.subject_id)?.id??[...state.dir.people.values()].find(p=>p.email===row.subject_id)?.id??row.subject_id,created_at:row.created_at};
  });
  const held=await one(ctx,`SELECT 1 FROM auth_sessions a JOIN oa_operators p ON p.id=a.person_id JOIN auth_role_epoch e ON e.id=1 WHERE a.id=? AND a.person_id=? AND a.amr=? AND a.person_version=p.version AND p.status='active' AND a.revoked_at IS NULL AND a.expires_at>? AND e.epoch=?`,s.id,s.person_id,s.amr,ctx.now(),state.epoch);
  if(!held)fail('role_authority_changed',409);
