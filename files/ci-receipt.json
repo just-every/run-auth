@@ -1,0 +1,31 @@
+{
+  "id": 42288166295,
+  "name": "Verify Auth",
+  "status": "completed",
+  "conclusion": "success",
+  "head_sha": "d55816c1f0e6b66f12d0c2846fdba6cf22965251",
+  "html_url": "https://github.com/just-every/run-auth/actions/runs/42288166295",
+  "calls": [
+    {
+      "endpoint": "repos/just-every/run-auth/actions/runs?head_sha=d55816c1f0e6b66f12d0c2846fdba6cf22965251&per_page=100",
+      "time": 1793996703.4273381,
+      "exit_code": 0
+    },
+    {
+      "endpoint": "repos/just-every/run-auth/actions/runs?head_sha=d55816c1f0e6b66f12d0c2846fdba6cf22965251&per_page=100",
+      "time": 1793997003.9700077,
+      "exit_code": 0
+    },
+    {
+      "endpoint": "repos/just-every/run-auth/actions/runs/42288166295",
+      "time": 1793997304.3478806,
+      "exit_code": 0
+    },
+    {
+      "endpoint": "repos/just-every/run-auth/actions/runs/42288166295",
+      "time": 1793997604.8700664,
+      "exit_code": 0
+    }
+  ],
+  "github_call_count": 4
+}

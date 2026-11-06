@@ -1,0 +1,28 @@
+{
+  "head": "d55816c1f0e6b66f12d0c2846fdba6cf22965251",
+  "branch": "cloud/sx-auth-f42regen-2",
+  "setup": {
+    "command": "npx -y @runeditrun/rer setup --owner-email fleet@runeditrun.com --non-interactive",
+    "exit_code": 0
+  },
+  "agent_guide_check": 0,
+  "contract_write_check": {
+    "clause": "BASE-AGENT-009",
+    "exit_code": 0,
+    "clauses": 105,
+    "metadata_blocks": 23,
+    "views_restored_to_main": true
+  },
+  "sources_lock_regenerated_last": true,
+  "pnpm_check_sources": 0,
+  "candidate_identity_and_trailers": "pass; fleet identities only; no trailers",
+  "unchanged_contract_judgments": true,
+  "test_counts": {
+    "pass": 2,
+    "fail": 0,
+    "skipped": 0
+  },
+  "working_tree": "clean",
+  "pr": null,
+  "test_workerd_processes_remaining": false
+}

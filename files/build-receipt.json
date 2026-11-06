@@ -1,0 +1,5 @@
+{
+  "command": "pnpm run build",
+  "exit_code": 0,
+  "log": "build.log"
+}

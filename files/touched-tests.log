@@ -1,0 +1,18 @@
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+✔ native group audit targets reconcile reads, held reads, effects and private refusals with independently read directory records (23773.685088ms)
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+PROBE BASE-AGENT-013 1: production tools / list and resources / templates / list -> 10 tool headings and 3 resource templates agree; public guide unchanged after real enrollment and group operations
+PROBE BASE-AGENT-013 2: production tools / call for declared journey -> documented class fixtures agree; missing, extra and stale metadata refused
+✔ rer build --site writes the homepage, the Run page and every listed docs page (9570.031807ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 33885.546595

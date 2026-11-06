@@ -1,0 +1,12 @@
+{
+  "main": "2155ce890f326586fc859423ab2cfa5343e3a983",
+  "source": "62ea73a0363d994ebc3535fcd703434c8cdf5820",
+  "clause_counts": {
+    "done": 37,
+    "partial": 51,
+    "missing": 17
+  },
+  "total": 105,
+  "prior_report_readable": false,
+  "prior_evidence_ref_present": false
+}

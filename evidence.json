@@ -1,0 +1,142 @@
+{
+  "files": [
+    {
+      "blob": "93a85f460807509a7f93807bbcdcb68d45b10485",
+      "bytes": 2281,
+      "path": "CLAIM.md",
+      "sha256": "8e5b020ff5947cca9d21e359ca9a1457875de7525c850ca362240efc657b8428"
+    },
+    {
+      "blob": "392907a92dc42bbb16ffaf6df4bb002cb632a53a",
+      "bytes": 1477,
+      "path": "PLAN.md",
+      "sha256": "9b895167f65e3b9a957e2e45ecf75b238822452e71403034e529039265ae22a3"
+    },
+    {
+      "blob": "29e6b71255af357ce5f2a3ac17dd481bb076c921",
+      "bytes": 6088,
+      "path": "REPORT.md",
+      "sha256": "0b437904d744785cc4dd869324968bfd93ebf55498d9d42cc2b2c392e07efe6d"
+    },
+    {
+      "blob": "3bfdbe0415a98631f6379bd17ba606eabaaff855",
+      "bytes": 831,
+      "path": "RESULT.json",
+      "sha256": "7adc0b4a599d5e7d5ef9d58072ab397250f0476e34619ce29fffecd6cc1c1705"
+    },
+    {
+      "blob": "6fb9fc8d8ecfe1140628fcbce5f83bb6a7a662ec",
+      "bytes": 72,
+      "path": "agent-guide-check.log",
+      "sha256": "98fc1accdf766dd4a422c4e66137139bd4db2f7e45b163d54316446b784af608"
+    },
+    {
+      "blob": "332aa98cb74a909b7072021a5a1d18ace90c4396",
+      "bytes": 281,
+      "path": "baseline.json",
+      "sha256": "1dcb47acb46747a0996918d115e51ad8cbfbd85c1c6125c94d8ab177f8b10037"
+    },
+    {
+      "blob": "41f933c77b543f5a28ec7556a5d1c2d45eecafff",
+      "bytes": 74,
+      "path": "build-receipt.json",
+      "sha256": "4d7b31ac749aa4d5e2577d21060665d0686f0c26ba354b879a938d711d8d9b6a"
+    },
+    {
+      "blob": "6794e8c392e7c6df35b34501a77d2bff97668f11",
+      "bytes": 2623,
+      "path": "build.log",
+      "sha256": "d597716291f745767fc5f512f0ad615450bea6a1a3d09b2088f82ea8d296e1a7"
+    },
+    {
+      "blob": "395bc1debcf8aa5be49ab196d069c9d17fc9f7a1",
+      "bytes": 945,
+      "path": "ci-receipt.json",
+      "sha256": "0a2018ffa7c967c406c2b45d6d5ef788376c0662b46522fac7cac92f2daeb3f6"
+    },
+    {
+      "blob": "d74ebde3eee094b28712aa845a3b567d7662c623",
+      "bytes": 2371,
+      "path": "ci-watcher.log",
+      "sha256": "c727bd86d4e1ad11dc9844f302318694b880a26b92bcdee08fbb6af1a10040b0"
+    },
+    {
+      "blob": "9b32463cf164a3a9a66515f6e18c4b17263e9b48",
+      "bytes": 70,
+      "path": "contract-check.log",
+      "sha256": "6cc6776a7f4145eadd14cd3d0cdb230768ca6d3c7b77913a56a8315eeee51e78"
+    },
+    {
+      "blob": "8de6b7a82e0c56b6a78b7a339666c50c83551b1c",
+      "bytes": 70,
+      "path": "contract-write.log",
+      "sha256": "f58d97cd4d90be4a52ea32014806e720ab54bfbed4767da85469e0158186f9f2"
+    },
+    {
+      "blob": "55bfeff023c4ae17dc59e12f86f446b1960e6b53",
+      "bytes": 85,
+      "path": "identity-audit.txt",
+      "sha256": "148bad84b5b174568017df50d58e073566703d43c6c9fe7fa6f1af04420adf55"
+    },
+    {
+      "blob": "2c1b0142bb425dc64260e571da337a0507a0b684",
+      "bytes": 176111,
+      "path": "lock.log",
+      "sha256": "9b8211aabac5f623d1713cac21ee6b94214d235c82dcc93c5f51d3b30d2a8f29"
+    },
+    {
+      "blob": "c93080706c6b4b5a46ca770eb0a743d7ea5c253d",
+      "bytes": 369,
+      "path": "push-receipt.json",
+      "sha256": "d3c1e6facaa9b4efbca991e6c6275c0a18bd669c4bee10ec890073598e619064"
+    },
+    {
+      "blob": "9fcd1c910304c3f7718f57aa3ee3c311c729fa3c",
+      "bytes": 912,
+      "path": "push.log",
+      "sha256": "79bb7f5386206c8dbfcdd832f0971ce91e657c041bf1e3f18a77ecdde2cdc530"
+    },
+    {
+      "blob": "10b6662d87431da81a4ab831568d9dd63f3fe5c4",
+      "bytes": 214869,
+      "path": "sources-check.log",
+      "sha256": "6709d8a4705d04c9442b09def4c415f7137a02de1e4229047a0c5b5a0dbbd8e8"
+    },
+    {
+      "blob": "70031626a2a1057147692429fb63084c9b6c2a93",
+      "bytes": 169,
+      "path": "tests-receipt.json",
+      "sha256": "cf35b7c82c4c9b6f91afbb7ed9e5310c5b4cc46e47d30ba00074f72ea6acd379"
+    },
+    {
+      "blob": "e80cd1699e00934f6f11936f75e19fe22b64a0b6",
+      "bytes": 981,
+      "path": "touched-tests.log",
+      "sha256": "c2586b1ed1856b497efe2f7c047e959fcc8329a4f4f7dd55aa3e409422f2dce0"
+    },
+    {
+      "blob": "4bced92e10c5eff9ed0ecf06109e4b031252efff",
+      "bytes": 82,
+      "path": "typecheck-receipt.json",
+      "sha256": "062b33d7919cff44434ab165b715a384df1e37eeecb9fd2cd1efb05592d16f99"
+    },
+    {
+      "blob": "a93ca69ecfd2ed4eadf354190cc29ef4e089b28a",
+      "bytes": 189,
+      "path": "typecheck.log",
+      "sha256": "b10039e31dc57ca492aad50ebe995e7c76821c0789320178a5a4b6ad8ad11b9b"
+    },
+    {
+      "blob": "561a599de1703a5b3d33dcd2ca953e5f04e18103",
+      "bytes": 773,
+      "path": "validation-receipt.json",
+      "sha256": "fb6a256dc63f7e53e2aed04635395e94ae46f0f300df9dcc3e95429effa775b8"
+    }
+  ],
+  "product_branch": "cloud/sx-auth-f42regen-2",
+  "product_head": "d55816c1f0e6b66f12d0c2846fdba6cf22965251",
+  "ref": "refs/heads/evidence/sx-auth-f42regen-2",
+  "repository": "just-every/run-auth",
+  "schema": 1,
+  "tag": "sx-auth-f42regen-2"
+}

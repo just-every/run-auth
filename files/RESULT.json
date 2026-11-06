@@ -1,0 +1,30 @@
+{
+  "repository": "just-every/run-auth",
+  "branch": "cloud/sx-auth-f42regen-2",
+  "head": "d55816c1f0e6b66f12d0c2846fdba6cf22965251",
+  "product_status": "READY",
+  "verify": {
+    "run_id": 42288166295,
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "d55816c1f0e6b66f12d0c2846fdba6cf22965251",
+    "url": "https://github.com/just-every/run-auth/actions/runs/42288166295"
+  },
+  "pr": null,
+  "before": {
+    "done": 37,
+    "partial": 51,
+    "missing": 17,
+    "total": 105
+  },
+  "after": {
+    "done": 37,
+    "partial": 51,
+    "missing": 17,
+    "total": 105
+  },
+  "clause_status_changes": [],
+  "claim": "BASE-AGENT-009 partial -> partial; native group audit targets and live authority loss/replay proof; unpromoted",
+  "blockers": [],
+  "evidence_ref": "refs/heads/evidence/sx-auth-f42regen-2"
+}

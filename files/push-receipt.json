@@ -1,0 +1,11 @@
+{
+  "repository": "just-every/run-auth",
+  "branch": "cloud/sx-auth-f42regen-2",
+  "head": "d55816c1f0e6b66f12d0c2846fdba6cf22965251",
+  "command": "python3 $HOME/rer-consolidation/.tools/cloud-push.py origin cloud/sx-auth-f42regen-2",
+  "status": "PUSH_OK",
+  "attempts": 1,
+  "product_pushes": 1,
+  "pr": null,
+  "remote_ref": "refs/heads/cloud/sx-auth-f42regen-2"
+}

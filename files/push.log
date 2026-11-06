@@ -1,0 +1,18 @@
+fleet Git: removed 0 credential-bearing GitHub URL rewrite sections
+PUSH attempt=1/5 command=git push --porcelain origin HEAD:refs/heads/cloud/sx-auth-f42regen-2
+fleet Git: removed 0 credential-bearing GitHub URL rewrite sections
+Run Edit Run fleet <fleet@runeditrun.com>
+Run Edit Run fleet <fleet@runeditrun.com>
+
+
+To https://github.com/just-every/run-auth.git
+*	HEAD:refs/heads/cloud/sx-auth-f42regen-2	[new branch]
+Done
+remote: 
+remote: Create a pull request for 'cloud/sx-auth-f42regen-2' on GitHub by visiting:        
+remote:      https://github.com/just-every/run-auth/pull/new/cloud/sx-auth-f42regen-2        
+remote: 
+remote: GitHub found 53 vulnerabilities on just-every/run-auth's default branch (2 critical, 22 high, 26 moderate, 3 low). To find out more, visit:        
+remote:      https://github.com/just-every/run-auth/security/dependabot        
+remote: 
+PUSH_OK branch=cloud/sx-auth-f42regen-2

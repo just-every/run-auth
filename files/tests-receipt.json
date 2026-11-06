@@ -1,0 +1,5 @@
+{
+  "command": "node --test --test-concurrency=1 tests/agent-door/audit-targets.test.mjs tests/site/run-site.test.mjs",
+  "exit_code": 0,
+  "log": "touched-tests.log"
+}
