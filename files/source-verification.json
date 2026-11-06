@@ -1,0 +1,45 @@
+{
+  "blocker": "Required source branch HEAD prefix verification failed",
+  "checks": {
+    "agent_guide_check": "not run; blocked before candidate replay",
+    "agent_guide_write": "not run; blocked before candidate replay",
+    "build": "not run; blocked before candidate replay",
+    "contract_generator_check": "not run; blocked before candidate replay",
+    "dependency_install": "passed; pnpm install --frozen-lockfile",
+    "source_lock": "not regenerated; no candidate changes",
+    "touched_tests": "not run; blocked before candidate replay",
+    "typecheck": "not run; blocked before candidate replay"
+  },
+  "ci_run_ids": [],
+  "claims_source_evidence_ref_present": false,
+  "claims_source_local_log_readable": false,
+  "clause_status_changes": [],
+  "contract_counts_after": {
+    "done": 35,
+    "missing": 17,
+    "partial": 50
+  },
+  "contract_counts_before": {
+    "done": 35,
+    "missing": 17,
+    "partial": 50
+  },
+  "expected_source_head": "2d7346818d0dc5c0095b565688384dfc13c7dab7",
+  "github_api_calls": 0,
+  "observed_source_head": "62ea73a0363d994ebc3535fcd703434c8cdf5820",
+  "pr_url": null,
+  "product_branch": "cloud/sx-auth-f42regen-1",
+  "product_branch_pushed": false,
+  "product_commits_created": 0,
+  "product_head": "2155ce890f326586fc859423ab2cfa5343e3a983",
+  "product_worktree_clean": true,
+  "remote_refs": [
+    "62ea73a0363d994ebc3535fcd703434c8cdf5820\trefs/heads/cloud/sx-auth-c-f42",
+    "2155ce890f326586fc859423ab2cfa5343e3a983\trefs/heads/main"
+  ],
+  "repository": "just-every/run-auth",
+  "required_prefix": "2d734681",
+  "source_prefix_matches": false,
+  "status": "blocked",
+  "tag": "sx-auth-f42regen-1"
+}

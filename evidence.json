@@ -1,0 +1,28 @@
+{
+  "files": [
+    {
+      "blob": "ffea32246e2dba347768819850674dbb57d83ac0",
+      "bytes": 3937,
+      "path": "REPORT.md",
+      "sha256": "0cc25f350cbc19b667c94f963a919f5251b5a22b559b6f8bf8b640e975cdd33e"
+    },
+    {
+      "blob": "1f933167bbb362eee00bd78eb1da18901106e32e",
+      "bytes": 129,
+      "path": "remote-refs.txt",
+      "sha256": "f772b225b4ff54756b7ff12934692f2718fb1999fbdeb40c7ba9182d33501390"
+    },
+    {
+      "blob": "bb77627dfededcb620af6c67b24abab84bfcf4ee",
+      "bytes": 1656,
+      "path": "source-verification.json",
+      "sha256": "97699033ba70ac98dc571e63b4bc3bdf50adc5b265983a342dc316df15a101c6"
+    }
+  ],
+  "product_branch": "cloud/sx-auth-f42regen-1",
+  "product_head": "2155ce890f326586fc859423ab2cfa5343e3a983",
+  "ref": "refs/heads/evidence/sx-auth-f42regen-1",
+  "repository": "just-every/run-auth",
+  "schema": 1,
+  "tag": "sx-auth-f42regen-1"
+}
