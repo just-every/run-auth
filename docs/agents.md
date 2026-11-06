@@ -22,7 +22,7 @@ Scope: `events:read`. Classes: `standard`. Read only.
 
 Class fixtures:
 
-- `standard` with facts `{"measure":1}`: [agent-surface.json — journey events, JSON pointer /journey/10/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.events` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `standard` with facts `{"measure":1}`: [agent-surface.json — journey events, JSON pointer /journey/12/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.events` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
 
 Input schema:
 
@@ -53,7 +53,7 @@ Scope: `directory:write`. Classes: `access`. Write: provide a stable `idempotenc
 
 Class fixtures:
 
-- `access` with facts `{"measure":1,"direction":"widens"}`: [agent-surface.json — journey add, JSON pointer /journey/5/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.add` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `access` with facts `{"measure":1,"direction":"widens"}`: [agent-surface.json — journey add, JSON pointer /journey/6/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.add` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
 
 Input schema:
 
@@ -133,7 +133,8 @@ Scope: `directory:read`. Classes: `standard`. Read only.
 
 Class fixtures:
 
-- `standard` with facts `{"measure":1}`: [agent-surface.json — journey grants, JSON pointer /journey/6/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.grants` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `standard` with facts `{"measure":1}`: [agent-surface.json — journey grants, JSON pointer /journey/7/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.grants` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `standard` with facts `{"measure":1}`: [agent-surface.json — journey grants-removed, JSON pointer /journey/9/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.grants-removed` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
 
 Input schema:
 
@@ -165,6 +166,7 @@ Scope: `directory:read`. Classes: `standard`. Read only.
 Class fixtures:
 
 - `standard` with facts `{"measure":1}`: [agent-surface.json — journey groups, JSON pointer /journey/3/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.groups` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `standard` with facts `{"measure":1}`: [agent-surface.json — journey group, JSON pointer /journey/5/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.group` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
 
 Input schema:
 
@@ -202,7 +204,7 @@ Scope: `directory:write`. Classes: `access`. Write: provide a stable `idempotenc
 
 Class fixtures:
 
-- `access` with facts `{"measure":1,"direction":"narrows"}`: [agent-surface.json — journey remove, JSON pointer /journey/7/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.remove` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `access` with facts `{"measure":1,"direction":"narrows"}`: [agent-surface.json — journey remove, JSON pointer /journey/8/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.remove` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
 
 Input schema:
 
@@ -278,7 +280,7 @@ Scope: `launcher:read`. Classes: `standard`. Read only.
 
 Class fixtures:
 
-- `standard` with facts `{"measure":1}`: [agent-surface.json — journey launcher, JSON pointer /journey/8/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.launcher` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `standard` with facts `{"measure":1}`: [agent-surface.json — journey launcher, JSON pointer /journey/10/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.launcher` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
 
 Input schema:
 
@@ -301,7 +303,7 @@ Scope: `audit:read`. Classes: `standard`. Read only.
 
 Class fixtures:
 
-- `standard` with facts `{"measure":1}`: [agent-surface.json — journey activity, JSON pointer /journey/9/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.activity` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
+- `standard` with facts `{"measure":1}`: [agent-surface.json — journey activity, JSON pointer /journey/11/expect/0](../agent-surface.json). Assertion: `BASE-AGENT-006.2.<policy>.activity` in [runJourney and checkClasses](../src/modules/agent-door/conformance/journey.mjs).
 
 Input schema:
 

@@ -144,7 +144,7 @@
       "executable": false
     },
     "agent-surface.json": {
-      "sha256": "d17d832a25995dc44762ba62553027a04fc947917ef01e842f3e52ec7ca12a4b",
+      "sha256": "abc78f89aa6e0cc462b5a71efa3ebe5a928f08ace6d6c182ebdea95b17e67370",
       "executable": false
     },
     "AGENTS.md": {
@@ -220,7 +220,7 @@
       "executable": false
     },
     "docs/agents.md": {
-      "sha256": "17a4a8091af67548ae77b98552949c3fbb9928c0099a11428040c584f71d19e9",
+      "sha256": "23eee387963ca81f9e600d43dfd211f2bd2571e2b52f4d58aa4b87bf51b3fcec",
       "executable": false
     },
     "docs/apps.md": {
@@ -696,7 +696,7 @@
       "executable": false
     },
     "package.json": {
-      "sha256": "a1ca64a4d04a993f97fc648f02e872532b1dabde510102b99352e969d1faf637",
+      "sha256": "144c8b2170f7da91821cd93eb61a1502fec6109e9d30b21c40b0b615520389c6",
       "executable": false
     },
     "packages/admin-python/pyproject.toml": {
@@ -1192,7 +1192,7 @@
       "executable": false
     },
     "src/agent-door/tools.ts": {
-      "sha256": "808b3888b73b0c33b7a88600daf4744fe72c6404667a5715b4b0e7605113f9e6",
+      "sha256": "1130f5862b67666d3834dd1efb34425c4f0a7dc1e82a4044e14dc1da88288a41",
       "executable": false
     },
     "src/auth.server.ts": {
@@ -3785,6 +3785,10 @@
     },
     "src/ui/shell.ts": {
       "sha256": "3020b58a006e15ded9e8d0ca1f8552a5389981c47d7f9569f64857c4bffc46f7",
+      "executable": false
+    },
+    "tests/agent-door/audit-targets.test.mjs": {
+      "sha256": "288af08f31668cb9303590f0eeec77de6484e56a1fa2bb3d7fb19ca08b9f917c",
       "executable": false
     },
     "tests/agent-door/docs-flow.mjs": {
