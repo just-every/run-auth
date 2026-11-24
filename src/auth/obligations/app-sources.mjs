@@ -1,9 +1,9 @@
 import {one,all} from '../core.mjs';
 const administrator=async(ctx,id)=>Boolean(await one(ctx,"SELECT 1 FROM oa_operators WHERE id=? AND status='active' AND role IN ('owner','admin')",id));
 export async function appCandidates(ctx) {
- return all(ctx,`SELECT 'app_setup' AS kind,id AS source_id,requested_by AS owner_id,NULL AS person_id,NULL AS app_id,created_at FROM auth_link_requests
+ return all(ctx,`SELECT 'app_setup' AS kind,id AS source_id,requested_by AS owner_id,NULL AS person_id,NULL AS app_id,created_at FROM auth_link_requests WHERE expires_at>? AND outcome IS NOT 'linked'
   UNION ALL SELECT 'app_link_proposal',p.id,k.owner_id,NULL,NULL,p.created_at FROM auth_agent_proposals p JOIN auth_agent_keys k ON k.id=p.key_id WHERE p.kind IN ('approve_app_link','remove_app_link')
-  UNION ALL SELECT 'app_link_token',f.id,t.created_by,NULL,NULL,t.issued_at FROM auth_followup_link_tokens f JOIN auth_link_tokens t ON t.token_hash=f.token_hash`);
+  UNION ALL SELECT 'app_link_token',f.id,t.created_by,NULL,NULL,t.issued_at FROM auth_followup_link_tokens f JOIN auth_link_tokens t ON t.token_hash=f.token_hash`,ctx.now());
 }
 export async function appSourceState(ctx,ob) {
  if(ob.kind==='app_link_token') {

@@ -1,6 +1,7 @@
 import {all,one} from '../core.mjs';
 import {agentForTask,taskCurrent} from '../agents/delegation/state.mjs';
-export const taskCandidates=ctx=>all(ctx,"SELECT 'delegated_assignment' AS kind,id AS source_id,accountable_id AS owner_id,accountable_id AS person_id,app_id,created_at FROM auth_delegated_tasks");
+// Only a task that can still be acted on has follow-up work to open.
+export const taskCandidates=ctx=>all(ctx,"SELECT 'delegated_assignment' AS kind,id AS source_id,accountable_id AS owner_id,accountable_id AS person_id,app_id,created_at FROM auth_delegated_tasks WHERE state IN ('requested','consented','approved') AND expires_at>?",ctx.now());
 export async function taskSourceState(ctx,ob) {
  const task=await one(ctx,'SELECT * FROM auth_delegated_tasks WHERE id=?',ob.source_id);
  if(!task||['revoked','rejected'].includes(task.state))return {state:'cancelled'};

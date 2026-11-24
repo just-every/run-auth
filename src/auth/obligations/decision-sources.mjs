@@ -8,7 +8,7 @@ export const decisionKind=ob=>ob.kind==='app_setup'?(ob.source_id.startsWith('ac
 export const reviewSourceId=ob=>ob.source_id.slice(ob.source_id.indexOf(':')+1);
 export async function decisionCandidates(ctx) {
  return all(ctx,`SELECT 'app_setup' AS kind,'access-request:'||id AS source_id,decider_id AS owner_id,person_id,app_id,created_at FROM auth_access_requests WHERE state='pending'
- UNION ALL SELECT 'app_setup','review-item:'||i.id,i.reviewer_id,i.subject_id,i.app_id,r.created_at FROM auth_review_items i JOIN auth_reviews r ON r.id=i.review_id WHERE r.status='open' AND i.decision IS NULL`);
+ UNION ALL SELECT 'app_setup','review-item:'||i.id,i.reviewer_id,i.subject_id,i.app_id,r.created_at FROM auth_reviews r JOIN auth_review_items i ON i.review_id=r.id WHERE r.status='open' AND i.decision IS NULL`);
 }
 export async function decisionSource(ctx,ob) {
  const kind=decisionKind(ob);if(!kind)return null;

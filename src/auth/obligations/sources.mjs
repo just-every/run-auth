@@ -88,12 +88,13 @@ export async function syncObligations(ctx) {
    ...(c.case_id?[ctx.db.prepare('INSERT OR IGNORE INTO auth_followup_cases(obligation_id,case_id) SELECT id,? FROM auth_obligations WHERE kind=? AND source_id=?').bind(c.case_id,c.kind,c.source_id)]:[]),
   ]);
  }
- for(const ob of await all(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE state='open' OR (kind='app_setup' AND source_id LIKE 'review-item:%')`)) {
+ // A review item's history is mirrored up to the moment its obligation closes, in this same pass.
+ for(const ob of await all(ctx,`SELECT *,${caseProjection} FROM auth_obligations WHERE state='open'`)) {
   await syncReviewHistory(ctx,ob,p);
-  if(ob.state!=='open')continue;
   const source=await sourceState(ctx,ob);
   if(source.state==='open') {
-   await ctx.db.prepare("UPDATE auth_obligations SET next_action=?,last_error=? WHERE id=? AND state='open'").bind(source.action,source.error??null,ob.id).run();continue;
+   if(source.action!==ob.next_action||(source.error??null)!==ob.last_error)await ctx.db.prepare("UPDATE auth_obligations SET next_action=?,last_error=? WHERE id=? AND state='open'").bind(source.action,source.error??null,ob.id).run();
+   continue;
   }
   await ctx.db.batch([
    ctx.db.prepare("UPDATE auth_obligations SET state=?,stopped_at=?,next_action=COALESCE(?,next_action),last_error=?,claim_id=NULL,claimed_until=NULL WHERE id=? AND state='open'").bind(source.state,now,source.action??null,source.error??null,ob.id),

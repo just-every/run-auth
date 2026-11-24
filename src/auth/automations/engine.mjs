@@ -67,9 +67,16 @@ export async function executeRun(ctx,id,request=null) {
  }
  return one(ctx,'SELECT id,state,error FROM auth_automation_runs WHERE id=?',id);
 }
+// Events at or below this sequence number have already been looked at, so a
+// scheduled run reads only what was appended since, not the whole event history.
+const EVENTS_SEEN='automation_events_seen_seq';
 export async function maintainAutomations(ctx) {
- const missed=await all(ctx,`SELECT e.id,e.subject,e.data,e.occurred_at FROM auth_events e WHERE e.type='group.member_added' AND EXISTS(SELECT 1 FROM oa_operators p WHERE p.id=json_extract(e.subject,'$.id') AND p.status IN ('active','invited')) AND EXISTS(SELECT 1 FROM auth_automations a JOIN auth_automation_connections c ON c.id=a.id WHERE c.revoked_at IS NULL AND c.group_id=json_extract(e.data,'$.group') AND a.updated_at<=e.occurred_at AND NOT EXISTS(SELECT 1 FROM auth_automation_runs r WHERE r.automation_id=a.id AND r.event_id=e.id)) ORDER BY e.seq LIMIT 100`);
- for(const e of missed)await automationEvent(ctx,'group.member_added',JSON.parse(e.subject),JSON.parse(e.data),e.id,e.occurred_at);
+ const seen=Number((await one(ctx,'SELECT value FROM auth_settings WHERE key=?',EVENTS_SEEN))?.value??0),head=(await one(ctx,'SELECT COALESCE(MAX(seq),0) AS seq FROM auth_events')).seq;
+ if(head>seen) {
+  const missed=await all(ctx,`SELECT e.seq,e.id,e.subject,e.data,e.occurred_at FROM auth_events e WHERE e.seq>? AND e.seq<=? AND e.type='group.member_added' AND EXISTS(SELECT 1 FROM oa_operators p WHERE p.id=json_extract(e.subject,'$.id') AND p.status IN ('active','invited')) AND EXISTS(SELECT 1 FROM auth_automations a JOIN auth_automation_connections c ON c.id=a.id WHERE c.revoked_at IS NULL AND c.group_id=json_extract(e.data,'$.group') AND a.updated_at<=e.occurred_at AND NOT EXISTS(SELECT 1 FROM auth_automation_runs r WHERE r.automation_id=a.id AND r.event_id=e.id)) ORDER BY e.seq LIMIT 100`,seen,head);
+  for(const e of missed)await automationEvent(ctx,'group.member_added',JSON.parse(e.subject),JSON.parse(e.data),e.id,e.occurred_at);
+  await run(ctx,'INSERT INTO auth_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',EVENTS_SEEN,String(missed.length<100?head:missed[99].seq));
+ }
  for(const r of await all(ctx,"SELECT * FROM auth_automation_runs WHERE state='running' AND lease_until<=?",ctx.now()))await finish(ctx,r,'uncertain','interrupted_remote_effect_unverified');
  for(const r of await all(ctx,"SELECT id FROM auth_automation_runs WHERE state='approved' ORDER BY created_at LIMIT 10")) {
   try{await executeRun(ctx,r.id);}catch{/* Authority loss is retained as an invalidated run. */}

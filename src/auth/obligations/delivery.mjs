@@ -7,6 +7,7 @@ import {dispatchOccurrence} from './dispatch.mjs';
 import {dueTiming,claimTiming,finishTiming} from './timing.mjs';
 import {campaignBinding} from '../migration/campaign-followup.mjs';
 const LEASE=120000;
+// The one place a scheduled run brings follow-up work up to date; dispatch rechecks each source itself.
 export async function maintainObligations(ctx) {
  await syncObligations(ctx);
  const p=await policy(ctx);
@@ -34,5 +35,4 @@ export async function maintainObligations(ctx) {
   const advanced=await run(ctx,"UPDATE auth_obligations SET next_due_at=?,delivery_error=?,reminders_stopped_at=?,claim_id=NULL,claimed_until=NULL WHERE id=? AND claim_id=? AND claimed_until>? AND state='open'",businessDue(ctx.now(),p.reminderBusinessDays,c),lastError,stop?ctx.now():null,ob.id,claim,ctx.now());
   if(stop&&advanced.meta.changes)await run(ctx,"INSERT INTO auth_obligation_history(id,obligation_id,event,created_at) VALUES(?,?,'reminders_stopped_at_deadline',?)",random(),ob.id,ctx.now());
  }
- await syncObligations(ctx);
 }
