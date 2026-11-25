@@ -11,6 +11,7 @@ import { pageAvailable } from './ui/shell'
 import { localReturnTo } from './ui/helpers'
 import { session } from './auth/core.mjs'
 import { FRAME_SOURCES, framedPage } from './auth/page-frame.mjs'
+import { mailOffOwnerSignIn, OWNER_SIGNIN_PATH } from './owner-signin.server'
 import branding from './branding.json'
 
 const theme = { href: '/rer-theme.css', productName: branding.name, accentColor: branding.primaryColor }
@@ -43,7 +44,7 @@ export interface Bindings {
  AUTH_ENCRYPTION_KEY: string
  SESSION_SECRET: string
  SETUP_TOKEN?: string
- MAIL_PROVIDER?: 'development' | 'rer' | 'resend' | 'sendgrid' | 'cloudflare'
+ MAIL_PROVIDER?: 'none' | 'development' | 'rer' | 'resend' | 'sendgrid' | 'cloudflare'
  MAIL_SENDGRID_WEBHOOK_KEY?: string
  MAIL_FROM?: string
  MAIL_RELAY_URL?: string
@@ -59,6 +60,7 @@ export function identityAuth(original: Bindings, allowDevSession?: AuthRuntimeOp
  const env = runtimeBindings(original)
  return createAuthRuntime({ mailProvider: env.MAIL_PROVIDER, mailEventInstallationId: env.RER_INSTALLATION_ID, sendgridWebhookKey: env.MAIL_SENDGRID_WEBHOOK_KEY, notificationSlackWebhook: env.AUTH_NOTIFICATION_SLACK_WEBHOOK, agentModelKey: env.AUTH_AGENT_MODEL_KEY, agentModelWorkspace: env.AUTH_AGENT_MODEL_WORKSPACE, organizationId: env.AUTH_ORGANIZATION_ID, db: env.DB, origin: env.AUTH_ORIGIN, secret: env.AUTH_ENCRYPTION_KEY, local: env.AUTH_LOCAL === 'true', allowDevSession, waitUntil, rerTrustKeys: env.RER_LINK_APPROVAL_KEYS, upstreamProviders: env.AUTH_UPSTREAM_PROVIDERS ? JSON.parse(env.AUTH_UPSTREAM_PROVIDERS) : undefined, mail: async (message, store) => {
   const sender = operatorMail({ ...env, DB: store?.db ?? env.DB })
+  if (env.MAIL_PROVIDER === 'none') throw new Error('mail_off')
   if (!sender || !env.MAIL_FROM) throw new Error('Auth mail is not configured')
   return sender.send({ ...message, deliveryId: message.deliveryId, from: env.MAIL_FROM, to: [message.to], headers: {} })
  } })
@@ -87,6 +89,7 @@ export async function authResponse(request: Request, original: Bindings, executi
  const selected = organizationRequest(request)
  if (selected.id !== 'root') {
   if (new URL(request.url).origin !== runtimeBindings(original).AUTH_ORIGIN) return new Response(null, { status: 403, headers: privateHeaders })
+  if (new URL(selected.request.url).pathname === OWNER_SIGNIN_PATH) return devNotFound()
   if (!await organizationDatabase(original.DB, selected.id)) return devNotFound()
   if (['/auth/bootstrap', '/auth/session', '/auth/signout'].includes(new URL(selected.request.url).pathname)) return devNotFound()
   const response = await authResponse(selected.request, { ...original, AUTH_ORGANIZATION_ID: selected.id }, execution, allowDevSession)
@@ -112,6 +115,7 @@ export async function authResponse(request: Request, original: Bindings, executi
  const ownsPage = path === '/' || path === '/signin' || path === '/privacy' || path === '/setup' || path === '/app' || path.startsWith('/app/')
  if (!ownsIdentity && !ownsPage) return null
  if (url.origin !== env.AUTH_ORIGIN || (request.headers.has('host') && request.headers.get('host')?.toLowerCase() !== url.host.toLowerCase())) return new Response(null, { status: 403, headers: privateHeaders })
+ if (path === OWNER_SIGNIN_PATH) return env.MAIL_PROVIDER === 'none' ? await mailOffOwnerSignIn(request, env, authConfig(env)) : devNotFound()
  const auth = identityAuth(env, allowDevSession, work => execution.waitUntil(work))
  if (ownsIdentity) return await auth.fetch(request) ?? devNotFound()
  if (!['GET', 'HEAD'].includes(request.method) && path !== '/setup') return new Response(null, { status: 405, headers: { ...privateHeaders, allow: 'GET, HEAD' } })

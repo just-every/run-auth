@@ -93,6 +93,10 @@
           "label": "Local outbox (this computer only)"
         },
         {
+          "value": "none",
+          "label": "Off"
+        },
+        {
           "value": "rer",
           "label": "RER managed mail"
         },
@@ -110,7 +114,7 @@
         }
       ],
       "group": "mail",
-      "help": "The local outbox sends no external mail. Choose RER managed mail, Resend, SendGrid or Cloudflare before hosting Auth."
+      "help": "For hosted Auth, mail is needed for Auth account sign-in and enrollment. With mail off, rer signin opens the installation owner's setup status."
     },
     {
       "name": "MAIL_FROM",

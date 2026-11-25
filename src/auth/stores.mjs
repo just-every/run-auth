@@ -85,7 +85,7 @@ const groups = {
   'auth_saml_requests', 'auth_saml_sessions', 'auth_session_clients', 'auth_sessions',
   'auth_upstream_proofs', 'oa_identity_provider_health', 'oa_limits', 'oa_logout_events',
   'oa_oidc_limits', 'oa_oidc_transactions', 'oa_provider_session_pins',
-  'oa_provider_sessions', 'oa_sessions', 'oa_setup_links', 'oa_step_up_challenges',
+  'oa_provider_sessions', 'oa_sessions', 'oa_setup_links', 'oa_step_up_challenges', 'oa_owner_signins',
   'oa_tokens', 'rer_dependency_codes', 'rer_dependency_pending',
  ],
  base: [

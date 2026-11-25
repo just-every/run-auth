@@ -480,6 +480,12 @@
       "name": "0080_auth_business_people.sql",
       "sha256": "a2a1ee75d6d7b2d8c567f4bebfd04feedf3c205c11c0ee548d40161976917520",
       "sql": "ALTER TABLE bs_settings ADD COLUMN owner_id TEXT CHECK(owner_id IS NULL OR owner_id <> '');\nALTER TABLE bs_team ADD COLUMN business_id TEXT CHECK(business_id IS NULL OR business_id <> '');\nALTER TABLE bs_team ADD COLUMN business_role TEXT CHECK(business_role IS NULL OR business_role IN('admin','member'));\nCREATE UNIQUE INDEX bs_team_business_id ON bs_team(business_id) WHERE business_id IS NOT NULL;\n\n-- Binding and native root erasure share a durable custody fence. No agent can\n-- be admitted before its signed binding, so even its first read is protected.\nCREATE TRIGGER auth_agent_binding_erasure BEFORE INSERT ON auth_erasure_commits\nWHEN EXISTS(SELECT 1 FROM bs_settings WHERE owner_id IS NOT NULL)\n  OR EXISTS(SELECT 1 FROM bs_team)\nBEGIN SELECT RAISE(ABORT,'agent_custody_review_required'); END;\nCREATE TRIGGER auth_agent_binding_after_erasure BEFORE INSERT ON bs_settings\nWHEN EXISTS(SELECT 1 FROM auth_erasure_commits)\n  OR EXISTS(SELECT 1 FROM auth_erasure_journal)\nBEGIN SELECT RAISE(ABORT,'agent_custody_review_required'); END;\nCREATE TRIGGER auth_agent_rebinding_after_erasure BEFORE UPDATE ON bs_settings\nWHEN EXISTS(SELECT 1 FROM auth_erasure_commits)\n  OR EXISTS(SELECT 1 FROM auth_erasure_journal)\nBEGIN SELECT RAISE(ABORT,'agent_custody_review_required'); END;\n"
+    },
+    {
+      "binding": "DB",
+      "name": "0081_owner_signins.sql",
+      "sha256": "282371e5a3e6f3bfb228eb43ed8c99f6550d43634cf1f1f34794aa819060ab9f",
+      "sql": "-- One-time owner sign-in grants minted by rer signin with the deployment's\n-- Cloudflare credentials. Only the token digest is stored.\nCREATE TABLE IF NOT EXISTS oa_owner_signins (\n id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,\n operator_id TEXT NOT NULL REFERENCES oa_operators(id), operator_version INTEGER NOT NULL,\n created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, consumed_at INTEGER\n);\n"
     }
   ],
   "compatibilityDate": "2026-09-08",
@@ -500,11 +506,11 @@
     "OWNER_EMAIL",
     "SESSION_SECRET",
     "SETUP_TOKEN",
-    "AUTH_ENCRYPTION_KEY",
-    "MAIL_API_KEY"
+    "AUTH_ENCRYPTION_KEY"
   ],
   "optionalSecretNames": [
-    "AUTH_UPSTREAM_PROVIDERS"
+    "AUTH_UPSTREAM_PROVIDERS",
+    "MAIL_API_KEY"
   ],
   "schedules": [
     "*/5 * * * *"

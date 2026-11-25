@@ -45,11 +45,11 @@
         "OWNER_EMAIL",
         "SESSION_SECRET",
         "SETUP_TOKEN",
-        "AUTH_ENCRYPTION_KEY",
-        "MAIL_API_KEY"
+        "AUTH_ENCRYPTION_KEY"
       ],
       "optionalSecretNames": [
-        "AUTH_UPSTREAM_PROVIDERS"
+        "AUTH_UPSTREAM_PROVIDERS",
+        "MAIL_API_KEY"
       ],
       "healthPath": "/health",
       "providerEffects": [
