@@ -234,7 +234,8 @@ function scopedRuntime(options) {
 // storage. Credentials and identifiers from a different namespace never match.
 export function createAuthRuntime(options) {
  const root={...options,origin:new URL(options.origin).origin,now:options.now||Date.now,local:options.local===true};
- if(options.mail)root.mail=(message,store)=>sendDelivery({...root,db:store?.db??root.db},message,prepared=>options.mail(prepared,store));
+ // Mail off (MAIL_PROVIDER=none): no transport, so callers take their mail-not-configured path and journal nothing.
+ if(options.mail&&options.mailProvider!=='none')root.mail=(message,store)=>sendDelivery({...root,db:store?.db??root.db},message,prepared=>options.mail(prepared,store));
  const select=async request=>{
   const selected=organizationRequest(request),id=options.organizationId??selected.id;
   return {request:selected.request,ctx:{...await organizationContext(root,id),abuseSource:trustedSource(root,request)}};

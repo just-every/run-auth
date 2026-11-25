@@ -8,7 +8,7 @@ Status starts at main `cdd103e1ceeeedbacf52badf7a51bfc6b18296f6`, the unchanged 
 
 **AUTH-HOST-001 — Issuer host (done).** Choose localhost on fresh setup; repeat with an explicit/saved issuer; enroll a passkey and link an app. Attempt a host move and require a new app-owner approval rather than preserving issuer authority.
 
-Existing evidence and limits: tests/integration/dev.test.mjs; tests/auth/linking.test.mjs; scripts/installer/local.mjs
+Existing evidence and limits: tests/auth/linking.test.mjs; scripts/installer/local.mjs
 
 **AUTH-PRIVACY-001 — Shared claims (done).** Sign in to two linked apps with different granted identity scopes; inspect UserInfo and tokens for only the permitted claims. Add a RER approval key and confirm it grants no user-data access without an ordinary app sign-in.
 
@@ -28,7 +28,7 @@ Existing evidence and limits: src/auth/protocol.mjs; src/auth/userinfo.mjs; src/
 
 **AUTH-BOUNDARY-001 — Private authorization (done).** Request each private page/API signed out, as an email-only member, as a passkey administrator and with revoked authority; deny inherited Base management and production dev tokens. Remove the local dev gate and confirm authority ends.
 
-Existing evidence and limits: src/server.ts; src/auth/index.mjs; tests/integration/http.test.mjs; tests/integration/dev.test.mjs
+Existing evidence and limits: src/server.ts; src/auth/index.mjs; tests/integration/http.test.mjs
 
 **AUTH-MOVEIN-001 — Staged move-in (done).** Stage Google, Entra, Auth0, Okta and JumpCloud exports through Move-in, inspect collision/disabled rows, admit selected members without proof/roles/mail, explicitly invite, and undo only untouched admissions. Refuse former Auth0 subjects as credentials and concurrent/stale administrative authority.
 
@@ -40,7 +40,7 @@ Existing evidence and limits: src/auth/agents/keys.mjs; src/auth/agents/preparer
 
 **CMD-001 — Commands (done).** Run real install/setup/dev, start browser sign-in, repeat setup without replacing owner/settings/data, stop the managed process, and generate/redeem local recovery with only a digest in D1 and a mode-0600 raw token file.
 
-Existing evidence and limits: AUTH-COMMANDS.md; scripts/installer/local.mjs; tests/integration/dev.test.mjs; tests/auth/recovery-cli.test.mjs
+Existing evidence and limits: AUTH-COMMANDS.md; scripts/installer/local.mjs; tests/auth/recovery-cli.test.mjs
 
 **HTTP-001 — HTTP surfaces (done).** Call health, Auth APIs and public/private documents through the emitted Worker; confirm identity interception, per-request authorization and an ordinary 404 for unknown routes.
 
@@ -380,7 +380,7 @@ Existing evidence and limits: src/auth/email.mjs; src/mail.server.mjs; tests/int
 
 **AUTH-OPS-001 — Operate a company identity service (partial).** Deploy to the supported production host, perform a rolling/key-certificate upgrade, fail a dependency, restore a backup and measure against each numeric objective: availability from synthetic sign-ins at one-minute intervals across a month, the restore's elapsed time against the 1-hour RTO and its newest recovered write against the 5-minute RPO, p95 authorization/SAML and token/UserInfo latency under a load of 50 sign-ins per second, and leaver processing against AUTH-TIMING-001. Trigger Uptime/Oncall escalation and reconcile the USD usage forecast to actual provider usage without exposing secrets.
 
-Existing evidence and limits: AUTH-COMMANDS.md; scripts/installer/local.mjs; src/auth/keys.mjs; tests/integration/dev.test.mjs — local command/recovery and key operations exist; hosted resilience, SLO measurement, region selection and usage forecasting are missing.
+Existing evidence and limits: AUTH-COMMANDS.md; scripts/installer/local.mjs; src/auth/keys.mjs — local command/recovery and key operations exist; hosted resilience, SLO measurement, region selection and usage forecasting are missing.
 
 **AUTH-RECOVERY-002 — Emergency continuity and recovery drills (done).** Drill lost phone/key, unavailable upstream, expired signing certificate and restoration of an owner installation through the public account/CLI doors. Confirm ordinary workers cannot invoke emergency authority, cancellation wins against completion where applicable, all notices persist and used credentials cannot be replayed.
 
@@ -452,7 +452,7 @@ The independent Auth slice has tests through real D1 and the emitted Worker. `te
 
 `tests/integration/http.test.mjs` proves the real runtime/mail/outbox wiring, owner bootstrap versus Auth authority, inherited Base route denial, per-request private authorization, native confirmation, first-run completion and publication of real public signing keys. The retained `tests/email-link.mjs` now proves Auth sessions and browser-bound links instead of inherited Base email-cookie behavior. `tests/runtime.mjs` now expects the root to redirect to sign-in instead of serving a public placeholder.
 
-`tests/integration/browser.test.mjs` exercises actual Auth pages, email confirmation, first setup, native Chromium passkey enrollment/authentication, people invitation/domain/suspension and recovery cancellation. It checks the five private pages at 1440 and 390 in light and dark, with axe serious/critical violations required to be zero. `tests/integration/dev.test.mjs` runs fresh real rer setup/dev, uses RER_OPEN in Chromium, checks the key-gated owner session and key removal, and proves localhost enrollment and private-path refusal. CI installs Chromium before running them. Test success must be read from the run evidence; having these tests alone is not acceptance.
+`tests/integration/browser.test.mjs` exercises actual Auth pages, email confirmation, first setup, native Chromium passkey enrollment/authentication, people invitation/domain/suspension and recovery cancellation. It checks the five private pages at 1440 and 390 in light and dark, with axe serious/critical violations required to be zero. CI installs Chromium before running them. Test success must be read from the run evidence; having these tests alone is not acceptance.
 
 Run `rer check --profile first-party`, `pnpm typecheck`, and the appropriate targeted tests after changes. `rer verify` is the complete seed check. `tests/auth/userinfo.test.mjs` exercises real signed access tokens and scoped GET/POST UserInfo, expiry, issuer/audience/type/subject/client/session refusal, sign-out revocation, account/client/policy changes and RS256 key publication/retirement. The existing ID-token flows still prove nonce, issuer, audience, pairwise subjects and one-time owner claims. The old ID-token-only assertion is replaced by the approved access-token response; no refusal or claim assertions were weakened.
 

@@ -96,6 +96,8 @@ const groups = {
   // Base 0.2.80 adds private import leases and retained recovery audit.
   // Platform's migration ledger is controller bookkeeping, never product data.
   'rer_portability_import_leases', 'rer_portability_recovery_audit', 'rer_migrations',
+  // rer 0.2.134 keeps large export manifests in chunks here during an export.
+  'rer_portability_object_inventory',
  ],
 };
 const globalOnly = new Set(['agent_door_state','agent_door_agents','agent_door_audit','agent_door_calls','agent_door_approvals','agent_door_reviews','agent_door_events','agent_door_usage','bs_settings','bs_overrides','bs_logo','bs_team','bs_audit','bs_assert','auth_organizations', 'auth_domain_claims', 'oc_owner_claims']);

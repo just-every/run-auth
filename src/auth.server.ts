@@ -60,7 +60,6 @@ export function identityAuth(original: Bindings, allowDevSession?: AuthRuntimeOp
  const env = runtimeBindings(original)
  return createAuthRuntime({ mailProvider: env.MAIL_PROVIDER, mailEventInstallationId: env.RER_INSTALLATION_ID, sendgridWebhookKey: env.MAIL_SENDGRID_WEBHOOK_KEY, notificationSlackWebhook: env.AUTH_NOTIFICATION_SLACK_WEBHOOK, agentModelKey: env.AUTH_AGENT_MODEL_KEY, agentModelWorkspace: env.AUTH_AGENT_MODEL_WORKSPACE, organizationId: env.AUTH_ORGANIZATION_ID, db: env.DB, origin: env.AUTH_ORIGIN, secret: env.AUTH_ENCRYPTION_KEY, local: env.AUTH_LOCAL === 'true', allowDevSession, waitUntil, rerTrustKeys: env.RER_LINK_APPROVAL_KEYS, upstreamProviders: env.AUTH_UPSTREAM_PROVIDERS ? JSON.parse(env.AUTH_UPSTREAM_PROVIDERS) : undefined, mail: async (message, store) => {
   const sender = operatorMail({ ...env, DB: store?.db ?? env.DB })
-  if (env.MAIL_PROVIDER === 'none') throw new Error('mail_off')
   if (!sender || !env.MAIL_FROM) throw new Error('Auth mail is not configured')
   return sender.send({ ...message, deliveryId: message.deliveryId, from: env.MAIL_FROM, to: [message.to], headers: {} })
  } })
