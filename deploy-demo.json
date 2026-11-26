@@ -1,5 +1,9 @@
 {
   "version": 1,
   "domain": "run-auth.com",
-  "name": "Auth"
+  "name": "Auth",
+  "settings": {
+    "MAIL_PROVIDER": "none",
+    "MAIL_FROM": "Auth demo <owner@demo.invalid>"
+  }
 }
