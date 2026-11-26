@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 (26 Nov 2026)
+
+The hosted demo. No migrations; an installation's sign-in is unchanged.
+
+- Each published release deploys demo.run-auth.com at its tag (`.github/workflows/run-demo.yml`), with mail off. A dispatch with `test_only` deploys the test host demo.test.run-auth.com.
+- A demo visitor's copy opens on My account, signed in as its owner. In the demo only, the signed owner claim also proves the owner's email, completes first run and opens the owner's Auth session; on an installation the claim still opens only the operator session.
+- The owner claim's audience defaults to the installation's own origin when `RER_OWNER_CLAIM_APP_ORIGIN` is unset, so a claim without it no longer fails with "Incomplete agent door trust". A value that is set must still equal `AUTH_ORIGIN`.
+
 ## 0.1.1 (26 Nov 2026)
 
 Auth's first release since 0.1.0 (13 Oct 2026). Existing issuer, passkey and employer boundaries stay in force, and every shipped migration is unchanged; the new ones are additive.
