@@ -29,6 +29,8 @@ export interface Bindings {
  RER_DEV_IDENTITY?: string
  RER_BUSINESS_TRUST?: string
  RER_INSTALLATION_ID?: string
+ // Set only by rer's hosted demo front.
+ RER_DEMO?: string
  RER_MANAGEMENT_ORIGIN?: string
  OWNER_EMAIL: string
  AUTH_UPSTREAM_PROVIDERS?: string

@@ -12,8 +12,9 @@ export const notTools = [
 ]
 function trust(env: Bindings): Trust | null {
   const issuer = env.RER_OWNER_CLAIM_ISSUER, installationId = env.RER_OWNER_CLAIM_INSTALLATION_ID
-  const appOrigin = env.RER_OWNER_CLAIM_APP_ORIGIN, publicKeys = env.RER_OWNER_CLAIM_PUBLIC_KEYS
-  if (![issuer, installationId, appOrigin, publicKeys].some(Boolean)) return null
+  // The claim's audience is this installation's own origin; the hosted demo does not name it.
+  const appOrigin = env.RER_OWNER_CLAIM_APP_ORIGIN ?? env.AUTH_ORIGIN, publicKeys = env.RER_OWNER_CLAIM_PUBLIC_KEYS
+  if (![issuer, installationId, env.RER_OWNER_CLAIM_APP_ORIGIN, publicKeys].some(Boolean)) return null
   if (!issuer || !installationId || !appOrigin || !publicKeys || appOrigin !== env.AUTH_ORIGIN) throw new Error('Incomplete agent door trust')
   return { issuer, installationId, appOrigin, publicKeys: JSON.parse(publicKeys) }
 }
