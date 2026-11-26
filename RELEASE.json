@@ -1,7 +1,7 @@
 {
   "version": "0.1.1",
   "previousVersion": "0.1.0",
-  "date": "2026-10-24",
+  "date": "2026-11-26",
   "publicReleaseNotes": "Prepares Auth for hosted installation with an explicit deployment specification, supported mail configuration and recorded Base source. Existing issuer, passkey and isolated employer boundaries remain in force.",
   "migrations": [
     "migrations/core/0018_provider_control.sql",
@@ -47,7 +47,28 @@
     "migrations/core/0059_auth_employer_providers.sql",
     "migrations/core/0060_auth_migration_bridge.sql",
     "migrations/core/0061_auth_hr_file_feeds.sql",
-    "migrations/core/0062_auth_personal_receipt_lifecycle.sql"
+    "migrations/core/0062_auth_personal_receipt_lifecycle.sql",
+    "migrations/core/0063_auth_hr_approvals.sql",
+    "migrations/core/0064_auth_diagnostic_proposals.sql",
+    "migrations/core/0065_auth_notifications.sql",
+    "migrations/core/0066_auth_domain_ownership.sql",
+    "migrations/core/0067_auth_mail_delivery.sql",
+    "migrations/core/0068_auth_campaigns.sql",
+    "migrations/core/0069_auth_directory_sources.sql",
+    "migrations/core/0070_auth_federation.sql",
+    "migrations/core/0071_auth_launcher.sql",
+    "migrations/core/0071_auth_recovery_cases.sql",
+    "migrations/core/0072_auth_automations.sql",
+    "migrations/core/0073_auth_onboarding.sql",
+    "migrations/core/0074_auth_onboarding_authority.sql",
+    "migrations/core/0075_auth_temporary_passes.sql",
+    "migrations/core/0076_auth_factors.sql",
+    "migrations/core/0077_auth_directory_freshness.sql",
+    "migrations/core/0077_auth_role_notice_intents.sql",
+    "migrations/core/0078_auth_agent_door.sql",
+    "migrations/core/0079_auth_business_settings.sql",
+    "migrations/core/0080_auth_business_people.sql",
+    "migrations/core/0081_owner_signins.sql"
   ],
   "breaking": false,
   "agentUpdateInstructions": "Use the committed setup manifest and deployment specification. Keep existing issuer and database migration history. Follow docs/backup-and-restore.md before moving an installation."
